@@ -114,11 +114,18 @@
             gap: 32px;
         }
 
+        /* V46: 案例卡片滚动动画 */
         .case-card {
             background-color: #f8f8f8;
             border-radius: 8px;
             overflow: hidden;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: transform 0.3s, box-shadow 0.3s, opacity 0.6s ease, filter 0.6s ease;
+            opacity: 0;
+            filter: translateY(30px);
+        }
+        .case-card.animate-in {
+            opacity: 1;
+            filter: translateY(0);
         }
 
         .case-card:hover {
@@ -1324,6 +1331,29 @@
             window.addEventListener('scroll', checkVisible);
             window.addEventListener('resize', checkVisible);
             checkVisible();
+        })();
+
+        // V46: 案例卡片滚动入场动画（IntersectionObserver）
+        (function() {
+            if (!('IntersectionObserver' in window)) {
+                // Fallback: 直接显示所有卡片
+                document.querySelectorAll('.case-card').forEach(function(c) { c.classList.add('animate-in'); });
+                return;
+            }
+            var cardObserver = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animate-in');
+                        cardObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+            document.querySelectorAll('.case-card').forEach(function(card, index) {
+                // 错开动画延迟，形成波浪效果
+                card.style.transitionDelay = (index % 3 * 0.1) + 's';
+                cardObserver.observe(card);
+            });
         })();
     </script>
     <!-- 悬浮联系按钮 -->
