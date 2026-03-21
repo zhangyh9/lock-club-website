@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>领锁技术揭秘 - 防飞房算法·超低功耗·静音设计 | lock.club</title>
+    <meta name="description" content="深度解析领锁智能门锁三大核心技术：防飞房算法、超低功耗设计、极致静音结构。技术驱动酒店降本增效，领锁天生智能。">
+    <meta name="keywords" content="领锁技术,防飞房算法,超低功耗门锁,静音门锁,智能门锁技术">
+    <link rel="stylesheet" href="css/style.css">
+    <meta property="og:title" content="领锁技术揭秘 - 防飞房算法·超低功耗·静音设计 | lock.club">
+    <meta property="og:description" content="深度解析领锁智能门锁三大核心技术：防飞房算法、超低功耗设计、极致静音结构。">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://lock.club/tech.html">
+    <meta property="og:site_name" content="领锁智能 lock.club">
+    <meta property="og:locale" content="zh_CN">
+    <link rel="alternate" hreflang="zh-CN" href="https://lock.club/tech.html">
+    <link rel="canonical" href="https://lock.club/tech.html">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": "领锁智能",
+        "description": "专注酒店智能门锁完整解决方案，拥有防飞房算法、超低功耗、静音设计三大核心技术",
+        "url": "https://lock.club",
+        "telephone": "+86-400-xxx-xxxx",
+        "address": {
+            "@type": "PostalAddress",
+            "addressRegion": "中国",
+            "addressCountry": "CN"
+        },
+        "priceRange": "¥¥¥",
+        "openingHours": "Mo-Su 00:00-24:00",
+        "areaServed": "中国"
+    }
+    </script>
+
+    <!-- BreadcrumbList JSON-LD -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "首页", "item": "https://lock.club/"},
+            {"@type": "ListItem", "position": 2, "name": "技术揭秘", "item": "https://lock.club/tech.html"}
+        ]
+    }
+    </script>
+
+    <style>
+        /* ===== Tech Page Specific ===== */
+        .tech-hero {
+            padding: 80px 0 64px;
+            text-align: center;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tech-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        .tech-hero .container {
+            position: relative;
+            z-index: 1;
+        }
+
+        .tech-badge {
+            display: inline-block;
+            background: rgba(79, 172, 254, 0.15);
+            border: 1px solid rgba(79, 172, 254, 0.3);
+            color: #4facfe;
+            padding: 6px 20px;
+            border-radius: 100px;
+            font-size: 14px;
+            margin-bottom: 24px;
+            letter-spacing: 1px;
+        }
+
+        .tech-hero h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #fff 0%, #4facfe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tech-hero p {
+            font-size: 20px;
+            color: rgba(255,255,255,0.7);
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.8;
+        }
+
+        /* ===== Core Tech Cards ===== */
+        .tech-core {
+            padding: 80px 0;
+            background: #f8f9fa;
+        }
+
+        .tech-card {
+            background: #fff;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 48px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            transition: box-shadow 0.3s;
+        }
+
+        .tech-card:hover {
+            box-shadow: 0 8px 40px rgba(0,0,0,0.1);
+        }
+
+        .tech-card-inner {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 400px;
+        }
+
+        .tech-card:nth-child(even) .tech-card-inner {
+            direction: rtl;
+        }
+
+        .tech-card:nth-child(even) .tech-card-inner > * {
+            direction: ltr;
+        }
+
+        .tech-card-visual {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tech-card-visual::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(79,172,254,0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .tech-icon-large {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(79,172,254,0.1);
+            border-radius: 20px;
+            border: 1px solid rgba(79,172,254,0.2);
+        }
+
+        .tech-icon-large svg {
+            width: 40px;
+            height: 40px;
+            stroke: #4facfe;
+            fill: none;
+            stroke-width: 1.5;
+        }
+
+        .tech-card-number {
+            font-size: 80px;
+            font-weight: 800;
+            color: rgba(79,172,254,0.15);
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            line-height: 1;
+        }
+
+        .tech-card-text {
+            padding: 48px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .tech-card-tag {
+            display: inline-block;
+            background: #e8f4ff;
+            color: #1a5aaa;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .tech-card-text h2 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+        }
+
+        .tech-card-text .subtitle {
+            font-size: 16px;
+            color: #1a5aaa;
+            margin-bottom: 24px;
+            font-weight: 500;
+        }
+
+        .tech-card-text p {
+            color: #555;
+            line-height: 1.8;
+            margin-bottom: 16px;
+            font-size: 16px;
+        }
+
+        /* ===== Data Metrics ===== */
+        .tech-metrics {
+            display: flex;
+            gap: 32px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        .tech-metric {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px 24px;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .tech-metric-num {
+            font-size: 28px;
+            font-weight: 800;
+            color: #1a5aaa;
+            line-height: 1;
+        }
+
+        .tech-metric-unit {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .tech-metric-label {
+            font-size: 13px;
+            color: #555;
+            margin-top: 6px;
+        }
+
+        /* ===== Tech Detail Accordion ===== */
+        .tech-accordion {
+            border: 1px solid #eee;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 24px;
+        }
+
+        .accordion-item {
+            border-bottom: 1px solid #eee;
+        }
+
+        .accordion-item:last-child {
+            border-bottom: none;
+        }
+
+        .accordion-header {
+            padding: 16px 24px;
+            background: #fafafa;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 15px;
+            color: #1a1a1a;
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+        .accordion-header:hover {
+            background: #f0f0f0;
+        }
+
+        .accordion-header .arrow {
+            width: 20px;
+            height: 20px;
+            transition: transform 0.3s;
+            flex-shrink: 0;
+        }
+
+        .accordion-item.active .accordion-header .arrow {
+            transform: rotate(180deg);
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+            background: #fff;
+        }
+
+        .accordion-item.active .accordion-content {
+            max-height: 500px;
+        }
+
+        .accordion-body {
+            padding: 20px 24px;
+            color: #555;
+            line-height: 1.8;
+            font-size: 14px;
+        }
+
+        /* ===== Power Compare Chart ===== */
+        .power-compare {
+            margin-top: 24px;
+        }
+
+        .power-bar-group {
+            margin-bottom: 16px;
+        }
+
+        .power-bar-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .power-bar-bg {
+            height: 12px;
+            background: #e9ecef;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .power-bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 1s ease;
+        }
+
+        .power-bar-fill.lingsuo {
+            background: linear-gradient(90deg, #1a5aaa, #4facfe);
+            width: 0;
+        }
+
+        .power-bar-fill.traditional {
+            background: #ff6b6b;
+            width: 0;
+        }
+
+        /* ===== Tech Stack Section ===== */
+        .tech-stack {
+            padding: 80px 0;
+            background: #fff;
+        }
+
+        .stack-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .stack-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid transparent;
+        }
+
+        .stack-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            border-color: rgba(79,172,254,0.3);
+        }
+
+        .stack-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+
+        .stack-icon svg {
+            width: 28px;
+            height: 28px;
+            stroke: #4facfe;
+            fill: none;
+            stroke-width: 1.5;
+        }
+
+        .stack-card h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1a1a1a;
+        }
+
+        .stack-card p {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* ===== Comparison Table ===== */
+        .tech-compare {
+            padding: 80px 0;
+            background: #f8f9fa;
+        }
+
+        .compare-table-wrap {
+            overflow-x: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            min-width: 600px;
+        }
+
+        .compare-table th {
+            background: #1a1a2e;
+            color: #fff;
+            padding: 16px 24px;
+            text-align: left;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .compare-table th:first-child {
+            border-radius: 12px 0 0 0;
+        }
+
+        .compare-table th:last-child {
+            border-radius: 0 12px 0 0;
+        }
+
+        .compare-table td {
+            padding: 14px 24px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #555;
+            vertical-align: middle;
+        }
+
+        .compare-table tr:last-child td:first-child {
+            border-radius: 0 0 0 12px;
+        }
+
+        .compare-table tr:last-child td:last-child {
+            border-radius: 0 0 12px 0;
+        }
+
+        .compare-table tr:hover td {
+            background: #fafafa;
+        }
+
+        .compare-table .check {
+            color: #1a5aaa;
+            font-weight: 700;
+        }
+
+        .compare-table .cross {
+            color: #ccc;
+        }
+
+        .compare-highlight {
+            background: #e8f4ff !important;
+        }
+
+        /* ===== CTA ===== */
+        .tech-cta {
+            padding: 80px 0;
+            text-align: center;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+        }
+
+        .tech-cta h2 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .tech-cta p {
+            font-size: 18px;
+            opacity: 0.8;
+            margin-bottom: 32px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 768px) {
+            .tech-hero h1 {
+                font-size: 32px;
+            }
+            .tech-hero p {
+                font-size: 16px;
+            }
+            .tech-card-inner {
+                grid-template-columns: 1fr;
+            }
+            .tech-card:nth-child(even) .tech-card-inner {
+                direction: ltr;
+            }
+            .tech-card-visual {
+                min-height: 240px;
+                padding: 32px;
+            }
+            .tech-card-text {
+                padding: 32px;
+            }
+            .tech-card-text h2 {
+                font-size: 24px;
+            }
+            .stack-grid {
+                grid-template-columns: 1fr;
+            }
+            .tech-metrics {
+                gap: 16px;
+            }
+            .tech-metric {
+                flex: 1;
+                min-width: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="index.html" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:#1a1a1a;font-weight:600;font-size:20px;">
+                    <img src="images/logo.png" alt="领锁智能" class="nav-logo">
+                    <span class="nav-text">领锁智能</span>
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">首页</a></li>
+                <li><a href="journal.html">品牌日记</a></li>
+                <li><a href="products.html">产品</a></li>
+                <li><a href="cases.html">案例</a></li>
+                <li><a href="contact.html">联系</a></li>
+                <li><a href="tech.html" style="color:#1a5aaa;font-weight:600;">技术</a></li>
+            </ul>
+            <button class="mobile-menu-toggle" aria-label="菜单">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- 技术英雄区 -->
+    <section class="tech-hero">
+        <div class="container">
+            <div class="tech-badge">核心技术揭秘</div>
+            <h1>技术驱动酒店降本增效</h1>
+            <p>领锁专注酒店智能门锁，从算法到硬件，三大核心技术直击酒店门锁管理痛点</p>
+        </div>
+    </section>
+
+    <!-- 核心技术卡片 -->
+    <section class="tech-core">
+        <div class="container">
+
+            <!-- 技术1：防飞房算法 -->
+            <div class="tech-card">
+                <div class="tech-card-inner">
+                    <div class="tech-card-visual">
+                        <div class="tech-card-number">01</div>
+                        <div class="tech-icon-large">
+                            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                        </div>
+                        <div style="text-align:center;margin-top:16px;">
+                            <div style="font-size:36px;font-weight:800;color:#4facfe;">99.7%</div>
+                            <div style="font-size:14px;opacity:0.7;margin-top:4px;">防飞房准确率</div>
+                        </div>
+                    </div>
+                    <div class="tech-card-text">
+                        <div class="tech-card-tag">核心算法</div>
+                        <h2>防飞房智能算法</h2>
+                        <p class="subtitle">住客离房自动识别 · 精准管控每一间房</p>
+                        <p>领锁独创防飞房算法，通过蓝牙+NFC多源数据融合，精准判断客人是否真正离开房间，杜绝"飞房"——即客人未实际入住却占用房间的情况。</p>
+                        <p>搭配人感节电器，系统自动识别房间状态，无人自动断电，有人时正常供电，房间状态实时同步到前台管理系统。</p>
+
+                        <div class="tech-accordion">
+                            <div class="accordion-item">
+                                <div class="accordion-header">
+                                    技术原理详解
+                                    <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
+                                <div class="accordion-content">
+                                    <div class="accordion-body">
+                                        领锁防飞房算法基于多传感器融合技术，综合分析蓝牙信号强度、NFC开门记录、人体红外感应数据，配合云端AI模型，精准判断住客的真实在场状态。与传统单点检测相比，准确率提升至99.7%，误报率低于0.3%。
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <div class="accordion-header">
+                                    解决的问题
+                                    <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
+                                <div class="accordion-content">
+                                    <div class="accordion-body">
+                                        传统酒店经常面临：住客预订后不来住，但房间仍被占用；房间空闲但系统显示占用；电费按满房计算但实际入住率低。领锁防飞房算法彻底解决这些痛点，让每一间房的运营状态都真实可见。
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 技术2：超低功耗 -->
+            <div class="tech-card">
+                <div class="tech-card-inner">
+                    <div class="tech-card-visual">
+                        <div class="tech-card-number">02</div>
+                        <div class="tech-icon-large">
+                            <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        </div>
+                        <div style="text-align:center;margin-top:16px;">
+                            <div style="font-size:36px;font-weight:800;color:#4facfe;">5年+</div>
+                            <div style="font-size:14px;opacity:0.7;margin-top:4px;">电池续航时间</div>
+                        </div>
+                    </div>
+                    <div class="tech-card-text">
+                        <div class="tech-card-tag">硬件创新</div>
+                        <h2>超低功耗设计</h2>
+                        <p class="subtitle">5年不用换电池 · 从硬件到软件全链路优化</p>
+                        <p>领锁从芯片选型、电路设计、通讯协议三个层面全面优化功耗，在保证功能完整性的前提下，将门锁日常待机功耗降至微瓦级。</p>
+
+                        <div class="power-compare">
+                            <div class="power-bar-group">
+                                <div class="power-bar-label">
+                                    <span>领锁 LS02</span>
+                                    <span>功耗降低 85%</span>
+                                </div>
+                                <div class="power-bar-bg">
+                                    <div class="power-bar-fill lingsuo" data-width="15"></div>
+                                </div>
+                            </div>
+                            <div class="power-bar-group">
+                                <div class="power-bar-label">
+                                    <span>传统智能门锁</span>
+                                    <span>基准功耗</span>
+                                </div>
+                                <div class="power-bar-bg">
+                                    <div class="power-bar-fill traditional" data-width="100"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tech-accordion">
+                            <div class="accordion-item">
+                                <div class="accordion-header">
+                                    功耗优化技术细节
+                                    <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
+                                <div class="accordion-content">
+                                    <div class="accordion-body">
+                                        1. 超低功耗蓝牙芯片：采用最新一代BLE SoC，待机电流&lt;1μA<br>
+                                        2. 智能唤醒机制：99.9%时间处于深度睡眠，仅在检测到NFC信号时唤醒<br>
+                                        3. 高效电源管理：动态调节系统时钟，按需分配电力<br>
+                                        4. 优化通讯协议：减少不必要的数据交互，单次通讯耗电降至最低
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <div class="accordion-header">
+                                    实际测试数据
+                                    <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
+                                <div class="accordion-content">
+                                    <div class="accordion-body">
+                                        在标准使用场景下（每天开门10次，蓝牙通讯20次），领锁LS02年电池消耗低于普通智能门锁的1/5。按100间房计算，每年可节省换电池成本约3万元，人工成本节省约2万元。
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 技术3：极致静音 -->
+            <div class="tech-card">
+                <div class="tech-card-inner">
+                    <div class="tech-card-visual">
+                        <div class="tech-card-number">03</div>
+                        <div class="tech-icon-large">
+                            <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13M9 18c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3zM21 16c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3z"/></svg>
+                        </div>
+                        <div style="text-align:center;margin-top:16px;">
+                            <div style="font-size:36px;font-weight:800;color:#4facfe;">&lt;30dB</div>
+                            <div style="font-size:14px;opacity:0.7;margin-top:4px;">开锁噪音等级</div>
+                        </div>
+                    </div>
+                    <div class="tech-card-text">
+                        <div class="tech-card-tag">结构创新</div>
+                        <h2>极致静音结构设计</h2>
+                        <p class="subtitle">深夜开门不打扰 · 关门自动静音反锁</p>
+                        <p>领锁采用自主研发的静音机电一体化结构，锁舌驱动机构经过精密调校，开锁过程声音低于30分贝——相当于轻声说话，不会打扰任何客人。</p>
+                        <p>同时实现<strong>关门自动反锁</strong>，无需客人额外操作，既安静又安全。</p>
+
+                        <div class="tech-accordion">
+                            <div class="accordion-item">
+                                <div class="accordion-header">
+                                    静音结构技术细节
+                                    <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
+                                <div class="accordion-content">
+                                    <div class="accordion-body">
+                                        1. 精密减速电机：采用特种减速比齿轮组，降低转速同时增大扭矩，机械噪音源减少80%<br>
+                                        2. 阻尼消音结构：锁体内部增加硅胶阻尼垫，吸收振动能量<br>
+                                        3. 无碰撞开锁：锁舌运动轨迹优化，消除了传统门锁的撞击声<br>
+                                        4. 静音材料应用：关键传动部件采用自润滑高分子材料，减少摩擦噪音
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <div class="accordion-header">
+                                    为什么静音很重要
+                                    <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
+                                <div class="accordion-content">
+                                    <div class="accordion-body">
+                                        酒店住客深夜进门是高频场景。传统门锁开锁声音高达60dB以上（相当于正常对话），容易：1) 打扰同楼层其他客人休息，引发投诉；2) 让深夜回房的客人感到尴尬；3) 影响酒店整体安静氛围，降低好评率。领锁静音设计彻底解决这一痛点。
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- 技术参数对比 -->
+    <section class="tech-compare">
+        <div class="container">
+            <h2 class="section-title">领锁 vs 传统门锁 · 核心参数对比</h2>
+            <div class="compare-table-wrap">
+                <table class="compare-table">
+                    <thead>
+                        <tr>
+                            <th>对比项</th>
+                            <th class="compare-highlight">领锁 LS02</th>
+                            <th>传统智能门锁</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>电池续航</td>
+                            <td class="compare-highlight"><span class="check">5年+</span></td>
+                            <td>1-2年</td>
+                        </tr>
+                        <tr>
+                            <td>开锁噪音</td>
+                            <td class="compare-highlight"><span class="check">&lt;30dB</span></td>
+                            <td>50-70dB</td>
+                        </tr>
+                        <tr>
+                            <td>防飞房功能</td>
+                            <td class="compare-highlight"><span class="check">✓ 支持</span></td>
+                            <td><span class="cross">✗ 不支持</span></td>
+                        </tr>
+                        <tr>
+                            <td>自动反锁</td>
+                            <td class="compare-highlight"><span class="check">✓ 关门自动</span></td>
+                            <td>需手动</td>
+                        </tr>
+                        <tr>
+                            <td>安装时间/把</td>
+                            <td class="compare-highlight"><span class="check">约30分钟</span></td>
+                            <td>1-2小时</td>
+                        </tr>
+                        <tr>
+                            <td>通讯方式</td>
+                            <td class="compare-highlight"><span class="check">蓝牙+NFC</span></td>
+                            <td>单一蓝牙</td>
+                        </tr>
+                        <tr>
+                            <td>手机NFC碰一碰</td>
+                            <td class="compare-highlight"><span class="check">✓ 支持</span></td>
+                            <td><span class="cross">✗ 部分支持</span></td>
+                        </tr>
+                        <tr>
+                            <td>年运维成本/100间</td>
+                            <td class="compare-highlight"><span class="check">约0.5万元</span></td>
+                            <td>约5万元</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- 技术栈概览 -->
+    <section class="tech-stack">
+        <div class="container">
+            <h2 class="section-title">完整技术栈</h2>
+            <div class="stack-grid">
+                <div class="stack-card">
+                    <div class="stack-icon">
+                        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    </div>
+                    <h3>硬件层</h3>
+                    <p>低功耗蓝牙SoC + NFC读卡芯片 + 精密机电结构 + 高性能锂电池管理</p>
+                </div>
+                <div class="stack-card">
+                    <div class="stack-icon">
+                        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <h3>云端AI</h3>
+                    <p>防飞房智能算法 · 房间状态实时分析 · 用电数据智能统计</p>
+                </div>
+                <div class="stack-card">
+                    <div class="stack-icon">
+                        <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                    </div>
+                    <h3>手机端</h3>
+                    <p>NFC碰一碰开锁 · 小程序远程管理 · 开门记录实时推送</p>
+                </div>
+                <div class="stack-card">
+                    <div class="stack-icon">
+                        <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                    </div>
+                    <h3>小程序生态</h3>
+                    <p>客人端入住+开锁 · 酒店管理端房间管理 · 数据大屏</p>
+                </div>
+                <div class="stack-card">
+                    <div class="stack-icon">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    </div>
+                    <h3>省电算法</h3>
+                    <p>AI人感识别 · 无人断电控制 · 客房能耗实时监测</p>
+                </div>
+                <div class="stack-card">
+                    <div class="stack-icon">
+                        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <h3>安全加密</h3>
+                    <p>金融级AES-256加密 · 动态令牌验证 · 通讯数据全程加密</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="tech-cta">
+        <div class="container">
+            <h2>技术驱动，体验升级</h2>
+            <p>想了解更多技术细节，或获取完整技术白皮书，欢迎联系我们</p>
+            <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;">
+                <a href="contact.html" class="cta-button">联系我们</a>
+                <a href="products.html" class="cta-button" style="background:#4facfe;color:#1a1a2e;">查看产品详情</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>&copy; 2026 领锁智能 · 天生智能，锁定未来</p>
+                <div class="footer-links">
+                    <a href="index.html">首页</a>
+                    <a href="journal.html">品牌日记</a>
+                    <a href="products.html">产品</a>
+                    <a href="cases.html">案例</a>
+                    <a href="tech.html">技术</a>
+                    <a href="contact.html">联系我们</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script>
+        // Tech page accordion
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const item = header.parentElement;
+                const isActive = item.classList.contains('active');
+                // Close all
+                document.querySelectorAll('.accordion-item').forEach(i => i.classList.remove('active'));
+                // Toggle current
+                if (!isActive) item.classList.add('active');
+            });
+        });
+
+        // Animate power bars on scroll
+        const powerBars = document.querySelectorAll('.power-bar-fill');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    powerBars.forEach(bar => {
+                        const width = bar.getAttribute('data-width');
+                        bar.style.width = width + '%';
+                    });
+                    observer.disconnect();
+                }
+            });
+        }, { threshold: 0.3 });
+
+        const powerSection = document.querySelector('.power-compare');
+        if (powerSection) observer.observe(powerSection);
+    </script>
+</body>
+</html>
