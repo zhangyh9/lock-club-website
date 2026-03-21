@@ -441,7 +441,109 @@
     }
 
     // ============================================
-    // 13. Live Counter Animation for Trust Bar
+    // 13. Back to Top Button
+    // ============================================
+    function initBackToTop() {
+        const btn = document.createElement('button');
+        btn.id = 'backToTop';
+        btn.innerHTML = '↑';
+        btn.setAttribute('aria-label', '回到顶部');
+        btn.style.cssText = 'position:fixed;bottom:100px;right:32px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a5aaa,#3b82f6);color:#fff;border:none;cursor:pointer;font-size:22px;box-shadow:0 4px 16px rgba(26,90,170,0.3);opacity:0;transform:translateY(20px);transition:all 0.3s ease;z-index:998;pointer-events:none;';
+        document.body.appendChild(btn);
+
+        window.addEventListener('scroll', function() {
+            if (window.scrollY > 600) {
+                btn.style.opacity = '1';
+                btn.style.transform = 'translateY(0)';
+                btn.style.pointerEvents = 'auto';
+            } else {
+                btn.style.opacity = '0';
+                btn.style.transform = 'translateY(20px)';
+                btn.style.pointerEvents = 'none';
+            }
+        }, { passive: true });
+
+        btn.addEventListener('click', function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-3px) scale(1.1)';
+            this.style.boxShadow = '0 8px 24px rgba(26,90,170,0.4)';
+        });
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+            this.style.boxShadow = '0 4px 16px rgba(26,90,170,0.3)';
+        });
+    }
+
+    // ============================================
+    // 14. Sticky Bottom Mobile CTA Bar
+    // ============================================
+    function initStickyMobileBar() {
+        if (window.innerWidth > 768) return;
+        const bar = document.createElement('div');
+        bar.id = 'stickyMobileBar';
+        bar.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#fff;padding:12px 16px;display:flex;gap:10px;align-items:center;box-shadow:0 -4px 20px rgba(0,0,0,0.1);z-index:998;transform:translateY(100%);transition:transform 0.3s ease;';
+        bar.innerHTML = '<a href="tel:13711533226" style="flex:1;background:#1a5aaa;color:#fff;text-align:center;padding:12px;border-radius:8px;font-size:15px;font-weight:600;text-decoration:none;">📞 致电咨询</a><a href="contact.html" style="flex:1;background:#07c160;color:#fff;text-align:center;padding:12px;border-radius:8px;font-size:15px;font-weight:600;text-decoration:none;">💬 在线留言</a>';
+        document.body.appendChild(bar);
+
+        window.addEventListener('scroll', function() {
+            if (window.scrollY > 800) {
+                bar.style.transform = 'translateY(0)';
+            } else {
+                bar.style.transform = 'translateY(100%)';
+            }
+        }, { passive: true });
+    }
+
+    // ============================================
+    // 15. Contact Form Enhancement
+    // ============================================
+    function initContactForm() {
+        const form = document.querySelector('#contactForm');
+        if (!form) return;
+
+        const inputs = form.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+            input.addEventListener('blur', function() {
+                if (this.checkValidity()) {
+                    this.style.borderColor = '#22c55e';
+                    this.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.1)';
+                } else if (this.value) {
+                    this.style.borderColor = '#ff4d4f';
+                    this.style.boxShadow = '0 0 0 3px rgba(255,77,79,0.1)';
+                } else {
+                    this.style.borderColor = '#e8f0fe';
+                    this.style.boxShadow = 'none';
+                }
+            });
+
+            input.addEventListener('focus', function() {
+                this.style.borderColor = '#1a5aaa';
+                this.style.boxShadow = '0 0 0 3px rgba(26,90,170,0.15)';
+            });
+        });
+
+        form.addEventListener('submit', function(e) {
+            let valid = true;
+            inputs.forEach(input => {
+                if (!input.checkValidity()) {
+                    valid = false;
+                    input.style.borderColor = '#ff4d4f';
+                    input.style.boxShadow = '0 0 0 3px rgba(255,77,79,0.1)';
+                }
+            });
+            if (!valid) {
+                e.preventDefault();
+                const firstInvalid = form.querySelector('input:invalid, textarea:invalid');
+                if (firstInvalid) firstInvalid.focus();
+            }
+        });
+    }
+
+    // ============================================
+    // 13 (original). Live Counter Animation for Trust Bar
     // ============================================
     function initLiveCounters() {
         const counters = document.querySelectorAll('.live-counter');
@@ -498,6 +600,9 @@
         initWhyChooseNumbers();
         initStaggerGrid();
         initLiveCounters();
+        initBackToTop();
+        initStickyMobileBar();
+        initContactForm();
     }
 
     if (document.readyState === 'loading') {
