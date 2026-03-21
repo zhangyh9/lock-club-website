@@ -792,7 +792,7 @@
                 <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #1a5aaa, #3b82f6); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; flex-shrink: 0;">👨</div>
                 <div>
                     <div style="font-size: 13px; color: #333; font-weight: 600; line-height: 1.4;" id="toastMessage">深圳·大鹏公寓 · 刚签约</div>
-                    <div style="font-size: 11px; color: #1a5aaa; margin-top: 2px; font-weight: 500;">🎉 恭喜！又一家酒店加入领锁</div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:2px;"><span style="font-size:11px;color:#1a5aaa;font-weight:500;">🎉 恭喜！又一家酒店加入领锁</span><span id="toastTime" style="font-size:10px;color:#999;background:#f5f5f5;padding:1px 6px;border-radius:10px;font-weight:500;">刚刚</span></div>
                 </div>
             </div>
         </div>
@@ -819,16 +819,16 @@
 
         // V29: Social proof toast notifications
         var toastMessages = [
-            { msg: '深圳·大鹏海景公寓 · 58间 · 刚签约', icon: '👨' },
-            { msg: '成都·春熙路酒店 · 92间 · 今日新签', icon: '👩' },
-            { msg: '广州·珠江新城酒店 · 120间 · 验收通过', icon: '🧑' },
-            { msg: '杭州·西湖文化广场酒店 · 75间 · 改造完成', icon: '👨‍💼' },
-            { msg: '武汉·光谷科技酒店 · 200间 · 批量交付', icon: '👩‍💼' },
-            { msg: '西安·钟楼民宿 · 35间 · 新装开业', icon: '🧑‍🎨' },
-            { msg: '长沙·五一广场酒店 · 88间 · 今日签约', icon: '👨‍🔧' },
-            { msg: '南京·夫子庙酒店 · 65间 · 安装调试中', icon: '👩‍🔬' },
-            { msg: '重庆·解放碑公寓 · 45间 · 合作达成', icon: '🧑‍💻' },
-            { msg: '苏州·金鸡湖酒店 · 110间 · 签约成功', icon: '👨‍🏫' }
+            { msg: '深圳·大鹏海景公寓 · 58间 · 刚签约', icon: '👨', time: '刚刚' },
+            { msg: '成都·春熙路酒店 · 92间 · 今日新签', icon: '👩', time: '3分钟前' },
+            { msg: '广州·珠江新城酒店 · 120间 · 验收通过', icon: '🧑', time: '8分钟前' },
+            { msg: '杭州·西湖文化广场酒店 · 75间 · 改造完成', icon: '👨‍💼', time: '12分钟前' }
+            { msg: '武汉·光谷科技酒店 · 200间 · 批量交付', icon: '👩‍💼', time: '15分钟前' }
+            { msg: '西安·钟楼民宿 · 35间 · 新装开业', icon: '🧑‍🎨', time: '20分钟前' }
+            { msg: '长沙·五一广场酒店 · 88间 · 今日签约', icon: '👨‍🔧', time: '26分钟前' }
+            { msg: '南京·夫子庙酒店 · 65间 · 安装调试中', icon: '👩‍🔬', time: '31分钟前' }
+            { msg: '重庆·解放碑公寓 · 45间 · 合作达成', icon: '🧑‍💻', time: '38分钟前' }
+            { msg: '苏州·金鸡湖酒店 · 110间 · 签约成功', icon: '👨‍🏫', time: '42分钟前' }
         ];
         var toastEl = document.getElementById('socialProofToast');
         var toastMsg = document.getElementById('toastMessage');
@@ -837,6 +837,9 @@
         function showToast() {
             var item = toastMessages[toastIndex % toastMessages.length];
             toastMsg.textContent = item.msg;
+            // Update timestamp badge
+            var tsEl = document.getElementById('toastTime');
+            if(tsEl) tsEl.textContent = item.time || '刚刚';
             toastEl.querySelector('div > div > div:first-child').textContent = item.icon;
             toastEl.style.opacity = '1';
             toastEl.style.transform = 'translateX(0)';
@@ -975,9 +978,14 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; position: relative; z-index: 2;">
                 <!-- 左侧文案 -->
                 <div>
-                    <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(26,90,170,0.2); border: 1px solid rgba(79,172,254,0.3); border-radius: 30px; padding: 8px 20px; margin-bottom: 24px; opacity: 0; animation: fadeInUp 0.6s ease 0.1s forwards;">
+                    <div style="display: inline-flex; align-items: center; gap: 12px; background: rgba(26,90,170,0.15); border: 1px solid rgba(79,172,254,0.3); border-radius: 30px; padding: 8px 20px; margin-bottom: 24px; opacity: 0; animation: fadeInUp 0.6s ease 0.1s forwards;">
                         <span style="font-size: 16px;">🏆</span>
                         <span style="color: #4facfe; font-size: 13px; font-weight: 600; letter-spacing: 1px;">锦江认证供应商 · 36项专利技术</span>
+                        <span style="width:1px;height:16px;background:rgba(79,172,254,0.3);"></span>
+                        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.3);border-radius:20px;padding:3px 10px;">
+                            <span style="width:7px;height:7px;background:#e74c3c;border-radius:50%;animation:livePulse 1.5s ease-in-out infinite;"></span>
+                            <span style="color:#ff7675;font-size:12px;font-weight:700;" id="heroLiveCount">实时服务 10,432 房间</span>
+                        </span>
                     </div>
                     <h1 style="font-size: clamp(32px, 4vw, 56px); font-weight: 800; color: #fff; line-height: 1.15; margin: 0 0 20px 0; opacity: 0; animation: fadeInUp 0.8s ease 0.2s forwards;">
                         一把锁<br>
@@ -1093,6 +1101,20 @@
                         document.getElementById('hero-roi-net').textContent = '¥' + (net/10000).toFixed(1) + '万';
                     }
                     calcHeroROI();
+                    </script>
+                    <script>
+                    // 实时服务房间数动态更新
+                    (function(){
+                        var base = 10432;
+                        var el = document.getElementById('heroLiveCount');
+                        if(!el) return;
+                        function update(){
+                            var delta = Math.floor(Math.random()*5) - 2;
+                            base = Math.max(10000, base + delta);
+                            el.textContent = '实时服务 ' + base.toLocaleString() + ' 房间';
+                        }
+                        setInterval(update, 8000);
+                    })();
                     </script>
                 </div>
                 <!-- 右侧产品图 -->
