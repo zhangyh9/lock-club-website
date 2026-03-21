@@ -583,6 +583,32 @@
     }
 
     // ============================================
+    // 16. Comparison Table Row Animation
+    // ============================================
+    function initCompareTableAnimation() {
+        const compareRows = document.querySelectorAll('.compare-row');
+        if (!compareRows.length) return;
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const rows = document.querySelectorAll('.compare-row');
+                    rows.forEach((row, index) => {
+                        setTimeout(() => {
+                            row.style.opacity = '1';
+                            row.style.transform = 'translateX(0)';
+                        }, index * 100);
+                    });
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.2 });
+
+        const tableWrapper = document.querySelector('table');
+        if (tableWrapper) observer.observe(tableWrapper);
+    }
+
+    // ============================================
     // Init All
     // ============================================
     function init() {
@@ -603,6 +629,7 @@
         initBackToTop();
         initStickyMobileBar();
         initContactForm();
+        initCompareTableAnimation();
     }
 
     if (document.readyState === 'loading') {
