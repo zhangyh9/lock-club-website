@@ -2196,20 +2196,6 @@
                     </tbody>
                 </table>
             </div>
-                        </tr>
-                        <tr class="compare-row" style="border-bottom: 1px solid #f0f0f0; opacity: 0; transform: translateX(-20px); transition: all 0.5s ease;">
-                            <td style="padding: 14px 24px; font-weight: 600; color: #1a1a1a;">换房效率</td>
-                            <td style="padding: 14px 24px; text-align: center; color: #666;">⚠️ 需前台手动处理</td>
-                            <td style="padding: 14px 24px; text-align: center; background: #f0f7ff; color: #1a5aaa; font-weight: 700;">✅ 线上授权 · 前台-50%</td>
-                        </tr>
-                        <tr class="compare-row" style="background: #fafafa; opacity: 0; transform: translateX(-20px); transition: all 0.5s ease;">
-                            <td style="padding: 14px 24px; font-weight: 600; color: #1a1a1a;">综合年成本</td>
-                            <td style="padding: 14px 24px; text-align: center; color: #ff4d4f; font-weight: 700;">💸 高（含换电池/房卡/人力）</td>
-                            <td style="padding: 14px 24px; text-align: center; background: #f0f7ff; color: #22c55e; font-weight: 700;">📉 大幅降低 · 降本增效</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
             <div style="text-align: center; margin-top: 32px;">
                 <!-- V29: 增强对比表格CTA -->
                 <div style="text-align: center; margin-top: 36px;">
@@ -2698,6 +2684,28 @@
             }, { threshold: 0.5 });
             counters.forEach(function(counter) {
                 counterObserver.observe(counter);
+            });
+        })();
+
+        // 对比表格行滚动触发动画
+        (function(){
+            const compareRows = document.querySelectorAll('.compare-row');
+            if (!compareRows.length) return;
+            const compareObserver = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        const row = entry.target;
+                        setTimeout(function(){
+                            row.style.opacity = '1';
+                            row.style.transform = 'translateX(0)';
+                        }, 0);
+                        compareObserver.unobserve(row);
+                    }
+                });
+            }, { threshold: 0.2 });
+            compareRows.forEach(function(row, i){
+                row.style.transitionDelay = (i * 0.08) + 's';
+                compareObserver.observe(row);
             });
         })();
     </script>
