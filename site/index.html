@@ -1862,6 +1862,75 @@
             </div>
         </div>
     </section>
+
+    <!-- V41: 酒店健康度体检 - 引导式升级评估工具 -->
+    <section id="healthCheckSection" style="background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);padding:60px 0;position:relative;overflow:hidden;">
+        <div style="position:absolute;inset:0;background-image:radial-gradient(circle at 70% 30%,rgba(79,172,254,0.1) 0%,transparent 50%);pointer-events:none;"></div>
+        <div class="container" style="position:relative;z-index:2;">
+            <div style="text-align:center;margin-bottom:40px;">
+                <span style="display:inline-block;background:rgba(79,172,254,0.15);border:1px solid rgba(79,172,254,0.3);color:#4facfe;font-size:12px;font-weight:700;padding:4px 16px;border-radius:20px;letter-spacing:1px;margin-bottom:12px;">🏥 酒店升级健康度体检</span>
+                <h2 style="font-size:clamp(22px,3vw,32px);font-weight:700;color:#fff;margin-bottom:10px;">60秒测一测：你的酒店门锁健康吗？</h2>
+                <p style="font-size:15px;color:rgba(255,255,255,0.55);">回答5个问题，获取专属升级方案和预估收益</p>
+            </div>
+            <div style="max-width:720px;margin:0 auto;">
+                <!-- 进度条 -->
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:32px;background:rgba(255,255,255,0.06);border-radius:12px;padding:16px 20px;">
+                    <span style="color:#4facfe;font-size:13px;font-weight:700;white-space:nowrap;">问题 <span id="hc-current" style="font-size:18px;">1</span>/5</span>
+                    <div style="flex:1;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;">
+                        <div id="hc-progress" style="height:100%;background:linear-gradient(90deg,#1a5aaa,#4facfe);border-radius:4px;transition:width 0.5s cubic-bezier(0.4,0,0.2,1);width:20%;"></div>
+                    </div>
+                    <span style="color:#4facfe;font-size:13px;font-weight:700;" id="hc-percent">20%</span>
+                </div>
+                <!-- 问题卡片 -->
+                <div id="hc-card" style="background:rgba(255,255,255,0.05);border:1px solid rgba(79,172,254,0.2);border-radius:20px;padding:40px 36px;backdrop-filter:blur(12px);position:relative;overflow:hidden;">
+                    <div style="position:absolute;top:0;right:0;width:200px;height:200px;background:radial-gradient(circle,rgba(26,90,170,0.15) 0%,transparent 70%);pointer-events:none;"></div>
+                    <div id="hc-question-text" style="font-size:clamp(17px,2vw,22px);font-weight:700;color:#fff;margin-bottom:28px;line-height:1.5;">加载中...</div>
+                    <div id="hc-options" style="display:flex;flex-direction:column;gap:12px;"></div>
+                    <div id="hc-result" style="display:none;">
+                        <div style="text-align:center;margin-bottom:24px;">
+                            <div id="hc-score-ring" style="width:140px;height:140px;margin:0 auto 16px;position:relative;">
+                                <svg viewBox="0 0 140 140" style="transform:rotate(-90deg);">
+                                    <circle cx="70" cy="70" r="60" stroke="rgba(255,255,255,0.1)" stroke-width="12" fill="none"/>
+                                    <circle id="hc-score-circle" cx="70" cy="70" r="60" stroke="#4facfe" stroke-width="12" fill="none" stroke-dasharray="377" stroke-dashoffset="377" stroke-linecap="round"/>
+                                </svg>
+                                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                                    <div id="hc-score-num" style="font-size:36px;font-weight:800;color:#4facfe;font-family:'SF Mono',monospace;">0</div>
+                                    <div style="font-size:12px;color:rgba(255,255,255,0.5);">分</div>
+                                </div>
+                            </div>
+                            <div id="hc-grade" style="font-size:20px;font-weight:700;color:#fff;margin-bottom:4px;"></div>
+                            <div id="hc-grade-label" style="font-size:13px;color:rgba(255,255,255,0.5);"></div>
+                        </div>
+                        <div id="hc-analysis" style="background:rgba(26,90,170,0.2);border:1px solid rgba(79,172,254,0.25);border-radius:12px;padding:20px;margin-bottom:20px;">
+                            <div id="hc-analysis-text" style="font-size:14px;color:rgba(255,255,255,0.85);line-height:1.8;"></div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;" id="hc-metrics">
+                            <div style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.25);border-radius:12px;padding:16px 12px;text-align:center;">
+                                <div style="font-size:22px;font-weight:800;color:#ff6b6b;" id="hc-loss">¥0</div>
+                                <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px;">年飞房损失</div>
+                            </div>
+                            <div style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:16px 12px;text-align:center;">
+                                <div style="font-size:22px;font-weight:800;color:#fcd34d;" id="hc-elec">¥0</div>
+                                <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px;">年多付电费</div>
+                            </div>
+                            <div style="background:rgba(125,216,125,0.15);border:1px solid rgba(125,216,125,0.25);border-radius:12px;padding:16px 12px;text-align:center;">
+                                <div style="font-size:22px;font-weight:800;color:#7dd87d;" id="hc-potential">¥0</div>
+                                <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px;">升级潜力</div>
+                            </div>
+                        </div>
+                        <div style="background:linear-gradient(135deg,rgba(231,76,60,0.15),rgba(192,132,252,0.1));border:1px solid rgba(231,76,60,0.25);border-radius:12px;padding:16px 20px;text-align:center;margin-bottom:20px;">
+                            <div style="font-size:14px;color:#fff;font-weight:600;margin-bottom:4px;">领锁顾问建议</div>
+                            <div style="font-size:13px;color:rgba(255,255,255,0.7);" id="hc-advice"></div>
+                        </div>
+                        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+                            <a href="contact.html" style="flex:1;min-width:180px;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;padding:14px 24px;border-radius:12px;font-size:15px;font-weight:700;text-decoration:none;box-shadow:0 4px 16px rgba(231,76,60,0.4);">🎯 获取专属升级方案 →</a>
+                            <button onclick="resetHealthCheck()" style="flex:1;min-width:120px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);padding:14px 20px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;">🔄 重新测试</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
     <style>
         @keyframes feedScroll {
             0% { transform: translateX(0); }
@@ -1871,6 +1940,16 @@
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.5; transform: scale(0.8); }
         }
+        /* V41: 健康度体检选项卡 */
+        .hc-option {display:flex;align-items:center;gap:14px;padding:16px 20px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;cursor:pointer;transition:all 0.3s;text-align:left;width:100%;font-size:15px;color:rgba(255,255,255,0.85);}
+        .hc-option:hover {border-color:rgba(79,172,254,0.5);background:rgba(26,90,170,0.2);}
+        .hc-option.selected {border-color:#4facfe;background:rgba(26,90,170,0.3);}
+        .hc-option-dot {width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);flex-shrink:0;transition:all 0.3s;display:flex;align-items:center;justify-content:center;}
+        .hc-option.selected .hc-option-dot {border-color:#4facfe;background:#4facfe;}
+        .hc-option.selected .hc-option-dot::after {content:'✓';color:#0a1628;font-size:12px;font-weight:700;}
+        .hc-option-label {flex:1;}
+        .hc-option-title {font-weight:600;color:#fff;margin-bottom:2px;}
+        .hc-option-desc {font-size:12px;color:rgba(255,255,255,0.5);}
         /* V37: FAQ smooth open/close animation */
         .faq-item { background: #fff; border-radius: 14px; margin-bottom: 12px; border: 1px solid rgba(26,90,170,0.1); overflow: hidden; transition: box-shadow 0.3s, border-color 0.3s; }
         .faq-item:hover { box-shadow: 0 4px 20px rgba(26,90,170,0.1); border-color: rgba(26,90,170,0.25); }
@@ -1887,6 +1966,151 @@
         .faq-item .faq-answer { max-height: 0; opacity: 0; padding-bottom: 0; }
         .faq-item.open .faq-answer { max-height: 400px; opacity: 1; padding-bottom: 20px; }
     </style>
+    <script>
+    // V41: 酒店健康度体检题库
+    var healthCheckData = [
+        {
+            q: "1. 你的酒店目前用的是什么类型的门锁？",
+            options: [
+                { label: "传统机械门锁（无电子功能）", desc: "无任何智能功能，需物理钥匙", score: 0, data: { power: 0, smart: 0, save: 0, safe: 0 } },
+                { label: "普通感应卡门锁（ID卡/TM卡）", desc: "支持刷卡但无联网/APP功能", score: 1, data: { power: 1, smart: 1, save: 1, safe: 2 } },
+                { label: "联网电子门锁（可发密码）", desc: "支持远程密码，但无NFC/防飞房", score: 2, data: { power: 2, smart: 2, save: 1, safe: 3 } },
+                { label: "智能门锁（支持NFC/APP开锁）", desc: "支持手机NFC或APP开锁，功能较全", score: 3, data: { power: 3, smart: 3, save: 2, safe: 4 } }
+            ]
+        },
+        {
+            q: "2. 门锁电池一般多久换一次？",
+            options: [
+                { label: "3-6个月就要换（太频繁了）", desc: "电量消耗快，维护成本高", score: 0, data: { power: 0, smart: 0, save: 0, safe: 0 } },
+                { label: "6-12个月换一次", desc: "基本正常但仍有提升空间", score: 1, data: { power: 1, smart: 0, save: 1, safe: 1 } },
+                { label: "1-2年换一次", desc: "功耗控制还可以", score: 2, data: { power: 2, smart: 1, save: 2, safe: 2 } },
+                { label: "2年以上才换（续航很棒）", desc: "已经是行业领先水平", score: 3, data: { power: 3, smart: 2, save: 3, safe: 3 } }
+            ]
+        },
+        {
+            q: "3. 酒店有没有遇到「飞房」的问题？",
+            options: [
+                { label: "经常有飞房，完全管不住", desc: "客人逃费损失难以追回", score: 0, data: { power: 0, smart: 0, save: 0, safe: 0 } },
+                { label: "偶尔有，但没有系统解决方案", desc: "头疼医头脚疼医脚", score: 1, data: { power: 1, smart: 1, save: 1, safe: 1 } },
+                { label: "很少发生，大概知道哪些房间", desc: "靠人工盯着，效率低", score: 2, data: { power: 2, smart: 2, save: 2, safe: 2 } },
+                { label: "基本没有飞房，或有AI防飞房系统", desc: "智能监控，完全不用担心", score: 3, data: { power: 3, smart: 3, save: 3, safe: 3 } }
+            ]
+        },
+        {
+            q: "4. 酒店客房电费管理情况如何？",
+            options: [
+                { label: "电费高，基本没有节电措施", desc: "客房24小时供电，能源浪费严重", score: 0, data: { power: 0, smart: 0, save: 0, safe: 0 } },
+                { label: "有人走断电，但经常被客人绕过", desc: "拔卡断电经常失效", score: 1, data: { power: 1, smart: 1, save: 1, safe: 1 } },
+                { label: "有人感节电设备，效果一般", desc: "设备老旧，准确率不高", score: 2, data: { power: 2, smart: 2, save: 2, safe: 2 } },
+                { label: "智能人感节电，客房无人自动断电", desc: "完全无感节电，电费节省显著", score: 3, data: { power: 3, smart: 3, save: 3, safe: 3 } }
+            ]
+        },
+        {
+            q: "5. 客人入住/开门体验如何？",
+            options: [
+                { label: "经常排队等房卡，高峰期前台压力大", desc: "办理入住效率低，客人抱怨多", score: 0, data: { power: 0, smart: 0, save: 0, safe: 0 } },
+                { label: "需要前台发卡，偶尔卡会消磁/丢失", desc: "房卡管理麻烦，运维成本高", score: 1, data: { power: 1, smart: 1, save: 1, safe: 2 } },
+                { label: "支持密码开锁，但客人觉得麻烦", desc: "密码易忘，体验一般", score: 2, data: { power: 2, smart: 2, save: 2, safe: 3 } },
+                { label: "NFC碰一碰或APP秒开，体验流畅", desc: "客人好评多，入住效率高", score: 3, data: { power: 3, smart: 3, save: 3, safe: 4 } }
+            ]
+        }
+    ];
+
+    var hcCurrent = 0;
+    var hcAnswers = [];
+    var hcTotals = { power: 0, smart: 0, save: 0, safe: 0 };
+
+    function renderHCQuestion() {
+        if (hcCurrent >= healthCheckData.length) {
+            showHCResult(); return;
+        }
+        var qData = healthCheckData[hcCurrent];
+        var pct = Math.round(((hcCurrent + 1) / healthCheckData.length) * 100);
+        document.getElementById('hc-current').textContent = hcCurrent + 1;
+        document.getElementById('hc-progress').style.width = pct + '%';
+        document.getElementById('hc-percent').textContent = pct + '%';
+        document.getElementById('hc-question-text').textContent = qData.q;
+        var optsEl = document.getElementById('hc-options');
+        optsEl.innerHTML = '';
+        qData.options.forEach(function(opt, i) {
+            var btn = document.createElement('button');
+            btn.className = 'hc-option';
+            btn.onclick = (function(idx) {
+                return function() { selectHCOption(idx); };
+            })(i);
+            btn.innerHTML = '<div class="hc-option-dot"></div><div class="hc-option-label"><div class="hc-option-title">' + opt.label + '</div><div class="hc-option-desc">' + opt.desc + '</div></div>';
+            optsEl.appendChild(btn);
+        });
+        document.getElementById('hc-result').style.display = 'none';
+        document.getElementById('hc-card').querySelector('div:last-child').style.display = '';
+    }
+
+    function selectHCOption(idx) {
+        var qData = healthCheckData[hcCurrent];
+        var opt = qData.options[idx];
+        hcAnswers[hcCurrent] = opt;
+        hcTotals.power += opt.data.power;
+        hcTotals.smart += opt.data.smart;
+        hcTotals.save += opt.data.save;
+        hcTotals.safe += opt.data.safe;
+        hcCurrent++;
+        setTimeout(renderHCQuestion, 300);
+    }
+
+    function showHCResult() {
+        document.getElementById('hc-card').querySelector('div:last-child').style.display = 'none';
+        document.getElementById('hc-result').style.display = 'block';
+        var maxScore = healthCheckData.length * 3;
+        var totalScore = hcAnswers.reduce(function(s, a) { return s + a.score; }, 0);
+        var pct = Math.round((totalScore / maxScore) * 100);
+
+        // Animate score circle
+        var circle = document.getElementById('hc-score-circle');
+        var circ = 377;
+        var offset = circ - (pct / 100) * circ;
+        circle.style.transition = 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)';
+        circle.style.strokeDashoffset = offset;
+
+        var gradeEl = document.getElementById('hc-grade');
+        var labelEl = document.getElementById('hc-grade-label');
+        var scoreNum = document.getElementById('hc-score-num');
+        scoreNum.textContent = pct;
+
+        var gradeMap;
+        if (pct >= 85) {
+            gradeMap = { grade: 'A+ 优秀', label: '门锁系统非常健康，继续保持领先！', color: '#7dd87d', advice: '你的门锁系统已经是行业顶尖水平！可以考虑升级小度语音智慧房，进一步提升客户体验和好评率。' };
+        } else if (pct >= 65) {
+            gradeMap = { grade: 'B 良好', label: '门锁系统基本合格，有小幅提升空间', color: '#4facfe', advice: '建议升级人感节电和NFC碰一碰功能，预计年节省电费8万+、提升入住效率40%。' };
+        } else if (pct >= 40) {
+            gradeMap = { grade: 'C 及格', label: '门锁系统存在明显痛点，需要升级', color: '#fcd34d', advice: '飞房损失和电费浪费是主要问题。领锁一站式升级方案预计每年为你挽回25万+损失。' };
+        } else {
+            gradeMap = { grade: 'D 危险', label: '门锁系统急需升级，每年在白花钱！', color: '#ff6b6b', advice: '你的门锁系统每年可能让你损失数十万元！立即预约免费上门演示，领锁顾问帮你精准测算实际损失。' };
+        }
+        gradeEl.textContent = gradeMap.grade;
+        gradeEl.style.color = gradeMap.color;
+        labelEl.textContent = gradeMap.label;
+        document.getElementById('hc-advice').textContent = gradeMap.advice;
+        circle.style.stroke = gradeMap.color;
+
+        // 估算收益数据
+        var rooms = 100; var price = 280;
+        var flyLoss = rooms * 0.03 * price * 330;
+        var elecWaste = rooms * 1200;
+        var potential = flyLoss * 0.9 + elecWaste;
+        document.getElementById('hc-loss').textContent = '¥' + (flyLoss/10000).toFixed(1) + '万';
+        document.getElementById('hc-elec').textContent = '¥' + (elecWaste/10000).toFixed(1) + '万';
+        document.getElementById('hc-potential').textContent = '¥' + (potential/10000).toFixed(1) + '万';
+        document.getElementById('hc-analysis-text').innerHTML = '你的酒店门锁健康度为 <strong style="color:' + gradeMap.color + '">' + pct + '分（' + gradeMap.grade + '）</strong>。<br>门锁智能化程度影响了你的运营效率和收益。' + (pct < 65 ? '<br><br>核心问题集中在：<br>• 门锁功耗管理不佳 → 电池维护成本高<br>• 缺乏防飞房手段 → 房费流失严重<br>• 入住效率低 → 客人体验差、好评少' : '<br><br>整体表现不错，继续关注智能化升级即可。');
+    }
+
+    function resetHealthCheck() {
+        hcCurrent = 0; hcAnswers = []; hcTotals = { power: 0, smart: 0, save: 0, safe: 0 };
+        renderHCQuestion();
+    }
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', renderHCQuestion);
+    </script>
 
     <!-- 权威信任背书条 + 实时服务数据 -->
     <section style="background: linear-gradient(135deg, #0a1628 0%, #1a2d4a 100%); padding: 28px 0;">
