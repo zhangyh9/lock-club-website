@@ -777,6 +777,82 @@
     </style>
 </head>
 <body>
+    <!-- V29: Mobile Floating Click-to-Call Button -->
+    <div id="floatingCallBtn" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; opacity: 0; transform: scale(0.8); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;">
+        <a href="tel:13711533226" style="display: flex; align-items: center; gap: 10px; background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; padding: 14px 20px; border-radius: 50px; font-size: 15px; font-weight: 700; text-decoration: none; box-shadow: 0 8px 32px rgba(231,76,60,0.4);">
+            <span style="font-size: 22px;">📞</span>
+            <span>137-1153-3226</span>
+        </a>
+    </div>
+
+    <!-- V29: Social Proof Notification Toast -->
+    <div id="socialProofToast" style="position: fixed; bottom: 100px; right: 24px; z-index: 9998; opacity: 0; transform: translateX(120%); transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);">
+        <div style="background: #fff; border-radius: 16px; padding: 16px 20px; box-shadow: 0 12px 40px rgba(0,0,0,0.15); border: 1px solid rgba(26,90,170,0.1); max-width: 300px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #1a5aaa, #3b82f6); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; flex-shrink: 0;">👨</div>
+                <div>
+                    <div style="font-size: 13px; color: #333; font-weight: 600; line-height: 1.4;" id="toastMessage">深圳·大鹏公寓 · 刚签约</div>
+                    <div style="font-size: 11px; color: #1a5aaa; margin-top: 2px; font-weight: 500;">🎉 恭喜！又一家酒店加入领锁</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // V29: Floating call button - show after scrolling 400px
+    (function() {
+        var callBtn = document.getElementById('floatingCallBtn');
+        function updateCallBtn() {
+            var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+            if (scrollTop > 400) {
+                callBtn.style.opacity = '1';
+                callBtn.style.transform = 'scale(1)';
+                callBtn.style.pointerEvents = 'auto';
+            } else {
+                callBtn.style.opacity = '0';
+                callBtn.style.transform = 'scale(0.8)';
+                callBtn.style.pointerEvents = 'none';
+            }
+        }
+        window.addEventListener('scroll', updateCallBtn, {passive: true});
+        updateCallBtn();
+
+        // V29: Social proof toast notifications
+        var toastMessages = [
+            { msg: '深圳·大鹏海景公寓 · 58间 · 刚签约', icon: '👨' },
+            { msg: '成都·春熙路酒店 · 92间 · 今日新签', icon: '👩' },
+            { msg: '广州·珠江新城酒店 · 120间 · 验收通过', icon: '🧑' },
+            { msg: '杭州·西湖文化广场酒店 · 75间 · 改造完成', icon: '👨‍💼' },
+            { msg: '武汉·光谷科技酒店 · 200间 · 批量交付', icon: '👩‍💼' },
+            { msg: '西安·钟楼民宿 · 35间 · 新装开业', icon: '🧑‍🎨' },
+            { msg: '长沙·五一广场酒店 · 88间 · 今日签约', icon: '👨‍🔧' },
+            { msg: '南京·夫子庙酒店 · 65间 · 安装调试中', icon: '👩‍🔬' },
+            { msg: '重庆·解放碑公寓 · 45间 · 合作达成', icon: '🧑‍💻' },
+            { msg: '苏州·金鸡湖酒店 · 110间 · 签约成功', icon: '👨‍🏫' }
+        ];
+        var toastEl = document.getElementById('socialProofToast');
+        var toastMsg = document.getElementById('toastMessage');
+        var toastIndex = 0;
+
+        function showToast() {
+            var item = toastMessages[toastIndex % toastMessages.length];
+            toastMsg.textContent = item.msg;
+            toastEl.querySelector('div > div > div:first-child').textContent = item.icon;
+            toastEl.style.opacity = '1';
+            toastEl.style.transform = 'translateX(0)';
+            setTimeout(function() {
+                toastEl.style.opacity = '0';
+                toastEl.style.transform = 'translateX(120%)';
+            }, 5000);
+            toastIndex++;
+        }
+
+        // Show first toast after 15s, then every 25s
+        setTimeout(showToast, 15000);
+        setInterval(showToast, 25000);
+    })();
+    </script>
+
     <!-- 页面滚动进度条 -->
     <div id="scrollProgressBar" style="position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, #1a5aaa, #3b82f6, #4facfe); z-index: 1002; width: 0%; transition: width 0.1s ease-out; box-shadow: 0 0 10px rgba(26, 90, 170, 0.5);"></div>
 
