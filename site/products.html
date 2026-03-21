@@ -1007,6 +1007,164 @@
         </div>
     </section>
 
+    <!-- V46: 5年TCO总拥有成本计算器 -->
+    <section id="tco-calculator" style="padding: 64px 0; background: linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%); border-top: 1px solid rgba(26,90,170,0.08);">
+        <div class="container">
+            <div style="text-align: center; margin-bottom: 40px;">
+                <div style="display: inline-block; background: linear-gradient(135deg, rgba(26,90,170,0.1), rgba(59,130,246,0.07)); border: 1px solid rgba(26,90,170,0.2); color: #1a5aaa; font-size: 12px; font-weight: 700; padding: 4px 16px; border-radius: 20px; margin-bottom: 12px; letter-spacing: 1px;">🧮 ROI计算器</div>
+                <h2 style="font-size: clamp(22px, 3vw, 30px); font-weight: 700; color: #1a1a1a; margin-bottom: 8px;">一把锁的5年总成本大比拼</h2>
+                <p style="font-size: 15px; color: #666; max-width: 560px; margin: 0 auto;">算一算就知道，领锁为什么是酒店老板的省钱利器</p>
+            </div>
+
+            <!-- 计算器主卡 -->
+            <div style="max-width: 860px; margin: 0 auto; background: linear-gradient(135deg, #0a1628, #16213e); border-radius: 20px; padding: 36px; border: 1px solid rgba(79,172,254,0.2); box-shadow: 0 16px 48px rgba(0,0,0,0.2);">
+                <!-- 酒店规模选择 -->
+                <div style="margin-bottom: 28px;">
+                    <div style="color: rgba(255,255,255,0.6); font-size: 13px; font-weight: 600; margin-bottom: 12px; letter-spacing: 0.5px;">📊 请选择您的酒店规模</div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;" id="tcoHotelTypes">
+                        <button onclick="calcTCO(50)" class="tco-type-btn">🏠 精品民宿<br><span style="font-size:11px;opacity:0.7;">30-100间</span></button>
+                        <button onclick="calcTCO(150)" class="tco-type-btn">🏨 商务连锁<br><span style="font-size:11px;opacity:0.7;">100-300间</span></button>
+                        <button onclick="calcTCO(500)" class="tco-type-btn active">🏢 度假酒店<br><span style="font-size:11px;opacity:0.7;">300-800间</span></button>
+                        <button onclick="calcTCO(1000)" class="tco-type-btn">🌟 大型连锁<br><span style="font-size:11px;opacity:0.7;">800间以上</span></button>
+                    </div>
+                </div>
+
+                <!-- 成本对比结果 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;" id="tcoResultGrid">
+                    <!-- 领锁 -->
+                    <div style="background: rgba(26,90,170,0.15); border: 1px solid rgba(79,172,254,0.3); border-radius: 16px; padding: 28px; text-align: center;">
+                        <div style="font-size: 13px; color: #4facfe; font-weight: 700; margin-bottom: 12px; letter-spacing: 1px;">🏆 领锁 LS02</div>
+                        <div style="font-size: 36px; font-weight: 800; color: #4facfe; font-family: 'SF Mono', monospace;" id="tcoLingsuoTotal">¥0</div>
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 4px;">5年总拥有成本</div>
+                        <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color:rgba(255,255,255,0.5);">设备采购</span><span style="color:#fff;" id="tcoLDevice">¥0</span></div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color:rgba(255,255,255,0.5);">电池维护</span><span style="color:#7dd87d;" id="tcoLBattery">¥0</span></div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color:rgba(255,255,255,0.5);">防飞房节省</span><span style="color:#7dd87d;" id="tcoLSave">-¥0</span></div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color:rgba(255,255,255,0.5);">节能节省</span><span style="color:#7dd87d;" id="tcoLElec">-¥0</span></div>
+                        </div>
+                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(79,172,254,0.2);">
+                            <div style="font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 4px;">5年综合收益</div>
+                            <div style="font-size: 20px; font-weight: 800; color: #7dd87d;" id="tcoLProfit">+¥0</div>
+                        </div>
+                    </div>
+                    <!-- 普通锁 -->
+                    <div style="background: rgba(107,114,128,0.1); border: 1px solid rgba(107,114,128,0.2); border-radius: 16px; padding: 28px; text-align: center;">
+                        <div style="font-size: 13px; color: rgba(255,255,255,0.5); font-weight: 700; margin-bottom: 12px; letter-spacing: 1px;">🏚️ 普通智能锁</div>
+                        <div style="font-size: 36px; font-weight: 800; color: rgba(255,255,255,0.5); font-family: 'SF Mono', monospace;" id="tcoNormalTotal">¥0</div>
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 4px;">5年总拥有成本</div>
+                        <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color:rgba(255,255,255,0.4);">设备采购</span><span style="color:rgba(255,255,255,0.5);" id="tcoNDevice">¥0</span></div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color:rgba(255,255,255,0.4);">电池维护</span><span style="color:#ff6b6b;" id="tcoNBattery">¥0</span></div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color:rgba(255,255,255,0.4);">飞房损失</span><span style="color:#ff6b6b;" id="tcoNTheft">¥0</span></div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color:rgba(255,255,255,0.4);">电费浪费</span><span style="color:#ff6b6b;" id="tcoNElec">¥0</span></div>
+                        </div>
+                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(107,114,128,0.2);">
+                            <div style="font-size: 12px; color: rgba(255,255,255,0.3); margin-bottom: 4px;">5年损失合计</div>
+                            <div style="font-size: 20px; font-weight: 800; color: #ff6b6b;" id="tcoNLoss">¥0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 节省总结条 -->
+                <div style="margin-top: 24px; background: rgba(125,216,125,0.12); border: 1px solid rgba(125,216,125,0.25); border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap;" id="tcoSavingsBar">
+                    <div style="font-size: 20px;">💡</div>
+                    <div>
+                        <span style="color: rgba(255,255,255,0.7); font-size: 14px;">选择 </span>
+                        <span style="color: #7dd87d; font-size: 20px; font-weight: 800;" id="tcoRoomCount">500间</span>
+                        <span style="color: rgba(255,255,255,0.7); font-size: 14px;"> 酒店，领锁5年可为您节省 </span>
+                        <span style="color: #7dd87d; font-size: 24px; font-weight: 800;" id="tcoTotalSave">¥0</span>
+                        <span style="color: rgba(255,255,255,0.7); font-size: 14px;">（含防飞房+节能+运维）</span>
+                    </div>
+                </div>
+
+                <!-- 按钮 -->
+                <div style="text-align: center; margin-top: 24px;">
+                    <a href="contact.html" style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #1a5aaa, #3b82f6); color: #fff; padding: 14px 32px; border-radius: 30px; font-size: 16px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 20px rgba(26,90,170,0.4); transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 30px rgba(26,90,170,0.5)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(26,90,170,0.4)'">📞 获取精确方案报价 →</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+    function calcTCO(rooms) {
+        var lockPrice = 800; // 领锁单价
+        var normalPrice = 500; // 普通锁单价
+        var batteryYearNormal = 80; // 普通锁每年每间换电池
+        var batteryYearLingsuo = 0; // 领锁5年几乎不用换
+        var theftRate = 0.03; // 普通锁飞房率3%
+        var avgRoomRate = 280; // 平均房价
+        var occupancyRate = 0.75; // 入住率
+        var elecWasteYear = 120; // 普通锁每年每间电费浪费（人感节电）
+
+        // 领锁
+        var lDevice = rooms * lockPrice;
+        var lBattery = rooms * batteryYearLingsuo * 5;
+        var lSave = rooms * theftRate * avgRoomRate * 365 * occupancyRate * 0.5 * 5; // 节省50%飞房
+        var lElec = rooms * elecWasteYear * 5; // 节能
+        var lProfit = lSave + lElec;
+        var lTotal = lDevice + lBattery - lProfit;
+
+        // 普通锁
+        var nDevice = rooms * normalPrice;
+        var nBattery = rooms * batteryYearNormal * 5;
+        var nTheft = rooms * theftRate * avgRoomRate * 365 * occupancyRate * 5;
+        var nElec = rooms * elecWasteYear * 5;
+        var nLoss = nDevice + nBattery + nTheft + nElec;
+
+        var totalSave = nLoss - lTotal;
+
+        document.getElementById('tcoLingsuoTotal').textContent = '¥' + Math.round(lTotal / 10000 * 10) / 10 + '万';
+        document.getElementById('tcoLDevice').textContent = '¥' + Math.round(lDevice / 10000) + '万';
+        document.getElementById('tcoLBattery').textContent = '≈¥0';
+        document.getElementById('tcoLSave').textContent = '-¥' + Math.round(lSave / 10000) + '万';
+        document.getElementById('tcoLElec').textContent = '-¥' + Math.round(lElec / 10000) + '万';
+        document.getElementById('tcoLProfit').textContent = '+¥' + Math.round(lProfit / 10000) + '万';
+        document.getElementById('tcoNormalTotal').textContent = '¥' + Math.round(nLoss / 10000 * 10) / 10 + '万';
+        document.getElementById('tcoNDevice').textContent = '¥' + Math.round(nDevice / 10000) + '万';
+        document.getElementById('tcoNBattery').textContent = '¥' + Math.round(nBattery / 10000) + '万';
+        document.getElementById('tcoNTheft').textContent = '¥' + Math.round(nTheft / 10000) + '万';
+        document.getElementById('tcoNElec').textContent = '¥' + Math.round(nElec / 10000) + '万';
+        document.getElementById('tcoNLoss').textContent = '¥' + Math.round(nLoss / 10000 * 10) / 10 + '万';
+        document.getElementById('tcoTotalSave').textContent = '¥' + Math.round(totalSave / 10000) + '万';
+        document.getElementById('tcoRoomCount').textContent = rooms + '间';
+
+        // 高亮当前按钮
+        document.querySelectorAll('.tco-type-btn').forEach(function(b){ b.classList.remove('active'); });
+        event.target.closest('.tco-type-btn').classList.add('active');
+    }
+    // 默认计算500间
+    window.addEventListener('load', function() { calcTCO(500); });
+    </script>
+    <style>
+    .tco-type-btn {
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.15);
+        color: rgba(255,255,255,0.7);
+        padding: 12px 18px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.25s;
+        line-height: 1.4;
+        text-align: center;
+    }
+    .tco-type-btn:hover {
+        background: rgba(79,172,254,0.15);
+        border-color: rgba(79,172,254,0.4);
+        color: #fff;
+    }
+    .tco-type-btn.active {
+        background: rgba(26,90,170,0.3);
+        border-color: rgba(79,172,254,0.5);
+        color: #4facfe;
+    }
+    @media (max-width: 640px) {
+        #tcoResultGrid { grid-template-columns: 1fr !important; }
+        .tco-type-btn { font-size: 13px; padding: 10px 14px; }
+    }
+    </style>
+
     <!-- V29: 限时升级时机条 -->
     <section style="background: linear-gradient(135deg, #1a1a2e 0%, #0d1f3c 50%, #1a1a2e 100%); padding: 48px 0; position: relative; overflow: hidden;">
         <div style="position: absolute; inset: 0; background-image: radial-gradient(circle at 30% 50%, rgba(26,90,170,0.15) 0%, transparent 50%), radial-gradient(circle at 70% 50%, rgba(231,76,60,0.1) 0%, transparent 50%); pointer-events: none;"></div>

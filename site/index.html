@@ -4040,6 +4040,75 @@
     calculateROI();
     </script>
 
+    <!-- V46: 全国客户实时节能统计 -->
+    <section style="padding: 48px 0; background: linear-gradient(135deg, #0a1628 0%, #1a2d4a 50%, #0d1f3c 100%); border-top: 1px solid rgba(79,172,254,0.1);">
+        <div class="container">
+            <div style="text-align:center; margin-bottom: 32px;">
+                <div style="display:inline-block; background:rgba(79,172,254,0.12); border:1px solid rgba(79,172,254,0.25); color:#4facfe; font-size:12px; font-weight:700; padding:4px 14px; border-radius:20px; margin-bottom:10px; letter-spacing:1px;">📡 实时数据</div>
+                <h2 style="font-size:clamp(20px,3vw,28px); font-weight:700; color:#fff; margin-bottom:6px;">全国客户累计节能成果</h2>
+                <p style="font-size:14px; color:rgba(255,255,255,0.5);">数据来源：领锁云平台 10,432 间客房实时接入</p>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:20px; max-width:900px; margin:0 auto;">
+                <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(79,172,254,0.15); border-radius:16px; padding:24px 16px; text-align:center;">
+                    <div style="font-size:36px; margin-bottom:8px;">⚡</div>
+                    <div style="font-size:28px; font-weight:800; color:#4facfe; font-family:'SF Mono',monospace;" id="counterElec">0</div>
+                    <div style="font-size:12px; color:rgba(255,255,255,0.5); margin-top:4px;">累计节省电费（万元）</div>
+                    <div style="font-size:11px; color:rgba(79,172,254,0.7); margin-top:6px;">每月新增约 120 万</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(125,216,125,0.15); border-radius:16px; padding:24px 16px; text-align:center;">
+                    <div style="font-size:36px; margin-bottom:8px;">🏠</div>
+                    <div style="font-size:28px; font-weight:800; color:#7dd87d; font-family:'SF Mono',monospace;" id="counterRooms">0</div>
+                    <div style="font-size:12px; color:rgba(255,255,255,0.5); margin-top:4px;">覆盖酒店房间（间）</div>
+                    <div style="font-size:11px; color:rgba(125,216,125,0.7); margin-top:6px;">实时接入 10,432+</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(196,181,253,0.15); border-radius:16px; padding:24px 16px; text-align:center;">
+                    <div style="font-size:36px; margin-bottom:8px;">🛡️</div>
+                    <div style="font-size:28px; font-weight:800; color:#c4b5fd; font-family:'SF Mono',monospace;" id="counterAnti">0</div>
+                    <div style="font-size:12px; color:rgba(255,255,255,0.5); margin-top:4px;">拦截飞房损失（万元）</div>
+                    <div style="font-size:11px; color:rgba(196,181,253,0.7); margin-top:6px;">飞房率 &lt; 0.1%</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(252,211,77,0.15); border-radius:16px; padding:24px 16px; text-align:center;">
+                    <div style="font-size:36px; margin-bottom:8px;">🔋</div>
+                    <div style="font-size:28px; font-weight:800; color:#fcd34d; font-family:'SF Mono',monospace;" id="counterBattery">0</div>
+                    <div style="font-size:12px; color:rgba(255,255,255,0.5); margin-top:4px;">节省电池（万颗）</div>
+                    <div style="font-size:11px; color:rgba(252,211,77,0.7); margin-top:6px;">相当于少换 5.2 万次</div>
+                </div>
+            </div>
+            <div style="text-align:center; margin-top:24px;">
+                <a href="contact.html" style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#1a5aaa,#3b82f6); color:#fff; padding:10px 24px; border-radius:30px; font-size:14px; font-weight:600; text-decoration:none; box-shadow:0 4px 16px rgba(26,90,170,0.35);">🚀 立即加入，共享节能成果 →</a>
+            </div>
+        </div>
+    </section>
+    <script>
+    (function(){
+        var base = { elec: 2847, rooms: 10432, anti: 1893, battery: 3.8 };
+        function animateCounter(id, target, prefix) {
+            var el = document.getElementById(id);
+            if(!el) return;
+            var current = 0;
+            var step = Math.ceil(target / 80);
+            var timer = setInterval(function(){
+                current = Math.min(current + step, target);
+                el.textContent = prefix + current.toLocaleString();
+                if(current >= target) clearInterval(timer);
+            }, 20);
+        }
+        var observer = new IntersectionObserver(function(entries){
+            entries.forEach(function(e){
+                if(e.isIntersecting){
+                    animateCounter('counterElec', base.elec, '');
+                    animateCounter('counterRooms', base.rooms, '');
+                    animateCounter('counterAnti', base.anti, '');
+                    animateCounter('counterBattery', base.battery, '');
+                    observer.disconnect();
+                }
+            });
+        }, {threshold: 0.3});
+        var section = document.querySelector('[style*="全国客户实时节能"]');
+        if(section) observer.observe(section);
+    })();
+    </script>
+
     <!-- V30: 合作生态全景图 -->
     <section style="padding: 64px 0; background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%); border-top: 1px solid rgba(26,90,170,0.06);">
         <div class="container">
