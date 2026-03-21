@@ -527,6 +527,55 @@
             transform: scale(1.1);
         }
 
+        .carousel-pause-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            color: #555;
+            margin-left: 8px;
+        }
+        .carousel-pause-btn:hover {
+            background: linear-gradient(135deg, #1a5aaa 0%, #3b82f6 100%);
+            border-color: transparent;
+            color: #fff;
+        }
+        .carousel-pause-btn.paused {
+            background: linear-gradient(135deg, #1a5aaa 0%, #3b82f6 100%);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .carousel-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #1a5aaa, #3b82f6);
+            border-radius: 0 2px 2px 0;
+            transition: width 0.1s linear;
+            width: 0%;
+        }
+        .carousel-progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #e8e8e8;
+        }
+        .testimonial-carousel {
+            position: relative;
+            overflow: hidden;
+        }
+
         /* Carousel Animation */
         .testimonial-slide {
             opacity: 0;
@@ -1109,6 +1158,10 @@
                     <button class="carousel-dot" data-index="4" aria-label="证言5"></button>
                 </div>
                 <button class="carousel-arrow" id="nextBtn" aria-label="下一个">›</button>
+                <button class="carousel-pause-btn" id="pauseBtn" aria-label="暂停播放">⏸</button>
+            </div>
+            <div class="carousel-progress-bar" style="max-width:800px;margin:0 auto;position:relative;">
+                <div class="carousel-progress" id="carouselProgress"></div>
             </div>
         </div>
     </section>
@@ -1593,6 +1646,10 @@
             const nextBtn = document.getElementById('nextBtn');
             let currentIndex = 0;
             let autoPlayInterval;
+            let isPaused = false;
+            let progressTimer;
+            let progressStartTime;
+            let progressDuration = 5000;
 
             function goToSlide(index) {
                 if (index < 0) index = slides.length - 1;
@@ -1619,16 +1676,60 @@
             }
 
             function startAutoPlay() {
-                autoPlayInterval = setInterval(nextSlide, 5000);
+                if (isPaused) return;
+                stopAutoPlay();
+                autoPlayInterval = setInterval(nextSlide, progressDuration);
+                resetProgress();
+                startProgress();
             }
 
             function stopAutoPlay() {
                 clearInterval(autoPlayInterval);
+                clearInterval(progressTimer);
+            }
+
+            function startProgress() {
+                clearInterval(progressTimer);
+                progressStartTime = Date.now();
+                progressTimer = setInterval(function() {
+                    var elapsed = Date.now() - progressStartTime;
+                    var pct = Math.min(100, (elapsed / progressDuration) * 100);
+                    document.getElementById('carouselProgress').style.width = pct + '%';
+                }, 50);
+            }
+
+            function resetProgress() {
+                clearInterval(progressTimer);
+                var prog = document.getElementById('carouselProgress');
+                if (prog) prog.style.width = '0%';
+            }
+
+            function togglePause() {
+                var pauseBtn = document.getElementById('pauseBtn');
+                isPaused = !isPaused;
+                if (isPaused) {
+                    stopAutoPlay();
+                    clearInterval(progressTimer);
+                    if (pauseBtn) {
+                        pauseBtn.textContent = '▶';
+                        pauseBtn.classList.add('paused');
+                        pauseBtn.setAttribute('aria-label', '继续播放');
+                    }
+                } else {
+                    startAutoPlay();
+                    if (pauseBtn) {
+                        pauseBtn.textContent = '⏸';
+                        pauseBtn.classList.remove('paused');
+                        pauseBtn.setAttribute('aria-label', '暂停播放');
+                    }
+                }
             }
 
             // Event Listeners
             if (prevBtn) prevBtn.addEventListener('click', () => { stopAutoPlay(); prevSlide(); startAutoPlay(); });
             if (nextBtn) nextBtn.addEventListener('click', () => { stopAutoPlay(); nextSlide(); startAutoPlay(); });
+            var pauseBtnEl = document.getElementById('pauseBtn');
+            if (pauseBtnEl) pauseBtnEl.addEventListener('click', togglePause);
             
             dots.forEach((dot, index) => {
                 dot.addEventListener('click', () => {
