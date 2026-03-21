@@ -161,6 +161,62 @@
     }
 
     // ============================================
+    // 5b. Hero Stats Counter Animation
+    // ============================================
+    function initHeroStatsCounter() {
+        const heroStats = document.querySelectorAll('.hero-stats .hero-stat-num');
+        if (!heroStats.length) return;
+        
+        const animateCounter = (el) => {
+            const countAttr = el.getAttribute('data-count');
+            if (!countAttr) return;
+            const target = parseInt(countAttr, 10);
+            const suffix = el.getAttribute('data-suffix') || '+';
+            const duration = 2000;
+            const startTime = performance.now();
+
+            const update = (currentTime) => {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = Math.floor(eased * target);
+                el.textContent = current + suffix;
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            };
+            requestAnimationFrame(update);
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    heroStats.forEach((stat, i) => {
+                        setTimeout(() => animateCounter(stat), i * 200);
+                    });
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.3 });
+
+        const heroSection = document.querySelector('.hero');
+        if (heroSection) {
+            heroStats.forEach(stat => {
+                if (!stat.getAttribute('data-count')) {
+                    const text = stat.textContent.trim();
+                    const match = text.match(/^(\d+)(.*)/);
+                    if (match) {
+                        stat.setAttribute('data-count', match[1]);
+                        stat.setAttribute('data-suffix', match[2] || '+');
+                        stat.textContent = '0' + (match[2] || '+');
+                    }
+                }
+            });
+            observer.observe(heroSection);
+        }
+    }
+
+    // ============================================
     // 6. CTA Button Pulse Effect
     // ============================================
     function initCTAPulse() {
@@ -393,6 +449,7 @@
         initHeroTitleAnimation();
         initScrollAnimations();
         initNumberCounters();
+        initHeroStatsCounter();
         initCTAPulse();
         initMobileMenu();
         initLazyLoading();
