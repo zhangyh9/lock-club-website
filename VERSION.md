@@ -5,6 +5,7 @@
 ---
 
 ## 今夜版本记录（2026-03-22）
+- V44 | index新增竞品横评对比表（领锁vs传统锁vs普通智能锁，8维度全对比+年综合收益）；新增品牌日记精选预览区块（3篇精选文章卡片+悬浮动效+内链增强），提升SEO和用户深度阅读 | 极速迭代
 - V43 | tech.html新增VideoObject结构化数据（视频SEO富片段）；contact.html新增HowTo结构化数据（酒店门锁改造5步操作指南SEO富片段）| 极速迭代
 - V42 | cases.html新增Review结构化数据（3条客户评价+评分，Google SEO富片段）；index.html preload预加载product-quiet.jpg | 极速迭代
 - V41 | cases页Hero前新增品牌名称滚动条（锦江/华住/亚朵等10大品牌），合作品牌社会证明增强 | 极速迭代
