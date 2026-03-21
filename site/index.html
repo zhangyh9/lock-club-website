@@ -916,6 +916,27 @@
     })();
     </script>
 
+    <!-- V37: FAQ accordion JS toggle (smooth open/close) -->
+    <script>
+    (function(){
+        document.querySelectorAll('.faq-item summary').forEach(function(sum){
+            sum.addEventListener('click', function(e){
+                e.preventDefault();
+                var details = this.closest('.faq-item');
+                var isOpen = details.classList.contains('open');
+                // Close all others (accordion mode) - optional, skip for now
+                if(isOpen){
+                    details.classList.remove('open');
+                    details.removeAttribute('open');
+                } else {
+                    details.classList.add('open');
+                    details.setAttribute('open', '');
+                }
+            });
+        });
+    })();
+    </script>
+
     <!-- 页面滚动进度条 -->
     <div id="scrollProgressBar" style="position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, #1a5aaa, #3b82f6, #4facfe); z-index: 1002; width: 0%; transition: width 0.1s ease-out; box-shadow: 0 0 10px rgba(26, 90, 170, 0.5);"></div>
 
@@ -1729,6 +1750,21 @@
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.5; transform: scale(0.8); }
         }
+        /* V37: FAQ smooth open/close animation */
+        .faq-item { background: #fff; border-radius: 14px; margin-bottom: 12px; border: 1px solid rgba(26,90,170,0.1); overflow: hidden; transition: box-shadow 0.3s, border-color 0.3s; }
+        .faq-item:hover { box-shadow: 0 4px 20px rgba(26,90,170,0.1); border-color: rgba(26,90,170,0.25); }
+        .faq-item[open] { border-color: rgba(26,90,170,0.3); box-shadow: 0 4px 20px rgba(26,90,170,0.12); }
+        .faq-item summary { padding: 20px 24px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; color: #1a1a1a; user-select: none; transition: color 0.2s; }
+        .faq-item summary:hover { color: #1a5aaa; }
+        .faq-item summary .faq-icon { color: #1a5aaa; font-size: 20px; transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; margin-left: 12px; display: inline-block; }
+        .faq-item[open] summary .faq-icon { transform: rotate(45deg); }
+        .faq-item .faq-answer { padding: 0 24px 20px; color: #555; font-size: 15px; line-height: 1.8; max-height: 0; overflow: hidden; transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease 0.05s, padding 0.3s ease; opacity: 0; }
+        .faq-item[open] .faq-answer { max-height: 400px; opacity: 1; padding-top: 4px; }
+        /* V37: FAQ accordion toggle via JS for browsers that don't support [open] */
+        .faq-item summary .faq-plus { transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1); display: inline-block; }
+        .faq-item.open summary .faq-plus { transform: rotate(45deg); }
+        .faq-item .faq-answer { max-height: 0; opacity: 0; padding-bottom: 0; }
+        .faq-item.open .faq-answer { max-height: 400px; opacity: 1; padding-bottom: 20px; }
     </style>
 
     <!-- 权威信任背书条 + 实时服务数据 -->
@@ -2084,36 +2120,36 @@
             </div>
             <div style="max-width: 800px; margin: 0 auto;">
                 <!-- FAQ Item 1 -->
-                <details style="background: #fff; border-radius: 14px; margin-bottom: 12px; border: 1px solid rgba(26,90,170,0.1); overflow: hidden; transition: box-shadow 0.3s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow='none'">
-                    <summary style="padding: 20px 24px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; color: #1a1a1a;">
+                <details class="faq-item" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow=''">
+                    <summary>
                         <span>💰 一套门锁多少钱？100间客房改下来要多少预算？</span>
-                        <span style="color: #1a5aaa; font-size: 20px; transition: transform 0.3s; flex-shrink: 0; margin-left: 12px;">+</span>
+                        <span class="faq-icon"><span class="faq-plus">+</span></span>
                     </summary>
-                    <div style="padding: 0 24px 20px; color: #555; font-size: 15px; line-height: 1.8;">
+                    <div class="faq-answer">
                         <p>领锁LS02按套采购，100间客房根据方案不同，整体投入约<strong style="color:#1a5aaa;">22-35万元</strong>（含门锁、人感节电器、安装调试、2年质保）。</p>
                         <p style="margin-top: 10px;">✅ <strong>划算账：</strong>100间酒店年省电费约8万 + 年挽回飞房损失约25万 = <strong style="color:#2d5a27;">首年净收益15万+</strong>，0.8-1.5年即可回本。</p>
                         <p style="margin-top: 10px;">📞 <a href="contact.html" style="color:#1a5aaa;font-weight:600;">点击获取您的专属精准报价方案 →</a></p>
                     </div>
                 </details>
                 <!-- FAQ Item 2 -->
-                <details style="background: #fff; border-radius: 14px; margin-bottom: 12px; border: 1px solid rgba(26,90,170,0.1); overflow: hidden; transition: box-shadow 0.3s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow='none'">
-                    <summary style="padding: 20px 24px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; color: #1a1a1a;">
+                <details class="faq-item" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow=''">
+                    <summary>
                         <span>🔧 改造要多久？施工期间影响酒店营业吗？</span>
-                        <span style="color: #1a5aaa; font-size: 20px; transition: transform 0.3s; flex-shrink: 0; margin-left: 12px;">+</span>
+                        <span class="faq-icon"><span class="faq-plus">+</span></span>
                     </summary>
-                    <div style="padding: 0 24px 20px; color: #555; font-size: 15px; line-height: 1.8;">
+                    <div class="faq-answer">
                         <p>✅ <strong>不停业改造：</strong>领锁采用"不换锁体直接改装"工艺，100间客房约5-7天完成，施工期间不影响酒店正常营业。</p>
                         <p style="margin-top: 10px;">安装团队全程规范化操作，客房当天改造当天可用。改造后还有专属培训，教前台和客房部快速上手。</p>
                         <p style="margin-top: 10px;">📞 <a href="contact.html" style="color:#1a5aaa;font-weight:600;">预约上门评估工期 →</a></p>
                     </div>
                 </details>
                 <!-- FAQ Item 3 -->
-                <details style="background: #fff; border-radius: 14px; margin-bottom: 12px; border: 1px solid rgba(26,90,170,0.1); overflow: hidden; transition: box-shadow 0.3s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow='none'">
-                    <summary style="padding: 20px 24px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; color: #1a1a1a;">
+                <details class="faq-item" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow=''">
+                    <summary>
                         <span>📊 效果怎么保证？用了真的能省到钱吗？</span>
-                        <span style="color: #1a5aaa; font-size: 20px; transition: transform 0.3s; flex-shrink: 0; margin-left: 12px;">+</span>
+                        <span class="faq-icon"><span class="faq-plus">+</span></span>
                     </summary>
-                    <div style="padding: 0 24px 20px; color: #555; font-size: 15px; line-height: 1.8;">
+                    <div class="faq-answer">
                         <p>领锁敢承诺效果，因为有<strong style="color:#1a5aaa;">真实数据支撑</strong>：</p>
                         <p style="margin-top: 8px;">• 飞房率：行业平均3%，领锁客户 &lt;0.1%（降低30倍）<br>
                         • 电费节省：人感节电器实测节电15-25%（因酒店而异）<br>
@@ -2123,12 +2159,12 @@
                     </div>
                 </details>
                 <!-- FAQ Item 4 -->
-                <details style="background: #fff; border-radius: 14px; margin-bottom: 12px; border: 1px solid rgba(26,90,170,0.1); overflow: hidden; transition: box-shadow 0.3s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow='none'">
-                    <summary style="padding: 20px 24px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; color: #1a1a1a;">
+                <details class="faq-item" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow=''">
+                    <summary>
                         <span>🏢 我们是连锁酒店，能统一管理吗？</span>
-                        <span style="color: #1a5aaa; font-size: 20px; transition: transform 0.3s; flex-shrink: 0; margin-left: 12px;">+</span>
+                        <span class="faq-icon"><span class="faq-plus">+</span></span>
                     </summary>
-                    <div style="padding: 0 24px 20px; color: #555; font-size: 15px; line-height: 1.8;">
+                    <div class="faq-answer">
                         <p>支持。领锁云平台支持<strong style="color:#1a5aaa;">多门店统一管理</strong>：</p>
                         <p style="margin-top: 8px;">• 批量发卡、批量授权、批量注销<br>
                         • 实时监控所有门店门锁状态<br>
@@ -2138,12 +2174,12 @@
                     </div>
                 </details>
                 <!-- FAQ Item 5 -->
-                <details style="background: #fff; border-radius: 14px; margin-bottom: 12px; border: 1px solid rgba(26,90,170,0.1); overflow: hidden; transition: box-shadow 0.3s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow='none'">
-                    <summary style="padding: 20px 24px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; color: #1a1a1a;">
+                <details class="faq-item" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow=''">
+                    <summary>
                         <span>🔒 数据安全吗？客人隐私会不会泄露？</span>
-                        <span style="color: #1a5aaa; font-size: 20px; transition: transform 0.3s; flex-shrink: 0; margin-left: 12px;">+</span>
+                        <span class="faq-icon"><span class="faq-plus">+</span></span>
                     </summary>
-                    <div style="padding: 0 24px 20px; color: #555; font-size: 15px; line-height: 1.8;">
+                    <div class="faq-answer">
                         <p>数据安全是领锁的<strong style="color:#1a5aaa;">核心底线</strong>：</p>
                         <p style="margin-top: 8px;">• <strong>ISO 27001 信息安全管理体系认证</strong><br>
                         • 通讯数据端到端加密，开门记录不上传第三方平台<br>
@@ -2153,12 +2189,12 @@
                     </div>
                 </details>
                 <!-- FAQ Item 6 -->
-                <details style="background: #fff; border-radius: 14px; margin-bottom: 12px; border: 1px solid rgba(26,90,170,0.1); overflow: hidden; transition: box-shadow 0.3s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow='none'">
-                    <summary style="padding: 20px 24px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; color: #1a1a1a;">
+                <details class="faq-item" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow=''">
+                    <summary>
                         <span>🛠️ 门锁坏了怎么办？2年质保包含什么？</span>
-                        <span style="color: #1a5aaa; font-size: 20px; transition: transform 0.3s; flex-shrink: 0; margin-left: 12px;">+</span>
+                        <span class="faq-icon"><span class="faq-plus">+</span></span>
                     </summary>
-                    <div style="padding: 0 24px 20px; color: #555; font-size: 15px; line-height: 1.8;">
+                    <div class="faq-answer">
                         <p>领锁提供<strong style="color:#1a5aaa;">行业最高质保标准</strong>：</p>
                         <p style="margin-top: 8px;">• <strong>2年全免费质保</strong>（行业平均1年）<br>
                         • 非人为损坏，免费上门维修或换新<br>
@@ -2168,12 +2204,12 @@
                     </div>
                 </details>
                 <!-- FAQ Item 7 -->
-                <details style="background: #fff; border-radius: 14px; margin-bottom: 12px; border: 1px solid rgba(26,90,170,0.1); overflow: hidden; transition: box-shadow 0.3s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow='none'">
-                    <summary style="padding: 20px 24px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; color: #1a1a1a;">
+                <details class="faq-item" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow=''">
+                    <summary>
                         <span>🏠 我们是民宿，30间客房，能装吗？</span>
-                        <span style="color: #1a5aaa; font-size: 20px; transition: transform 0.3s; flex-shrink: 0; margin-left: 12px;">+</span>
+                        <span class="faq-icon"><span class="faq-plus">+</span></span>
                     </summary>
-                    <div style="padding: 0 24px 20px; color: #555; font-size: 15px; line-height: 1.8;">
+                    <div class="faq-answer">
                         <p>✅ <strong>民宿完全支持</strong>，领锁已有大量民宿客户：</p>
                         <p style="margin-top: 8px;">• 30间以下精品民宿有专属<strong style="color:#1a5aaa;">轻量化方案</strong>，投入更低<br>
                         • 支持公寓、民宿、客栈、青年旅舍等多种业态<br>
@@ -2183,12 +2219,12 @@
                     </div>
                 </details>
                 <!-- FAQ Item 8 -->
-                <details style="background: #fff; border-radius: 14px; margin-bottom: 12px; border: 1px solid rgba(26,90,170,0.1); overflow: hidden; transition: box-shadow 0.3s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow='none'">
-                    <summary style="padding: 20px 24px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; color: #1a1a1a;">
+                <details class="faq-item" onmouseover="this.style.boxShadow='0 4px 20px rgba(26,90,170,0.1)'" onmouseout="this.style.boxShadow=''">
+                    <summary>
                         <span>💳 怎么付款？能分期吗？</span>
-                        <span style="color: #1a5aaa; font-size: 20px; transition: transform 0.3s; flex-shrink: 0; margin-left: 12px;">+</span>
+                        <span class="faq-icon"><span class="faq-plus">+</span></span>
                     </summary>
-                    <div style="padding: 0 24px 20px; color: #555; font-size: 15px; line-height: 1.8;">
+                    <div class="faq-answer">
                         <p>支持多种<strong style="color:#1a5aaa;">灵活付款方式</strong>：</p>
                         <p style="margin-top: 8px;">• <strong>一次性付款</strong>：享最優惠價格<br>
                         • <strong>分期付款</strong>：大型連鎖酒店可享專屬商務賬期<br>
