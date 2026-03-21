@@ -638,7 +638,80 @@
                     observer.unobserve(entry.target);
                 }
             });
-        }, { threshold: 0.2 });
+        }, { threshold: 0.2 
+    // ============================================
+    // V47: Hero ROI Animated Count-Up
+    // ============================================
+    function initHeroROICounter() {
+        var widget = document.getElementById('heroRoiWidget');
+        if (!widget) return;
+        var animated = false;
+
+        function animateNum(el, targetVal, prefix, suffix, decimals) {
+            var duration = 1200;
+            var startTime = performance.now();
+            var startVal = 0;
+
+            function update(currentTime) {
+                var elapsed = currentTime - startTime;
+                var progress = Math.min(elapsed / duration, 1);
+                var eased = 1 - Math.pow(1 - progress, 3);
+                var current = startVal + (targetVal - startVal) * eased;
+                var formatted;
+                if (decimals) {
+                    formatted = prefix + current.toFixed(decimals) + suffix;
+                } else {
+                    formatted = prefix + Math.floor(current) + suffix;
+                }
+                el.textContent = formatted;
+                if (progress < 1) requestAnimationFrame(update);
+            }
+            requestAnimationFrame(update);
+        }
+
+        function triggerAnimation() {
+            if (animated) return;
+            animated = true;
+            var flyEl = document.getElementById('hero-roi-fly');
+            var elecEl = document.getElementById('hero-roi-elec');
+            var netEl = document.getElementById('hero-roi-net');
+            if (!flyEl || !elecEl || !netEl) return;
+
+            // Parse current values
+            var flyText = flyEl.textContent; // e.g. "¥24.9万"
+            var elecText = elecEl.textContent;
+            var netText = netEl.textContent;
+
+            var flyMatch = flyText.match(/¥([\d.]+)万/);
+            var elecMatch = elecText.match(/¥([\d.]+)万/);
+            var netMatch = netText.match(/¥([\d.]+)万/);
+
+            if (flyMatch && elecMatch && netMatch) {
+                setTimeout(function() {
+                    animateNum(flyEl, parseFloat(flyMatch[1]), '¥', '万', 1);
+                }, 200);
+                setTimeout(function() {
+                    animateNum(elecEl, parseFloat(elecMatch[1]), '¥', '万', 1);
+                }, 450);
+                setTimeout(function() {
+                    animateNum(netEl, parseFloat(netMatch[1]), '¥', '万', 1);
+                }, 700);
+            }
+        }
+
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    triggerAnimation();
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.3 });
+
+        observer.observe(widget);
+    }
+
+});
 
         const tableWrapper = document.querySelector('table');
         if (tableWrapper) observer.observe(tableWrapper);
@@ -667,6 +740,7 @@
         initContactForm();
         initCompareTableAnimation();
         initFloatingWechatBtn();
+        initHeroROICounter();
     }
 
     if (document.readyState === 'loading') {
