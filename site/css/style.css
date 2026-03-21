@@ -1982,3 +1982,89 @@ img.loaded {
         font-size: 20px !important;
     }
 }
+
+/* ============================================
+   V39: iPhone Dynamic Island / notch 安全区适配
+   ============================================ */
+/* 确保刘海屏设备顶部内容不被刘海遮挡 */
+@supports (padding-top: env(safe-area-inset-top)) {
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+    /* 固定顶部导航条适配刘海屏 */
+    .header {
+        padding-top: calc(12px + env(safe-area-inset-top));
+    }
+    /* 固定底部悬浮按钮适配Home Indicator */
+    .floating-contact {
+        bottom: calc(24px + env(safe-area-inset-bottom));
+    }
+    #quickQuoteBar,
+    #stickyCtaBar,
+    #quickContactBar {
+        padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    }
+    #quickContactBar {
+        bottom: calc(-1px + env(safe-area-inset-bottom));
+    }
+}
+
+/* ============================================
+   V39: 无障碍增强 - 尊重系统减弱动效偏好
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+    /* 禁用所有滚动触发动画 */
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    /* 保留颜色变化但不执行动效 */
+    .live-counter,
+    .footer-counter,
+    .counter-animate {
+        transition: none !important;
+    }
+    /* 证言轮播停止自动播放 */
+    .testimonial-track {
+        animation: none !important;
+    }
+    /* 滚动条停止动画 */
+    .partner-scroll-track,
+    .partner-scroll-tag,
+    #liveFeedTrack,
+    .scroll-badge-track {
+        animation: none !important;
+    }
+    /* FAQ 手风琴保持展开状态平滑过渡 */
+    .faq-answer {
+        transition: none !important;
+    }
+}
+
+/* ============================================
+   V39: 高对比度模式支持（无障碍增强）
+   ============================================ */
+@media (prefers-contrast: high) {
+    /* 提升文字对比度 */
+    body {
+        --text-primary: #000000;
+        --text-secondary: #333333;
+    }
+    /* CTA 按钮增加边框确保可见 */
+    .cta-button,
+    .cta-button-pulse {
+        border: 2px solid currentColor;
+    }
+    /* 移除透明度效果保证对比度 */
+    .floating-contact-tooltip {
+        opacity: 1 !important;
+        background: #fff !important;
+        border: 2px solid #1a5aaa !important;
+    }
+}
