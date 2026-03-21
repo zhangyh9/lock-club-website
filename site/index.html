@@ -1578,15 +1578,15 @@
                     <!-- 核心数据 -->
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; opacity: 0; animation: fadeInUp 0.8s ease 0.6s forwards;">
                         <div style="text-align: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px 12px;">
-                            <div style="font-size: 28px; font-weight: 800; color: #4facfe; font-family: 'SF Mono', monospace; line-height: 1;">10000<span style="font-size: 14px;">+</span></div>
+                            <div class="hero-stat-num" data-count="10000" data-suffix="+" data-decimals="0" style="font-size: 28px; font-weight: 800; color: #4facfe; font-family: 'SF Mono', monospace; line-height: 1;">0</div>
                             <div style="font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 4px;">服务酒店</div>
                         </div>
                         <div style="text-align: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px 12px;">
-                            <div style="font-size: 28px; font-weight: 800; color: #4facfe; font-family: 'SF Mono', monospace; line-height: 1;">0.1<span style="font-size: 14px;">%</span></div>
+                            <div class="hero-stat-num" data-count="1" data-suffix="%" data-decimals="1" data-prefix="0." style="font-size: 28px; font-weight: 800; color: #4facfe; font-family: 'SF Mono', monospace; line-height: 1;">0.0</div>
                             <div style="font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 4px;">飞房率</div>
                         </div>
                         <div style="text-align: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px 12px;">
-                            <div style="font-size: 28px; font-weight: 800; color: #4facfe; font-family: 'SF Mono', monospace; line-height: 1;">5<span style="font-size: 14px;">年+</span></div>
+                            <div class="hero-stat-num" data-count="5" data-suffix="年+" data-decimals="0" style="font-size: 28px; font-weight: 800; color: #4facfe; font-family: 'SF Mono', monospace; line-height: 1;">0</div>
                             <div style="font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 4px;">电池续航</div>
                         </div>
                     </div>
@@ -1815,16 +1815,60 @@
                         }
                         setInterval(update, 8000);
                     })();
+
+                    // V51: Hero核心数据数字递增动画（滚动触发，IntersectionObserver）
+                    (function(){
+                        var triggered = false;
+                        function animateCounter(el) {
+                            var count = parseInt(el.dataset.count, 10);
+                            var suffix = el.dataset.suffix || '';
+                            var decimals = parseInt(el.dataset.decimals, 10) || 0;
+                            var prefix = el.dataset.prefix || '';
+                            var duration = 1800;
+                            var startTime = performance.now();
+                            function update(now) {
+                                var elapsed = now - startTime;
+                                var progress = Math.min(elapsed / duration, 1);
+                                var eased = 1 - Math.pow(1 - progress, 3);
+                                var current = eased * count;
+                                var formatted;
+                                if (decimals > 0) {
+                                    formatted = prefix + current.toFixed(decimals) + suffix;
+                                } else {
+                                    formatted = Math.floor(current).toLocaleString() + suffix;
+                                }
+                                el.textContent = formatted;
+                                if (progress < 1) requestAnimationFrame(update);
+                            }
+                            requestAnimationFrame(update);
+                        }
+                        var observer = new IntersectionObserver(function(entries) {
+                            entries.forEach(function(entry) {
+                                if (entry.isIntersecting && !triggered) {
+                                    triggered = true;
+                                    var stats = document.querySelectorAll('.hero-stat-num[data-count]');
+                                    stats.forEach(function(stat, i) {
+                                        setTimeout(function() { animateCounter(stat); }, i * 200);
+                                    });
+                                    observer.disconnect();
+                                }
+                            });
+                        }, { threshold: 0.3 });
+                        var target = document.querySelector('.hero-stat-num[data-count]');
+                        if (target) observer.observe(target.closest('div') || target);
+                    })();
                     </script>
                 </div>
                 <!-- 右侧产品图 -->
-                <div style="position: relative; display: flex; align-items: center; justify-content: center; opacity: 0; animation: fadeInUp 1s ease 0.4s forwards;">
+                <div style="position: relative; display: flex; align-items: center; justify-content: center; opacity: 0; animation: fadeInUp 1s ease 0.4s forwards;" id="heroProductWrapper">
                     <!-- 光环背景 -->
-                    <div style="position: absolute; width: 400px; height: 400px; background: radial-gradient(circle, rgba(26,90,170,0.3) 0%, rgba(59,130,246,0.1) 40%, transparent 70%); border-radius: 50%; animation: pulseGlow 3s ease-in-out infinite;"></div>
+                    <div style="position: absolute; width: 400px; height: 400px; background: radial-gradient(circle, rgba(26,90,170,0.3) 0%, rgba(59,130,246,0.1) 40%, transparent 70%); border-radius: 50%; animation: pulseGlow 3s ease-in-out infinite;" id="heroProductGlow"></div>
                     <!-- 产品图 -->
-                    <img src="images/product-quiet.jpg" alt="领锁智能门锁LS02 - 精工品质静音设计" fetchpriority="high" loading="eager" style="width: 100%; max-width: 460px; border-radius: 20px; box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(79,172,254,0.1); position: relative; z-index: 1; transform: perspective(1000px) rotateY(-5deg); transition: transform 0.5s ease;" onmouseover="this.style.transform='perspective(1000px) rotateY(0deg) scale(1.02)'" onmouseout="this.style.transform='perspective(1000px) rotateY(-5deg) scale(1)'">
+                    <img src="images/product-quiet.jpg" alt="领锁智能门锁LS02 - 精工品质静音设计" fetchpriority="high" loading="eager" style="width: 100%; max-width: 460px; border-radius: 20px; box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(79,172,254,0.1); position: relative; z-index: 1; transform: perspective(1000px) rotateY(-5deg) rotateX(2deg); transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), box-shadow 0.5s ease;" id="heroProductImg">
+                    <!-- 3D悬浮视差光斑 -->
+                    <div style="position: absolute; width: 200px; height: 200px; background: radial-gradient(circle, rgba(79,172,254,0.18) 0%, transparent 70%); border-radius: 50%; pointer-events: none; z-index: 0; transition: transform 0.3s ease; opacity: 0;" id="heroParallaxOrb"></div>
                     <!-- 悬浮标签 -->
-                    <div style="position: absolute; top: 20px; right: 20px; background: rgba(231,76,60,0.9); color: #fff; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 20px; z-index: 2; backdrop-filter: blur(10px);">HOT 热门</div>
+                    <div style="position: absolute; top: 20px; right: 20px; background: rgba(231,76,60,0.9); color: #fff; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 20px; z-index: 2; backdrop-filter: blur(10px); animation: floatBadge 3s ease-in-out infinite;">HOT 热门</div>
                     <div style="position: absolute; bottom: 30px; left: -10px; background: rgba(26,90,170,0.9); border: 1px solid rgba(79,172,254,0.4); color: #4facfe; font-size: 12px; font-weight: 600; padding: 8px 16px; border-radius: 10px; z-index: 2; backdrop-filter: blur(10px);">
                         🔒 0.5秒极速开锁
                     </div>
@@ -1832,6 +1876,35 @@
                         🔋 27μA 超低功耗
                     </div>
                 </div>
+                <script>
+                // V51: 产品图3D鼠标视差跟随效果
+                (function(){
+                    var wrapper = document.getElementById('heroProductWrapper');
+                    var img = document.getElementById('heroProductImg');
+                    var orb = document.getElementById('heroParallaxOrb');
+                    if(!wrapper || !img) return;
+                    wrapper.addEventListener('mousemove', function(e){
+                        var rect = wrapper.getBoundingClientRect();
+                        var cx = rect.left + rect.width / 2;
+                        var cy = rect.top + rect.height / 2;
+                        var dx = (e.clientX - cx) / (rect.width / 2);
+                        var dy = (e.clientY - cy) / (rect.height / 2);
+                        var rotY = dx * 8;
+                        var rotX = -dy * 5;
+                        img.style.transform = 'perspective(1000px) rotateY(' + rotY + 'deg) rotateX(' + rotX + 'deg) scale(1.02)';
+                        img.style.boxShadow = (dx * 15) + 'px ' + (dy * 10) + 'px 60px rgba(0,0,0,0.4), 0 0 20px rgba(79,172,254,' + (0.1 + Math.abs(dx) * 0.1) + ')';
+                        if(orb) { orb.style.opacity = '1'; orb.style.transform = 'translate(' + (dx * 40) + 'px, ' + (dy * 30) + 'px)'; }
+                    });
+                    wrapper.addEventListener('mouseleave', function(){
+                        img.style.transform = 'perspective(1000px) rotateY(-5deg) rotateX(2deg) scale(1)';
+                        img.style.boxShadow = '0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(79,172,254,0.1)';
+                        if(orb) orb.style.opacity = '0';
+                    });
+                })();
+                </script>
+                <style>
+                @keyframes floatBadge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+                </style>
             </div>
             <!-- 信任背书微标条 -->
             <div style="position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); display: flex; gap: 24px; z-index: 10; white-space: nowrap;">
