@@ -12,6 +12,17 @@
     <!-- PWA 图标 -->
     <link rel="icon" type="image/png" href="images/logo.png">
     <link rel="apple-touch-icon" href="images/logo.png">
+    <!-- V41: BreadcrumbList 结构化数据（SEO导航增强） -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "首页", "item": "https://lock.club/"},
+            {"@type": "ListItem", "position": 2, "name": "领锁LS02智能门锁", "item": "https://lock.club/products.html"}
+        ]
+    }
+    </script>
     <!-- V39: Organization 结构化数据（SEO增强） -->
     <script type="application/ld+json">
     {
@@ -3862,6 +3873,53 @@
                 copyTimeout = setTimeout(hideWechatQr, 300);
             });
         }
+    })();
+    </script>
+
+    <!-- V41: 实时预约FOMO通知Toast（转化增强） -->
+    <div id="bookingToast" style="display:none; position:fixed; top:80px; right:20px; z-index:9999; max-width:320px; background:#fff; border-radius:16px; box-shadow:0 8px 40px rgba(0,0,0,0.18); border:1px solid rgba(26,90,170,0.12); overflow:hidden; animation:fadeInRight 0.4s ease;">
+        <div style="display:flex; align-items:flex-start; gap:12px; padding:16px 18px;">
+            <div style="width:44px; height:44px; background:linear-gradient(135deg,#1a5aaa,#3b82f6); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;">🔔</div>
+            <div style="flex:1; min-width:0;">
+                <div style="font-size:13px; font-weight:700; color:#1a1a1a; margin-bottom:3px;" id="toastMsg">深圳某酒店老板刚刚预约了演示</div>
+                <div style="font-size:11px; color:#888;" id="toastSub">3分钟前 · 广东深圳</div>
+            </div>
+            <button onclick="document.getElementById('bookingToast').style.display='none'" style="background:none; border:none; font-size:16px; cursor:pointer; color:#ccc; padding:2px; flex-shrink:0;">×</button>
+        </div>
+        <div style="height:3px; background:linear-gradient(90deg,#1a5aaa,#3b82f6); animation:toastProgress 5s linear forwards; transform-origin:left;"></div>
+    </div>
+    <style>
+    @keyframes fadeInRight { from { opacity:0; transform:translateX(30px); } to { opacity:1; transform:translateX(0); } }
+    @keyframes toastProgress { from { width:100%; } to { width:0%; } }
+    </style>
+    <script>
+    // V41: FOMO预约通知Toast
+    (function(){
+        var cities = ['深圳','广州','成都','杭州','西安','上海','北京','武汉','重庆','南京','长沙','郑州'];
+        var names = ['陈老板','王总','李经理','张总','赵老板','刘经理','周总','吴老板','黄总','徐总','孙总','朱老板'];
+        var toasts = [
+            '刚刚预约了免费上门演示','查看了报价方案','下载了ROI分析报告','申请了样品体验','留下了联系方式','刚刚咨询了连锁合作','预约了明天上门演示','领取了限时优惠'];
+        var lastCity = '', lastName = '', lastToast = '';
+        function showBookingToast(){
+            var el = document.getElementById('bookingToast');
+            if(!el) return;
+            var city = cities[Math.floor(Math.random()*cities.length)];
+            while(city===lastCity) city=cities[Math.floor(Math.random()*cities.length)];
+            var name = names[Math.floor(Math.random()*names.length)];
+            var toast = toasts[Math.floor(Math.random()*toasts.length)];
+            lastCity=city; lastName=name; lastToast=toast;
+            document.getElementById('toastMsg').textContent = city+'某酒店'+name+' '+toast;
+            document.getElementById('toastSub').textContent = '刚刚 · '+city;
+            el.style.display = 'block';
+            var bar = el.querySelector('div[style*="toastProgress"]');
+            if(bar){ bar.style.animation='none'; void bar.offsetWidth; bar.style.animation='toastProgress 5s linear forwards'; }
+            clearTimeout(window._toastTimer);
+            window._toastTimer = setTimeout(function(){ el.style.display='none'; }, 5500);
+        }
+        // 首次触发：页面加载后15-25秒随机
+        setTimeout(showBookingToast, 15000 + Math.random()*10000);
+        // 之后每45-90秒触发一次
+        setInterval(function(){ if(Math.random()>0.4) showBookingToast(); }, 50000);
     })();
     </script>
 
