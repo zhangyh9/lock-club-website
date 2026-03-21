@@ -441,6 +441,46 @@
     }
 
     // ============================================
+    // 13. Live Counter Animation for Trust Bar
+    // ============================================
+    function initLiveCounters() {
+        const counters = document.querySelectorAll('.live-counter');
+        if (!counters.length) return;
+
+        const animateCounter = (el) => {
+            const target = parseInt(el.getAttribute('data-count'), 10);
+            const duration = 2000;
+            const startTime = performance.now();
+
+            const update = (currentTime) => {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = Math.floor(eased * target);
+                el.textContent = current.toLocaleString();
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            };
+            requestAnimationFrame(update);
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    counters.forEach((c, i) => {
+                        setTimeout(() => animateCounter(c), i * 200);
+                    });
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.5 });
+
+        const trustSection = document.querySelector('section[style*="0a1628"]');
+        if (trustSection) observer.observe(trustSection);
+    }
+
+    // ============================================
     // Init All
     // ============================================
     function init() {
@@ -457,6 +497,7 @@
         initCardTilt();
         initWhyChooseNumbers();
         initStaggerGrid();
+        initLiveCounters();
     }
 
     if (document.readyState === 'loading') {
