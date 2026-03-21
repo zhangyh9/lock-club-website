@@ -5,6 +5,7 @@
 ---
 
 ## 今夜版本记录（2026-03-22）
+- V53 | products.html全站13张懒加载图片补充width/height属性（CLS性能优化），减少页面布局偏移提升Google PageSpeed评分；保持蓝白品牌色调 | 极速迭代
 - V52 | index新增全酒店类型专属方案对比区块（5种酒店类型×6维度对比表：类型/方案/配置/收益/场景/价格），悬停高亮+商务酒店默认推荐行+CTA引导，提升精准转化；保持蓝白品牌色调 | 极速迭代
 - V51 | tech.html新增Review结构化数据（3条客户评价SEO富片段：锦江之星/亚朵/广州客户，含评分4.9+评论数156，强化技术页信任背书）；contact.html联系二维码图片添加loading="lazy"（性能优化）；contact.html新增IntersectionObserver滚动动画（6个核心区块淡入上浮动效，增强交互体验），保持蓝白品牌色调 | 极速迭代
 - V50 | index.html Hero区新增品牌客户Logo滚动信任条（锦江/华住/亚朵/格林豪泰/如家/尚客优6大品牌徽章+自动轮播+悬停暂停），位于紧迫感徽章和ROI计算器之间，强化决策点社会证明；en/index.html同步新增EN版Hero品牌信任条（Jinjiang/Huazhu/Atour/HomeInn/Vienna/GreenTree），保持蓝白品牌色调 | 极速迭代
