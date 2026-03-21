@@ -484,8 +484,8 @@
         if (window.innerWidth > 768) return;
         const bar = document.createElement('div');
         bar.id = 'stickyMobileBar';
-        bar.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#fff;padding:12px 16px;display:flex;gap:10px;align-items:center;box-shadow:0 -4px 20px rgba(0,0,0,0.1);z-index:998;transform:translateY(100%);transition:transform 0.3s ease;';
-        bar.innerHTML = '<a href="tel:13711533226" style="flex:1;background:#1a5aaa;color:#fff;text-align:center;padding:12px;border-radius:8px;font-size:15px;font-weight:600;text-decoration:none;">📞 致电咨询</a><a href="contact.html" style="flex:1;background:#07c160;color:#fff;text-align:center;padding:12px;border-radius:8px;font-size:15px;font-weight:600;text-decoration:none;">💬 在线留言</a>';
+        bar.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#fff;padding:10px 12px;display:flex;gap:8px;align-items:center;box-shadow:0 -4px 20px rgba(0,0,0,0.12);z-index:998;transform:translateY(100%);transition:transform 0.3s ease;';
+        bar.innerHTML = '<a href="tel:13711533226" style="flex:1;background:#1a5aaa;color:#fff;text-align:center;padding:10px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;">📞 致电</a><button onclick="showWechatQR()" style="flex:1;background:#07c160;color:#fff;border:none;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">💬 微信</button><a href="contact.html" style="flex:1;background:#f5f5f5;color:#1a1a1a;text-align:center;padding:10px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #e0e0e0;">✉️ 留言</a>';
         document.body.appendChild(bar);
 
         window.addEventListener('scroll', function() {
@@ -495,6 +495,42 @@
                 bar.style.transform = 'translateY(100%)';
             }
         }, { passive: true });
+    }
+
+    // V47: WeChat QR popup for mobile sticky bar
+    window.showWechatQR = function() {
+        var existing = document.getElementById('wechatQRModal');
+        if (existing) { existing.remove(); return; }
+        var modal = document.createElement('div');
+        modal.id = 'wechatQRModal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+        modal.innerHTML = '<div style="background:#fff;border-radius:16px;padding:28px 24px;text-align:center;max-width:300px;width:100%;position:relative;">' +
+            '<button onclick="this.closest(\'#wechatQRModal\').remove()" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:22px;cursor:pointer;color:#888;line-height:1;">✕</button>' +
+            '<div style="font-size:28px;margin-bottom:10px;">💬</div>' +
+            '<h3 style="font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:4px;">添加微信咨询</h3>' +
+            '<p style="font-size:12px;color:#888;margin-bottom:16px;">长按识别或搜索微信号</p>' +
+            '<img src="images/contact-qrcode.png" alt="领锁微信二维码" style="width:200px;height:200px;border-radius:12px;border:1px solid #eee;margin-bottom:12px;" onerror="this.style.display=\'none\'">' +
+            '<div style="background:#f5f7ff;border-radius:8px;padding:10px;font-size:13px;color:#1a5aaa;font-weight:600;">微信号：lock-club</div>' +
+            '<div style="margin-top:14px;"><a href="tel:13711533226" style="display:inline-flex;align-items:center;gap:6px;background:#1a5aaa;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">📞 致电 137-1153-3226</a></div>' +
+            '</div>';
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) modal.remove();
+        });
+        document.body.appendChild(modal);
+    };
+
+    // V47: Desktop floating WeChat button (only on desktop)
+    function initFloatingWechatBtn() {
+        if (window.innerWidth <= 768) return;
+        var btn = document.createElement('div');
+        btn.id = 'floatingWechatBtn';
+        btn.style.cssText = 'position:fixed;right:24px;bottom:120px;z-index:997;cursor:pointer;transition:all 0.3s;';
+        btn.innerHTML = '<div style="width:52px;height:52px;background:linear-gradient(135deg,#07c160,#05903a);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(7,193,96,0.4);font-size:26px;position:relative;" onmouseover="this.parentElement.style.transform=\'translateY(-4px)\'" onmouseout="this.parentElement.style.transform=\'none\'">' +
+            '<span style="font-size:28px;">💬</span>' +
+            '<div style="position:absolute;top:-4px;right:-4px;width:14px;height:14px;background:#e74c3c;border-radius:50%;border:2px solid #fff;font-size:9px;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;">1</div>' +
+            '</div>';
+        btn.onclick = showWechatQR;
+        document.body.appendChild(btn);
     }
 
     // ============================================
@@ -630,6 +666,7 @@
         initStickyMobileBar();
         initContactForm();
         initCompareTableAnimation();
+        initFloatingWechatBtn();
     }
 
     if (document.readyState === 'loading') {
