@@ -1064,9 +1064,22 @@
                             <div style="font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 4px;">电池续航</div>
                         </div>
                     </div>
-                    <!-- V27: Hero ROI Calculator Widget -->
+                    <!-- V28: Hero ROI Calculator Widget - 酒店类型智能适配版 -->
                     <div class="hero-roi-widget">
                         <div class="hero-roi-title">⚡ 输入客房数 · 立即计算年收益</div>
+                        <!-- V28: 酒店类型快速选择 -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+                            <button onclick="setHotelType('budget')" id="htype-budget" style="flex:1; min-width:70px; padding:7px 6px; border-radius:8px; border:1px solid rgba(79,172,254,0.25); background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.6); font-size:11px; font-weight:600; cursor:pointer; transition:all 0.3s; white-space:nowrap;" onmouseover="this.style.borderColor='rgba(79,172,254,0.6)';this.style.color='#4facfe'" onmouseout="if(!this.classList.contains('active')){this.style.borderColor='rgba(79,172,254,0.25)';this.style.color='rgba(255,255,255,0.6)'}">经济连锁</button>
+                            <button onclick="setHotelType('midscale')" id="htype-midscale" style="flex:1; min-width:70px; padding:7px 6px; border-radius:8px; border:1px solid rgba(79,172,254,0.25); background:rgba(79,172,254,0.15); color:#4facfe; font-size:11px; font-weight:700; cursor:pointer; transition:all 0.3s; white-space:nowrap;" onmouseover="this.style.borderColor='rgba(79,172,254,0.6)'" onmouseout="this.style.borderColor='rgba(79,172,254,0.25)';this.style.color='#4facfe'">商务酒店</button>
+                            <button onclick="setHotelType('resort')" id="htype-resort" style="flex:1; min-width:70px; padding:7px 6px; border-radius:8px; border:1px solid rgba(79,172,254,0.25); background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.6); font-size:11px; font-weight:600; cursor:pointer; transition:all 0.3s; white-space:nowrap;" onmouseover="this.style.borderColor='rgba(79,172,254,0.6)';this.style.color='#4facfe'" onmouseout="if(!this.classList.contains('active')){this.style.borderColor='rgba(79,172,254,0.25)';this.style.color='rgba(255,255,255,0.6)'}">度假公寓</button>
+                            <button onclick="setHotelType('boutique')" id="htype-boutique" style="flex:1; min-width:70px; padding:7px 6px; border-radius:8px; border:1px solid rgba(79,172,254,0.25); background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.6); font-size:11px; font-weight:600; cursor:pointer; transition:all 0.3s; white-space:nowrap;" onmouseover="this.style.borderColor='rgba(79,172,254,0.6)';this.style.color='#4facfe'" onmouseout="if(!this.classList.contains('active')){this.style.borderColor='rgba(79,172,254,0.25)';this.style.color='rgba(255,255,255,0.6)'}">精品民宿</button>
+                            <button onclick="setHotelType('luxury')" id="htype-luxury" style="flex:1; min-width:70px; padding:7px 6px; border-radius:8px; border:1px solid rgba(79,172,254,0.25); background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.6); font-size:11px; font-weight:600; cursor:pointer; transition:all 0.3s; white-space:nowrap;" onmouseover="this.style.borderColor='rgba(79,172,254,0.6)';this.style.color='#4facfe'" onmouseout="if(!this.classList.contains('active')){this.style.borderColor='rgba(79,172,254,0.25)';this.style.color='rgba(255,255,255,0.6)'}">高端酒店</button>
+                        </div>
+                        <!-- V28: 推荐方案标签 -->
+                        <div id="roi-plan-badge" style="display:flex; align-items:center; gap:8px; margin-bottom:12px; background:rgba(79,172,254,0.1); border:1px solid rgba(79,172,254,0.2); border-radius:8px; padding:6px 12px;">
+                            <span style="font-size:14px;">🎯</span>
+                            <span style="font-size:12px; color:#4facfe; font-weight:600;" id="roi-plan-text">推荐方案：商务酒店标准配置 · 含人感节电器</span>
+                        </div>
                         <div class="hero-roi-inputs">
                             <div class="hero-roi-input-group">
                                 <label>🏨 客房数量</label>
@@ -1093,6 +1106,42 @@
                         </div>
                     </div>
                     <script>
+                    // V28: 酒店类型配置
+                    var hotelTypes = {
+                        budget: { rooms: 150, price: 180, label: '经济连锁', plan: '经济连锁基础版 · NFC碰一碰开锁', color: '#888' },
+                        midscale: { rooms: 100, price: 280, label: '商务酒店', plan: '商务酒店标准配置 · 含人感节电器', color: '#4facfe' },
+                        resort: { rooms: 60, price: 380, label: '度假公寓', plan: '度假公寓全套方案 · 小度语音智慧房', color: '#7dd87d' },
+                        boutique: { rooms: 25, price: 450, label: '精品民宿', plan: '精品民宿高端方案 · 小度+碰一碰', color: '#f6d365' },
+                        luxury: { rooms: 80, price: 680, label: '高端酒店', plan: '高端酒店旗舰方案 · 全屋智能生态', color: '#c4b5fd' }
+                    };
+                    var currentType = 'midscale';
+
+                    function setHotelType(type) {
+                        currentType = type;
+                        var cfg = hotelTypes[type];
+                        document.getElementById('hero-rooms').value = cfg.rooms;
+                        document.getElementById('hero-price').value = cfg.price;
+                        document.getElementById('roi-plan-text').textContent = '推荐方案：' + cfg.plan;
+                        calcHeroROI();
+                        // Update button styles
+                        Object.keys(hotelTypes).forEach(function(t) {
+                            var btn = document.getElementById('htype-' + t);
+                            if (btn) {
+                                if (t === type) {
+                                    btn.style.background = 'rgba(79,172,254,0.15)';
+                                    btn.style.borderColor = 'rgba(79,172,254,0.5)';
+                                    btn.style.color = '#4facfe';
+                                    btn.style.fontWeight = '700';
+                                } else {
+                                    btn.style.background = 'rgba(255,255,255,0.04)';
+                                    btn.style.borderColor = 'rgba(79,172,254,0.25)';
+                                    btn.style.color = 'rgba(255,255,255,0.6)';
+                                    btn.style.fontWeight = '600';
+                                }
+                            }
+                        });
+                    }
+
                     function calcHeroROI() {
                         var rooms = parseFloat(document.getElementById('hero-rooms').value) || 100;
                         var price = parseFloat(document.getElementById('hero-price').value) || 280;
