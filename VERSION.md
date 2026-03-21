@@ -5,6 +5,7 @@
 ---
 
 ## 今夜版本记录（2026-03-22）
+- V42 | cases.html新增Review结构化数据（3条客户评价+评分，Google SEO富片段）；index.html preload预加载product-quiet.jpg | 极速迭代
 - V41 | cases页Hero前新增品牌名称滚动条（锦江/华住/亚朵等10大品牌），合作品牌社会证明增强 | 极速迭代
 
 | 版本 | 提交Hash | 核心升级内容 |
