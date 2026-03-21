@@ -1725,8 +1725,46 @@
                                 <div class="hero-roi-result-label">年净增收益</div>
                             </div>
                         </div>
+                        <!-- V51: 回本周期 + 总投资回报率 -->
+                        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                            <div style="flex:1;min-width:90px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:10px;padding:10px 8px;text-align:center;">
+                                <div style="font-size:18px;font-weight:800;color:#fbbf24;font-family:'SF Mono',monospace;" id="hero-roi-payback">0.8<span style="font-size:12px;">年</span></div>
+                                <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px;">投资回本周期</div>
+                            </div>
+                            <div style="flex:1;min-width:90px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);border-radius:10px;padding:10px 8px;text-align:center;">
+                                <div style="font-size:18px;font-weight:800;color:#c084fc;font-family:'SF Mono',monospace;" id="hero-roi-roi">134<span style="font-size:12px;">%</span></div>
+                                <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px;">5年总回报率</div>
+                            </div>
+                            <div style="flex:1;min-width:90px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:10px 8px;text-align:center;">
+                                <div style="font-size:18px;font-weight:800;color:#4ade80;font-family:'SF Mono',monospace;" id="hero-roi-invest">¥220<span style="font-size:12px;">万</span></div>
+                                <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px;">首年总投资</div>
+                            </div>
+                        </div>
+                        <!-- V51: 行动号召按钮 -->
+                        <div style="margin-top:12px;text-align:center;">
+                            <a href="contact.html" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;padding:10px 24px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;box-shadow:0 4px 16px rgba(231,76,60,0.35);transition:all 0.3s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(231,76,60,0.5)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 16px rgba(231,76,60,0.35)'">🚀 获取精确方案 + 免费上门演示</a>
+                        </div>
                     </div>
                     <script>
+                    // V51: 增强ROI计算（含回本周期）
+                    function calcHeroROI() {
+                        var rooms = parseFloat(document.getElementById('hero-rooms').value) || 100;
+                        var price = parseFloat(document.getElementById('hero-price').value) || 280;
+                        var flyLoss = rooms * 0.03 * price * 330;
+                        var recoverFly = flyLoss * 0.9;
+                        var elecSave = rooms * 80000 / 100;
+                        var invest = rooms * 2200;
+                        var net = recoverFly + elecSave - invest;
+                        var annualNet = net;
+                        var payback = invest / annualNet;
+                        var fiveYearROI = (annualNet * 5 - invest) / invest * 100;
+                        document.getElementById('hero-roi-fly').textContent = '¥' + (recoverFly/10000).toFixed(1) + '万';
+                        document.getElementById('hero-roi-elec').textContent = '¥' + (elecSave/10000).toFixed(1) + '万';
+                        document.getElementById('hero-roi-net').textContent = '¥' + (net/10000).toFixed(1) + '万';
+                        document.getElementById('hero-roi-payback').innerHTML = payback.toFixed(1) + '<span style="font-size:12px;">年</span>';
+                        document.getElementById('hero-roi-roi').innerHTML = Math.round(fiveYearROI) + '<span style="font-size:12px;">%</span>';
+                        document.getElementById('hero-roi-invest').innerHTML = '¥' + (invest/10000).toFixed(0) + '<span style="font-size:12px;">万</span>';
+                    }
                     // V28: 酒店类型配置
                     var hotelTypes = {
                         budget: { rooms: 150, price: 180, label: '经济连锁', plan: '经济连锁基础版 · NFC碰一碰开锁', color: '#888' },
@@ -1761,18 +1799,6 @@
                                 }
                             }
                         });
-                    }
-
-                    function calcHeroROI() {
-                        var rooms = parseFloat(document.getElementById('hero-rooms').value) || 100;
-                        var price = parseFloat(document.getElementById('hero-price').value) || 280;
-                        var flyLoss = rooms * 0.03 * price * 330;
-                        var recoverFly = flyLoss * 0.9;
-                        var elecSave = rooms * 80000 / 100;
-                        var net = recoverFly + elecSave - rooms * 2200;
-                        document.getElementById('hero-roi-fly').textContent = '¥' + (recoverFly/10000).toFixed(1) + '万';
-                        document.getElementById('hero-roi-elec').textContent = '¥' + (elecSave/10000).toFixed(1) + '万';
-                        document.getElementById('hero-roi-net').textContent = '¥' + (net/10000).toFixed(1) + '万';
                     }
                     calcHeroROI();
                     </script>
