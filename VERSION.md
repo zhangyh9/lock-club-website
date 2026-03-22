@@ -4,6 +4,8 @@
 
 ---
 
+- V75 | fix: 移除index.html和contact.html生产环境console.log调试语句 + contact.html alert()升级为privacy.html外链（GDPR合规优化）| 极速迭代
+
 - V74 | fix: PWA manifest+sw.js全站支持 + index.html修复og标签+canonical+TwitterCard + nav aria-label无障碍优化 | 极速迭代
 
 - V73 | fix: JSON-LD合并优化+nav-logo懒加载+robots.txt修复+FAQPage去重 | 极速迭代
