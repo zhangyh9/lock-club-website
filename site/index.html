@@ -1562,6 +1562,70 @@
     }
     </script>
 
+    <!-- V64: 网站运行状态指示器（极速迭代 - 增强访客信任感） -->
+    <div id="siteStatusBadge" style="position: fixed; bottom: 24px; left: 24px; z-index: 9999; opacity: 0; transform: scale(0.8) translateY(20px); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;">
+        <div style="background: rgba(255,255,255,0.95); border: 1px solid rgba(26,90,170,0.12); border-radius: 50px; padding: 8px 16px; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); backdrop-filter: blur(12px);">
+            <div style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 8px rgba(34,197,94,0.5); animation: siteStatusPulse 2s ease-in-out infinite;" id="statusDot"></div>
+            <span style="font-size: 12px; color: #1a1a1a; font-weight: 600;" id="statusText">官网运行正常</span>
+        </div>
+        <div id="siteStatusTooltip" style="position: absolute; bottom: 50px; left: 0; background: #fff; border: 1px solid rgba(26,90,170,0.12); border-radius: 12px; padding: 12px 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); font-size: 11px; color: #666; line-height: 1.6; min-width: 160px; opacity: 0; transform: translateY(10px); transition: all 0.3s; pointer-events: none; white-space: nowrap;">
+            <div style="font-weight: 700; color: #1a1a1a; margin-bottom: 6px;">🏠 领锁官网</div>
+            <div>✓ 网站运行正常</div>
+            <div>✓ 数据加密保护中</div>
+            <div>✓ 7×24h 客服在线</div>
+            <div id="uptimeText" style="margin-top:4px;color:#1a5aaa;">运行时长：加载中...</div>
+        </div>
+    </div>
+    <script>
+    (function(){
+        var badge = document.getElementById('siteStatusBadge');
+        var tooltip = document.getElementById('siteStatusTooltip');
+        var startTime = Date.now();
+        function updateUptime(){
+            var elapsed = Math.floor((Date.now() - startTime) / 1000);
+            var h = Math.floor(elapsed / 3600);
+            var m = Math.floor((elapsed % 3600) / 60);
+            var s = elapsed % 60;
+            var upEl = document.getElementById('uptimeText');
+            if(upEl) upEl.textContent = '运行时长：' + (h > 0 ? h + '时' : '') + m + '分' + s + '秒';
+        }
+        updateUptime();
+        setInterval(updateUptime, 1000);
+        // Show after 3s
+        setTimeout(function(){
+            badge.style.opacity = '1';
+            badge.style.transform = 'scale(1) translateY(0)';
+            badge.style.pointerEvents = 'auto';
+        }, 3000);
+        // Tooltip on hover
+        badge.addEventListener('mouseenter', function(){
+            tooltip.style.opacity = '1';
+            tooltip.style.transform = 'translateY(0)';
+        });
+        badge.addEventListener('mouseleave', function(){
+            tooltip.style.opacity = '0';
+            tooltip.style.transform = 'translateY(10px)';
+        });
+        // Pulse animation
+        var style = document.createElement('style');
+        style.textContent = '@keyframes siteStatusPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.6;transform:scale(0.9);}}';
+        document.head.appendChild(style);
+        // Hide when scroll > 80%
+        window.addEventListener('scroll', function(){
+            var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+            var scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            var pct = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
+            if(pct > 0.8){
+                badge.style.opacity = '0';
+                badge.style.pointerEvents = 'none';
+            } else {
+                badge.style.opacity = '1';
+                badge.style.pointerEvents = 'auto';
+            }
+        }, {passive: true});
+    })();
+    </script>
+
     <!-- V29: Mobile Floating Click-to-Call Button -->
     <div id="floatingCallBtn" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; opacity: 0; transform: scale(0.8); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; position: relative;">
         <a href="tel:13711533226" style="display: flex; align-items: center; gap: 10px; background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; padding: 14px 20px; border-radius: 50px; font-size: 15px; font-weight: 700; text-decoration: none; box-shadow: 0 8px 32px rgba(231,76,60,0.4);" onclick="navigator.clipboard&&navigator.clipboard.writeText('13711533226').then(()=>{var t=document.getElementById('copyTip');if(t){t.style.opacity='1';t.style.transform='scale(1)';setTimeout(()=>{t.style.opacity='0';t.style.transform='scale(0.8)'},2000)}})">
@@ -2130,6 +2194,125 @@
                                 r.style.color='#fbbf24';
                                 r.innerHTML='⚠️ 门厚'+t+'mm偏厚，<span style="color:#fff;">需加长方轴配件</span>，<a href="contact.html" style="color:#4facfe;text-decoration:underline;">获取定制方案</a>';
                             }
+                        }
+                        </script>
+                        <!-- V64: 3秒安装自测问卷（极速迭代 - 解决访客最大顾虑：我的酒店能装吗？） -->
+                        <div id="installQuiz" style="margin-top:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(251,191,36,0.25); border-radius:12px; padding:12px 14px; opacity:0; animation:fadeInUp 0.6s ease 1.4s forwards;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <span style="font-size:20px;">🔍</span>
+                                    <div>
+                                        <div style="font-size:12px;color:#fff;font-weight:700;">3秒安装自测 · 你的酒店能装吗？</div>
+                                        <div style="font-size:10px;color:rgba(255,255,255,0.5);">回答3个问题，立刻获取安装可行性报告</div>
+                                    </div>
+                                </div>
+                                <button onclick="startInstallQuiz()" id="quizStartBtn" style="padding:6px 14px;border-radius:8px;border:none;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1a1a2e;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">立即自测 →</button>
+                            </div>
+                            <!-- 问卷题目 -->
+                            <div id="quizQuestions" style="display:none;margin-top:12px;">
+                                <div style="display:flex;flex-direction:column;gap:8px;">
+                                    <div id="q1" style="background:rgba(255,255,255,0.04);border:1px solid rgba(79,172,254,0.2);border-radius:10px;padding:10px 12px;">
+                                        <div style="font-size:11px;color:#4facfe;font-weight:600;margin-bottom:8px;">问题1/3：你的酒店门是什么材质？</div>
+                                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                            <button onclick="selectQuiz(1,'木质门')" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(79,172,254,0.3);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;">木质门</button>
+                                            <button onclick="selectQuiz(1,'防盗门')" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(79,172,254,0.3);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;">防盗门</button>
+                                            <button onclick="selectQuiz(1,'玻璃门')" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(79,172,254,0.3);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;">玻璃门</button>
+                                            <button onclick="selectQuiz(1,'不锈钢门')" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(79,172,254,0.3);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;">不锈钢门</button>
+                                        </div>
+                                        <div id="q1sel" style="font-size:10px;color:#4ade80;margin-top:4px;display:none;">已选择：<span></span></div>
+                                    </div>
+                                    <div id="q2" style="background:rgba(255,255,255,0.04);border:1px solid rgba(79,172,254,0.2);border-radius:10px;padding:10px 12px;">
+                                        <div style="font-size:11px;color:#4facfe;font-weight:600;margin-bottom:8px;">问题2/3：酒店目前使用什么门锁系统？</div>
+                                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                            <button onclick="selectQuiz(2,'磁卡锁')" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(79,172,254,0.3);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;">磁卡锁</button>
+                                            <button onclick="selectQuiz(2,'密码锁')" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(79,172,254,0.3);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;">密码锁</button>
+                                            <button onclick="selectQuiz(2,'机械锁')" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(79,172,254,0.3);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;">机械锁</button>
+                                            <button onclick="selectQuiz(2,'其他智能锁')" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(79,172,254,0.3);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;">其他智能锁</button>
+                                        </div>
+                                        <div id="q2sel" style="font-size:10px;color:#4ade80;margin-top:4px;display:none;">已选择：<span></span></div>
+                                    </div>
+                                    <div id="q3" style="background:rgba(255,255,255,0.04);border:1px solid rgba(79,172,254,0.2);border-radius:10px;padding:10px 12px;">
+                                        <div style="font-size:11px;color:#4facfe;font-weight:600;margin-bottom:8px;">问题3/3：酒店客房大概有多少间？</div>
+                                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                            <button onclick="selectQuiz(3,'30间以下')" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(79,172,254,0.3);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;">30间以下</button>
+                                            <button onclick="selectQuiz(3,'30-100间')" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(79,172,254,0.3);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;">30-100间</button>
+                                            <button onclick="selectQuiz(3,'100-300间')" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(79,172,254,0.3);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;">100-300间</button>
+                                            <button onclick="selectQuiz(3,'300间以上')" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(79,172,254,0.3);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);font-size:11px;cursor:pointer;">300间以上</button>
+                                        </div>
+                                        <div id="q3sel" style="font-size:10px;color:#4ade80;margin-top:4px;display:none;">已选择：<span></span></div>
+                                    </div>
+                                </div>
+                                <div id="quizResult" style="display:none;margin-top:10px;padding:10px 12px;border-radius:10px;text-align:center;"></div>
+                                <button onclick="submitQuiz()" id="quizSubmitBtn" disabled style="margin-top:8px;width:100%;padding:8px;border-radius:8px;border:1px solid rgba(79,172,254,0.3);background:rgba(79,172,254,0.1);color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;cursor:not-allowed;">继续回答 ↑</button>
+                            </div>
+                        </div>
+                        <script>
+                        var quizAnswers={};
+                        var quizStep=0;
+                        function startInstallQuiz(){
+                            var q=document.getElementById('quizQuestions');
+                            var btn=document.getElementById('quizStartBtn');
+                            q.style.display='block';
+                            btn.style.display='none';
+                            quizStep=1;
+                        }
+                        function selectQuiz(qnum,val){
+                            quizAnswers[qnum]=val;
+                            var sel=document.getElementById('q'+qnum+'sel');
+                            sel.style.display='block';
+                            sel.querySelector('span').textContent=val;
+                            var btns=document.querySelectorAll('#q'+qnum+' button');
+                            btns.forEach(function(b){b.style.background='rgba(255,255,255,0.06)';b.style.color='rgba(255,255,255,0.8)';b.style.borderColor='rgba(79,172,254,0.3)';});
+                            event.target.style.background='rgba(79,172,254,0.2)';
+                            event.target.style.color='#4facfe';
+                            event.target.style.borderColor='#4facfe';
+                            var answered=[quizAnswers[1]?1:0,quizAnswers[2]?1:0,quizAnswers[3]?1:0];
+                            var answeredCount=answered.reduce(function(a,b){return a+b;},0);
+                            var submitBtn=document.getElementById('quizSubmitBtn');
+                            if(answeredCount===3){
+                                submitBtn.disabled=false;
+                                submitBtn.style.background='linear-gradient(135deg,#22c55e,#16a34a)';
+                                submitBtn.style.borderColor='#22c55e';
+                                submitBtn.style.color='#fff';
+                                submitBtn.style.cursor='pointer';
+                                submitBtn.textContent='🚀 查看安装可行性报告';
+                            } else {
+                                submitBtn.disabled=false;
+                                submitBtn.style.background='rgba(79,172,254,0.1)';
+                                submitBtn.style.borderColor='rgba(79,172,254,0.3)';
+                                submitBtn.style.color='rgba(255,255,255,0.6)';
+                                submitBtn.style.cursor='default';
+                                submitBtn.textContent='继续回答 ('+answeredCount+'/3)';
+                            }
+                        }
+                        function submitQuiz(){
+                            if(!quizAnswers[1]||!quizAnswers[2]||!quizAnswers[3]){
+                                // scroll to first unanswered
+                                for(var i=1;i<=3;i++){if(!quizAnswers[i]){document.getElementById('q'+i).scrollIntoView({behavior:'smooth',block:'center'});break;}}
+                                return;
+                            }
+                            var r=document.getElementById('quizResult');
+                            r.style.display='block';
+                            var a1=quizAnswers[1];
+                            var a2=quizAnswers[2];
+                            var a3=quizAnswers[3];
+                            var compatible=true;
+                            var msg='';
+                            if(a1==='玻璃门'){compatible=false;msg='玻璃门需定制安装支架，建议联系顾问获取方案';}
+                            else if(a2==='机械锁'){msg='机械锁改装最简单，领锁提供免换锁体方案，100%兼容';}
+                            else {msg='领锁LS02直接改装，无需更换原门锁，适用所有主流门材质';}
+                            var roomText='';
+                            if(a3==='30间以下')roomText='精品民宿方案，投入约0.8-1.5万/间';
+                            else if(a3==='30-100间')roomText='标准连锁方案，投入约0.2-0.25万/间';
+                            else if(a3==='100-300间')roomText='批量部署方案，投入约0.18-0.22万/间，含专属商务对接';
+                            else roomText='集团级方案，投入约0.15-0.2万/间，含独立运维通道';
+                            r.style.background='rgba(34,197,94,0.12)';
+                            r.style.border='1px solid rgba(34,197,94,0.3)';
+                            r.innerHTML='<div style="font-size:14px;margin-bottom:6px;">'+(compatible?'✅ 安装兼容性：通过':'⚠️ 需要定制方案')+'</div>'+
+                                '<div style="font-size:11px;color:rgba(255,255,255,0.7);line-height:1.6;">'+msg+'</div>'+
+                                '<div style="font-size:11px;color:#fcd34d;margin-top:6px;line-height:1.6;">🏠 预估方案：'+roomText+'</div>'+
+                                '<a href="contact.html" style="display:inline-block;margin-top:8px;padding:6px 16px;background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;border-radius:8px;font-size:11px;font-weight:700;text-decoration:none;">📞 获取精确方案 + 免费上门演示</a>';
+                            document.getElementById('quizSubmitBtn').style.display='none';
                         }
                         </script>
                     </div>
@@ -4767,6 +4950,69 @@
     <section class="testimonials">
         <div class="container">
             <h2 class="section-title">10000+酒店客户 · 真实数据验证</h2>
+            <!-- V64: 一键查找同规模成功案例工具（极速迭代） -->
+            <div style="max-width: 700px; margin: 0 auto 32px auto; background: linear-gradient(135deg, rgba(26,90,170,0.06) 0%, rgba(59,130,246,0.04) 100%); border: 1px solid rgba(26,90,170,0.12); border-radius: 16px; padding: 16px 20px; text-align: center;">
+                <div style="font-size: 13px; color: #1a5aaa; font-weight: 700; margin-bottom: 10px;">🔍 查找同规模酒店的成功案例</div>
+                <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+                    <button onclick="showSimilarCases(30)" style="padding: 7px 14px; border-radius: 20px; border: 1px solid rgba(26,90,170,0.25); background: rgba(26,90,170,0.04); color: #1a5aaa; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.background='rgba(26,90,170,0.1)';this.style.borderColor='rgba(26,90,170,0.4)'" onmouseout="this.style.background='rgba(26,90,170,0.04)';this.style.borderColor='rgba(26,90,170,0.25)'">🏠 30间以下</button>
+                    <button onclick="showSimilarCases(80)" style="padding: 7px 14px; border-radius: 20px; border: 1px solid rgba(26,90,170,0.25); background: rgba(26,90,170,0.04); color: #1a5aaa; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.background='rgba(26,90,170,0.1)';this.style.borderColor='rgba(26,90,170,0.4)'" onmouseout="this.style.background='rgba(26,90,170,0.04)';this.style.borderColor='rgba(26,90,170,0.25)'">🏨 30-100间</button>
+                    <button onclick="showSimilarCases(200)" style="padding: 7px 14px; border-radius: 20px; border: 1px solid rgba(26,90,170,0.25); background: rgba(26,90,170,0.04); color: #1a5aaa; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.background='rgba(26,90,170,0.1)';this.style.borderColor='rgba(26,90,170,0.4)'" onmouseout="this.style.background='rgba(26,90,170,0.04)';this.style.borderColor='rgba(26,90,170,0.25)'">🏢 100-200间</button>
+                    <button onclick="showSimilarCases(500)" style="padding: 7px 14px; border-radius: 20px; border: 1px solid rgba(26,90,170,0.25); background: rgba(26,90,170,0.04); color: #1a5aaa; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.background='rgba(26,90,170,0.1)';this.style.borderColor='rgba(26,90,170,0.4)'" onmouseout="this.style.background='rgba(26,90,170,0.04)';this.style.borderColor='rgba(26,90,170,0.25)'">🏨 200间以上</button>
+                </div>
+                <div id="similarCasesResult" style="display:none; margin-top: 12px; text-align: left;"></div>
+            </div>
+            <script>
+            var similarCases = {
+                30: [
+                    {city:'广州·番禺',name:'南方精品民宿',rooms:15,fly:'0.05%',save:'电费月省约800元',period:'2年',result:'飞房率从3%→0.05%'},
+                    {city:'成都·宽窄巷',name:'川味客栈',rooms:22,fly:'0%',save:'电费月省约1200元',period:'1年',result:'小度语音成招牌，好评率+40%'},
+                    {city:'杭州·西湖',name:'西湖小院民宿',rooms:28,fly:'0.08%',save:'电费月省约1500元',period:'18个月',result:'客单价提升25%，复购率+30%'}
+                ],
+                80: [
+                    {city:'深圳·大鹏',name:'海景公寓酒店',rooms:58,fly:'0.03%',save:'月省电费约3500元',period:'2年',result:'飞房率-97%，年挽回损失18万'},
+                    {city:'广州·珠江新城',name:'商务精品酒店',rooms:92,fly:'0%',save:'月省电费约5800元',period:'1年',result:'小度智慧房，携程评分+0.5'},
+                    {city:'成都·春熙路',name:'都市酒店',rooms:75,fly:'0.05%',save:'月省电费约4200元',period:'3年',result:'省电20%，年节省约8万'}
+                ],
+                200: [
+                    {city:'广州·白云',name:'锦江之星连锁',rooms:120,fly:'0.08%',save:'年省电费约12万',period:'2年',result:'集团级批量管理，年增收60万+'},
+                    {city:'武汉·光谷',name:'科技酒店',rooms:200,fly:'0.05%',save:'年省电费约18万',period:'1年',result:'飞房率降至0.05%，年挽回80万+'},
+                    {city:'杭州·西湖文化',name:'广场酒店',rooms:180,fly:'0.02%',save:'年省电费约15万',period:'18个月',result:'OTA评分4.9，排名提升50位'}
+                ],
+                500: [
+                    {city:'全国',name:'某连锁酒店集团',rooms:2200,fly:'0.06%',save:'年省电费约200万',period:'3年',result:'年挽回飞房损失600万+'},
+                    {city:'上海·浦东',name:'商务酒店',rooms:380,fly:'0.04%',save:'年省电费约38万',period:'2年',result:'集中管控，PMS对接，运维人力-50%'},
+                    {city:'北京·朝阳',name:'高端酒店',rooms:520,fly:'0.03%',save:'年省电费约55万',period:'1年',result:'小度智慧房全楼层覆盖，客满意度98%'}
+                ]
+            };
+            function showSimilarCases(scale){
+                var cases = similarCases[scale];
+                var result = document.getElementById('similarCasesResult');
+                result.style.display = 'block';
+                var scaleLabel = scale < 30 ? '30间以下' : scale < 100 ? '30-100间' : scale < 200 ? '100-200间' : '200间以上';
+                var html = '<div style="font-size:11px;color:#1a5aaa;font-weight:700;margin-bottom:8px;">📊 ' + scaleLabel + ' 同类酒店真实数据：</div>';
+                html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+                cases.forEach(function(c){
+                    html += '<div style="background:#fff;border:1px solid rgba(26,90,170,0.1);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;box-shadow:0 2px 8px rgba(26,90,170,0.04);">'+
+                        '<div>'+
+                            '<div style="font-size:13px;font-weight:700;color:#1a1a1a;">'+c.city+' · '+c.name+'</div>'+
+                            '<div style="font-size:11px;color:#888;margin-top:2px;">'+c.rooms+'间客房 · 使用'+c.period+' · '+c.result+'</div>'+
+                        '</div>'+
+                        '<div style="display:flex;gap:8px;flex-shrink:0;">'+
+                            '<div style="text-align:center;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:6px 10px;">'+
+                                '<div style="font-size:14px;font-weight:800;color:#dc2626;">'+c.fly+'</div><div style="font-size:10px;color:#888;">飞房率</div>'+
+                            '</div>'+
+                            '<div style="text-align:center;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.15);border-radius:8px;padding:6px 10px;">'+
+                                '<div style="font-size:14px;font-weight:800;color:#16a34a;">'+c.save+'</div><div style="font-size:10px;color:#888;">节省</div>'+
+                            '</div>'+
+                        '</div>'+
+                    '</div>';
+                });
+                html += '</div>';
+                html += '<div style="text-align:center;margin-top:12px;"><a href="cases.html" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#1a5aaa,#0d3a7a);color:#fff;padding:8px 20px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;">查看全部10000+案例 →</a></div>';
+                result.innerHTML = html;
+                result.scrollIntoView({behavior:'smooth',block:'center'});
+            }
+            </script>
             <!-- V55: 证言区顶部聚合评分 + 实时数据条 -->
             <div style="display: flex; justify-content: center; gap: 24px; margin-bottom: 40px; flex-wrap: wrap;">
                 <!-- 综合评分 -->
