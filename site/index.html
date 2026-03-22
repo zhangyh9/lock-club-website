@@ -5375,6 +5375,11 @@
         <div class="container" style="max-width: 800px;">
             <h2 class="section-title" style="margin-bottom: 8px;">常见问题</h2>
             <p class="section-subtitle" style="margin-bottom: 32px;">酒店客户最关心的6个问题</p>
+            <!-- V58: FAQ快速检索条 - 快速定位问题，提升停留时间和转化 -->
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                <input type="text" id="faqSearchInput" placeholder="🔍 输入关键词搜索问题..." onkeyup="filterFaqs()" style="flex: 1; min-width: 200px; padding: 10px 16px; border: 2px solid #e8f0fe; border-radius: 10px; font-size: 14px; outline: none; transition: border-color 0.3s; background: #fff;" onfocus="this.style.borderColor='#1a5aaa'" onblur="this.style.borderColor='#e8f0fe'">
+                <span style="font-size: 12px; color: #888; white-space: nowrap;">找到 <span id="faqCount" style="color: #1a5aaa; font-weight: 700;">6</span> 个问题</span>
+            </div>
             <div class="faq-accordion" style="display: flex; flex-direction: column; gap: 12px;">
                 <div class="faq-accordion-item" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
                     <button class="faq-accordion-trigger" onclick="toggleFaq(this)" style="width: 100%; padding: 18px 24px; background: none; border: none; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 600; color: #1a1a1a; font-family: inherit;">
@@ -5468,6 +5473,41 @@
     </section>
 
     <script>
+    // V58: FAQ搜索过滤 - 实时高亮匹配关键词
+    function filterFaqs() {
+        var input = document.getElementById('faqSearchInput');
+        if (!input) return;
+        var query = input.value.trim().toLowerCase();
+        var items = document.querySelectorAll('.faq-accordion-item');
+        var count = 0;
+        items.forEach(function(item) {
+            var question = item.querySelector('.faq-accordion-trigger span') || item.querySelector('.faq-accordion-trigger');
+            var answer = item.querySelector('.faq-accordion-content');
+            var qText = question ? question.textContent.toLowerCase() : '';
+            var aText = answer ? answer.textContent.toLowerCase() : '';
+            var match = query === '' || qText.includes(query) || aText.includes(query);
+            item.style.display = match ? '' : 'none';
+            if (match) {
+                count++;
+                // 高亮关键词
+                if (query !== '') {
+                    question.innerHTML = question.textContent.replace(new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<mark style="background:rgba(251,191,36,0.35);border-radius:2px;padding:0 2px;color:inherit;font-weight:700;">$1</mark>');
+                } else {
+                    // 恢复原始问题文本（存储在data-orig）
+                    var orig = item.getAttribute('data-orig-q');
+                    if (orig) question.innerHTML = orig;
+                }
+            }
+        });
+        var counter = document.getElementById('faqCount');
+        if (counter) counter.textContent = count;
+    }
+    // 存储原始问题文本（用于恢复）
+    document.querySelectorAll('.faq-accordion-item').forEach(function(item) {
+        var q = item.querySelector('.faq-accordion-trigger span') || item.querySelector('.faq-accordion-trigger');
+        if (q) item.setAttribute('data-orig-q', q.innerHTML);
+    });
+
     function toggleFaq(btn) {
         const item = btn.closest('.faq-accordion-item');
         const content = item.querySelector('.faq-accordion-content');
