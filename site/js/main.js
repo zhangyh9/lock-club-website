@@ -641,7 +641,9 @@
                     observer.unobserve(entry.target);
                 }
             });
-        }, { threshold: 0.2 
+        }, { threshold: 0.2 });
+    }
+
     // ============================================
     // V47: Hero ROI Animated Count-Up
     // ============================================
@@ -712,12 +714,6 @@
         }, { threshold: 0.3 });
 
         observer.observe(widget);
-    }
-
-});
-
-        const tableWrapper = document.querySelector('table');
-        if (tableWrapper) observer.observe(tableWrapper);
     }
 
     // ============================================
