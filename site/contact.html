@@ -380,6 +380,76 @@
             resize: vertical;
         }
 
+        /* V67: 表单实时校验样式 */
+        .form-group input.error,
+        .form-group textarea.error {
+            border-color: #ff4d4f !important;
+            box-shadow: 0 0 0 3px rgba(255,77,79,0.15) !important;
+            animation: formShake 0.4s ease;
+        }
+        .form-group input.valid {
+            border-color: #22c55e !important;
+        }
+        .field-error {
+            color: #ff4d4f;
+            font-size: 12px;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            opacity: 0;
+            transform: translateY(-4px);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .field-error.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .field-error::before {
+            content: '⚠';
+            font-size: 11px;
+        }
+
+        @keyframes formShake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+
+        .submit-btn.loading {
+            position: relative;
+            color: transparent !important;
+            pointer-events: none;
+        }
+        .submit-btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            margin: -10px 0 0 -10px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .privacy-error {
+            color: #ff4d4f;
+            font-size: 12px;
+            margin-top: 6px;
+            display: none;
+        }
+        .privacy-error.show {
+            display: block;
+        }
+
         .form-group select {
             cursor: pointer;
             appearance: none;
@@ -949,20 +1019,29 @@
                         </div>
                     </div>
                     <h2>留言咨询</h2>
-                    <form action="#" method="post" id="contactForm">
+                    <form action="#" method="post" id="contactForm" novalidate>
                         <div class="form-group">
                             <label for="name">您的姓名 *</label>
-                            <input type="text" id="name" name="name" required placeholder="请输入您的姓名">
+                            <input type="text" id="name" name="name" required placeholder="请输入您的姓名" autocomplete="name">
+                            <div class="field-error" id="name-error">请输入您的姓名</div>
                         </div>
 
                         <div class="form-group">
                             <label for="hotel">酒店名称 *</label>
-                            <input type="text" id="hotel" name="hotel" required placeholder="请输入您的酒店名称">
+                            <input type="text" id="hotel" name="hotel" required placeholder="请输入您的酒店名称" autocomplete="organization">
+                            <div class="field-error" id="hotel-error">请输入您的酒店名称</div>
                         </div>
 
                         <div class="form-group">
                             <label for="contact">联系方式 *</label>
-                            <input type="text" id="contact" name="contact" required placeholder="请输入电话或微信" autocomplete="tel">
+                            <input type="text" id="contact" name="contact" required placeholder="请输入手机号或微信号" autocomplete="tel">
+                            <div class="field-error" id="contact-error">请输入手机号或微信号</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">电子邮箱</label>
+                            <input type="email" id="email" name="email" placeholder="选填，便于发送报价方案" autocomplete="email">
+                            <div class="field-error" id="email-error">请输入有效的邮箱地址</div>
                         </div>
 
                         <div class="form-group">

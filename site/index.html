@@ -1557,8 +1557,152 @@
 
     <link rel="manifest" href="/manifest.json">
     <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){})}</script>
+    <style>
+    /* V100: Skeleton Loading Screen - 骨架屏加载动画 */
+    #skeletonScreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #0a1628 0%, #0d1f3c 100%);
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #skeletonScreen.fade-out {
+        opacity: 0;
+        pointer-events: none;
+    }
+    .skeleton-logo {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, rgba(136,108,255,0.3), rgba(136,108,255,0.1));
+        border-radius: 16px;
+        margin-bottom: 20px;
+        animation: skeletonPulse 1.8s ease-in-out infinite;
+    }
+    .skeleton-brand {
+        width: 120px;
+        height: 20px;
+        background: rgba(255,255,255,0.08);
+        border-radius: 10px;
+        margin-bottom: 40px;
+        animation: skeletonPulse 1.8s ease-in-out 0.15s infinite;
+    }
+    .skeleton-hero {
+        width: 100%;
+        max-width: 600px;
+        padding: 0 24px;
+        margin-bottom: 32px;
+    }
+    .skeleton-line {
+        height: 14px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 7px;
+        margin-bottom: 12px;
+        animation: skeletonPulse 1.8s ease-in-out infinite;
+    }
+    .skeleton-line.short { width: 40%; }
+    .skeleton-line.medium { width: 65%; }
+    .skeleton-line.long { width: 90%; }
+    .skeleton-line.full { width: 100%; }
+    .skeleton-line:nth-child(2) { animation-delay: 0.1s; }
+    .skeleton-line:nth-child(3) { animation-delay: 0.2s; }
+    .skeleton-line:nth-child(4) { animation-delay: 0.3s; }
+    .skeleton-line:nth-child(5) { animation-delay: 0.4s; }
+    .skeleton-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        width: 100%;
+        max-width: 500px;
+        padding: 0 24px;
+        margin-bottom: 40px;
+    }
+    .skeleton-card {
+        height: 80px;
+        background: rgba(255,255,255,0.04);
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.05);
+        animation: skeletonPulse 1.8s ease-in-out infinite;
+    }
+    .skeleton-card:nth-child(2) { animation-delay: 0.2s; }
+    .skeleton-card:nth-child(3) { animation-delay: 0.4s; }
+    .skeleton-dots {
+        display: flex;
+        gap: 8px;
+        margin-top: 20px;
+    }
+    .skeleton-dot {
+        width: 8px;
+        height: 8px;
+        background: rgba(136,108,255,0.3);
+        border-radius: 50%;
+        animation: skeletonPulse 1.8s ease-in-out infinite;
+    }
+    .skeleton-dot:nth-child(2) { animation-delay: 0.2s; }
+    .skeleton-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes skeletonPulse {
+        0%, 100% { opacity: 0.4; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.02); }
+    }
+    @media (max-width: 480px) {
+        .skeleton-cards { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .skeleton-card { height: 60px; }
+    }
+    </style>
 </head>
 <body>
+    <!-- V100: 骨架屏加载组件 - 网站内容加载完成前显示 -->
+    <div id="skeletonScreen">
+        <div class="skeleton-logo"></div>
+        <div class="skeleton-brand"></div>
+        <div class="skeleton-hero">
+            <div class="skeleton-line long"></div>
+            <div class="skeleton-line medium"></div>
+            <div class="skeleton-line full"></div>
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line full"></div>
+        </div>
+        <div class="skeleton-cards">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+        </div>
+        <div class="skeleton-dots">
+            <div class="skeleton-dot"></div>
+            <div class="skeleton-dot"></div>
+            <div class="skeleton-dot"></div>
+        </div>
+    </div>
+    <script>
+    // V100: 骨架屏隐藏逻辑 - 内容加载完成后淡出
+    (function(){
+        var skeleton = document.getElementById('skeletonScreen');
+        function hideSkeleton() {
+            if (skeleton) {
+                skeleton.classList.add('fade-out');
+                setTimeout(function() {
+                    if (skeleton && skeleton.parentNode) {
+                        skeleton.parentNode.removeChild(skeleton);
+                    }
+                }, 700);
+            }
+        }
+        // DOM加载完成后隐藏骨架屏
+        if (document.readyState === 'complete') {
+            hideSkeleton();
+        } else {
+            window.addEventListener('load', hideSkeleton);
+        }
+        // 备用：最大2秒后强制隐藏（防止资源加载阻塞）
+        setTimeout(hideSkeleton, 2000);
+    })();
+    </script>
     <!-- Cookie 隐私合规横幅 - 顶部内联条（不遮挡主内容） -->
     <div id="cookieBanner" style="position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: linear-gradient(135deg, #0a1628 0%, #0d1f3c 100%); padding: 8px 24px; display: none; align-items: center; justify-content: center; gap: 16px; font-size: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.2); height: 36px;" role="dialog" aria-label="Cookie 隐私声明">
         <span>🍪</span>
