@@ -754,4 +754,4 @@
 
 })();
 
-console.log('lock.club - Loaded successfully');
+// Production: no console.log
