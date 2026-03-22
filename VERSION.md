@@ -5,6 +5,7 @@
 ---
 
 ## 今夜版本记录（2026-03-22）
+- V59 | index新增免费演示名额动态递减JS（每30秒自动减1位，数字闪烁高亮效果，制造紧迫感）；FAQ热门问题新增热门/关注标签（价格/防飞房/电池/安装4个问题差异化标签），提升问题点击率；保持蓝白品牌色调 | 极速迭代
 - V58 | index新增SoftwareApplication云平台Schema（featureList/aggregateRating增强SEO）+ Product增强mpn/gtin8；contact新增HomeAndConstructionBusiness本地商家Schema（服务区域9省市/营业时间/价格区间/hasOfferCatalog）；全面强化SEO富片段，保持蓝白品牌色调 | 极速迭代
 - V57 | index.html新增CSS content-visibility:auto优化（自动跳过屏幕外section渲染，大幅降低6700行长页面的Main Thread负担，提升Google PageSpeed评分）；core-value-image添加aspect-ratio防CLS；保持蓝白品牌色调 | 极速迭代
 - V56 | index.html Hero区ROI计算器下方新增「风险保障徽章」（2年质保·先体验再决定·免费上门演示，3个信任徽章降低决策风险）；新增HowTo结构化数据（酒店门锁升级5步指南SEO富片段：预约演示→定制方案→安装调试→培训上线→售后优化，强化Google语音搜索优化）；保持蓝白品牌色调 | 极速迭代
