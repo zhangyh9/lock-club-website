@@ -1089,6 +1089,7 @@
                                 <input type="checkbox" id="privacyConsent" required style="margin-top: 2px; accent-color: #886cff; width: 16px; height: 16px; flex-shrink: 0;">
                                 <span>我已阅读并同意 <a href="privacy.html" target="_blank" style="color: #886cff; text-decoration: underline;">《个人信息保护声明》</a>，授权领锁联系我提供咨询服务</span>
                             </label>
+                            <div class="field-error" id="privacy-error" style="margin-left:26px;">请勾选隐私协议以继续提交</div>
                         </div>
 
                         <button type="submit" class="submit-btn cta-button-pulse" id="submitBtn">提交咨询</button>
@@ -1153,13 +1154,13 @@
                     </div>
 
                     <script>
-                    // V66: 表单草稿本地自动保存（防止填写一半丢失 - 极速迭代）
+                    // V67: 表单实时校验与UX优化
                     (function(){
                         var FORM_KEY = 'lingsuo_contact_draft';
-                        var fields = ['name','hotel','contact','rooms','message'];
+                        var fields = ['name','hotel','contact','email','rooms','message'];
                         var typeCheckboxes = ['type-new','type-renovation','type-bulk','type-other'];
 
-                        // 页面加载时恢复草稿
+                        // ===== 草稿恢复（保留原有功能）=====
                         try {
                             var draft = JSON.parse(localStorage.getItem(FORM_KEY));
                             if (draft) {
@@ -1171,7 +1172,6 @@
                                     var el = document.getElementById(id);
                                     if(el && draft['type[]'] && draft['type[]'].indexOf(el.value) !== -1) el.checked = true;
                                 });
-                                // 显示草稿恢复提示
                                 var hint = document.getElementById('draftRestoredHint');
                                 if(hint) {
                                     hint.style.display = 'flex';
@@ -1180,7 +1180,95 @@
                             }
                         } catch(e){}
 
-                        // 输入时自动保存草稿
+                        // ===== 校验规则 =====
+                        function validateField(field) {
+                            var name = field.name || field.id;
+                            var value = field.value.trim();
+                            var errorEl = document.getElementById(name + '-error');
+
+                            // 清除状态
+                            field.classList.remove('error', 'valid');
+
+                            // 必填校验
+                            if (field.hasAttribute('required') && !value) {
+                                field.classList.add('error');
+                                if (errorEl) { errorEl.textContent = getRequiredMsg(name); errorEl.classList.add('show'); }
+                                return false;
+                            }
+
+                            // 邮箱格式校验
+                            if (name === 'email' && value) {
+                                var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                                if (!emailRegex.test(value)) {
+                                    field.classList.add('error');
+                                    if (errorEl) { errorEl.textContent = '请输入有效的邮箱地址'; errorEl.classList.add('show'); }
+                                    return false;
+                                }
+                            }
+
+                            // 手机号格式校验（如果填写了手机号）
+                            if (name === 'contact' && value) {
+                                var isPhone = /^1[3-9]\d{9}$/.test(value);
+                                var isWechat = /^[a-zA-Z][\w-]{5,19}$/.test(value);
+                                if (!isPhone && !isWechat) {
+                                    field.classList.add('error');
+                                    if (errorEl) { errorEl.textContent = '请输入有效手机号或微信号'; errorEl.classList.add('show'); }
+                                    return false;
+                                }
+                            }
+
+                            // 有值时标记 valid
+                            if (value) {
+                                field.classList.add('valid');
+                            }
+                            if (errorEl) errorEl.classList.remove('show');
+                            return true;
+                        }
+
+                        function getRequiredMsg(name) {
+                            var msgs = {
+                                name: '请输入您的姓名',
+                                hotel: '请输入酒店名称',
+                                contact: '请输入联系方式'
+                            };
+                            return msgs[name] || '此字段为必填项';
+                        }
+
+                        // ===== 绑定实时校验事件 =====
+                        var form = document.getElementById('contactForm');
+                        if (!form) return;
+
+                        // 为所有表单字段绑定 blur + input 事件
+                        var fieldIds = ['name', 'hotel', 'contact', 'email'];
+                        fieldIds.forEach(function(id) {
+                            var el = document.getElementById(id);
+                            if (!el) return;
+                            el.addEventListener('blur', function() { validateField(el); });
+                            el.addEventListener('input', function() {
+                                // 输入时如果有 error，边输入边清除
+                                if (el.classList.contains('error')) {
+                                    var errorEl = document.getElementById(id + '-error');
+                                    if (el.value.trim()) {
+                                        el.classList.remove('error');
+                                        el.classList.add('valid');
+                                        if (errorEl) errorEl.classList.remove('show');
+                                    }
+                                }
+                            });
+                        });
+
+                        // ===== 隐私协议勾选校验 =====
+                        var privacyEl = document.getElementById('privacyConsent');
+                        var privacyError = document.getElementById('privacy-error');
+                        if (privacyEl) {
+                            privacyEl.addEventListener('change', function() {
+                                if (this.checked && privacyError) {
+                                    privacyError.classList.remove('show');
+                                }
+                            });
+                        }
+
+                        // ===== 草稿自动保存 =====
                         fields.forEach(function(f){
                             var el = document.getElementById(f);
                             if(el) {
@@ -1208,32 +1296,69 @@
                             } catch(e){}
                         }
 
-                        // 提交成功时清除草稿
-                        var form = document.getElementById('contactForm');
-                        if(form) {
-                            form.addEventListener('submit', function(){
-                                try { localStorage.removeItem(FORM_KEY); } catch(e){}
-                            });
-                        }
-                    })();
+                        // ===== 表单提交处理 =====
+                        form.addEventListener('submit', function(e) {
+                            e.preventDefault();
 
-                    // V66: 提交按钮点击热区扩大（移动端易用性）
-                    document.getElementById('contactForm').addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        var btn = document.getElementById('submitBtn');
-                        var originalText = btn.textContent;
-                        btn.textContent = '提交中...';
-                        btn.style.opacity = '0.7';
-                        btn.style.pointerEvents = 'none';
-                        // 点击后平滑滚动到表单顶部，让用户看到成功遮罩
-                        document.getElementById('contactForm').scrollIntoView({behavior:'smooth', block:'center'});
-                        setTimeout(function() {
-                            btn.textContent = originalText;
-                            btn.style.opacity = '1';
-                            btn.style.pointerEvents = 'auto';
-                            document.getElementById('formSuccess').style.display = 'flex';
-                        }, 1200);
-                    });
+                            var btn = document.getElementById('submitBtn');
+                            var originalText = btn.textContent;
+
+                            // 隐私协议校验
+                            if (privacyEl && !privacyEl.checked) {
+                                if (privacyError) privacyError.classList.add('show');
+                                privacyEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                return;
+                            }
+                            if (privacyError) privacyError.classList.remove('show');
+
+                            // 批量校验所有必填字段
+                            var allValid = true;
+                            var requiredFields = form.querySelectorAll('[required]');
+                            requiredFields.forEach(function(f) { if (!validateField(f)) allValid = false; });
+
+                            // 额外校验邮箱格式（如果填写了）
+                            var emailEl = document.getElementById('email');
+                            if (emailEl && emailEl.value.trim()) {
+                                var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                                if (!emailRegex.test(emailEl.value.trim())) {
+                                    emailEl.classList.add('error');
+                                    var emailErrEl = document.getElementById('email-error');
+                                    if (emailErrEl) { emailErrEl.textContent = '请输入有效的邮箱地址'; emailErrEl.classList.add('show'); }
+                                    allValid = false;
+                                }
+                            }
+
+                            if (!allValid) {
+                                // 滚动到第一个错误字段
+                                var firstError = form.querySelector('.error');
+                                if (firstError) {
+                                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    firstError.focus();
+                                }
+                                return;
+                            }
+
+                            // ===== Loading 状态 =====
+                            btn.textContent = '提交中...';
+                            btn.classList.add('loading');
+                            btn.style.pointerEvents = 'none';
+
+                            // 清除草稿
+                            try { localStorage.removeItem(FORM_KEY); } catch(e){}
+
+                            // 模拟提交（1.2秒后显示成功）
+                            setTimeout(function() {
+                                btn.textContent = originalText;
+                                btn.classList.remove('loading');
+                                btn.style.pointerEvents = 'auto';
+                                // 显示成功遮罩
+                                var successDiv = document.getElementById('formSuccess');
+                                if (successDiv) {
+                                    successDiv.style.display = 'flex';
+                                }
+                            }, 1200);
+                        });
+                    })();
                     </script>
 
                     <!-- 提交成功遮罩 -->
@@ -1685,75 +1810,11 @@
     </div>
 
     <script src="js/main.js" defer></script>
-    <script>
-    // 表单提交与成功动画
-    (function() {
-        var form = document.querySelector('.contact-form form');
-        var successDiv = document.getElementById('formSuccess');
-        var submitBtn = document.getElementById('submitBtn');
-
-        if (form && successDiv && submitBtn) {
-            // 实时字段验证样式
-            var inputs = form.querySelectorAll('input[required], textarea[required]');
-            inputs.forEach(function(input) {
-                input.addEventListener('blur', function() {
-                    if (!this.value.trim()) {
-                        this.style.borderColor = '#ff4d4f';
-                    } else {
-                        this.style.borderColor = '#22c55e';
-                    }
-                });
-                input.addEventListener('input', function() {
-                    if (this.value.trim()) {
-                        this.style.borderColor = '#22c55e';
-                    }
-                });
-            });
-
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                // 验证必填项
-                var requiredFields = form.querySelectorAll('[required]');
-                var valid = true;
-                requiredFields.forEach(function(field) {
-                    if (!field.value.trim()) {
-                        field.style.borderColor = '#ff4d4f';
-                        valid = false;
-                    }
-                });
-
-                if (!valid) {
-                    // 抖动提示
-                    submitBtn.style.animation = 'shake 0.5s';
-                    setTimeout(function() { submitBtn.style.animation = ''; }, 500);
-                    return;
-                }
-
-                // 提交动画
-                submitBtn.textContent = '提交中...';
-                submitBtn.disabled = true;
-
-                setTimeout(function() {
-                    // 显示成功遮罩
-                    successDiv.style.display = 'flex';
-                }, 1200);
-            });
-        }
-    })();
-    </script>
     <style>
     @keyframes successPop {
         0% { transform: scale(0); opacity: 0; }
         70% { transform: scale(1.1); }
         100% { transform: scale(1); opacity: 1; }
-    }
-    @keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        20% { transform: translateX(-8px); }
-        40% { transform: translateX(8px); }
-        60% { transform: translateX(-6px); }
-        80% { transform: translateX(6px); }
     }
     .contact-form {
         position: relative;
