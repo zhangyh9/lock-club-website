@@ -13,6 +13,7 @@
 - V61 | index新增「今日签约」实时滚动条（7条真实城市+客房数+时间戳，自动轮播18秒循环，增强紧迫感和社会认同）；新增第6张证言幻灯片（连锁酒店集团2200间案例：飞房率-97%·年挽回600万·集团级批量管理）；更新轮播指示器为6个点；保持蓝白品牌色调 | 极速迭代
 - V60 | index新增ItemList结构化数据（7大核心卖点SEO富片段：AI防飞房/0.5秒NFC/27μA/双电路/人感节电/小度语音/5年TCO）；FAQ无结果增强（热门问题快捷入口标签：价格/安装/防飞房/PMS，颜色差异化+一键搜索）；保持蓝白品牌色调 | 极速迭代
 - V59 | index新增免费演示名额动态递减JS（每30秒自动减1位，数字闪烁高亮效果，制造紧迫感）；FAQ热门问题新增热门/关注标签（价格/防飞房/电池/安装4个问题差异化标签），提升问题点击率；保持蓝白品牌色调 | 极速迭代
+- V59 | cases页新增FAQPage结构化数据（4条酒店改造核心Q&A，与cases行业痛点表形成内容+SEO双重矩阵）；tech/contact页新增QAPage结构化数据（双重FAQ富片段强化Google People Also Ask流量）；全站FAQ SEO矩阵完成，保持蓝白品牌色调 | 极速迭代
 - V58 | index新增SoftwareApplication云平台Schema（featureList/aggregateRating增强SEO）+ Product增强mpn/gtin8；contact新增HomeAndConstructionBusiness本地商家Schema（服务区域9省市/营业时间/价格区间/hasOfferCatalog）；全面强化SEO富片段，保持蓝白品牌色调 | 极速迭代
 - V57 | index.html新增CSS content-visibility:auto优化（自动跳过屏幕外section渲染，大幅降低6700行长页面的Main Thread负担，提升Google PageSpeed评分）；core-value-image添加aspect-ratio防CLS；保持蓝白品牌色调 | 极速迭代
 - V56 | index.html Hero区ROI计算器下方新增「风险保障徽章」（2年质保·先体验再决定·免费上门演示，3个信任徽章降低决策风险）；新增HowTo结构化数据（酒店门锁升级5步指南SEO富片段：预约演示→定制方案→安装调试→培训上线→售后优化，强化Google语音搜索优化）；保持蓝白品牌色调 | 极速迭代
