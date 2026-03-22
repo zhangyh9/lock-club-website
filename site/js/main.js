@@ -276,6 +276,29 @@
     // ============================================
     // 8. Lazy Loading for Images
     // ============================================
+    // V97: IntersectionObserver polyfill for older browsers (Safari < 15.4, Firefox < 55)
+    if (!window.IntersectionObserver) {
+        window.IntersectionObserver = function(callback, options) {
+            this.callback = callback;
+            this.options = options || {};
+            this.observer = null;
+            this.check = (function(self) {
+                return function() {
+                    callback([], self);
+                };
+            })(this);
+            this.observe = function(el) {
+                this.observer = setInterval(this.check, this.options.rootMargin || '100px');
+            };
+            this.unobserve = function(el) {
+                if (this.observer) clearInterval(this.observer);
+            };
+            this.disconnect = function() {
+                if (this.observer) clearInterval(this.observer);
+            };
+        };
+    }
+
     function initLazyLoading() {
         if ('IntersectionObserver' in window) {
             const imgObserver = new IntersectionObserver((entries, observer) => {
