@@ -271,6 +271,45 @@
         }
     }
     </script>
+    <!-- V63: WebSite + SearchAction 结构化数据（SEO增强 - 品牌搜索富片段，让Google搜索框出现领锁官网快捷入口） -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "领锁智能 - 酒店智能门锁解决方案",
+        "url": "https://lock.club/",
+        "description": "领锁智能提供AI防飞房、人感节电、NFC碰一碰开锁的酒店智能门锁解决方案，已服务10000+酒店",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://lock.club/?s={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "领锁智能",
+            "url": "https://lock.club/"
+        }
+    }
+    </script>
+    <!-- V63: SoftwareApplication 结构化数据（SEO - App Store/Google Play 智能门锁App富片段） -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "领锁智能门锁管理系统",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "iOS, Android",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "CNY"
+        },
+        "description": "领锁智能门锁管理App，支持远程开锁、密码管理、飞房监控、能耗分析，适用于酒店、民宿、公寓"
+    }
+    </script>
     <!-- V56: HowTo结构化数据 - 酒店门锁升级5步指南（SEO富片段 + Speakable优化） -->
     <script type="application/ld+json">
     {
@@ -7446,6 +7485,53 @@
         }, 3000);
         return false;
     }
+    </script>
+    <!-- V63: 移动端底部固定CTA栏（仅移动端显示，提升移动用户转化） -->
+    <div id="mobileStickyCta" style="display:none; position:fixed; bottom:0; left:0; right:0; background:linear-gradient(135deg,#0a1628,#0d1f3c); padding:12px 16px 16px; z-index:9997; box-shadow:0 -4px 24px rgba(0,0,0,0.3); border-top:1px solid rgba(79,172,254,0.25);">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <div style="flex:1; min-width:0;">
+                <div style="font-size:13px; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">⚡ 智能ROI计算：您的酒店年省<strong id="mobileRoiDisplay" style="color:#4facfe;">¥33万</strong></div>
+                <div style="font-size:10px; color:rgba(255,255,255,0.5); margin-top:2px;">前50名享免费上门演示</div>
+            </div>
+            <a href="contact.html" style="flex-shrink:0; background:linear-gradient(135deg,#e74c3c,#c0392b); color:#fff; padding:10px 18px; border-radius:10px; font-size:13px; font-weight:700; text-decoration:none; box-shadow:0 4px 16px rgba(231,76,60,0.4);">立即咨询 →</a>
+        </div>
+    </div>
+    <script>
+    (function(){
+        var bar = document.getElementById('mobileStickyCta');
+        if(!bar) return;
+        var roiDisplay = document.getElementById('mobileRoiDisplay');
+        // 从Hero ROI计算器同步数据
+        function syncRoi(){
+            var rooms = parseFloat(document.getElementById('hero-rooms') && document.getElementById('hero-rooms').value) || 100;
+            var price = parseFloat(document.getElementById('hero-price') && document.getElementById('hero-price').value) || 280;
+            var flyLoss = rooms * 0.03 * price * 330;
+            var recoverFly = flyLoss * 0.9;
+            var elecSave = rooms * 80000 / 100;
+            var net = recoverFly + elecSave - rooms * 2200;
+            if(roiDisplay) roiDisplay.textContent = '¥' + (net/10000).toFixed(0) + '万';
+        }
+        syncRoi();
+        // 滚动超过首屏后显示
+        var shown = false;
+        var lastScrollY = 0;
+        window.addEventListener('scroll', function(){
+            var y = window.scrollY || window.pageYOffset;
+            var vh = window.innerHeight;
+            if(!shown && y > vh * 0.6){
+                shown = true;
+                bar.style.display = 'block';
+                bar.style.opacity = '0';
+                bar.style.transform = 'translateY(100%)';
+                requestAnimationFrame(function(){
+                    bar.style.transition = 'opacity 0.4s, transform 0.4s';
+                    bar.style.opacity = '1';
+                    bar.style.transform = 'translateY(0)';
+                });
+            }
+            lastScrollY = y;
+        }, {passive:true});
+    })();
     </script>
 </body>
 </html>
