@@ -27,18 +27,21 @@
         const navbar = document.querySelector('.navbar');
         if (!navbar) return;
 
-        let lastScroll = 0;
+        let ticking = false;
 
         window.addEventListener('scroll', function() {
-            const currentScroll = window.pageYOffset;
-
-            if (currentScroll > 60) {
-                navbar.classList.add('scrolled');
-            } else {
-                navbar.classList.remove('scrolled');
+            if (!ticking) {
+                requestAnimationFrame(function() {
+                    const currentScroll = window.pageYOffset;
+                    if (currentScroll > 60) {
+                        navbar.classList.add('scrolled');
+                    } else {
+                        navbar.classList.remove('scrolled');
+                    }
+                    ticking = false;
+                });
+                ticking = true;
             }
-
-            lastScroll = currentScroll;
         }, { passive: true });
     }
 
