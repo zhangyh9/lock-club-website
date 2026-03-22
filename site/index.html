@@ -18,6 +18,26 @@
     <link rel="preload" as="image" href="images/logo.png" fetchpriority="high">
     <!-- LCP优化 - 预连接CDN（加速logo和CDN图片加载） -->
     <link rel="preconnect" href="https://lockclub.wangjile.cn" crossorigin>
+    <!-- V57: content-visibility性能优化 - 让浏览器跳过屏幕外内容渲染，大幅降低Long Page的Main Thread负担 -->
+    <style>
+        /* Hero不设content-visibility，确保LCP不受影响 */
+        /* V57: 中下部section启用content-visibility，浏览器自动跳过渲染直到接近视口 */
+        section:not(.hero) {
+            content-visibility: auto;
+            contain-intrinsic-size: 0 600px;
+        }
+        /* 超长section（如FAQ、证言）给更大预估高度 */
+        #faqSection, .testimonials {
+            contain-intrinsic-size: 0 1200px;
+        }
+        /* 始终保持hero区域可渲染 */
+        .hero { content-visibility: visible; contain-intrinsic-size: auto; }
+        /* V57: 核心价值图片加载优化 - 防止布局抖动 */
+        .core-value-image {
+            aspect-ratio: 3 / 1;
+            object-fit: cover;
+        }
+    </style>
     <!-- V41: BreadcrumbList 结构化数据（SEO导航增强） -->
     <script type="application/ld+json">
     {
