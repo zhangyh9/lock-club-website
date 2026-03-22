@@ -4,9 +4,29 @@
 
 ---
 
-- V66b | index FAQ区域新增2项极速迭代：①电池寿命计算器Widget（输入门锁数量/日均开门次数/电价，自动算领锁5年+寿命 vs 普通锁1.5年寿命对比 + 5年省换电池成本，直击"电池能用多久、换电池多少钱"高频顾虑）；②门锁方案选型对比表（4行×6列：30间以下→300间以上各规模酒店推荐方案/核心配置/预估投入/5年ROI/适用场景，一表解决"我该选哪个"的决策困难）；保持蓝白品牌色调 | 极速迭代
+- V73 | fix: JSON-LD合并优化+nav-logo懒加载+robots.txt修复+FAQPage去重 | 极速迭代
+
+- V72 | fix: 微信二维码图片添加lazy+async优化 | 极速迭代
+
+- V71 | fix: 移除孤立hero-logo预加载+EN站preconnect优化+添加关键资源prefetch | 极速迭代
+
+- V70 | fix: JSON-LD全部加defer优化+og:image尺寸标注+重复Schema清理 | 极速迭代
+
+- V69 | fix: 移除重复preload+defer优化+RAF节流（性能优化）| 极速迭代
+
+- V73 | fix: JSON-LD合并优化+nav-logo懒加载+robots.txt修复+FAQPage去重 | 极速迭代
+
+- V72 | fix: 微信二维码图片添加lazy+async优化 | 极速迭代
+
+- V71 | fix: privacy.html缺失hreflang标签+移除孤立hero-logo预加载+EN站preconnect优化+关键资源prefetch | 极速迭代
+
+- V70 | fix: JSON-LD全部加defer优化+og:image尺寸标注+重复Schema清理 | 极速迭代
+
+- V69 | fix: 移除重复preload+defer优化+RAF节流（性能优化）| 极速迭代
 
 - V68 | en/index.html同步3项V64核心功能：①WhatsApp国际浮窗②网站状态浮标③门锁兼容性检测+3题安装自测问卷（EN版白底样式，3问题：门材质/当前锁类型/客房数量，即时出兼容性报告+方案价格估算+CTA引导）；EN footer新增Privacy Policy链接；保持蓝白品牌色调 | 极速迭代
+
+- V66b | index FAQ区域新增2项极速迭代：①电池寿命计算器Widget（输入门锁数量/日均开门次数/电价，自动算领锁5年+寿命 vs 普通锁1.5年寿命对比 + 5年省换电池成本，直击"电池能用多久、换电池多少钱"高频顾虑）；②门锁方案选型对比表（4行×6列：30间以下→300间以上各规模酒店推荐方案/核心配置/预估投入/5年ROI/适用场景，一表解决"我该选哪个"的决策困难）；保持蓝白品牌色调 | 极速迭代
 
 - V67 | sitemap.xml/sitemap-images.xml全面升级：①sitemap.xml新增tech.html+EN所有5个页面+隐私政策，添加xhtml:link多语言hreflang标签对（zh-CN/en双标注）；②sitemap-images.xml新增tech.html图片条目；③sitemap总数从6页→13页，搜索引擎覆盖率大幅提升；保持蓝白品牌色调 | 极速迭代
 - V66 | contact.html新增3项极速迭代：①表单草稿localStorage自动保存+恢复提示（填写中途退出不丢失）；②表单区信任微徽章组（信息保密/万+酒店信任/30分钟必回应/全程0费用）；③联系页顶部实时签约滚动条（6城市+客房数+时间戳，30秒循环）；保持蓝白品牌色调 | 极速迭代
