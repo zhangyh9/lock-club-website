@@ -5428,6 +5428,12 @@
                     <button onclick="filterFaqCategory('售后', this)" class="faq-cat-btn" style="padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(26,90,170,0.2); background: rgba(26,90,170,0.05); color: #1a5aaa; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s;">🛡️ 售后类</button>
                 </div>
             </div>
+            <div id="faqNoResults" style="display:none;text-align:center;padding:40px 20px;background:#fff;border:1px solid #e8f0fe;border-radius:12px;margin-top:12px;">
+                <div style="font-size:40px;margin-bottom:12px;">🔍</div>
+                <div style="font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:6px;">没有找到相关问题</div>
+                <div style="font-size:13px;color:#888;margin-bottom:16px;">试试其他关键词，或直接联系顾问获取答案</div>
+                <a href="contact.html" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#1a5aaa,#0d3a7a);color:#fff;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;">📞 立即咨询顾问 →</a>
+            </div>
             <div class="faq-accordion" style="display: flex; flex-direction: column; gap: 12px;">
                 <!-- data-category: func=功能, install=安装, pms=对接, price=价格, 售后 -->
                 <div class="faq-accordion-item" data-category="func" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
@@ -5560,6 +5566,13 @@
         });
         var counter = document.getElementById('faqCount');
         if (counter) counter.textContent = count;
+        // V61: 无结果显示提示
+        var noResults = document.getElementById('faqNoResults');
+        var accordion = document.querySelector('.faq-accordion');
+        if (noResults && accordion) {
+            noResults.style.display = count === 0 ? 'block' : 'none';
+            accordion.style.display = count === 0 ? 'none' : 'flex';
+        }
     }
     function filterFaqCategory(cat, btn) {
         activeFaqCategory = cat;
@@ -5586,6 +5599,7 @@
         const content = item.querySelector('.faq-accordion-content');
         const icon = item.querySelector('.faq-accordion-icon');
         const isOpen = content.style.maxHeight && content.style.maxHeight !== '0px';
+        const qText = (item.querySelector('.faq-accordion-trigger span') || item.querySelector('.faq-accordion-trigger')).textContent.trim();
         
         // Close all others
         document.querySelectorAll('.faq-accordion-content').forEach(c => c.style.maxHeight = '0px');
@@ -5596,8 +5610,62 @@
             content.style.maxHeight = content.scrollHeight + 'px';
             icon.style.transform = 'rotate(180deg)';
             item.classList.add('faq-open');
+            // V61: FAQ热度追踪 - 记录展开次数
+            try {
+                var faqHot = JSON.parse(localStorage.getItem('lingsuo_faq_hot') || '{}');
+                var key = qText.substring(0, 20);
+                faqHot[key] = (faqHot[key] || 0) + 1;
+                localStorage.setItem('lingsuo_faq_hot', JSON.stringify(faqHot));
+                // 更新该条目热度徽章
+                updateFaqHotBadge(item, key);
+            } catch(e) {}
         }
     }
+    // V61: FAQ热度徽章 - 热门问题自动加🔥
+    function updateFaqHotBadge(item, key) {
+        var badge = item.querySelector('.faq-hot-badge');
+        if (!badge) {
+            var trigger = item.querySelector('.faq-accordion-trigger');
+            if (trigger) {
+                badge = document.createElement('span');
+                badge.className = 'faq-hot-badge';
+                badge.style.cssText = 'display:inline-flex;align-items:center;gap:3px;background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.3);color:#ff6b6b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:8px;vertical-align:middle;';
+                trigger.appendChild(badge);
+            }
+        }
+        if (badge) {
+            try {
+                var faqHot = JSON.parse(localStorage.getItem('lingsuo_faq_hot') || '{}');
+                var count = faqHot[key] || 0;
+                if (count >= 2) {
+                    badge.textContent = '🔥 热门';
+                    badge.style.display = 'inline-flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } catch(e) {}
+        }
+    }
+    // V61: 页面加载时给热门FAQ自动加🔥徽章
+    (function(){
+        try {
+            var faqHot = JSON.parse(localStorage.getItem('lingsuo_faq_hot') || '{}');
+            document.querySelectorAll('.faq-accordion-item').forEach(function(item) {
+                var q = item.querySelector('.faq-accordion-trigger span') || item.querySelector('.faq-accordion-trigger');
+                if (q) {
+                    var key = q.textContent.trim().substring(0, 20);
+                    if ((faqHot[key] || 0) >= 2) {
+                        var badge = document.createElement('span');
+                        badge.className = 'faq-hot-badge';
+                        badge.style.cssText = 'display:inline-flex;align-items:center;gap:3px;background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.3);color:#ff6b6b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:8px;vertical-align:middle;';
+                        badge.textContent = '🔥 热门';
+                        q.style.display = 'inline';
+                        q.parentNode.insertBefore(badge, q.nextSibling);
+                    }
+                }
+            });
+        } catch(e) {}
+    })();
     
     // Keyboard accessibility for FAQ
     document.addEventListener('DOMContentLoaded', function() {
