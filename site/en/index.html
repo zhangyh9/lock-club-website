@@ -31,7 +31,11 @@
     <!-- V71: DNS预解析+预连接CDN加速图片加载 -->
     <link rel="dns-prefetch" href="https://lockclub.wangjile.cn">
     <link rel="preconnect" href="https://lockclub.wangjile.cn">
-    <link rel="stylesheet" href="../css/style.css">
+    <!-- V93: Non-blocking CSS (print media trick for zero render-blocking) -->
+    <link rel="stylesheet" href="../css/style.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="../css/style.css"></noscript>
+    <!-- V93: PWA manifest -->
+    <link rel="manifest" href="../manifest.json">
     <script type="application/ld+json" defer>
     {
         "@context": "https://schema.org",
@@ -125,6 +129,22 @@
         "areaServed": {"@type": "Country", "name": "China"}
     }
     </script>
+    <!-- V93: content-visibility performance optimization - skip offscreen section rendering -->
+    <style>
+        /* Hero not affected to preserve LCP */
+        section:not(.hero) {
+            content-visibility: auto;
+            contain-intrinsic-size: 0 600px;
+        }
+        #faqSection, .testimonials {
+            contain-intrinsic-size: 0 1200px;
+        }
+        .hero { content-visibility: visible; contain-intrinsic-size: auto; }
+        .core-value-image {
+            aspect-ratio: 3 / 1;
+            object-fit: cover;
+        }
+    </style>
     <style>
         /* Hero Impact Strip */
         .hero-impact-strip {
