@@ -5375,13 +5375,26 @@
         <div class="container" style="max-width: 800px;">
             <h2 class="section-title" style="margin-bottom: 8px;">常见问题</h2>
             <p class="section-subtitle" style="margin-bottom: 32px;">酒店客户最关心的6个问题</p>
-            <!-- V58: FAQ快速检索条 - 快速定位问题，提升停留时间和转化 -->
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-                <input type="text" id="faqSearchInput" placeholder="🔍 输入关键词搜索问题..." onkeyup="filterFaqs()" style="flex: 1; min-width: 200px; padding: 10px 16px; border: 2px solid #e8f0fe; border-radius: 10px; font-size: 14px; outline: none; transition: border-color 0.3s; background: #fff;" onfocus="this.style.borderColor='#1a5aaa'" onblur="this.style.borderColor='#e8f0fe'">
-                <span style="font-size: 12px; color: #888; white-space: nowrap;">找到 <span id="faqCount" style="color: #1a5aaa; font-weight: 700;">6</span> 个问题</span>
+            <!-- V59: FAQ分类筛选条 - 快速按类别定位问题，增强用户体验 -->
+            <div style="margin-bottom: 16px;">
+                <!-- 搜索行 -->
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+                    <input type="text" id="faqSearchInput" placeholder="🔍 输入关键词搜索问题..." onkeyup="filterFaqs()" style="flex: 1; min-width: 200px; padding: 10px 16px; border: 2px solid #e8f0fe; border-radius: 10px; font-size: 14px; outline: none; transition: border-color 0.3s; background: #fff;" onfocus="this.style.borderColor='#1a5aaa'" onblur="this.style.borderColor='#e8f0fe'">
+                    <span style="font-size: 12px; color: #888; white-space: nowrap;">找到 <span id="faqCount" style="color: #1a5aaa; font-weight: 700;">9</span> 个问题</span>
+                </div>
+                <!-- 分类标签 -->
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button onclick="filterFaqCategory('all', this)" class="faq-cat-btn faq-cat-active" style="padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(26,90,170,0.25); background: linear-gradient(135deg, #1a5aaa, #0d3a7a); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s;">全部</button>
+                    <button onclick="filterFaqCategory('func', this)" class="faq-cat-btn" style="padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(26,90,170,0.2); background: rgba(26,90,170,0.05); color: #1a5aaa; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s;">⚡ 功能类</button>
+                    <button onclick="filterFaqCategory('install', this)" class="faq-cat-btn" style="padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(26,90,170,0.2); background: rgba(26,90,170,0.05); color: #1a5aaa; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s;">🔧 安装类</button>
+                    <button onclick="filterFaqCategory('pms', this)" class="faq-cat-btn" style="padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(26,90,170,0.2); background: rgba(26,90,170,0.05); color: #1a5aaa; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s;">🔗 对接类</button>
+                    <button onclick="filterFaqCategory('price', this)" class="faq-cat-btn" style="padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(26,90,170,0.2); background: rgba(26,90,170,0.05); color: #1a5aaa; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s;">💰 价格类</button>
+                    <button onclick="filterFaqCategory('售后', this)" class="faq-cat-btn" style="padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(26,90,170,0.2); background: rgba(26,90,170,0.05); color: #1a5aaa; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s;">🛡️ 售后类</button>
+                </div>
             </div>
             <div class="faq-accordion" style="display: flex; flex-direction: column; gap: 12px;">
-                <div class="faq-accordion-item" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
+                <!-- data-category: func=功能, install=安装, pms=对接, price=价格, 售后 -->
+                <div class="faq-accordion-item" data-category="func" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
                     <button class="faq-accordion-trigger" onclick="toggleFaq(this)" style="width: 100%; padding: 18px 24px; background: none; border: none; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 600; color: #1a1a1a; font-family: inherit;">
                         <span>🔑 领锁门锁的防飞房功能是如何实现的？</span>
                         <span class="faq-accordion-icon" style="color: #1a5aaa; font-size: 18px; transition: transform 0.3s;">▼</span>
@@ -5390,7 +5403,7 @@
                         <p style="padding: 0 24px 18px; margin: 0; color: #555; line-height: 1.7; font-size: 14px;">领锁自研AI防飞房算法，从信号、心跳、状态三重机制实时监控门锁在线状态。当门锁离线时系统自动告警并尝试重连，同时支持OTA远程修复。配合双电路冗余设计，飞房发生率低于0.1%，远低于行业平均水平。</p>
                     </div>
                 </div>
-                <div class="faq-accordion-item" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
+                <div class="faq-accordion-item" data-category="func" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
                     <button class="faq-accordion-trigger" onclick="toggleFaq(this)" style="width: 100%; padding: 18px 24px; background: none; border: none; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 600; color: #1a1a1a; font-family: inherit;">
                         <span>🔋 电池真的能用5年吗？实际使用中会打折吗？</span>
                         <span class="faq-accordion-icon" style="color: #1a5aaa; font-size: 18px; transition: transform 0.3s;">▼</span>
@@ -5399,7 +5412,7 @@
                         <p style="padding: 0 24px 18px; margin: 0; color: #555; line-height: 1.7; font-size: 14px;">领锁门锁采用27μA超低功耗设计，在标准使用场景下（每天开关门不超过20次）可实现5年续航。配合人感节电器后，静态功耗进一步降低。即使是高频使用场景（如精品民宿），也能稳定运行3年以上，大幅减少换电池的运维成本。</p>
                     </div>
                 </div>
-                <div class="faq-accordion-item" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
+                <div class="faq-accordion-item" data-category="install" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
                     <button class="faq-accordion-trigger" onclick="toggleFaq(this)" style="width: 100%; padding: 18px 24px; background: none; border: none; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 600; color: #1a1a1a; font-family: inherit;">
                         <span>🏨 老酒店改造需要多久？会影响正常营业吗？</span>
                         <span class="faq-accordion-icon" style="color: #1a5aaa; font-size: 18px; transition: transform 0.3s;">▼</span>
@@ -5408,7 +5421,7 @@
                         <p style="padding: 0 24px 18px; margin: 0; color: #555; line-height: 1.7; font-size: 14px;">领锁采用不换锁体直接改装的方式，有经验的师傅一天可装10-15把。100间客房的改造约7-10天全部完成，且施工期间不影响酒店正常营业。改造后客房即可上线使用，无需等待系统调试。</p>
                     </div>
                 </div>
-                <div class="faq-accordion-item" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
+                <div class="faq-accordion-item" data-category="pms" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
                     <button class="faq-accordion-trigger" onclick="toggleFaq(this)" style="width: 100%; padding: 18px 24px; background: none; border: none; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 600; color: #1a1a1a; font-family: inherit;">
                         <span>🔗 支持哪些酒店管理系统（PMS）对接？</span>
                         <span class="faq-accordion-icon" style="color: #1a5aaa; font-size: 18px; transition: transform 0.3s;">▼</span>
@@ -5417,7 +5430,7 @@
                         <p style="padding: 0 24px 18px; margin: 0; color: #555; line-height: 1.7; font-size: 14px;">领锁已与主流PMS系统完成对接验证，包括西软、绿云、别样红、住哲、订单来了等。同时支持OTA平台直连、小度/天猫精灵语音控制。与锦江、携程等平台完成对接测试，开房即授权，离房即释放。</p>
                     </div>
                 </div>
-                <div class="faq-accordion-item" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
+                <div class="faq-accordion-item" data-category="price" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
                     <button class="faq-accordion-trigger" onclick="toggleFaq(this)" style="width: 100%; padding: 18px 24px; background: none; border: none; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 600; color: #1a1a1a; font-family: inherit;">
                         <span>💰 一把锁多少钱？有没有最低起订量要求？</span>
                         <span class="faq-accordion-icon" style="color: #1a5aaa; font-size: 18px; transition: transform 0.3s;">▼</span>
@@ -5426,7 +5439,7 @@
                         <p style="padding: 0 24px 18px; margin: 0; color: #555; line-height: 1.7; font-size: 14px;">我们根据酒店规模、合作方式定制方案，欢迎不同规模酒店咨询。从几家店的精品民宿到上百家的连锁酒店都有合适的方案。批量合作享有阶梯优惠，连锁酒店可享专属折扣。立即咨询获取精准报价。</p>
                     </div>
                 </div>
-                <div class="faq-accordion-item" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
+                <div class="faq-accordion-item" data-category="售后" style="background: #fff; border: 1px solid #e8f0fe; border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
                     <button class="faq-accordion-trigger" onclick="toggleFaq(this)" style="width: 100%; padding: 18px 24px; background: none; border: none; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 600; color: #1a1a1a; font-family: inherit;">
                         <span>🛡️ 门锁坏了怎么办？售后服务如何保障？</span>
                         <span class="faq-accordion-icon" style="color: #1a5aaa; font-size: 18px; transition: transform 0.3s;">▼</span>
@@ -5436,7 +5449,7 @@
                     </div>
                 </div>
                 <!-- V36新增：转化导向FAQ -->
-                <div class="faq-accordion-item" style="background:#fff;border:1px solid #e8f0fe;border-radius:12px;overflow:hidden;transition:all 0.3s ease;">
+                <div class="faq-accordion-item" data-category="install" style="background:#fff;border:1px solid #e8f0fe;border-radius:12px;overflow:hidden;transition:all 0.3s ease;">
                     <button class="faq-accordion-trigger" onclick="toggleFaq(this)" style="width:100%;padding:18px 24px;background:none;border:none;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:600;color:#1a1a1a;font-family:inherit;">
                         <span>⏱️ 从咨询到安装完成需要多久？老酒店改造会影响营业吗？</span>
                         <span class="faq-accordion-icon" style="color:#1a5aaa;font-size:18px;transition:transform 0.3s;">▼</span>
@@ -5445,7 +5458,7 @@
                         <p style="padding:0 24px 18px;margin:0;color:#555;line-height:1.7;font-size:14px;">标准流程：方案确认→生产交付→安装调试，整体周期7-15天。老酒店改造时，领锁提供<strong>「分段施工方案」</strong>，逐层改造无需停业。已有多家酒店在营业中完成改造，实现零停业天数。</p>
                     </div>
                 </div>
-                <div class="faq-accordion-item" style="background:#fff;border:1px solid #e8f0fe;border-radius:12px;overflow:hidden;transition:all 0.3s ease;">
+                <div class="faq-accordion-item" data-category="pms" style="background:#fff;border:1px solid #e8f0fe;border-radius:12px;overflow:hidden;transition:all 0.3s ease;">
                     <button class="faq-accordion-trigger" onclick="toggleFaq(this)" style="width:100%;padding:18px 24px;background:none;border:none;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:600;color:#1a1a1a;font-family:inherit;">
                         <span>🔄 和现有PMS/OTA系统能对接吗？需要额外费用吗？</span>
                         <span class="faq-accordion-icon" style="color:#1a5aaa;font-size:18px;transition:transform 0.3s;">▼</span>
@@ -5454,7 +5467,7 @@
                         <p style="padding:0 24px 18px;margin:0;color:#555;line-height:1.7;font-size:14px;">领锁支持<strong>主流PMS系统（锦江、华住、携程等）</strong>和<strong>OTA平台直连</strong>，标准接口协议无缝对接，零额外费用。签约后由技术团队1对1对接，确保系统对接顺利完成，不影响酒店正常运营。</p>
                     </div>
                 </div>
-                <div class="faq-accordion-item" style="background:#fff;border:1px solid #e8f0fe;border-radius:12px;overflow:hidden;transition:all 0.3s ease;">
+                <div class="faq-accordion-item" data-category="price" style="background:#fff;border:1px solid #e8f0fe;border-radius:12px;overflow:hidden;transition:all 0.3s ease;">
                     <button class="faq-accordion-trigger" onclick="toggleFaq(this)" style="width:100%;padding:18px 24px;background:none;border:none;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:600;color:#1a1a1a;font-family:inherit;">
                         <span>🎁 第一次合作有什么优惠吗？能先看样品再决定吗？</span>
                         <span class="faq-accordion-icon" style="color:#1a5aaa;font-size:18px;transition:transform 0.3s;">▼</span>
@@ -5473,7 +5486,8 @@
     </section>
 
     <script>
-    // V58: FAQ搜索过滤 - 实时高亮匹配关键词
+    // V59: FAQ分类筛选 + 关键词搜索（双维度过滤）
+    var activeFaqCategory = 'all';
     function filterFaqs() {
         var input = document.getElementById('faqSearchInput');
         if (!input) return;
@@ -5485,15 +5499,15 @@
             var answer = item.querySelector('.faq-accordion-content');
             var qText = question ? question.textContent.toLowerCase() : '';
             var aText = answer ? answer.textContent.toLowerCase() : '';
-            var match = query === '' || qText.includes(query) || aText.includes(query);
-            item.style.display = match ? '' : 'none';
-            if (match) {
+            var cat = item.getAttribute('data-category') || 'all';
+            var catMatch = activeFaqCategory === 'all' || activeFaqCategory === cat;
+            var textMatch = query === '' || qText.includes(query) || aText.includes(query);
+            item.style.display = (catMatch && textMatch) ? '' : 'none';
+            if (catMatch && textMatch) {
                 count++;
-                // 高亮关键词
                 if (query !== '') {
                     question.innerHTML = question.textContent.replace(new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<mark style="background:rgba(251,191,36,0.35);border-radius:2px;padding:0 2px;color:inherit;font-weight:700;">$1</mark>');
                 } else {
-                    // 恢复原始问题文本（存储在data-orig）
                     var orig = item.getAttribute('data-orig-q');
                     if (orig) question.innerHTML = orig;
                 }
@@ -5501,6 +5515,20 @@
         });
         var counter = document.getElementById('faqCount');
         if (counter) counter.textContent = count;
+    }
+    function filterFaqCategory(cat, btn) {
+        activeFaqCategory = cat;
+        document.querySelectorAll('.faq-cat-btn').forEach(function(b) {
+            b.classList.remove('faq-cat-active');
+            b.style.background = 'rgba(26,90,170,0.05)';
+            b.style.color = '#1a5aaa';
+            b.style.borderColor = 'rgba(26,90,170,0.2)';
+        });
+        btn.classList.add('faq-cat-active');
+        btn.style.background = 'linear-gradient(135deg, #1a5aaa, #0d3a7a)';
+        btn.style.color = '#fff';
+        btn.style.borderColor = 'rgba(26,90,170,0.4)';
+        filterFaqs();
     }
     // 存储原始问题文本（用于恢复）
     document.querySelectorAll('.faq-accordion-item').forEach(function(item) {
@@ -5562,7 +5590,7 @@
                 <h2 style="font-size: clamp(24px, 3vw, 36px); font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">精选落地案例 · 先看效果再决定</h2>
                 <p style="font-size: 16px; color: #666; max-width: 600px; margin: 0 auto;">来自真实酒店客户的落地数据，覆盖精品民宿、连锁酒店、度假公寓等多种业态</p>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px;">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 32px;">
                 <!-- 案例卡片1：深圳公寓 -->
                 <div style="background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 32px rgba(26,90,170,0.08); border: 1px solid rgba(26,90,170,0.06); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 16px 48px rgba(26,90,170,0.15)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 32px rgba(26,90,170,0.08)'">
                     <div style="background: linear-gradient(135deg, #1a5aaa 0%, #0d3a7a 100%); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
@@ -5665,6 +5693,41 @@
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <span style="background: linear-gradient(135deg, rgba(180,83,9,0.08), rgba(146,64,14,0.06)); color: #b45309; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 12px;">🏠 民宿连锁</span>
                             <span style="background: linear-gradient(135deg, rgba(180,83,9,0.08), rgba(146,64,14,0.06)); color: #b45309; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 12px;">☁️ 云平台管理</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- V59新增：案例卡片4 - 杭州西湖酒店（高端度假） -->
+                <div style="background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 32px rgba(26,90,170,0.08); border: 1px solid rgba(26,90,170,0.06); transition: all 0.3s ease; grid-column: span 1;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 16px 48px rgba(26,90,170,0.15)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 32px rgba(26,90,170,0.08)'">
+                    <div style="background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="color: #67e8f9; font-size: 11px; font-weight: 600; letter-spacing: 1px;">高端湖景度假酒店</div>
+                            <div style="color: #fff; font-size: 18px; font-weight: 700; margin-top: 4px;">杭州·西湖湖滨酒店</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 12px;">
+                            <span style="color: #fff; font-size: 12px; font-weight: 600;">85间</span>
+                        </div>
+                    </div>
+                    <div style="padding: 20px;">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+                            <div style="text-align: center; padding: 12px 8px; background: linear-gradient(135deg, #ecfeff, #e0f7fa); border-radius: 10px;">
+                                <div style="font-size: 22px; font-weight: 800; color: #0891b2; font-family: 'SF Mono', monospace;">+35%</div>
+                                <div style="font-size: 10px; color: #888; margin-top: 2px;">好评率↑</div>
+                            </div>
+                            <div style="text-align: center; padding: 12px 8px; background: linear-gradient(135deg, #ecfeff, #e0f7fa); border-radius: 10px;">
+                                <div style="font-size: 22px; font-weight: 800; color: #0891b2; font-family: 'SF Mono', monospace;">+28%</div>
+                                <div style="font-size: 10px; color: #888; margin-top: 2px;">入住率↑</div>
+                            </div>
+                            <div style="text-align: center; padding: 12px 8px; background: linear-gradient(135deg, #ecfeff, #e0f7fa); border-radius: 10px;">
+                                <div style="font-size: 22px; font-weight: 800; color: #0891b2; font-family: 'SF Mono', monospace;">5年</div>
+                                <div style="font-size: 10px; color: #888; margin-top: 2px;">电池续航</div>
+                            </div>
+                        </div>
+                        <div style="background: #f8fafc; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                            <div style="font-size: 12px; color: #555; line-height: 1.6;">"西湖景区核心位置，客人特别注重细节体验。领锁的静音设计完美匹配高端定位，小度语音控制成为差异化亮点。5年电池续航让我们几乎零维护。"</div>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <span style="background: linear-gradient(135deg, rgba(8,145,178,0.08), rgba(14,116,144,0.06)); color: #0891b2; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 12px;">🏔️ 湖景度假</span>
+                            <span style="background: linear-gradient(135deg, rgba(8,145,178,0.08), rgba(14,116,144,0.06)); color: #0891b2; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 12px;">🔊 语音智控</span>
                         </div>
                     </div>
                 </div>
