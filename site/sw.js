@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lockclub-v3';
+const CACHE_NAME = 'lockclub-v5';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
