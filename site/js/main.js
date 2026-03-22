@@ -774,3 +774,55 @@
 })();
 
 // Production: no console.log
+
+// task_090: JS Error Monitoring - Simple error tracker
+(function() {
+    'use strict';
+    var errorLog = [];
+    var MAX_ERRORS = 20;
+    
+    function getErrorDetail(error, stack) {
+        return {
+            msg: error.message || String(error),
+            url: location.href,
+            line: error.lineno || null,
+            col: error.colno || null,
+            stack: stack || '',
+            ua: navigator.userAgent,
+            time: new Date().toISOString()
+        };
+    }
+    
+    window.addEventListener('error', function(e) {
+        var err = e.error || {};
+        var detail = getErrorDetail(err, err.stack || '');
+        if (errorLog.length >= MAX_ERRORS) errorLog.shift();
+        errorLog.push(detail);
+        // Send to server or localStorage for debugging
+        try {
+            var stored = JSON.parse(localStorage.getItem('lk_errors') || '[]');
+            if (stored.length >= MAX_ERRORS) stored.shift();
+            stored.push(detail);
+            localStorage.setItem('lk_errors', JSON.stringify(stored));
+        } catch(e) {}
+    });
+    
+    window.addEventListener('unhandledrejection', function(e) {
+        var detail = {
+            msg: 'UnhandledPromiseRejection: ' + (e.reason && (e.reason.message || String(e.reason))),
+            url: location.href,
+            ua: navigator.userAgent,
+            time: new Date().toISOString()
+        };
+        if (errorLog.length >= MAX_ERRORS) errorLog.shift();
+        errorLog.push(detail);
+        try {
+            var stored = JSON.parse(localStorage.getItem('lk_errors') || '[]');
+            if (stored.length >= MAX_ERRORS) stored.shift();
+            stored.push(detail);
+            localStorage.setItem('lk_errors', JSON.stringify(stored));
+        } catch(e) {}
+    });
+    
+    window.getLKErrors = function() { return errorLog; };
+})();
