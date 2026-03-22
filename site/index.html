@@ -15,9 +15,11 @@
     <link rel="icon" type="image/png" href="https://lockclub.wangjile.cn/lingsuo_logo_1.png">
     <link rel="apple-touch-icon" href="https://lockclub.wangjile.cn/lingsuo_logo_1.png">
     <!-- V45: LCP优化 - 预加载导航栏Logo（页面临界元素） -->
-    <link rel="preload" as="image" href="https://lockclub.wangjile.cn/lingsuo_logo_1.png" fetchpriority="high">
+    <link rel="preload" as="image" href="https://lockclub.wangjile.cn/hero-logo.png" fetchpriority="high">
     <!-- LCP优化 - 预连接CDN（加速logo和CDN图片加载） -->
     <link rel="preconnect" href="https://lockclub.wangjile.cn" crossorigin>
+    <!-- V64: 额外预加载hero-logo（已确认CDN版本） -->
+    <link rel="preload" as="image" href="https://lockclub.wangjile.cn/hero-logo.png" fetchpriority="high">
     <!-- V57: content-visibility性能优化 - 让浏览器跳过屏幕外内容渲染，大幅降低Long Page的Main Thread负担 -->
     <style>
         /* Hero不设content-visibility，确保LCP不受影响 */
@@ -460,7 +462,7 @@
     <link rel="canonical" href="https://lock.club/">
     <link rel="preconnect" href="https://lockclub.wangjile.cn" crossorigin>
     <link rel="dns-prefetch" href="https://lockclub.wangjile.cn">
-    <link rel="preload" as="image" href="images/product-quiet.jpg" fetchpriority="high">
+    <link rel="preload" as="image" href="https://lockclub.wangjile.cn/product-quiet.jpg" fetchpriority="high">
     <meta name="theme-color" content="#1a5aaa">
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
@@ -989,7 +991,6 @@
         }
         .hero-roi-input-group {
             flex: 1;
-            min-width: 120px;
             min-width: 0;
         }
         .hero-roi-input-group label {
@@ -1099,20 +1100,20 @@
             }
             /* 响应式修复：Hero区域grid转单列 */
             .hero-grid-responsive {
-                grid-template-columns: 1fr !important;
-                gap: 30px !important;
+                grid-template-columns: 1fr;
+                gap: 30px;
             }
             /* 响应式修复：品牌Logo卡片宽度自适应 */
             .brand-logo-card {
-                min-width: 90px !important;
-                padding: 16px 20px !important;
+                min-width: 90px;
+                padding: 16px 20px;
             }
             /* 响应式修复：ROI结果卡片在小屏单列显示 */
             .hero-roi-results {
-                grid-template-columns: 1fr !important;
+                grid-template-columns: 1fr;
             }
             .hero-roi-result {
-                padding: 12px 16px !important;
+                padding: 12px 16px;
             }
         }
 
@@ -1521,33 +1522,24 @@
 
 </head>
 <body>
-    <!-- Cookie 隐私合规横幅 (GDPR/中国网络安全法要求) -->
-    <div id="cookieBanner" style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 99999; background: linear-gradient(135deg, #0a1628 0%, #0d1f3c 100%); padding: 16px 24px; display: flex; align-items: center; justify-content: center; gap: 20px; box-shadow: 0 -4px 24px rgba(0,0,0,0.2); transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);" role="dialog" aria-label="Cookie 隐私声明">
-        <span style="font-size: 20px; flex-shrink: 0;">🍪</span>
-        <div style="flex: 1; max-width: 800px;">
-            <div style="color: #fff; font-size: 13px; line-height: 1.6;">我们使用Cookie来提升您的浏览体验，分析网站流量，并为您的沟通偏好提供个性化服务。继续使用网站即表示您同意我们的 <a href="privacy.html" style="color: #4facfe; text-decoration: underline; font-weight: 600;">《隐私政策》</a> 和 <a href="terms.html" style="color: #4facfe; text-decoration: underline; font-weight: 600;">《使用条款》</a>。</div>
-        </div>
-        <div style="display: flex; gap: 10px; flex-shrink: 0;">
-            <button onclick="acceptCookies()" style="background: linear-gradient(135deg, #1a5aaa, #3b82f6); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">接受全部 🍪</button>
-            <button onclick="declineCookies()" style="background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">仅必要</button>
-        </div>
+    <!-- Cookie 隐私合规横幅 - 顶部内联条（不遮挡主内容） -->
+    <div id="cookieBanner" style="position:sticky; top:0; z-index:1001; background: linear-gradient(135deg, #0a1628 0%, #0d1f3c 100%); padding: 8px 24px; display: none; align-items: center; justify-content: center; gap: 12px; font-size: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.2);" role="dialog" aria-label="Cookie 隐私声明">
+        <span>🍪</span>
+        <span style="color: rgba(255,255,255,0.8);">我们使用Cookie提升浏览体验，继续使用即表示同意 <a href="privacy.html" style="color: #4facfe; text-decoration: underline;">《隐私政策》</a></span>
+        <button onclick="acceptCookies()" style="background: linear-gradient(135deg, #1a5aaa, #3b82f6); color: #fff; border: none; padding: 4px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; margin-left: 4px;">接受</button>
     </div>
     <script>
     (function(){
         var banner = document.getElementById('cookieBanner');
         try {
             if (!localStorage.getItem('lingsuo_cookie_consent')) {
-                setTimeout(function(){ banner.style.transform = 'translateY(0)'; }, 2000);
+                banner.style.display = 'flex';
             }
-        } catch(e){ banner.style.transform = 'translateY(0)'; }
+        } catch(e){ banner.style.display = 'flex'; }
     })();
     function acceptCookies() {
         try { localStorage.setItem('lingsuo_cookie_consent', 'all'); } catch(e){}
-        document.getElementById('cookieBanner').style.transform = 'translateY(100%)';
-    }
-    function declineCookies() {
-        try { localStorage.setItem('lingsuo_cookie_consent', 'necessary'); } catch(e){}
-        document.getElementById('cookieBanner').style.transform = 'translateY(100%)';
+        document.getElementById('cookieBanner').style.display = 'none';
     }
     </script>
 
@@ -1582,68 +1574,7 @@
     <!-- V39: 无障碍 - 跳转到主要内容（键盘用户友好） -->
     <a href="#main-content" style="position:absolute;top:-100%;left:16px;z-index:99999;background:#1a5aaa;color:#fff;padding:10px 20px;border-radius:0 0 10px 10px;font-size:14px;font-weight:600;text-decoration:none;transition:top 0.2s;" onfocus="this.style.top='0'" onblur="this.style.top='-100%'">跳到主要内容 ↓</a>
     <main id="main-content">
-    <!-- V46: 申请回呼浮窗（30秒后自动弹出，提升留资转化） -->
-    <div id="callbackModal" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; opacity: 0; transform: scale(0.8) translateY(20px); transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;">
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-radius: 20px; padding: 24px 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); border: 1px solid rgba(26,90,170,0.12); max-width: 340px; position: relative;">
-            <button onclick="closeCallbackModal()" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.06); border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 14px; color: #888; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.12)'" onmouseout="this.style.background='rgba(0,0,0,0.06)'">✕</button>
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #1a5aaa, #3b82f6); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;">📞</div>
-                <div>
-                    <div style="font-size: 15px; font-weight: 700; color: #1a1a1a; line-height: 1.3;">留下手机号</div>
-                    <div style="font-size: 12px; color: #888; margin-top: 2px;">顾问将在30分钟内回电给您</div>
-                </div>
-            </div>
-            <input type="tel" id="callbackPhone" placeholder="请输入手机号（必填）" style="width: 100%; padding: 12px 16px; border: 2px solid #e0e8f0; border-radius: 12px; font-size: 15px; outline: none; transition: border-color 0.3s; margin-bottom: 12px; color: #1a1a1a; box-sizing: border-box;" onfocus="this.style.borderColor='#1a5aaa'" onblur="this.style.borderColor='#e0e8f0'">
-            <button onclick="submitCallback()" style="width: 100%; background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; border: none; padding: 12px 20px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 16px rgba(231,76,60,0.35); transition: all 0.3s;" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(231,76,60,0.45)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 16px rgba(231,76,60,0.35)'">📲 立即预约回呼 →</button>
-            <div style="text-align: center; margin-top: 10px;">
-                <span style="font-size: 11px; color: #bbb;">点击即同意 <a href="#" style="color: #1a5aaa; text-decoration: none;">《隐私政策》</a> · 绝不骚扰，放心填写</span>
-            </div>
-            <div id="callbackSuccess" style="display: none; text-align: center; padding: 20px 0;">
-                <div style="font-size: 48px; margin-bottom: 12px;">✅</div>
-                <div style="font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px;">预约成功！</div>
-                <div style="font-size: 13px; color: #888; line-height: 1.6;">顾问将在 <strong style="color: #1a5aaa;">30分钟内</strong> 回电<br>请保持手机畅通～</div>
-            </div>
-        </div>
-    </div>
-    <script>
-    (function(){
-        var shown = false;
-        function showCallback() {
-            if(shown) return;
-            shown = true;
-            var el = document.getElementById('callbackModal');
-            el.style.opacity = '1';
-            el.style.transform = 'scale(1) translateY(0)';
-            el.style.pointerEvents = 'auto';
-        }
-        setTimeout(showCallback, 30000);
-        window.addEventListener('scroll', function(){
-            var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
-            var scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-            if(scrollHeight > 0 && scrollTop / scrollHeight > 0.8) showCallback();
-        }, {passive: true});
-    })();
-    function closeCallbackModal() {
-        var el = document.getElementById('callbackModal');
-        el.style.opacity = '0';
-        el.style.transform = 'scale(0.8) translateY(20px)';
-        el.style.pointerEvents = 'none';
-    }
-    function submitCallback() {
-        var phone = document.getElementById('callbackPhone').value.trim();
-        if(!phone || !/^1[3-9]\d{9}$/.test(phone)) {
-            alert('请输入正确的手机号码');
-            return;
-        }
-        var modal = document.getElementById('callbackModal').querySelector('div[style*="border-radius: 20px"]');
-        var inputs = modal.querySelectorAll('input, button[onclick="submitCallback()"], div[style*="margin-top: 10px"]');
-        inputs.forEach(function(el){ el.style.display = 'none'; });
-        document.getElementById('callbackSuccess').style.display = 'block';
-        setTimeout(closeCallbackModal, 5000);
-    }
-    </script>
-
-    <!-- V64: 网站运行状态指示器（极速迭代 - 增强访客信任感） -->
+<!-- V64: 网站运行状态指示器（极速迭代 - 增强访客信任感） -->
     <div id="siteStatusBadge" style="position: fixed; bottom: 24px; left: 24px; z-index: 9999; opacity: 0; transform: scale(0.8) translateY(20px); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;">
         <div style="background: rgba(255,255,255,0.95); border: 1px solid rgba(26,90,170,0.12); border-radius: 50px; padding: 8px 16px; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); backdrop-filter: blur(12px);">
             <div style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 8px rgba(34,197,94,0.5); animation: siteStatusPulse 2s ease-in-out infinite;" id="statusDot"></div>
@@ -1708,7 +1639,7 @@
     </script>
 
     <!-- V29: Mobile Floating Click-to-Call Button -->
-    <div id="floatingCallBtn" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; opacity: 0; transform: scale(0.8); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; position: relative;">
+    <div id="floatingCallBtn" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; opacity: 0; transform: scale(0.8); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;">
         <a href="tel:13711533226" style="display: flex; align-items: center; gap: 10px; background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; padding: 14px 20px; border-radius: 50px; font-size: 15px; font-weight: 700; text-decoration: none; box-shadow: 0 8px 32px rgba(231,76,60,0.4);" onclick="navigator.clipboard&&navigator.clipboard.writeText('13711533226').then(()=>{var t=document.getElementById('copyTip');if(t){t.style.opacity='1';t.style.transform='scale(1)';setTimeout(()=>{t.style.opacity='0';t.style.transform='scale(0.8)'},2000)}})">
             <span style="font-size: 22px;">📞</span>
             <span>137-1153-3226</span>
@@ -1812,7 +1743,7 @@
     </script>
 
     <!-- 页面滚动进度条 -->
-    <div id="scrollProgressBar" style="position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, #1a5aaa, #3b82f6, #4facfe); z-index: 1002; width: 0%; transition: width 0.1s ease-out; box-shadow: 0 0 10px rgba(26, 90, 170, 0.5);"></div>
+    <div id="scrollProgressBar" class="scroll-progress-bar" style="top: 0; left: 0; height: 3px; background: linear-gradient(90deg, #1a5aaa, #3b82f6, #4facfe); width: 0%; transition: width 0.1s ease-out;"></div>
 
     <!-- 核心价值常驻条：滚动超过hero后显示 -->
     <div id="stickyValueBar" style="position: fixed; top: 73px; left: 0; right: 0; background: linear-gradient(135deg, rgba(26,90,170,0.97) 0%, rgba(13,58,122,0.97) 100%); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 10px 0; z-index: 99; box-shadow: 0 4px 20px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-100%); transition: opacity 0.4s ease, transform 0.4s ease; pointer-events: none;">
@@ -2106,12 +2037,6 @@
                             </div>
                         </div>
                     </div>
-                    <style>
-                    @keyframes tickerScroll {
-                        0% { transform: translateX(0); }
-                        100% { transform: translateX(-50%); }
-                    }
-                    </style>
 
                     <!-- V50: Hero品牌客户Logo信任条 -->
                     <div style="margin-bottom: 18px; opacity: 0; animation: fadeInUp 0.8s ease 0.7s forwards;">
@@ -2165,12 +2090,6 @@
                             </div>
                         </div>
                     </div>
-                    <style>
-                    @keyframes brandScrollHero {
-                        0% { transform: translateX(0); }
-                        100% { transform: translateX(-50%); }
-                    }
-                    </style>
 
                     <!-- V46: Hero ROI Calculator Widget - 酒店类型智能适配版 -->
                     <div class="hero-roi-widget" id="heroRoiWidget">
@@ -2541,7 +2460,7 @@
                     <!-- 光环背景 -->
                     <div style="position: absolute; width: 400px; height: 400px; background: radial-gradient(circle, rgba(26,90,170,0.3) 0%, rgba(59,130,246,0.1) 40%, transparent 70%); border-radius: 50%; animation: pulseGlow 3s ease-in-out infinite;" id="heroProductGlow"></div>
                     <!-- 产品图 -->
-                    <img src="images/product-quiet.jpg" alt="领锁智能门锁LS02 - 精工品质静音设计" fetchpriority="high" decoding="async" style="width: 100%; max-width: 460px; border-radius: 20px; box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(79,172,254,0.1); position: relative; z-index: 1; transform: perspective(1000px) rotateY(-5deg) rotateX(2deg); transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), box-shadow 0.5s ease;" id="heroProductImg">
+                    <img src="https://lockclub.wangjile.cn/product-quiet.jpg" alt="领锁智能门锁LS02 - 精工品质静音设计" fetchpriority="high" decoding="async" style="width: 100%; max-width: 460px; border-radius: 20px; box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(79,172,254,0.1); position: relative; z-index: 1; transform: perspective(1000px) rotateY(-5deg) rotateX(2deg); transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), box-shadow 0.5s ease;" id="heroProductImg">
                     <!-- 3D悬浮视差光斑 -->
                     <div style="position: absolute; width: 200px; height: 200px; background: radial-gradient(circle, rgba(79,172,254,0.18) 0%, transparent 70%); border-radius: 50%; pointer-events: none; z-index: 0; transition: transform 0.3s ease; opacity: 0;" id="heroParallaxOrb"></div>
                     <!-- 悬浮标签 -->
@@ -4522,28 +4441,28 @@
                 <!-- 无感节电 -->
                 <div class="highlight-card" style="padding-top: 36px;">
                     <div style="position: absolute; top: 12px; left: 16px; background: linear-gradient(135deg, #1a5aaa, #3b82f6); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px;">亮点 1</div>
-                    <img src="images/highlight-power.jpg" alt="领锁智能门锁无感节电 - 人感识别智能断电客房电费节省20%以上" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
+                    <img src="https://lockclub.wangjile.cn/highlight-power.webp" alt="领锁智能门锁无感节电 - 人感识别智能断电客房电费节省20%以上" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
                     <h3>无感节电</h3>
                     <p>人感识别+智能断电，客房无人自动断电，电费节省20%以上，有感知不打扰客人</p>
                 </div>
                 <!-- 0.5秒极速开锁 -->
                 <div class="highlight-card" style="padding-top: 36px;">
                     <div style="position: absolute; top: 12px; left: 16px; background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px;">亮点 2</div>
-                    <img src="images/highlight-design.jpg" alt="领锁智能门锁0.5秒极速NFC碰一碰开锁 - 无需等待秒开进门体验流畅" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
+                    <img src="https://lockclub.wangjile.cn/highlight-design.webp" alt="领锁智能门锁0.5秒极速NFC碰一碰开锁 - 无需等待秒开进门体验流畅" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
                     <h3>0.5秒极速开锁</h3>
                     <p>NFC碰一碰，0.5秒极速响应，客人无需等待，秒开进门，体验流畅</p>
                 </div>
                 <!-- 换房无需前台 -->
                 <div class="highlight-card" style="padding-top: 36px;">
                     <div style="position: absolute; top: 12px; left: 16px; background: linear-gradient(135deg, #2d5a27, #1a3d15); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px;">亮点 3</div>
-                    <img src="images/highlight-install.jpg" alt="领锁智能门锁换房无需前台 - 线上远程授权手机直开效率提升50%" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
+                    <img src="https://lockclub.wangjile.cn/highlight-install.webp" alt="领锁智能门锁换房无需前台 - 线上远程授权手机直开效率提升50%" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
                     <h3>换房无需前台</h3>
                     <p>线上远程授权，客人换房手机直开，前台工作量大幅减少，效率提升50%+</p>
                 </div>
                 <!-- 双电路防常开 -->
                 <div class="highlight-card" style="padding-top: 36px;">
                     <div style="position: absolute; top: 12px; left: 16px; background: linear-gradient(135deg, #b45309, #92400e); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px;">亮点 4</div>
-                    <img src="images/highlight-quiet.jpg" alt="领锁智能门锁双电路防常开 - 断电保障稳定在线防飞房客房安全无忧" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
+                    <img src="https://lockclub.wangjile.cn/highlight-quiet.jpg" alt="领锁智能门锁双电路防常开 - 断电保障稳定在线防飞房客房安全无忧" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
                     <h3>双电路防常开</h3>
                     <p>双电路保护设计，断电保障门锁稳定在线，防飞房算法兜底，客房安全无忧</p>
                 </div>
@@ -4552,21 +4471,21 @@
                 <!-- 超低功耗27uA -->
                 <div class="highlight-card" style="padding-top: 36px;">
                     <div style="position: absolute; top: 12px; left: 16px; background: linear-gradient(135deg, #065f46, #047857); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px;">亮点 5</div>
-                    <img src="images/product-power.jpg" alt="领锁智能门锁超低功耗27微安 - 行业领先5年不换电池降低运维风险" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
+                    <img src="https://lockclub.wangjile.cn/product-power.jpg" alt="领锁智能门锁超低功耗27微安 - 行业领先5年不换电池降低运维风险" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
                     <h3>超低功耗 27μA</h3>
                     <p>行业领先功耗水平，一把门锁5年不换电池，大幅降低运维成本和客房中断风险</p>
                 </div>
                 <!-- 精工品质 -->
                 <div class="highlight-card" style="padding-top: 36px;">
                     <div style="position: absolute; top: 12px; left: 16px; background: linear-gradient(135deg, #92400e, #b45309); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px;">亮点 6</div>
-                    <img src="images/product-design.jpg" alt="领锁智能门锁精工品质 - 36项专利CE认证10000家酒店客户验证稳定可靠" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
+                    <img src="https://lockclub.wangjile.cn/product-design.webp" alt="领锁智能门锁精工品质 - 36项专利CE认证10000家酒店客户验证稳定可靠" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
                     <h3>精工品质</h3>
                     <p>36项专利技术，CE/MA/ICE/GA-374认证，10000+酒店客户验证，品质稳定可靠</p>
                 </div>
                 <!-- 极致静音 -->
                 <div class="highlight-card" style="padding-top: 36px;">
                     <div style="position: absolute; top: 12px; left: 16px; background: linear-gradient(135deg, #1e3a5f, #1a5aaa); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px;">亮点 7</div>
-                    <img src="images/product-quiet.jpg" alt="领锁智能门锁极致静音自动反锁 - 开锁噪音低于30分贝深夜不打扰关门自动反锁" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
+                    <img src="https://lockclub.wangjile.cn/product-quiet.jpg" alt="领锁智能门锁极致静音自动反锁 - 开锁噪音低于30分贝深夜不打扰关门自动反锁" class="highlight-image" width="400" height="300" loading="lazy" decoding="async">
                     <h3>极致静音 · 自动反锁</h3>
                     <p>开锁噪音低于30dB，深夜开门不打扰；关门自动反锁，客人安心入住</p>
                 </div>
@@ -6741,7 +6660,7 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end;" class="quick-quote-form">
                     <div>
                         <label style="display: block; color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 600; margin-bottom: 6px; letter-spacing: 0.5px;">房间数量</label>
-                        <input type="number" id="qqRooms" placeholder="例如：80" min="1" max="5000" style="width: 100%; padding: 12px 16px; border: 1px solid rgba(79,172,254,0.3); border-radius: 10px; background: rgba(255,255,255,0.08); color: #fff; font-size: 15px; font-weight: 600; outline: none; box-sizing: border-box;" onfocus="this.style.borderColor='rgba(79,172,254,0.7)';this.style.background='rgba(255,255,255,0.12)'" onblur="this.style.borderColor='rgba(79,172,254,0.3)';this.style.background='rgba(255,255,255,0.08)'">
+                        <input type="number" id="qqRooms" placeholder="例如：80" min="1" max="5000" oninput="clearQqError()" style="width: 100%; padding: 12px 16px; border: 1px solid rgba(79,172,254,0.3); border-radius: 10px; background: rgba(255,255,255,0.08); color: #fff; font-size: 15px; font-weight: 600; outline: none; box-sizing: border-box;" onfocus="this.style.borderColor='rgba(79,172,254,0.7)';this.style.background='rgba(255,255,255,0.12)'" onblur="this.style.borderColor='rgba(79,172,254,0.3)';this.style.background='rgba(255,255,255,0.08)'"><span id="qqRoomsError" style="display:none; color: #ff6b6b; font-size: 11px; margin-top: 4px; font-weight: 600;">⚠️ 请输入正确的房间数量</span>
                     </div>
                     <div>
                         <label style="display: block; color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 600; margin-bottom: 6px; letter-spacing: 0.5px;">酒店类型</label>
@@ -6777,13 +6696,24 @@
         </div>
     </section>
     <script>
+    // V63: 清除内联错误提示
+    function clearQqError() {
+        var errEl = document.getElementById('qqRoomsError');
+        var inputEl = document.getElementById('qqRooms');
+        if(errEl) errEl.style.display = 'none';
+        if(inputEl) inputEl.style.borderColor = 'rgba(79,172,254,0.3)';
+    }
     // V63: 快速报价预览计算
     function openQuickQuote() {
         var rooms = parseInt(document.getElementById('qqRooms').value);
         var type = document.getElementById('qqType').value;
         var preview = document.getElementById('qqPreviewResult');
         if (!rooms || rooms < 1) {
-            alert('请输入正确的房间数量');
+            // 显示内联错误提示
+            var errEl = document.getElementById('qqRoomsError');
+            var inputEl = document.getElementById('qqRooms');
+            if(errEl) { errEl.style.display = 'block'; inputEl.style.borderColor = '#ff6b6b'; }
+            return;
             return;
         }
         // 粗算：飞房损失约280元/间/月，电费节省约50元/间/月
@@ -6943,7 +6873,7 @@
         <div id="wechatQrcode" style="display:none; position: absolute; bottom: 80px; right: 0; background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); z-index: 9999; text-align: center; width: 220px;">
             <div style="position: absolute; bottom: -8px; right: 24px; width: 16px; height: 16px; background: #fff; transform: rotate(45deg); box-shadow: 2px 2px 8px rgba(0,0,0,0.1);"></div>
             <div style="font-size: 14px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">👋 扫码加微信</div>
-            <img src="images/contact-qrcode.png" alt="领锁智能微信二维码" style="width: 160px; height: 160px; border-radius: 8px; margin-bottom: 12px;" onerror="this.parentElement.innerHTML='<div style=\'padding:20px;text-align:center;color:#888;\'><div style=\'font-size:40px;margin-bottom:8px;'>📱</div><div style=\'font-size:13px;color:#555;margin-bottom:8px;\'>微信：lingsoffice</div><div style=\'font-size:12px;color:#1a5aaa;font-weight:600;\'>长按复制微信号</div></div>'">
+            <img src="https://lockclub.wangjile.cn/contact-qrcode.png" alt="领锁智能微信二维码" style="width: 160px; height: 160px; border-radius: 8px; margin-bottom: 12px;" onerror="this.parentElement.innerHTML='<div style=\'padding:20px;text-align:center;color:#888;\'><div style=\'font-size:40px;margin-bottom:8px;'>📱</div><div style=\'font-size:13px;color:#555;margin-bottom:8px;\'>微信：lingsoffice</div><div style=\'font-size:12px;color:#1a5aaa;font-weight:600;\'>长按复制微信号</div></div>'">
             <div style="font-size: 12px; color: #888;">或搜索微信号：lingsoffice</div>
             <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0;">
                 <a href="tel:13711533226" style="display: block; background: linear-gradient(135deg, #1a5aaa, #3b82f6); color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none;">📞 137-1153-3226</a>
@@ -7309,20 +7239,20 @@
     <footer class="footer">
         <div class="container">
             <!-- 支付安全认证条 -->
-            <div style="display: flex; justify-content: center; align-items: center; gap: 0; flex-wrap: wrap; margin-bottom: 24px; padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                <div style="display: flex; align-items: center; gap: 8px; padding: 0 20px; border-right: 1px solid rgba(255,255,255,0.1);">
+            <div style="display: flex; justify-content: center; align-items: center; gap: 0; flex-wrap: wrap; margin-bottom: 24px; padding: 16px 0; border-bottom: 1px solid rgba(0,0,0,0.12);">
+                <div style="display: flex; align-items: center; gap: 8px; padding: 0 20px; border-right: 1px solid rgba(0,0,0,0.12);">
                     <span style="font-size: 20px;">🔒</span>
                     <span style="color: rgba(255,255,255,0.6); font-size: 12px;">SSL加密传输</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px; padding: 0 20px; border-right: 1px solid rgba(255,255,255,0.1);">
+                <div style="display: flex; align-items: center; gap: 8px; padding: 0 20px; border-right: 1px solid rgba(0,0,0,0.12);">
                     <span style="font-size: 20px;">🛡️</span>
                     <span style="color: rgba(255,255,255,0.6); font-size: 12px;">ISO 27001</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px; padding: 0 20px; border-right: 1px solid rgba(255,255,255,0.1);">
+                <div style="display: flex; align-items: center; gap: 8px; padding: 0 20px; border-right: 1px solid rgba(0,0,0,0.12);">
                     <span style="font-size: 20px;">💳</span>
                     <span style="color: rgba(255,255,255,0.6); font-size: 12px;">对公转账</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px; padding: 0 20px; border-right: 1px solid rgba(255,255,255,0.1);">
+                <div style="display: flex; align-items: center; gap: 8px; padding: 0 20px; border-right: 1px solid rgba(0,0,0,0.12);">
                     <span style="font-size: 20px;">📜</span>
                     <span style="color: rgba(255,255,255,0.6); font-size: 12px;">合同合规</span>
                 </div>
@@ -7592,170 +7522,22 @@
         })();
     </script>
 
-    <!-- V28: 免费预约演示浮层 -->
-    <div id="demoPopup" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:center; justify-content:center;">
-        <div style="background:#fff; border-radius:20px; max-width:480px; width:90%; margin:20px; position:relative; box-shadow:0 24px 80px rgba(0,0,0,0.3); overflow:hidden; animation:fadeInUp 0.4s ease;">
-            <!-- 顶部渐变条 -->
-            <div style="background:linear-gradient(135deg,#1a5aaa,#3b82f6); padding:20px 24px; display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <div style="color:#4facfe; font-size:11px; font-weight:700; letter-spacing:1px; margin-bottom:4px;">🔥 限时权益</div>
-                    <h3 style="color:#fff; font-size:18px; font-weight:700; margin:0;">免费预约上门演示</h3>
-                </div>
-                <button onclick="closeDemoPopup()" style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); border-radius:50%; width:36px; height:36px; color:#fff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">×</button>
-            </div>
-            <!-- 表单内容 -->
-            <div style="padding:24px;">
-                <p style="font-size:14px; color:#666; margin:0 0 20px; line-height:1.6;">留下您的联系信息，领锁顾问将在<strong style="color:#1a5aaa;">2小时内</strong>致电，确认演示时间并发送专属方案。</p>
-                <form id="demoForm" onsubmit="return submitDemoForm(this)">
-                    <div style="margin-bottom:16px;">
-                        <label style="display:block; font-size:13px; font-weight:600; color:#1a1a1a; margin-bottom:6px;">酒店/公寓名称 <span style="color:#e74c3c;">*</span></label>
-                        <input type="text" name="hotel" placeholder="如：深圳大鹏海景公寓" required style="width:100%; padding:12px 16px; border:2px solid #e8f0fe; border-radius:10px; font-size:15px; outline:none; transition:border-color 0.3s;" onfocus="this.style.borderColor='#1a5aaa'" onblur="this.style.borderColor='#e8f0fe'">
-                    </div>
-                    <div style="margin-bottom:16px;">
-                        <label style="display:block; font-size:13px; font-weight:600; color:#1a1a1a; margin-bottom:6px;">客房数量 <span style="color:#e74c3c;">*</span></label>
-                        <input type="number" name="rooms" placeholder="如：58" min="1" max="10000" required style="width:100%; padding:12px 16px; border:2px solid #e8f0fe; border-radius:10px; font-size:15px; outline:none; transition:border-color 0.3s;" onfocus="this.style.borderColor='#1a5aaa'" onblur="this.style.borderColor='#e8f0fe'">
-                    </div>
-                    <div style="margin-bottom:16px;">
-                        <label style="display:block; font-size:13px; font-weight:600; color:#1a1a1a; margin-bottom:6px;">您的称呼 <span style="color:#e74c3c;">*</span></label>
-                        <input type="text" name="name" placeholder="如：陈老板" required style="width:100%; padding:12px 16px; border:2px solid #e8f0fe; border-radius:10px; font-size:15px; outline:none; transition:border-color 0.3s;" onfocus="this.style.borderColor='#1a5aaa'" onblur="this.style.borderColor='#e8f0fe'">
-                    </div>
-                    <div style="margin-bottom:20px;">
-                        <label style="display:block; font-size:13px; font-weight:600; color:#1a1a1a; margin-bottom:6px;">手机号码 <span style="color:#e74c3c;">*</span></label>
-                        <input type="tel" name="phone" placeholder="138-0000-0000" pattern="[0-9\-\s]{7,20}" required style="width:100%; padding:12px 16px; border:2px solid #e8f0fe; border-radius:10px; font-size:15px; outline:none; transition:border-color 0.3s;" onfocus="this.style.borderColor='#1a5aaa'" onblur="this.style.borderColor='#e8f0fe'">
-                    </div>
-                    <!-- 隐私提示 -->
-                    <div style="background:#f8fafc; border-radius:8px; padding:10px 12px; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:16px;">🔒</span>
-                        <span style="font-size:12px; color:#888;">您的信息严格保密，仅用于联系演示事宜，绝不外泄</span>
-                    </div>
-                    <button type="submit" style="width:100%; background:linear-gradient(135deg,#e74c3c,#c0392b); color:#fff; border:none; border-radius:12px; padding:16px; font-size:16px; font-weight:700; cursor:pointer; transition:all 0.3s; box-shadow:0 4px 16px rgba(231,76,60,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px rgba(231,76,60,0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 16px rgba(231,76,60,0.3)'">🎯 立即预约免费演示</button>
-                </form>
-                <div id="demoFormSuccess" style="display:none; text-align:center; padding:24px 0;">
-                    <div style="font-size:48px; margin-bottom:12px;">✅</div>
-                    <h4 style="font-size:18px; font-weight:700; color:#1a1a1a; margin-bottom:8px;">预约成功！</h4>
-                    <p style="font-size:14px; color:#666; line-height:1.6;">领锁顾问将在<strong style="color:#1a5aaa;">2小时内</strong>致电确认演示时间，请保持电话畅通~</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- V40: 底部快捷联系栏（升级紧迫感） -->
-    <div id="quickContactBar" style="display:none; position:fixed; bottom:0; left:0; right:0; background:linear-gradient(135deg,rgba(26,90,170,0.97),rgba(13,58,122,0.97)); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); padding:12px 24px; z-index:98; box-shadow:0 -4px 20px rgba(0,0,0,0.15); justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+    <!-- V40: 底部快捷联系栏（始终可见，用户主动触发预约） -->
+    <div id="quickContactBar" style="position:fixed; bottom:0; left:0; right:0; background:linear-gradient(135deg,rgba(26,90,170,0.97),rgba(13,58,122,0.97)); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); padding:12px 24px; z-index:98; box-shadow:0 -4px 20px rgba(0,0,0,0.15); justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
         <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
             <div style="color:#fff;">
                 <span style="font-size:15px; font-weight:700;">🔒 领锁智能 · 锦江认证供应商</span>
-                <span style="color:#ff6b6b; font-size:12px; margin-left:12px; background:rgba(255,107,107,0.15); padding:2px 8px; border-radius:10px;">🔥 仅剩<span id="spotsLeft">38</span>个免费演示名额</span>
-                <span id="socialProof" style="color:#7dd87d; font-size:12px; margin-left:10px; background:rgba(125,216,125,0.12); padding:2px 8px; border-radius:10px; display:none;">✅ 今日<span id="todayBookings">7</span>位酒店老板已预约</span>
+                <span style="color:#ff6b6b; font-size:12px; margin-left:12px; background:rgba(255,107,107,0.15); padding:2px 8px; border-radius:10px;">🔥 前50名：免费上门演示</span>
             </div>
         </div>
         <div style="display:flex; gap:10px; align-items:center; flex-shrink:0;">
-            <span id="countdownTimer" style="color:rgba(255,255,255,0.6); font-size:12px; display:none;"><span id="countdownTime">23:59</span>后恢复原价</span>
             <a href="tel:13711533226" style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); color:#fff; padding:8px 16px; border-radius:20px; font-size:13px; font-weight:600; text-decoration:none; transition:all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">📞 137-1153-3226</a>
-            <button onclick="openDemoPopup()" style="display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg,#e74c3c,#c0392b); color:#fff; padding:8px 18px; border-radius:20px; font-size:13px; font-weight:700; cursor:pointer; border:none; text-decoration:none; box-shadow:0 2px 8px rgba(231,76,60,0.3); transition:all 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">🏆 今晚就预约 →</button>
+            <a href="contact.html" style="display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg,#e74c3c,#c0392b); color:#fff; padding:8px 18px; border-radius:20px; font-size:13px; font-weight:700; text-decoration:none; box-shadow:0 2px 8px rgba(231,76,60,0.3); transition:all 0.3s;">🏆 立即预约 →</a>
         </div>
     </div>
 
     <script>
-    // V28: 浮层弹窗逻辑
-    var popupShown = false;
-    function openDemoPopup() {
-        var popup = document.getElementById('demoPopup');
-        if (popup) { popup.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
-    }
-    function closeDemoPopup() {
-        var popup = document.getElementById('demoPopup');
-        if (popup) { popup.style.display = 'none'; document.body.style.overflow = ''; }
-    }
-    // 点击遮罩关闭
-    document.addEventListener('click', function(e) {
-        var popup = document.getElementById('demoPopup');
-        if (popup && e.target === popup) closeDemoPopup();
-    });
-    // ESC键关闭
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeDemoPopup();
-    });
-    // 表单提交
-    function submitDemoForm(form) {
-        var formData = new FormData(form);
-        var data = {};
-        formData.forEach(function(value, key) { data[key] = value; });
-        console.log('预约演示数据:', data);
-        // 隐藏表单，显示成功
-        form.style.display = 'none';
-        document.getElementById('demoFormSuccess').style.display = 'block';
-        // 3秒后自动关闭
-        setTimeout(closeDemoPopup, 3000);
-        return false;
-    }
-    // 滚动超过80%时显示底部联系栏
-    // V41: 实时社会证明 + 倒计时
-    function updateCountdown() {
-        var now = new Date();
-        var midnight = new Date();
-        midnight.setHours(24, 0, 0, 0);
-        var diff = midnight - now;
-        var hours = Math.floor(diff / 3600000);
-        var minutes = Math.floor((diff % 3600000) / 60000);
-        var el = document.getElementById('countdownTime');
-        if (el) el.textContent = String(hours).padStart(2,'0') + ':' + String(minutes).padStart(2,'0');
-    }
-    function initBottomBar() {
-        var today = new Date().toDateString();
-        var stored = localStorage.getItem('lingsuo_demo_date');
-        var bookings = parseInt(localStorage.getItem('lingsuo_today_bookings') || '0');
-        if (stored !== today) {
-            bookings = Math.floor(Math.random() * 9) + 1;
-            localStorage.setItem('lingsuo_demo_date', today);
-            localStorage.setItem('lingsuo_today_bookings', String(bookings));
-        }
-        var se = document.getElementById('socialProof');
-        var be = document.getElementById('todayBookings');
-        if (se && be) { be.textContent = bookings; se.style.display = 'inline'; }
-        var dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-        var spots = 38 - (dayOfYear % 38);
-        var le = document.getElementById('spotsLeft');
-        if (le) le.textContent = Math.max(spots, 3);
-        var te = document.getElementById('countdownTimer');
-        if (te) te.style.display = 'inline';
-        updateCountdown();
-        setInterval(updateCountdown, 60000);
-    }
-
-    window.addEventListener('scroll', function() {
-        var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
-        var scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-        var progress = scrollTop / scrollHeight;
-        var bar = document.getElementById('quickContactBar');
-        if (bar) {
-            if (progress > 0.3) {
-                bar.style.display = 'flex';
-                if (!bar.dataset.inited) {
-                    bar.dataset.inited = '1';
-                    initBottomBar();
-                }
-            } else {
-                bar.style.display = 'none';
-            }
-        }
-        // 浮层：滚动50%时触发一次
-        if (progress > 0.5 && !popupShown) {
-            popupShown = true;
-            setTimeout(openDemoPopup, 2000);
-        }
-    });
-    // 页面底部CTA区域：滚动到此处时显示浮层
-    var ctaObserver = new IntersectionObserver(function(entries) {
-        entries.forEach(function(entry) {
-            if (entry.isIntersecting && !popupShown) {
-                popupShown = true;
-                setTimeout(openDemoPopup, 1500);
-            }
-        });
-    }, {threshold: 0.5});
-    document.querySelectorAll('.cta, .honors-cta').forEach(function(el) {
-        ctaObserver.observe(el);
-    });
+    // 底部联系栏始终显示，无需JS逻辑
     </script>
     <!-- V54: 退出意图弹窗（Exit Intent Popup） -->
     <div id="exitIntentPopup" class="exit-intent-popup">
