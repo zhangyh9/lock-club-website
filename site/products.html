@@ -1893,6 +1893,63 @@
         </div>
     </section>
 
+    <!-- V2: 底部粘性联系栏（极速迭代 - 移动端转化关键） -->
+    <div id="quickContactBar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:998;background:linear-gradient(135deg,#1a1a2e,#0d3a7a);border-top:1px solid rgba(79,172,254,0.25);padding:14px 20px;gap:12px;box-shadow:0 -4px 24px rgba(0,0,0,0.2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);" id="quickContactBarInner">
+        <div style="display:flex;align-items:center;gap:12px;max-width:1200px;margin:0 auto;">
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">领锁LS02 · 酒店智能门锁</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.55);">30分钟内获取专属方案</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-shrink:0;">
+                <a href="tel:13711533226" style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#1a5aaa,#3b82f6);color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;box-shadow:0 2px 8px rgba(26,90,170,0.4);">
+                    📞 电话咨询
+                </a>
+                <a href="contact.html" style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;">
+                    💬 微信咨询
+                </a>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function(){
+        var bar = document.getElementById('quickContactBar');
+        if(!bar) return;
+        var lastScrollY = 0;
+        var ticking = false;
+        function updateBar(){
+            var scrollY = window.scrollY || window.pageYOffset;
+            var docH = document.documentElement.scrollHeight;
+            var winH = window.innerHeight;
+            // 显示条件：滚动超过600px且未滚到底部CTA区域
+            var atBottom = (scrollY + winH >= docH - 200);
+            if(scrollY > 600 && !atBottom){
+                bar.style.display = '';
+                bar.style.opacity = '1';
+                bar.style.transform = 'translateY(0)';
+                bar.style.transition = 'opacity 0.3s, transform 0.3s';
+            } else {
+                bar.style.opacity = '0';
+                bar.style.transform = 'translateY(100%)';
+                setTimeout(function(){ if(bar.style.opacity === '0') bar.style.display = 'none'; }, 300);
+            }
+            lastScrollY = scrollY;
+            ticking = false;
+        }
+        window.addEventListener('scroll', function(){
+            if(!ticking){ window.requestAnimationFrame(updateBar); ticking = true; }
+        }, {passive:true});
+        // 移动端检测（屏幕窄时始终显示简化版）
+        function mobileBarCheck(){
+            if(window.innerWidth <= 640){
+                var barInner = document.getElementById('quickContactBarInner');
+                if(barInner) barInner.style.flexDirection = 'column';
+            }
+        }
+        mobileBarCheck();
+        window.addEventListener('resize', mobileBarCheck);
+    })();
+    </script>
+
     <!-- 竞品对比 -->
     <section style="padding: 64px 0; background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);">
         <div class="container" style="max-width: 960px;">
@@ -1978,10 +2035,40 @@
     <section style="padding: 64px 0; background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);">
         <div class="container" style="max-width: 900px;">
             <h2 class="section-title" style="margin-bottom: 40px;">产品常见疑问</h2>
+            <!-- V2: FAQ Schema增强 + 更多问题 -->
+            <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "speakable": {
+                    "@type": "SpeakableSpecification",
+                    "cssSelector": [".faq-item summary"],
+                    "xpath": ["/html/body/section[last()-1]/div/div/details/summary"]
+                },
+                "mainEntity": [
+                    {"@type": "Question", "name": "领锁LS02门锁支持哪些开锁方式？", "acceptedAnswer": {"@type": "Answer", "text": "领锁LS02支持6种开锁方式：NFC碰一碰开锁（0.5秒极速）、密码开锁、CPU卡开锁、蓝牙开锁、小度语音开锁、传统机械钥匙。满足不同年龄层、不同习惯的客人需求。"}},
+                    {"@type": "Question", "name": "门锁电池多久换一次？有没有低电量提醒？", "acceptedAnswer": {"@type": "Answer", "text": "领锁LS02采用27μA超低功耗设计，在标准使用场景下可稳定运行5年以上。门锁配备低电量预警功能，电量低于20%时会自动发送提醒到管理后台。"}},
+                    {"@type": "Question", "name": "门锁坏了怎么办？保修期是多久？", "acceptedAnswer": {"@type": "Answer", "text": "领锁LS02提供2年全免费保修，非人为损坏免费更换。配合7×24小时运维响应、2小时上门服务，确保门锁故障第一时间解决。"}},
+                    {"@type": "Question", "name": "小度语音智慧房是配套的还是单独购买的？", "acceptedAnswer": {"@type": "Answer", "text": "小度语音智慧房是领锁的增值配套方案，可以与LS02门锁组合采购。联合小度官方打造智能语音客控体验，灯光、空调、窗帘一句话搞定。"}},
+                    {"@type": "Question", "name": "老酒店改造需要多久？会影响正常营业吗？", "acceptedAnswer": {"@type": "Answer", "text": "领锁采用不换锁体直接改装工艺，100间客房约5-7天完成，施工期间不影响酒店正常营业。安装团队全程规范化操作，客房当天改造当天可用。"}},
+                    {"@type": "Question", "name": "100间客房改下来要多少预算？", "acceptedAnswer": {"@type": "Answer", "text": "100间客房根据方案不同，整体投入约22-35万元（含门锁、人感节电器、安装调试、2年质保）。划算账：100间酒店年省电费约8万+年挽回飞房损失约25万=首年净收益15万+，0.8-1.5年即可回本。"}},
+                    {"@type": "Question", "name": "领锁支持哪些PMS系统对接？", "acceptedAnswer": {"@type": "Answer", "text": "领锁支持PMS系统直连对接（OTA/客栈/西软/别样红等主流系统），同时支持微信小程序管理、批量发卡、实时监控、故障告警、数据统计等功能。"}}
+                ]
+            }
+            </script>
+            <!-- 热门标签 -->
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;">
+                <span style="background:linear-gradient(135deg,#fff,rgba(26,90,170,0.05));border:1px solid rgba(26,90,170,0.2);color:#1a5aaa;font-size:12px;font-weight:600;padding:4px 14px;border-radius:20px;">🔥 热门问题</span>
+                <span style="background:rgba(26,90,170,0.06);border:1px solid rgba(26,90,170,0.12);color:#666;font-size:12px;padding:4px 14px;border-radius:20px;">🔒 开锁方式</span>
+                <span style="background:rgba(26,90,170,0.06);border:1px solid rgba(26,90,170,0.12);color:#666;font-size:12px;padding:4px 14px;border-radius:20px;">🔋 电池续航</span>
+                <span style="background:rgba(26,90,170,0.06);border:1px solid rgba(26,90,170,0.12);color:#666;font-size:12px;padding:4px 14px;border-radius:20px;">💰 改造预算</span>
+                <span style="background:rgba(26,90,170,0.06);border:1px solid rgba(26,90,170,0.12);color:#666;font-size:12px;padding:4px 14px;border-radius:20px;">🛠️ 保修服务</span>
+            </div>
             <div style="display: flex; flex-direction: column; gap: 16px;">
                 <details class="faq-item">
                     <summary>
                         <span style="color: #1a5aaa;">🔒</span> 领锁LS02门锁支持哪些开锁方式？
+                        <span style="margin-left:4px;background:rgba(231,76,60,0.1);color:#e74c3c;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">热门</span>
                         <span class="faq-icon"><span class="faq-plus">+</span></span>
                     </summary>
                     <div class="faq-answer">领锁LS02支持<strong>6种开锁方式</strong>：NFC碰一碰开锁（0.5秒极速）、密码开锁、CPU卡开锁、蓝牙开锁、小度语音开锁、传统机械钥匙。满足不同年龄层、不同习惯的客人需求。</div>
@@ -1989,6 +2076,7 @@
                 <details class="faq-item">
                     <summary>
                         <span style="color: #1a5aaa;">🔋</span> 门锁电池多久换一次？有没有低电量提醒？
+                        <span style="margin-left:4px;background:rgba(231,76,60,0.1);color:#e74c3c;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">热门</span>
                         <span class="faq-icon"><span class="faq-plus">+</span></span>
                     </summary>
                     <div class="faq-answer">领锁LS02采用<strong>27μA超低功耗设计</strong>，在标准使用场景下可稳定运行5年以上。门锁配备低电量预警功能，电量低于20%时会自动发送提醒到管理后台，确保酒店运维人员及时更换电池。</div>
@@ -2006,6 +2094,29 @@
                         <span class="faq-icon"><span class="faq-plus">+</span></span>
                     </summary>
                     <div class="faq-answer">小度语音智慧房是领锁的<strong>增值配套方案</strong>，可以与LS02门锁组合采购。联合小度官方打造智能语音客控体验，灯光、空调、窗帘一句话搞定，打造差异化高端客房体验，提升客人好评率。</div>
+                </details>
+                <details class="faq-item">
+                    <summary>
+                        <span style="color: #1a5aaa;">🏗️</span> 老酒店改造需要多久？会影响正常营业吗？
+                        <span style="margin-left:4px;background:rgba(59,130,246,0.1);color:#3b82f6;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">改造必看</span>
+                        <span class="faq-icon"><span class="faq-plus">+</span></span>
+                    </summary>
+                    <div class="faq-answer">领锁采用不换锁体直接改装工艺，100间客房约5-7天完成，施工期间不影响酒店正常营业。安装团队全程规范化操作，客房当天改造当天可用。</div>
+                </details>
+                <details class="faq-item">
+                    <summary>
+                        <span style="color: #1a5aaa;">💰</span> 100间客房改下来要多少预算？
+                        <span style="margin-left:4px;background:rgba(231,76,60,0.1);color:#e74c3c;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">热门</span>
+                        <span class="faq-icon"><span class="faq-plus">+</span></span>
+                    </summary>
+                    <div class="faq-answer">100间客房根据方案不同，整体投入约22-35万元（含门锁、人感节电器、安装调试、2年质保）。划算账：100间酒店年省电费约8万+年挽回飞房损失约25万=首年净收益15万+，0.8-1.5年即可回本。</div>
+                </details>
+                <details class="faq-item">
+                    <summary>
+                        <span style="color: #1a5aaa;">🔌</span> 领锁支持哪些PMS系统对接？
+                        <span class="faq-icon"><span class="faq-plus">+</span></span>
+                    </summary>
+                    <div class="faq-answer">领锁支持PMS系统直连对接（OTA/客栈/西软/别样红等主流系统），同时支持微信小程序管理、批量发卡、实时监控、故障告警、数据统计等功能。</div>
                 </details>
             </div>
             <div style="text-align: center; margin-top: 32px;">
