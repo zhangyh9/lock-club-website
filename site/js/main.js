@@ -474,7 +474,7 @@
         btn.id = 'backToTop';
         btn.innerHTML = '↑';
         btn.setAttribute('aria-label', '回到顶部');
-        btn.style.cssText = 'position:fixed;bottom:100px;right:32px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a5aaa,#3b82f6);color:#fff;border:none;cursor:pointer;font-size:22px;box-shadow:0 4px 16px rgba(26,90,170,0.3);opacity:0;transform:translateY(20px);transition:all 0.3s ease;z-index:998;pointer-events:none;';
+        btn.style.cssText = 'position:fixed;bottom:100px;right:32px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#886cff,#a782ff);color:#fff;border:none;cursor:pointer;font-size:22px;box-shadow:0 4px 16px rgba(26,90,170,0.3);opacity:0;transform:translateY(20px);transition:all 0.3s ease;z-index:998;pointer-events:none;';
         document.body.appendChild(btn);
 
         window.addEventListener('scroll', function() {
@@ -511,7 +511,7 @@
         const bar = document.createElement('div');
         bar.id = 'stickyMobileBar';
         bar.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#fff;padding:10px 12px;display:flex;gap:8px;align-items:center;box-shadow:0 -4px 20px rgba(0,0,0,0.12);z-index:998;transform:translateY(100%);transition:transform 0.3s ease;';
-        bar.innerHTML = '<a href="tel:13711533226" style="flex:1;background:#1a5aaa;color:#fff;text-align:center;padding:10px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;">📞 致电</a><button onclick="showWechatQR()" style="flex:1;background:#07c160;color:#fff;border:none;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">💬 微信</button><a href="contact.html" style="flex:1;background:#f5f5f5;color:#1a1a1a;text-align:center;padding:10px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #e0e0e0;">✉️ 留言</a>';
+        bar.innerHTML = '<a href="tel:13711533226" style="flex:1;background:#886cff;color:#fff;text-align:center;padding:10px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;">📞 致电</a><button onclick="showWechatQR()" style="flex:1;background:#07c160;color:#fff;border:none;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">💬 微信</button><a href="contact.html" style="flex:1;background:#f5f5f5;color:#1a1a1a;text-align:center;padding:10px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #e0e0e0;">✉️ 留言</a>';
         document.body.appendChild(bar);
 
         window.addEventListener('scroll', function() {
@@ -536,8 +536,8 @@
             '<h3 style="font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:4px;">添加微信咨询</h3>' +
             '<p style="font-size:12px;color:#888;margin-bottom:16px;">长按识别或搜索微信号</p>' +
             '<img src="images/contact-qrcode.png" alt="领锁微信二维码" style="width:200px;height:200px;border-radius:12px;border:1px solid #eee;margin-bottom:12px;" onerror="this.style.display=\'none\'">' +
-            '<div style="background:#f5f7ff;border-radius:8px;padding:10px;font-size:13px;color:#1a5aaa;font-weight:600;">微信号：lock-club</div>' +
-            '<div style="margin-top:14px;"><a href="tel:13711533226" style="display:inline-flex;align-items:center;gap:6px;background:#1a5aaa;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">📞 致电 137-1153-3226</a></div>' +
+            '<div style="background:#f5f7ff;border-radius:8px;padding:10px;font-size:13px;color:#886cff;font-weight:600;">微信号：lock-club</div>' +
+            '<div style="margin-top:14px;"><a href="tel:13711533226" style="display:inline-flex;align-items:center;gap:6px;background:#886cff;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">📞 致电 137-1153-3226</a></div>' +
             '</div>';
         modal.addEventListener('click', function(e) {
             if (e.target === modal) modal.remove();
@@ -582,7 +582,7 @@
             });
 
             input.addEventListener('focus', function() {
-                this.style.borderColor = '#1a5aaa';
+                this.style.borderColor = '#886cff';
                 this.style.boxShadow = '0 0 0 3px rgba(26,90,170,0.15)';
             });
         });
