@@ -474,7 +474,7 @@
         btn.id = 'backToTop';
         btn.innerHTML = '↑';
         btn.setAttribute('aria-label', '回到顶部');
-        btn.style.cssText = 'position:fixed;bottom:100px;right:32px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#886cff,#a782ff);color:#fff;border:none;cursor:pointer;font-size:22px;box-shadow:0 4px 16px rgba(26,90,170,0.3);opacity:0;transform:translateY(20px);transition:all 0.3s ease;z-index:998;pointer-events:none;';
+        btn.style.cssText = 'position:fixed;bottom:100px;right:32px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#886cff,#a782ff);color:#fff;border:none;cursor:pointer;font-size:22px;box-shadow:0 4px 16px rgba(136,108,255,0.3);opacity:0;transform:translateY(20px);transition:all 0.3s ease;z-index:998;pointer-events:none;';
         document.body.appendChild(btn);
 
         window.addEventListener('scroll', function() {
@@ -495,11 +495,11 @@
 
         btn.addEventListener('mouseenter', function() {
             this.style.transform = 'translateY(-3px) scale(1.1)';
-            this.style.boxShadow = '0 8px 24px rgba(26,90,170,0.4)';
+            this.style.boxShadow = '0 8px 24px rgba(136,108,255,0.4)';
         });
         btn.addEventListener('mouseleave', function() {
             this.style.transform = 'translateY(0) scale(1)';
-            this.style.boxShadow = '0 4px 16px rgba(26,90,170,0.3)';
+            this.style.boxShadow = '0 4px 16px rgba(136,108,255,0.3)';
         });
     }
 
@@ -583,7 +583,7 @@
 
             input.addEventListener('focus', function() {
                 this.style.borderColor = '#886cff';
-                this.style.boxShadow = '0 0 0 3px rgba(26,90,170,0.15)';
+                this.style.boxShadow = '0 0 0 3px rgba(136,108,255,0.15)';
             });
         });
 
