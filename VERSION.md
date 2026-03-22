@@ -62,7 +62,9 @@
 |------|----------|--------------|
 | **V77** | 70160b0 | fix: 全站JSON-LD统一加defer优化（contact/products/cases/tech/journal.html + EN站）+ Vercel今日额度用尽待明天部署 | 极速迭代
 
-| **V78** | 98c54d4 | fix: PWA全站完整覆盖（CN站journal/cases/tech/products.html补sw.js注册）+ EN站5页面iOS安全区适配（viewport-fit+Apple PWA meta）+ contact.html表单autocomplete属性优化（name/organization/tel）+ Vercel今日额度用尽待明天部署 | 极速迭代
+| **V79** | cb7d8bd | fix: EN站5个页面PWA路径修正（manifest/sw.js从/改为../）+ EN站4个页面新增CDN预连接（dns-prefetch+preconnect）+ manifest.json新增scope: "/"优化PWA作用范围 | 极速迭代
+
+| **V78** | 98c54d4 | fix: PWA全站完整覆盖（CN站journal/cases/tech/products.html补sw.js注册）+ EN站5页面iOS安全区适配（viewport-fit+Apple PWA meta）+ contact.html表单autocomplete属性优化（name/organization/tel） | 极速迭代
 
 | **V1** | c7da961 | UI升级：滚动动画+3D卡片+Hamburger菜单 |
 | **V2** | 0fab77a | 七大亮点+三大价值+产品参数增强 |
