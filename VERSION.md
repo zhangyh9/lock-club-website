@@ -60,6 +60,8 @@
 
 | 版本 | 提交Hash | 核心升级内容 |
 |------|----------|--------------|
+| **V77** | 70160b0 | fix: 全站JSON-LD统一加defer优化（contact/products/cases/tech/journal.html + EN站）+ Vercel今日额度用尽待明天部署 | 极速迭代
+
 | **V1** | c7da961 | UI升级：滚动动画+3D卡片+Hamburger菜单 |
 | **V2** | 0fab77a | 七大亮点+三大价值+产品参数增强 |
 | **V3** | 5f3ced3 | 悬浮按钮+服务流程+Hero图标+FAQ |
