@@ -4,6 +4,8 @@
 
 ---
 
+- V74 | fix: PWA manifest+sw.js全站支持 + index.html修复og标签+canonical+TwitterCard + nav aria-label无障碍优化 | 极速迭代
+
 - V73 | fix: JSON-LD合并优化+nav-logo懒加载+robots.txt修复+FAQPage去重 | 极速迭代
 
 - V72 | fix: 微信二维码图片添加lazy+async优化 | 极速迭代
