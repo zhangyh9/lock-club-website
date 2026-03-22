@@ -844,20 +844,84 @@ section {
     line-height: 1.6;
 }
 
-/* Highlight number counter */
+/* Highlight number counter - V95: 超大数字展示 80-120px + 渐变色 + 计数动画 */
 .highlight-number {
-    font-size: 42px;
-    font-weight: 700;
-    color: #886cff;
+    font-size: 88px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #a78bfa 0%, #886cff 40%, #7c5cff 60%, #a78bfa 100%);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
     margin-bottom: 8px;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     font-display: swap;
+    line-height: 1.1;
+    letter-spacing: -2px;
+    animation: gradientShift 3s ease infinite, countPulse 2s ease-in-out infinite;
+    position: relative;
+    overflow: visible;
 }
 
 .highlight-number .unit {
-    font-size: 20px;
-    font-weight: 500;
-    color: #7c5cff;
+    font-size: 36px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* 渐变色流动动画 */
+@keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* 数字脉冲计数动画 */
+@keyframes countPulse {
+    0%, 100% { transform: scale(1); }
+    10% { transform: scale(1.03); }
+    20% { transform: scale(1); }
+    30% { transform: scale(1.02); }
+    40% { transform: scale(1); }
+}
+
+/* 数字光泽扫光效果 */
+.highlight-number::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    animation: numberShine 4s ease-in-out infinite;
+}
+
+@keyframes numberShine {
+    0% { left: -100%; }
+    20%, 100% { left: 200%; }
+}
+
+/* 移动端数字大小响应式 */
+@media (max-width: 640px) {
+    .highlight-number {
+        font-size: 64px;
+        letter-spacing: -1px;
+    }
+    .highlight-number .unit {
+        font-size: 28px;
+    }
+}
+
+@media (max-width: 480px) {
+    .highlight-number {
+        font-size: 56px;
+    }
+    .highlight-number .unit {
+        font-size: 24px;
+    }
 }
 
 /* ===== Products Grid ===== */
