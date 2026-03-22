@@ -4,6 +4,7 @@
 
 ---
 
+- V76 | fix: EN站SEO全面完善 - en/cases/contact/journal补JSON-LD + 新建en/privacy.html和en/tech.html（sitemap.xml引用但文件缺失）| 极速迭代
 - V75 | fix: 移除index.html和contact.html生产环境console.log调试语句 + contact.html alert()升级为privacy.html外链（GDPR合规优化）| 极速迭代
 
 - V74 | fix: PWA manifest+sw.js全站支持 + index.html修复og标签+canonical+TwitterCard + nav aria-label无障碍优化 | 极速迭代
