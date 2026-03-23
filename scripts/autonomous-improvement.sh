@@ -28,21 +28,21 @@ if grep -q 'og:image.*placeholder' index.html 2>/dev/null; then
 fi
 
 # 检查3: 死代码注释（简单清理）
-DEAD_CODE=$(grep -c "TODO\|FIXME\|XXX" js/main.js 2>/dev/null || echo 0)
+DEAD_CODE=$( (grep -cE "TODO|FIXME|XXX" js/main.js || echo 0) | head -1)
 if [ "$DEAD_CODE" -gt 5 ]; then
     ISSUE_FOUND="TODO/FIXME注释($DEAD_CODE处)"
     ACTION_TAKEN="发现死代码注释需人工审核"
 fi
 
 # 检查4: 空alt标签
-EMPTY_ALT=$(grep -c 'alt=""' index.html 2>/dev/null || echo 0)
+EMPTY_ALT=$(grep -c 'alt=""' index.html 2>/dev/null || echo "0")
 if [ "$EMPTY_ALT" -gt 0 ]; then
     ISSUE_FOUND="空alt标签($EMPTY_ALT处)"
     ACTION_TAKEN="发现空alt标签需人工审核"
 fi
 
-# 如果有修复，提交
-if [ -n "$ACTION_TAKEN" ] && [ "$ACTION_TAKEN" != "发现需人工审核" ]; then
+# 如果有修复，提交（排除需人工审核的情况）
+if [ -n "$ACTION_TAKEN" ] && [[ "$ACTION_TAKEN" != *"需人工审核"* ]]; then
     cd /Users/hugo/.openclaw/workspace/lock-club-website
     git add -A
     git commit -m "fix(自主改进): $ACTION_TAKEN
