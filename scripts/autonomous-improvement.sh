@@ -28,14 +28,16 @@ if grep -q 'placeholder-og-image.png' index.html 2>/dev/null; then
 fi
 
 # 检查3: 死代码注释（需人工审核）
-DEAD_CODE=$(grep -cE "TODO|FIXME|XXX" js/main.js 2>/dev/null || echo "0")
+DEAD_CODE=$(grep -cE "TODO|FIXME|XXX" js/main.js 2>/dev/null || :)
+DEAD_CODE=${DEAD_CODE:-0}
 if [ "$DEAD_CODE" -gt 5 ]; then
     ISSUE_FOUND="TODO/FIXME注释($DEAD_CODE处)"
     ACTION_TAKEN="发现死代码注释需人工审核"
 fi
 
 # 检查4: 空alt标签
-EMPTY_ALT=$(grep -c 'alt=""' index.html 2>/dev/null || echo "0")
+EMPTY_ALT=$(grep -c 'alt=""' index.html 2>/dev/null || :)
+EMPTY_ALT=${EMPTY_ALT:-0}
 if [ "$EMPTY_ALT" -gt 0 ]; then
     ISSUE_FOUND="空alt标签($EMPTY_ALT处)"
     ACTION_TAKEN="发现空alt标签需人工审核"
