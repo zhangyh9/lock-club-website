@@ -2287,17 +2287,17 @@
                     </p>
                     <!-- 三大价值标签 -->
                     <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 48px; opacity: 0; animation: fadeInUp 0.5s ease 0.4s forwards;">
-                        <div style="background: linear-gradient(135deg, rgba(26,26,46,0.9), rgba(22,33,62,0.9)); border: 1px solid rgba(136,108,255,0.3); border-radius: 12px; padding: 16px 24px; text-align: center; min-width: 150px;">
+                        <div class="hero-card-tilt" style="background: linear-gradient(135deg, rgba(26,26,46,0.9), rgba(22,33,62,0.9)); border: 1px solid rgba(136,108,255,0.3); border-radius: 12px; padding: 16px 24px; text-align: center; min-width: 150px;">
                             <div style="font-size: 24px; margin-bottom: 4px;">🏨</div>
                             <div style="color: #a78bfa; font-size: 15px; font-weight: 700;">房费守得住</div>
                             <div style="color: rgba(255,255,255,0.5); font-size: 11px; margin-top: 2px;">AI防飞房</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, rgba(136,108,255,0.4), rgba(13,58,122,0.6)); border: 1px solid rgba(136,108,255,0.3); border-radius: 12px; padding: 16px 24px; text-align: center; min-width: 150px;">
+                        <div class="hero-card-tilt" style="background: linear-gradient(135deg, rgba(136,108,255,0.4), rgba(13,58,122,0.6)); border: 1px solid rgba(136,108,255,0.3); border-radius: 12px; padding: 16px 24px; text-align: center; min-width: 150px;">
                             <div style="font-size: 24px; margin-bottom: 4px;">⚡</div>
                             <div style="color: #fff; font-size: 15px; font-weight: 700;">电费省20%</div>
                             <div style="color: rgba(255,255,255,0.5); font-size: 11px; margin-top: 2px;">人感节电</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, rgba(45,90,39,0.4), rgba(26,61,21,0.6)); border: 1px solid rgba(125,216,125,0.3); border-radius: 12px; padding: 16px 24px; text-align: center; min-width: 150px;">
+                        <div class="hero-card-tilt" style="background: linear-gradient(135deg, rgba(45,90,39,0.4), rgba(26,61,21,0.6)); border: 1px solid rgba(125,216,125,0.3); border-radius: 12px; padding: 16px 24px; text-align: center; min-width: 150px;">
                             <div style="font-size: 24px; margin-bottom: 4px;">👥</div>
                             <div style="color: #7dd87d; font-size: 15px; font-weight: 700;">会员+20%</div>
                             <div style="color: rgba(255,255,255,0.5); font-size: 11px; margin-top: 2px;">私域增长</div>
@@ -8788,5 +8788,124 @@
         }, {passive:true});
     })();
     </script>
+    <!-- V101: Hero鼠标悬停视差效果（品牌色 #886cff） -->
+    <script>
+    (function(){
+        var hero = document.querySelector('.hero');
+        var bgLayer = document.getElementById('hero-bg-layer');
+        var glowLeft = document.getElementById('hero-glow-left');
+        var glowRight = document.getElementById('hero-glow-right');
+        var mouseGlow = document.getElementById('hero-mouse-glow');
+        if(!hero || !bgLayer) return;
+
+        // 创建鼠标跟随光斑
+        var glow = document.createElement('div');
+        glow.className = 'hero-mouse-follower';
+        mouseGlow.appendChild(glow);
+
+        var mouseX = 0, mouseY = 0;
+        var heroRect = null;
+        var ticking = false;
+        var rafId = null;
+
+        // 线性插值（流畅效果核心）
+        function lerp(start, end, factor) {
+            return start + (end - start) * factor;
+        }
+
+        var currentBgX = 0, currentBgY = 0;
+        var currentGlowLX = 0, currentGlowLY = 0;
+        var currentGlowRX = 0, currentGlowRY = 0;
+
+        // 主动画循环（60fps流畅插值）
+        function animate() {
+            // 背景层：移动速率最慢（0.02），最深层
+            currentBgX = lerp(currentBgX, mouseX * 0.02, 0.06);
+            currentBgY = lerp(currentBgY, mouseY * 0.02, 0.06);
+            bgLayer.style.transform = 'translate(' + currentBgX + 'px, ' + currentBgY + 'px)';
+
+            // 左侧光晕：中等速率（0.04）
+            currentGlowLX = lerp(currentGlowLX, -mouseX * 0.04, 0.08);
+            currentGlowLY = lerp(currentGlowLY, -mouseY * 0.04, 0.08);
+            glowLeft.style.transform = 'translate(' + currentGlowLX + 'px, ' + currentGlowLY + 'px)';
+
+            // 右侧光晕：反向中等速率（0.03）
+            currentGlowRX = lerp(currentGlowRX, mouseX * 0.03, 0.07);
+            currentGlowRY = lerp(currentGlowRY, mouseY * 0.03, 0.07);
+            glowRight.style.transform = 'translate(' + currentGlowRX + 'px, ' + currentGlowRY + 'px)';
+
+            // 鼠标跟随光斑
+            if(heroRect) {
+                var relX = mouseX;
+                var relY = mouseY;
+                glow.style.left = (heroRect.width / 2 + relX) + 'px';
+                glow.style.top = (heroRect.height / 2 + relY) + 'px';
+            }
+
+            rafId = requestAnimationFrame(animate);
+        }
+
+        // 鼠标移动监听
+        hero.addEventListener('mousemove', function(e) {
+            heroRect = hero.getBoundingClientRect();
+            var centerX = heroRect.width / 2;
+            var centerY = heroRect.height / 2;
+            mouseX = e.clientX - heroRect.left - centerX;
+            mouseY = e.clientY - heroRect.top - centerY;
+            ticking = true;
+            mouseGlow.style.opacity = '1';
+        }, { passive: true });
+
+        // 鼠标离开
+        hero.addEventListener('mouseleave', function() {
+            mouseX = 0;
+            mouseY = 0;
+            ticking = false;
+            mouseGlow.style.opacity = '0';
+        }, { passive: true });
+
+        // 触摸支持（移动端）
+        hero.addEventListener('touchmove', function(e) {
+            if(e.touches.length === 1) {
+                var touch = e.touches[0];
+                heroRect = hero.getBoundingClientRect();
+                var centerX = heroRect.width / 2;
+                var centerY = heroRect.height / 2;
+                mouseX = touch.clientX - heroRect.left - centerX;
+                mouseY = touch.clientY - heroRect.top - centerY;
+                mouseGlow.style.opacity = '1';
+            }
+        }, { passive: true });
+
+        hero.addEventListener('touchend', function() {
+            mouseX = 0;
+            mouseY = 0;
+            mouseGlow.style.opacity = '0';
+        }, { passive: true });
+
+        // 三大价值卡片悬停3D倾斜效果
+        var cards = hero.querySelectorAll('.hero-card-tilt');
+        cards.forEach(function(card) {
+            card.addEventListener('mousemove', function(e) {
+                var rect = card.getBoundingClientRect();
+                var x = e.clientX - rect.left;
+                var y = e.clientY - rect.top;
+                var centerX = rect.width / 2;
+                var centerY = rect.height / 2;
+                var rotateX = (y - centerY) / centerY * -5;
+                var rotateY = (x - centerX) / centerX * 5;
+                card.style.transform = 'perspective(800px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg) translateY(-6px) scale(1.02)';
+                card.style.boxShadow = (16 + Math.abs(rotateX)) + 'px ' + (16 + Math.abs(rotateY)) + 'px 40px rgba(136,108,255,0.18)';
+            });
+            card.addEventListener('mouseleave', function() {
+                card.style.transform = '';
+                card.style.boxShadow = '';
+            });
+        });
+
+        // 启动动画循环
+        animate();
+    })();
+    </script>
 </body>
-</html>/html>
+</html>
