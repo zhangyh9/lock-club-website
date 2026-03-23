@@ -28,8 +28,9 @@ if grep -q 'og:image.*placeholder' index.html 2>/dev/null; then
 fi
 
 # 检查3: 死代码注释（简单清理）
-DEAD_CODE=$( (grep -cE "TODO|FIXME|XXX" js/main.js || echo 0) | head -1)
-if [ "$DEAD_CODE" -gt 5 ]; then
+DEAD_CODE=$(grep -cE "TODO|FIXME|XXX" js/main.js 2>/dev/null || echo "0")
+DEAD_CODE=$(echo "$DEAD_CODE" | tr -d '\n')
+if [ -n "$DEAD_CODE" ] && [ "$DEAD_CODE" -gt 5 ] 2>/dev/null; then
     ISSUE_FOUND="TODO/FIXME注释($DEAD_CODE处)"
     ACTION_TAKEN="发现死代码注释需人工审核"
 fi
