@@ -2274,6 +2274,15 @@
         <div id="hero-glow-right" style="position: absolute; bottom: -100px; right: -100px; width: 600px; height: 600px; background: radial-gradient(circle, rgba(136,108,255,0.15) 0%, transparent 70%); pointer-events: none; will-change: transform; transition: transform 0.15s ease-out;"></div>
         <!-- 鼠标跟随高光（视差层4 - 跟随鼠标的紫色光斑） -->
         <div id="hero-mouse-glow" style="position: absolute; inset: 0; pointer-events: none; will-change: transform, opacity; opacity: 0; transition: opacity 0.3s ease;"></div>
+        <!-- 前景浮动装饰粒子（视差层5 - 最快层，增强层次感） -->
+        <div id="hero-float-particles" style="position: absolute; inset: 0; pointer-events: none; overflow: hidden;">
+            <div class="hero-particle" data-depth="0.12" style="position:absolute;top:15%;left:8%;width:8px;height:8px;background:rgba(136,108,255,0.35);border-radius:50%;will-change:transform;"></div>
+            <div class="hero-particle" data-depth="0.09" style="position:absolute;top:65%;left:15%;width:6px;height:6px;background:rgba(168,85,247,0.3);border-radius:50%;will-change:transform;"></div>
+            <div class="hero-particle" data-depth="0.15" style="position:absolute;top:25%;right:12%;width:10px;height:10px;background:rgba(136,108,255,0.25);border-radius:50%;will-change:transform;"></div>
+            <div class="hero-particle" data-depth="0.07" style="position:absolute;top:75%;right:20%;width:5px;height:5px;background:rgba(196,132,252,0.35);border-radius:50%;will-change:transform;"></div>
+            <div class="hero-particle" data-depth="0.11" style="position:absolute;top:45%;left:5%;width:7px;height:7px;background:rgba(136,108,255,0.2);border-radius:50%;will-change:transform;"></div>
+            <div class="hero-particle" data-depth="0.13" style="position:absolute;top:55%;right:8%;width:9px;height:9px;background:rgba(168,85,247,0.28);border-radius:50%;will-change:transform;"></div>
+        </div>
 
         <!-- 主内容 -->
         <div class="container" style="padding-top: 60px;">
@@ -8830,6 +8839,10 @@
         var currentBgX = 0, currentBgY = 0;
         var currentGlowLX = 0, currentGlowLY = 0;
         var currentGlowRX = 0, currentGlowRY = 0;
+        var particles = hero.querySelectorAll('.hero-particle');
+        var particleStates = Array.from(particles).map(function(p) {
+            return { el: p, depth: parseFloat(p.getAttribute('data-depth') || '0.1') };
+        });
 
         // 主动画循环（60fps流畅插值）
         function animate() {
@@ -8847,6 +8860,13 @@
             currentGlowRX = lerp(currentGlowRX, mouseX * 0.03, 0.07);
             currentGlowRY = lerp(currentGlowRY, mouseY * 0.03, 0.07);
             glowRight.style.transform = 'translate(' + currentGlowRX + 'px, ' + currentGlowRY + 'px)';
+
+            // 前景粒子层：每粒子按独立depth值浮动，最快层（0.07-0.15）
+            particleStates.forEach(function(state) {
+                var px = lerp(0, mouseX * state.depth, 0.1);
+                var py = lerp(0, mouseY * state.depth, 0.1);
+                state.el.style.transform = 'translate(' + px + 'px, ' + py + 'px)';
+            });
 
             // 鼠标跟随光斑
             if(heroRect) {
