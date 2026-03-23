@@ -232,6 +232,40 @@
     // ============================================
     // 7. Mobile Menu Toggle
     // ============================================
+    function initDropdownMenu() {
+        var dropdowns = document.querySelectorAll('.nav-item-dropdown');
+        dropdowns.forEach(function(dropdown) {
+            var link = dropdown.querySelector('a');
+            var menu = dropdown.querySelector('.nav-dropdown-menu');
+            if (!link || !menu) return;
+            
+            // Click toggle
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                var isOpen = dropdown.classList.contains('active');
+                
+                // Close all other dropdowns
+                document.querySelectorAll('.nav-item-dropdown.active').forEach(function(d) {
+                    d.classList.remove('active');
+                });
+                
+                // Toggle current
+                if (!isOpen) {
+                    dropdown.classList.add('active');
+                }
+            });
+        });
+        
+        // Close when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.nav-item-dropdown')) {
+                document.querySelectorAll('.nav-item-dropdown.active').forEach(function(d) {
+                    d.classList.remove('active');
+                });
+            }
+        });
+    }
+
     function initMobileMenu() {
         const mobileToggle = document.querySelector('.mobile-menu-toggle');
         const navMenuMobile = document.querySelector('.nav-menu-mobile');
@@ -751,6 +785,7 @@
         initHeroStatsCounter();
         initCTAPulse();
         initMobileMenu();
+        initDropdownMenu();
         initLazyLoading();
         initSmoothScroll();
         initCardTilt();
