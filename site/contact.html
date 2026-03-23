@@ -700,6 +700,21 @@
     .skeleton-dot { width: 8px; height: 8px; background: rgba(30,58,138,0.3); border-radius: 50%; animation: skeletonPulse 1.8s ease-in-out infinite; }
     @keyframes skeletonPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     </style>
+    <!-- EmailJS SDK (联系表单真实发送) -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script>
+        // =============================================
+        // EmailJS 配置
+        // 步骤: https://www.emailjs.com 注册 → 创建 Email Service → 创建 Template → 填入下方
+        // =============================================
+        var EMAILJS_USER_ID = 'YOUR_EMAILJS_USER_ID';
+        var EMAILJS_SERVICE_ID = 'YOUR_SERVICE_ID';
+        var EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';
+        if (EMAILJS_USER_ID !== 'YOUR_EMAILJS_USER_ID') {
+            emailjs.init(EMAILJS_USER_ID);
+        }
+    </script>
+
 </head>
 <body>
     <!-- task_064: 骨架屏加载组件 -->
@@ -1400,17 +1415,37 @@
                             // 清除草稿
                             try { localStorage.removeItem(FORM_KEY); } catch(e){}
 
-                            // 模拟提交（1.2秒后显示成功）
-                            setTimeout(function() {
-                                btn.textContent = originalText;
-                                btn.classList.remove('loading');
-                                btn.style.pointerEvents = 'auto';
-                                // 显示成功遮罩
-                                var successDiv = document.getElementById('formSuccess');
-                                if (successDiv) {
-                                    successDiv.style.display = 'flex';
-                                }
-                            }, 1200);
+                            // ===== EmailJS 真实发送 =====
+                            // 收集表单数据
+                            var formData = {
+                                from_name: document.getElementById('name').value.trim(),
+                                hotel_name: document.getElementById('hotel').value.trim(),
+                                contact_info: document.getElementById('contact').value.trim(),
+                                reply_to: document.getElementById('email').value.trim() || '未填写',
+                                inquiry_type: (function() {
+                                    var types = [];
+                                    ['type-new','type-renovation','type-bulk','type-other'].forEach(function(id) {
+                                        var el = document.getElementById(id);
+                                        if (el && el.checked) types.push(el.nextSibling.textContent.trim());
+                                    });
+                                    return types.join('、') || '未选择';
+                                })(),
+                                message: document.getElementById('message').value.trim() || '无留言'
+                            };
+
+                            emailjs.send('service_lockclub', 'template_contact', formData)
+                                .then(function() {
+                                    btn.textContent = originalText;
+                                    btn.classList.remove('loading');
+                                    btn.style.pointerEvents = 'auto';
+                                    var successDiv = document.getElementById('formSuccess');
+                                    if (successDiv) successDiv.style.display = 'flex';
+                                }, function(error) {
+                                    btn.textContent = originalText;
+                                    btn.classList.remove('loading');
+                                    btn.style.pointerEvents = 'auto';
+                                    alert('发送失败，请直接拨打 137-1153-3226 联系我们的顾问，感谢！');
+                                });
                         });
                     })();
                     </script>
