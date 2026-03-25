@@ -74,7 +74,8 @@ fix_og_image() {
 
 fix_empty_alt() {
     local file="$1"
-    local count=$(grep -c 'alt=""' "$file" 2>/dev/null || echo 0)
+    local count=$(grep -c 'alt=""' "$file" 2>/dev/null | tr -d '\n' || echo 0)
+    count=${count:-0}
     if [ "$count" -gt 0 ]; then
         # 自动补上描述性alt
         sed -i '' 's|alt=""|alt="领锁智能锁产品图片"|g' "$file"
@@ -87,7 +88,8 @@ fix_empty_alt() {
 fix_viewport() {
     local file="$1"
     if ! grep -q 'viewport' "$file" 2>/dev/null; then
-        sed -i '' 's|<head>|<head>\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">|g' "$file"
+        sed -i '' 's|<head>|<head>\
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">|g' "$file"
         log "✅ 补加viewport meta: $file"
         return 0
     fi
@@ -97,7 +99,8 @@ fix_viewport() {
 fix_description() {
     local file="$1"
     if ! grep -q '<meta name="description"' "$file" 2>/dev/null; then
-        sed -i '' 's|<head>|<head>\n    <meta name="description" content="领锁智能锁，酒店智能门锁专家，提供安全、节能、省心的智能锁解决方案。">|g' "$file"
+        sed -i '' 's|<head>|<head>\
+    <meta name="description" content="领锁智能锁，酒店智能门锁专家，提供安全、节能、省心的智能锁解决方案。">|g' "$file"
         log "✅ 补加description meta: $file"
         return 0
     fi
@@ -136,7 +139,7 @@ done
 log "扫描完成: 检查了 $SCAN_COUNT 个HTML文件，修复 $FIXED_COUNT 处"
 
 # 汇总待人工处理的问题
-TODO_COUNT=$(grep -cE "TODO|FIXME|XXX" $(find . -name "*.js" -o -name "*.html") 2>/dev/null || echo 0)
+TODO_COUNT=$(grep -rE "TODO|FIXME|XXX" . --include="*.js" --include="*.html" 2>/dev/null | wc -l | tr -d ' ')
 if [ "$TODO_COUNT" -gt 0 ]; then
     add_pending "代码注释TODO/FIXME: $TODO_COUNT 处待人工审核"
 fi
