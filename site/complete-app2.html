@@ -4389,6 +4389,75 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
   </div>
 </div>
 
+<!-- 工单处理详情完整Modal -->
+<div class="modal-overlay hidden" id="modal-wo-handle">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">📋 处理工单 - <span id="wo-handle-title">WO-2026032601</span></div>
+      <button class="modal-close" onclick="closeModal('wo-handle')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;">
+        <div><span style="font-size:11px;color:var(--text-muted);">工单类型</span><div style="font-size:13px;font-weight:600;margin-top:2px;" id="wo-handle-type">🔴 客户投诉</div></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">房间</span><div style="font-size:13px;font-weight:600;margin-top:2px;" id="wo-handle-room">301</div></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">客户</span><div style="font-size:13px;font-weight:600;margin-top:2px;" id="wo-handle-customer">张三</div></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">紧急程度</span><div style="font-size:13px;font-weight:600;margin-top:2px;" id="wo-handle-urgency">🟡 紧急</div></div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:6px;">📝 客户问题</div>
+        <div style="padding:10px 12px;background:var(--red-bg);border-left:3px solid var(--red);border-radius:6px;font-size:13px;line-height:1.6;" id="wo-handle-content">房间空调噪音过大，无法休息</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">处理意见 <span class="required">*</span></label>
+        <textarea class="form-textarea" id="wo-handle-notes" placeholder="请输入处理意见，如：已联系维修人员，预计30分钟内上门处理..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">处理结果 <span class="required">*</span></label>
+        <div style="display:flex;gap:10px;">
+          <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;flex:1;justify-content:center;" onclick="selectWoResult('resolved',this)">
+            <input type="radio" name="wo-result" value="resolved" id="wo-result-resolved" style="accent-color:var(--green);">
+            <label for="wo-result-resolved" style="cursor:pointer;">✅ 已解决</label>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;flex:1;justify-content:center;" onclick="selectWoResult('pending',this)">
+            <input type="radio" name="wo-result" value="pending" id="wo-result-pending" style="accent-color:var(--orange);">
+            <label for="wo-result-pending" style="cursor:pointer;">⏳ 处理中</label>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;flex:1;justify-content:center;" onclick="selectWoResult('escalate',this)">
+            <input type="radio" name="wo-result" value="escalate" id="wo-result-escalate" style="accent-color:var(--red);">
+            <label for="wo-result-escalate" style="cursor:pointer;">🔴 升级处理</label>
+          </label>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">后续操作</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+            <input type="checkbox" id="wo-action-notify" style="accent-color:var(--blue);">
+            <span>📱 通知客户</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+            <input type="checkbox" id="wo-action-email" style="accent-color:var(--blue);">
+            <span>📧 发送邮件</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+            <input type="checkbox" id="wo-action-sms" style="accent-color:var(--blue);">
+            <span>📩 发送短信</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+            <input type="checkbox" id="wo-action-followup" checked style="accent-color:var(--blue);">
+            <span>🔔 安排回访</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('wo-handle')">取消</button>
+      <button class="modal-btn" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);" onclick="submitWoPending()">⏳ 标记处理中</button>
+      <button class="modal-btn primary" onclick="submitWoComplete()">✅ 完成处理</button>
+    </div>
+  </div>
+</div>
+
 <!-- 【改进1】办理记录详情模态框 -->
 <div class="modal-overlay hidden" id="modal-record-detail">
   <div class="modal">
@@ -8697,7 +8766,832 @@ setInterval(function() {
     renderNotifList();
     showToast(newNotif.icon + ' ' + newNotif.title, newNotif.type === 'alert' ? 'error' : 'info');
   }
+// ============================
+// 改进3: 首页快捷入住办理弹窗
+// ============================
+function openQuickCheckinModal() {
+  openModal('quick-checkin');
+}
+function openQuickCheckoutModal() {
+  openModal('quick-checkout');
+}
+function submitQuickCheckin() {
+  var name = document.getElementById('qc-name').value.trim();
+  var phone = document.getElementById('qc-phone').value.trim();
+  var room = document.getElementById('qc-room').value;
+  var checkinDate = document.getElementById('qc-checkin-date').value;
+  var checkoutDate = document.getElementById('qc-checkout-date').value;
+  var keyType = document.getElementById('qc-key-type').value;
+  if (!name) { showToast('请输入客户姓名', 'error'); return; }
+  if (!phone || !/^1\d{10}$/.test(phone)) { showToast('请输入正确的手机号', 'error'); return; }
+  if (!room) { showToast('请选择房间', 'error'); return; }
+  if (!checkinDate || !checkoutDate) { showToast('请选择入住/退房日期', 'error'); return; }
+  closeModal('quick-checkin');
+  showToast('🏨 入住办理成功！已为 ' + name + ' 开通' + (keyType === 'phone' ? '手机开锁' : '客户卡') + '，房间 ' + room, 'success');
+  // 刷新入住记录
+  setTimeout(function() {
+    showPage('records');
+  }, 1500);
+}
+function submitQuickCheckout() {
+  var room = document.getElementById('qco-room').value;
+  var payMethod = document.getElementById('qco-pay').value;
+  var payAmount = document.getElementById('qco-amount').value;
+  if (!room) { showToast('请选择退房房间', 'error'); return; }
+  closeModal('quick-checkout');
+  showToast('🚪 退房成功！房间 ' + room + ' 已转为空房状态', 'success');
+  setTimeout(function() {
+    showPage('records');
+  }, 1500);
+}
+function updateCheckoutAmount() {
+  var room = document.getElementById('qco-room').value;
+  var prices = { '301': 128, '302': 128, '303': 128, '304': 128, '305': 128, '201': 108, '202': 108, '203': 108 };
+  var price = prices[room] || 100;
+  document.getElementById('qco-amount').value = price;
+}
+
+// ============================
+// 改进1: 工单完整处理流程弹窗
+// ============================
+var currentProcessWo = null;
+function openWorkorderDetail(idx) {
+  var wo = {
+    0: { id: 'WO-2026032601', type: 'complaint', room: '301', customer: '张三', content: '房间空调噪音过大，无法休息', urgency: 'urgent', status: 'pending', handler: '', createTime: '今天 10:32' },
+    1: { id: 'WO-2026032602', type: 'delivery', room: '203', customer: '李四', content: '需要添加矿泉水x2', urgency: 'normal', status: 'pending', handler: '', createTime: '今天 10:15' },
+    2: { id: 'WO-2026032603', type: 'invoice', room: '201', customer: '王五', content: '需要开具增值税普通发票', urgency: 'normal', status: 'pending', handler: '', createTime: '今天 09:48' },
+    3: { id: 'WO-2026032528', type: 'delivery', room: '304', customer: '钱七', content: '需要浴巾一套', urgency: 'normal', status: 'processing', handler: '周敏', createTime: '昨天 18:20' },
+    4: { id: 'WO-2026032527', type: 'complaint', room: '202', customer: '赵六', content: '热水器故障，无热水', urgency: 'urgent', status: 'processing', handler: '赵飞', createTime: '昨天 17:05' },
+    5: { id: 'WO-2026032520', type: 'review', room: '303', customer: '周八', content: '服务态度好，点赞！', urgency: 'normal', status: 'done', handler: '赵飞', createTime: '03-25 14:30', doneTime: '03-25 16:45' },
+  };
+  currentProcessWo = wo[idx] || wo[0];
+  document.getElementById('wop-id').textContent = currentProcessWo.id;
+  document.getElementById('wop-room').textContent = currentProcessWo.room + '房间';
+  document.getElementById('wop-customer').textContent = currentProcessWo.customer;
+  document.getElementById('wop-content').textContent = currentProcessWo.content;
+  var urgencyMap = { normal: ['⚪ 普通', 'var(--text-light)'], urgent: ['🟡 紧急', 'var(--orange)'], critical: ['🔴 非常紧急', 'var(--red)'] };
+  var u = urgencyMap[currentProcessWo.urgency] || urgencyMap.normal;
+  document.getElementById('wop-urgency').innerHTML = '<span style="color:' + u[1] + ';font-weight:600;">' + u[0] + '</span>';
+  var statusMap = { pending: ['待接受', 'orange'], processing: ['处理中', 'purple'], done: ['已完成', 'green'] };
+  var s = statusMap[currentProcessWo.status] || statusMap.pending;
+  document.getElementById('wop-status').innerHTML = '<span class="tbadge ' + s[1] + '">' + s[0] + '</span>';
+  document.getElementById('wop-handler').textContent = currentProcessWo.handler || '待分配';
+  document.getElementById('wop-create').textContent = currentProcessWo.createTime;
+  document.getElementById('wop-done').textContent = currentProcessWo.doneTime || '--';
+  // 根据状态切换流程步骤
+  var steps = document.querySelectorAll('.wop-step');
+  var stepMap = { pending: 0, processing: 1, done: 2 };
+  var currentStep = stepMap[currentProcessWo.status] !== undefined ? stepMap[currentProcessWo.status] : 0;
+  steps.forEach(function(step, i) {
+    if (i < currentStep) {
+      step.classList.remove('active', 'current');
+      step.classList.add('done');
+      step.querySelector('.step-dot').textContent = '✓';
+    } else if (i === currentStep) {
+      step.classList.remove('done');
+      step.classList.add('active', 'current');
+      step.querySelector('.step-dot').textContent = i + 1;
+    } else {
+      step.classList.remove('active', 'done', 'current');
+      step.querySelector('.step-dot').textContent = i + 1;
+    }
+  });
+  // 处理按钮显示逻辑
+  var btnArea = document.getElementById('wop-action-area');
+  if (currentProcessWo.status === 'pending') {
+    btnArea.innerHTML = '<button class="modal-btn secondary" onclick="closeModal(\'wo-process\')">取消</button><button class="modal-btn primary" onclick="wopAccept()">📥 接单</button>';
+  } else if (currentProcessWo.status === 'processing') {
+    btnArea.innerHTML = '<div style="flex:1;"><textarea class="form-textarea" id="wop-process-note" placeholder="记录处理过程或结果..." style="min-height:60px;font-size:12px;"></textarea></div><button class="modal-btn secondary" onclick="closeModal(\'wo-process\')">取消</button><button class="modal-btn primary" onclick="wopComplete()">✅ 完成工单</button>';
+  } else {
+    btnArea.innerHTML = '<button class="modal-btn secondary" onclick="closeModal(\'wo-process\')">关闭</button>';
+  }
+  openModal('wo-process');
+}
+function wopAccept() {
+  if (currentProcessWo) currentProcessWo.status = 'processing';
+  var steps = document.querySelectorAll('.wop-step');
+  steps[0].classList.add('done'); steps[0].querySelector('.step-dot').textContent = '✓';
+  steps[0].classList.remove('active', 'current');
+  steps[1].classList.add('active', 'current'); steps[1].querySelector('.step-dot').textContent = '2';
+  document.getElementById('wop-status').innerHTML = '<span class="tbadge purple">处理中</span>';
+  document.getElementById('wop-handler').textContent = '当前员工';
+  var btnArea = document.getElementById('wop-action-area');
+  btnArea.innerHTML = '<div style="flex:1;"><textarea class="form-textarea" id="wop-process-note" placeholder="记录处理过程或结果..." style="min-height:60px;font-size:12px;"></textarea></div><button class="modal-btn secondary" onclick="closeModal(\'wo-process\')">取消</button><button class="modal-btn primary" onclick="wopComplete()">✅ 完成工单</button>';
+  showToast('✅ 工单已接单，开始处理中', 'success');
+}
+function wopComplete() {
+  var note = document.getElementById('wop-process-note').value.trim();
+  if (!note) { showToast('请填写处理结果或备注', 'error'); return; }
+  if (currentProcessWo) currentProcessWo.status = 'done';
+  var steps = document.querySelectorAll('.wop-step');
+  steps[1].classList.add('done'); steps[1].querySelector('.step-dot').textContent = '✓';
+  steps[1].classList.remove('active', 'current');
+  steps[2].classList.add('active', 'current'); steps[2].querySelector('.step-dot').textContent = '3';
+  document.getElementById('wop-status').innerHTML = '<span class="tbadge green">已完成</span>';
+  document.getElementById('wop-done').textContent = '刚刚';
+  var btnArea = document.getElementById('wop-action-area');
+  btnArea.innerHTML = '<div style="flex:1;padding:8px 12px;background:var(--green-bg);border-radius:6px;font-size:12px;color:var(--green);">处理结果：' + note + '</div><button class="modal-btn secondary" onclick="closeModal(\'wo-process\')">关闭</button>';
+  showToast('🎉 工单已完成！感谢您的处理', 'success');
+}
+
+// ============================
+// 改进2: 员工管理搜索+删除确认
+// ============================
+function searchStaff(query) {
+  var rows = document.querySelectorAll('#staff-table-body tr');
+  rows.forEach(function(row) {
+    var text = row.textContent.toLowerCase();
+    row.style.display = text.indexOf(query.toLowerCase()) !== -1 ? '' : 'none';
+  });
+}
+function confirmDeleteStaff(idx) {
+  var names = ['赵飞', '周敏', '张三', '李四', '王五'];
+  var name = names[idx] || '该员工';
+  if (confirm('确认删除员工「' + name + '」？删除后不可恢复。')) {
+    showToast('员工「' + name + '」已删除', 'success');
+    // 实际移除行
+    var tbody = document.getElementById('staff-table-body');
+    if (tbody && tbody.rows[idx]) {
+      tbody.rows[idx].remove();
+    }
+  }
+}
+function resetPasswordConfirm(idx) {
+  var names = ['赵飞', '周敏', '张三', '李四', '王五'];
+  var name = names[idx] || '该员工';
+  if (confirm('确认重置「' + name + '」的登录密码？\n新密码将重置为：123456\n请通知员工及时修改密码。')) {
+    showToast('✅ 密码已重置为 123456，已通知 ' + name, 'success');
+  }
+}
+
+// ============================
+// 改进4: 首页顶部实时同步状态栏
+// ============================
+var lastSyncTime = new Date();
+var syncInterval = null;
+function initSyncBar() {
+  updateSyncBar();
+  if (syncInterval) clearInterval(syncInterval);
+  syncInterval = setInterval(updateSyncBar, 1000);
+}
+function updateSyncBar() {
+  var now = new Date();
+  var elapsed = Math.floor((now - lastSyncTime) / 1000);
+  var remaining = Math.max(0, 30 - elapsed);
+  var pct = Math.round((elapsed / 30) * 100);
+  var barEl = document.getElementById('sync-bar-inner');
+  var timeEl = document.getElementById('sync-countdown');
+  var syncTimeEl = document.getElementById('sync-last-time');
+  if (barEl) barEl.style.width = pct + '%';
+  if (timeEl) timeEl.textContent = remaining + 's';
+  if (syncTimeEl) {
+    var h = lastSyncTime.getHours().toString().padStart(2, '0');
+    var m = lastSyncTime.getMinutes().toString().padStart(2, '0');
+    var s = lastSyncTime.getSeconds().toString().padStart(2, '0');
+    syncTimeEl.textContent = h + ':' + m + ':' + s;
+  }
+}
+function manualSync() {
+  lastSyncTime = new Date();
+  showToast('🔄 数据同步成功！房态/设备状态已更新', 'success');
+  updateSyncBar();
+}
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(initSyncBar, 500);
+});
+
+// ============================
+// 改进5: 设备批量固件升级
+// ============================
+var batchUpgradeSelected = [];
+var batchUpgradeProgress = 0;
+function openBatchUpgradeModal() {
+  var checks = document.querySelectorAll('.device-check:checked');
+  if (checks.length === 0) {
+    showToast('请先在设备列表中选择要升级的设备（可多选）', 'error');
+    return;
+  }
+  batchUpgradeSelected = Array.from(checks).map(function(c) {
+    return c.closest('tr').querySelector('td:nth-child(2)').textContent.trim();
+  });
+  batchUpgradeProgress = 0;
+  document.getElementById('bup-device-count').textContent = batchUpgradeSelected.length;
+  document.getElementById('bup-progress-bar').style.width = '0%';
+  document.getElementById('bup-progress-text').textContent = '0 / ' + batchUpgradeSelected.length;
+  document.getElementById('bup-status').textContent = '准备就绪，等待开始...';
+  document.getElementById('bup-result').innerHTML = '';
+  document.getElementById('bup-start-btn').style.display = '';
+  openModal('batch-upgrade');
+}
+function startBatchUpgrade() {
+  document.getElementById('bup-start-btn').style.display = 'none';
+  var total = batchUpgradeSelected.length;
+  var done = 0;
+  var success = 0;
+  var failed = 0;
+  var results = [];
+  function upgradeNext() {
+    if (done >= total) {
+      document.getElementById('bup-status').textContent = '🎉 批量升级完成！';
+      document.getElementById('bup-status').style.color = 'var(--green)';
+      var pct = 100;
+      document.getElementById('bup-progress-bar').style.width = pct + '%';
+      document.getElementById('bup-progress-text').textContent = total + ' / ' + total;
+      var resultHtml = '<div style="margin-top:12px;padding:12px;background:var(--green-bg);border-radius:6px;font-size:12px;"><span style="color:var(--green);font-weight:600;">✅ 成功: ' + success + ' 台</span>　<span style="color:var(--red);font-weight:600;">❌ 失败: ' + failed + ' 台</span></div>';
+      document.getElementById('bup-result').innerHTML = resultHtml;
+      showToast('🎉 批量升级完成！成功 ' + success + ' 台，失败 ' + failed + ' 台', success > 0 ? 'success' : 'error');
+      return;
+    }
+    var device = batchUpgradeSelected[done];
+    var isSuccess = Math.random() > 0.15;
+    if (isSuccess) success++; else failed++;
+    results.push({ device: device, success: isSuccess });
+    done++;
+    var pct = Math.round((done / total) * 100);
+    document.getElementById('bup-progress-bar').style.width = pct + '%';
+    document.getElementById('bup-progress-text').textContent = done + ' / ' + total;
+    document.getElementById('bup-status').textContent = '正在升级: ' + device + ' ... ' + (isSuccess ? '✅ 成功' : '❌ 失败');
+    setTimeout(upgradeNext, 600);
+  }
+  upgradeNext();
+}
 }, 60000);
+</script>
+<script>
+// ========== 改进2: 入住办理完整流程 ==========
+function openQuickCheckinModal() {
+  var emptyRooms = [];
+  document.querySelectorAll('.room-card[data-status="empty"]').forEach(function(card) {
+    var roomNum = card.querySelector('.room-num') ? card.querySelector('.room-num').textContent : '';
+    var roomType = card.querySelector('.room-type') ? card.querySelector('.room-type').textContent : '';
+    if (roomNum) emptyRooms.push({num: roomNum, type: roomType});
+  });
+
+  if (emptyRooms.length === 0) {
+    showToast('当前没有空房，请先退房释放房间', 'error');
+    return;
+  }
+
+  var options = emptyRooms.map(function(r) {
+    return '<option value="' + r.num + '">' + r.num + ' · ' + r.type + '</option>';
+  }).join('');
+
+  var modalHtml = '<div class="modal-overlay" id="modal-quick-room-select" style="z-index:1001;">' +
+    '<div class="modal" style="width:400px;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">🏠 选择入住房间</div>' +
+    '<button class="modal-close" onclick="closeQuickRoomModal()">✕</button>' +
+    '</div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group" style="margin-bottom:0;">' +
+    '<label class="form-label">可选空房（共 ' + emptyRooms.length + ' 间）</label>' +
+    '<select class="form-select" id="quick-room-select">' + options + '</select>' +
+    '</div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="closeQuickRoomModal()">取消</button>' +
+    '<button class="modal-btn primary" onclick="proceedToCheckin()">下一步 →</button>' +
+    '</div></div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeQuickRoomModal() {
+  var m = document.getElementById('modal-quick-room-select');
+  if (m) m.remove();
+}
+
+function proceedToCheckin() {
+  var room = document.getElementById('quick-room-select').value;
+  closeQuickRoomModal();
+  document.getElementById('checkin-room-label').textContent = room + '房间';
+  openCheckinModal();
+  setTimeout(function() {
+    var sel = document.getElementById('checkin-room-select');
+    if (sel) sel.value = room;
+  }, 100);
+}
+
+function validateCheckinStep1() {
+  var name = document.getElementById('checkin-name') ? document.getElementById('checkin-name').value.trim() : '';
+  var phone = document.getElementById('checkin-phone') ? document.getElementById('checkin-phone').value.trim() : '';
+  if (!name) { showToast('请输入客户姓名', 'error'); return false; }
+  if (!phone || phone.length < 11) { showToast('请输入正确的手机号', 'error'); return false; }
+  return true;
+}
+
+function goToCheckinStep(n) {
+  var step1dot = document.getElementById('step-1-dot');
+  var step2dot = document.getElementById('step-2-dot');
+  var step3dot = document.getElementById('step-3-dot');
+  var step1line = document.getElementById('step-1-line');
+  var step2line = document.getElementById('step-2-line');
+  var activeColor = 'var(--blue)';
+  var inactiveColor = 'var(--border)';
+
+  if (n === 1) {
+    step1dot.style.background = activeColor;
+    step2dot.style.background = inactiveColor;
+    step3dot.style.background = inactiveColor;
+    step1line.style.background = inactiveColor;
+    step2line.style.background = inactiveColor;
+    document.getElementById('step-label').textContent = '步骤1/3：填写信息';
+    var s1 = document.getElementById('checkin-step1');
+    var s2 = document.getElementById('checkin-step2');
+    var s3 = document.getElementById('checkin-step3');
+    if (s1) s1.style.display = 'block';
+    if (s2) s2.style.display = 'none';
+    if (s3) s3.style.display = 'none';
+  } else if (n === 2) {
+    if (!validateCheckinStep1()) return;
+    step1dot.style.background = activeColor;
+    step2dot.style.background = activeColor;
+    step3dot.style.background = inactiveColor;
+    step1line.style.background = activeColor;
+    step2line.style.background = inactiveColor;
+    document.getElementById('step-label').textContent = '步骤2/3：选择房间';
+    var s1 = document.getElementById('checkin-step1');
+    var s2 = document.getElementById('checkin-step2');
+    var s3 = document.getElementById('checkin-step3');
+    if (s1) s1.style.display = 'none';
+    if (s2) s2.style.display = 'block';
+    if (s3) s3.style.display = 'none';
+  } else if (n === 3) {
+    var room = document.getElementById('checkin-room-select') ? document.getElementById('checkin-room-select').value : '';
+    if (!room) { showToast('请选择房间', 'error'); return; }
+    step1dot.style.background = activeColor;
+    step2dot.style.background = activeColor;
+    step3dot.style.background = activeColor;
+    step1line.style.background = activeColor;
+    step2line.style.background = activeColor;
+    document.getElementById('step-label').textContent = '步骤3/3：确认信息';
+    var s1 = document.getElementById('checkin-step1');
+    var s2 = document.getElementById('checkin-step2');
+    var s3 = document.getElementById('checkin-step3');
+    if (s1) s1.style.display = 'none';
+    if (s2) s2.style.display = 'none';
+    if (s3) s3.style.display = 'block';
+    var name = document.getElementById('checkin-name') ? document.getElementById('checkin-name').value.trim() : '';
+    var phone = document.getElementById('checkin-phone') ? document.getElementById('checkin-phone').value.trim() : '';
+    var type = document.getElementById('checkin-type-select') ? document.getElementById('checkin-type-select').value : 'phone';
+    var deposit = document.getElementById('checkin-deposit') ? document.getElementById('checkin-deposit').value : '100';
+    var roomText = document.getElementById('checkin-room-select').options[document.getElementById('checkin-room-select').selectedIndex].text;
+    var ci = document.getElementById('ci-summary-name');
+    var cph = document.getElementById('ci-summary-phone');
+    var cr = document.getElementById('ci-summary-room');
+    var ct = document.getElementById('ci-summary-type');
+    var cd = document.getElementById('ci-summary-deposit');
+    if (ci) ci.textContent = name;
+    if (cph) cph.textContent = phone;
+    if (cr) cr.textContent = roomText;
+    if (ct) ct.textContent = type === 'phone' ? '📱 手机开锁' : type === 'card' ? '💳 客户卡' : '🔑 密码开锁';
+    if (cd) cd.textContent = '¥' + deposit;
+  }
+}
+
+function submitCheckin() {
+  var name = document.getElementById('checkin-name') ? document.getElementById('checkin-name').value.trim() : '';
+  var room = document.getElementById('checkin-room-select') ? document.getElementById('checkin-room-select').value : '';
+  var deposit = document.getElementById('checkin-deposit') ? document.getElementById('checkin-deposit').value : '100';
+  closeModal('checkin');
+  showToast('入住办理成功！客户：' + name + '，押金 ¥' + deposit + '，钥匙已开通', 'success');
+  var feed = document.getElementById('home-checkin-feed');
+  if (feed) {
+    var now = new Date();
+    var timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+    var typeText = document.getElementById('checkin-type-select') ? document.getElementById('checkin-type-select').value : 'phone';
+    var typeLabel = typeText === 'phone' ? '手机开锁' : typeText === 'card' ? '客户卡' : '身份证';
+    var roomText = document.getElementById('checkin-room-select').options[document.getElementById('checkin-room-select').selectedIndex].text;
+    var html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">' +
+      '<div style="width:28px;height:28px;background:var(--blue-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;">🏨</div>' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="font-size:12px;font-weight:600;">' + name + ' <span style="font-size:10px;color:var(--blue);background:var(--blue-bg);padding:1px 5px;border-radius:3px;margin-left:4px;">入住</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + room + ' · ' + roomText + ' · 今天 ' + timeStr + '</div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + typeLabel + '</div>' +
+      '</div>';
+    feed.insertAdjacentHTML('afterbegin', html);
+  }
+}
+
+// ========== 改进3: 设备离线处理完整流程 ==========
+function openOfflineDeviceActions(uuid, room) {
+  var modalHtml = '<div class="modal-overlay" id="modal-offline-actions" style="z-index:1001;">' +
+    '<div class="modal" style="width:420px;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">🔧 设备离线处理 - ' + room + '</div>' +
+    '<button class="modal-close" onclick="closeOfflineActionsModal()">✕</button>' +
+    '</div>' +
+    '<div class="modal-body">' +
+    '<div style="padding:12px;background:var(--red-bg);border-left:3px solid var(--red);border-radius:6px;margin-bottom:16px;">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:4px;">⚠️ 设备 [' + room + '] 离线超过10小时</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);">最后同步：2026-03-26 11:05:36</div>' +
+    '</div>' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);">请选择处理方式：</div>' +
+    '<div style="display:flex;flex-direction:column;gap:10px;">' +
+    '<div onclick="handleOfflineAction(\'network\', \'' + room + '\')" style="padding:14px 16px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor=\'var(--blue)\';this.style.background=\'var(--blue-bg)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.background=\'transparent\'">' +
+    '<div style="font-size:14px;font-weight:600;margin-bottom:4px;">🔍 检查网络</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);">派人去房间检查网络连接和设备供电</div>' +
+    '</div>' +
+    '<div onclick="handleOfflineAction(\'restart\', \'' + room + '\')" style="padding:14px 16px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor=\'var(--orange)\';this.style.background=\'var(--orange-bg)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.background=\'transparent\'">' +
+    '<div style="font-size:14px;font-weight:600;margin-bottom:4px;">🔁 重启设备</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);">远程重启门锁设备（约10秒离线）</div>' +
+    '</div>' +
+    '<div onclick="handleOfflineAction(\'support\', \'' + room + '\')" style="padding:14px 16px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor=\'var(--purple)\';this.style.background=\'var(--purple-bg)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.background=\'transparent\'">' +
+    '<div style="font-size:14px;font-weight:600;margin-bottom:4px;">📞 联系客服</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);">联系厂商技术支持：400-xxx-xxxx</div>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="closeOfflineActionsModal()">关闭</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeOfflineActionsModal() {
+  var m = document.getElementById('modal-offline-actions');
+  if (m) m.remove();
+}
+
+function handleOfflineAction(action, room) {
+  closeOfflineActionsModal();
+  if (action === 'network') {
+    showToast('已通知相关人员前往 ' + room + ' 检查网络连接', 'success');
+  } else if (action === 'restart') {
+    showToast('正在重启设备 [' + room + ']，请稍候...', 'info');
+    setTimeout(function() {
+      showToast('设备 [' + room + '] 重启完成，已恢复在线', 'success');
+    }, 3000);
+  } else if (action === 'support') {
+    showToast('已联系客服，设备厂商电话：400-xxx-xxxx', 'info');
+  }
+}
+
+// Override alert processing for offline devices
+var originalOpenAlertModalV2 = openAlertModalV2;
+openAlertModalV2 = function(idx) {
+  if (idx === 0) {
+    openOfflineDeviceActions('C73D4CG4', '303');
+    return;
+  }
+  if (originalOpenAlertModalV2) originalOpenAlertModalV2(idx);
+};
+
+// ========== 改进4: 工单处理完整流程 ==========
+var selectedWoResult = 'resolved';
+
+function selectWoResult(result, el) {
+  selectedWoResult = result;
+  var labels = el.parentElement.querySelectorAll('label');
+  labels.forEach(function(l) { l.style.borderColor = 'var(--border)'; l.style.background = 'transparent'; });
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'var(--blue-bg)';
+}
+
+function openWorkorderHandleModal(idx) {
+  var workorders = [
+    {id:'WO-2026032601', type:'🔴 客户投诉', room:'301', customer:'张三', urgency:'🟡 紧急', content:'房间空调噪音过大，无法休息'},
+    {id:'WO-2026032602', type:'📦 送物服务', room:'203', customer:'李四', urgency:'⚪ 普通', content:'需要添加矿泉水x2'},
+    {id:'WO-2026032603', type:'📄 发票需求', room:'201', customer:'王五', urgency:'⚪ 普通', content:'需要开具增值税普通发票'},
+  ];
+  var wo = workorders[idx] || workorders[0];
+  document.getElementById('wo-handle-title').textContent = wo.id;
+  document.getElementById('wo-handle-type').textContent = wo.type;
+  document.getElementById('wo-handle-room').textContent = wo.room;
+  document.getElementById('wo-handle-customer').textContent = wo.customer;
+  document.getElementById('wo-handle-urgency').textContent = wo.urgency;
+  document.getElementById('wo-handle-content').textContent = wo.content;
+  document.getElementById('wo-handle-notes').value = '';
+  selectedWoResult = 'resolved';
+  openModal('wo-handle');
+}
+
+function submitWoComplete() {
+  var notes = document.getElementById('wo-handle-notes').value.trim();
+  if (!notes) { showToast('请输入处理意见', 'error'); return; }
+  closeModal('wo-handle');
+  showToast('工单已处理完成！结果：已解决', 'success');
+  var rows = document.querySelectorAll('#workorder-table-body tr');
+  if (rows[0]) {
+    rows[0].querySelector('td:nth-child(6)').innerHTML = '<span class="tbadge green">✅ 已完成</span>';
+    rows[0].querySelector('td:last-child').innerHTML = '<button class="action-btn" onclick="openWorkorderDetail(0)">查看</button>';
+  }
+}
+
+function submitWoPending() {
+  var notes = document.getElementById('wo-handle-notes').value.trim();
+  if (!notes) { showToast('请输入处理意见', 'error'); return; }
+  closeModal('wo-handle');
+  showToast('工单已标记为处理中', 'info');
+  var rows = document.querySelectorAll('#workorder-table-body tr');
+  if (rows[0]) {
+    rows[0].querySelector('td:nth-child(6)').innerHTML = '<span class="tbadge purple">🔄 处理中</span>';
+  }
+}
+
+// Override openWorkorderDetail to show handle modal for pending workorders
+var _originalOpenWorkorderDetail = null;
+try { _originalOpenWorkorderDetail = openWorkorderDetail; } catch(e) {}
+openWorkorderDetail = function(idx) {
+  var row = document.querySelectorAll('#workorder-table-body tr')[idx];
+  if (row && row.dataset.status === 'pending') {
+    openWorkorderHandleModal(idx);
+    return;
+  }
+  if (_originalOpenWorkorderDetail) _originalOpenWorkorderDetail(idx);
+};
+
+// ========== 改进5: 退房快速办理流程 ==========
+function openQuickCheckoutModal() {
+  var activeCheckins = [];
+  document.querySelectorAll('.room-card[data-status="in"]').forEach(function(card) {
+    var roomNum = card.querySelector('.room-num') ? card.querySelector('.room-num').textContent : '';
+    var roomType = card.querySelector('.room-type') ? card.querySelector('.room-type').textContent : '';
+    if (roomNum) activeCheckins.push({num: roomNum, type: roomType});
+  });
+
+  if (activeCheckins.length === 0) {
+    showToast('当前没有入住中的房间', 'error');
+    return;
+  }
+
+  var options = activeCheckins.map(function(r) {
+    return '<option value="' + r.num + '">' + r.num + ' · ' + r.type + '</option>';
+  }).join('');
+
+  var modalHtml = '<div class="modal-overlay" id="modal-quick-checkout-select" style="z-index:1001;">' +
+    '<div class="modal" style="width:400px;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">🚪 选择退房房间</div>' +
+    '<button class="modal-close" onclick="closeQuickCheckoutModal()">✕</button>' +
+    '</div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group" style="margin-bottom:0;">' +
+    '<label class="form-label">入住中房间（共 ' + activeCheckins.length + ' 间）</label>' +
+    '<select class="form-select" id="quick-checkout-select">' +
+    '<option value="">-- 请选择 --</option>' + options + '</select>' +
+    '</div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="closeQuickCheckoutModal()">取消</button>' +
+    '<button class="modal-btn primary" onclick="proceedToCheckout()">下一步 →</button>' +
+    '</div></div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeQuickCheckoutModal() {
+  var m = document.getElementById('modal-quick-checkout-select');
+  if (m) m.remove();
+}
+
+function proceedToCheckout() {
+  var room = document.getElementById('quick-checkout-select').value;
+  if (!room) { showToast('请选择要退房的房间', 'error'); return; }
+  closeQuickCheckoutModal();
+  var sel = document.getElementById('checkout-guest-select');
+  if (sel) {
+    for (var i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value.indexOf(room + ':') === 0) {
+        sel.selectedIndex = i;
+        onCheckoutGuestChange();
+        break;
+      }
+    }
+  }
+  openModal('checkout');
+}
+</script>
+
+<!-- 改进3: 首页快捷入住办理弹窗 -->
+<div class="modal-overlay hidden" id="modal-quick-checkin">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">🏨 快捷入住办理</div>
+      <button class="modal-close" onclick="closeModal('quick-checkin')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">客户姓名 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="qc-name" placeholder="请输入客户姓名">
+      </div>
+      <div class="form-row" style="margin-bottom:0;">
+        <div class="form-group">
+          <label class="form-label">手机号码 <span class="required">*</span></label>
+          <input type="tel" class="form-input" id="qc-phone" placeholder="请输入手机号" maxlength="11">
+        </div>
+        <div class="form-group">
+          <label class="form-label">身份证号</label>
+          <input type="text" class="form-input" id="qc-idcard" placeholder="选填" maxlength="18">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">选择房间 <span class="required">*</span></label>
+        <select class="form-select" id="qc-room">
+          <option value="">请选择房间</option>
+          <option value="301">301 - 亲子间（¥128/12h）</option>
+          <option value="302">302 - 亲子间（¥128/12h）</option>
+          <option value="304">304 - 亲子间（¥128/12h）</option>
+          <option value="201">201 - 大床房（¥108/12h）</option>
+          <option value="202">202 - 大床房（¥108/12h）</option>
+          <option value="203">203 - 大床房（¥108/12h）</option>
+        </select>
+      </div>
+      <div class="form-row" style="margin-bottom:0;">
+        <div class="form-group">
+          <label class="form-label">入住日期 <span class="required">*</span></label>
+          <input type="date" class="form-input" id="qc-checkin-date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">退房日期 <span class="required">*</span></label>
+          <input type="date" class="form-input" id="qc-checkout-date">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">开锁方式</label>
+        <select class="form-select" id="qc-key-type">
+          <option value="phone">📱 手机开锁（推荐）</option>
+          <option value="card">💳 客户卡</option>
+          <option value="both">📱+💳 两者都开</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('quick-checkin')">取消</button>
+      <button class="modal-btn primary" onclick="submitQuickCheckin()">🏨 确认入住</button>
+    </div>
+  </div>
+</div>
+
+<!-- 改进3: 首页快捷退房办理弹窗 -->
+<div class="modal-overlay hidden" id="modal-quick-checkout">
+  <div class="modal" style="width:440px;">
+    <div class="modal-header">
+      <div class="modal-title">🚪 快捷退房办理</div>
+      <button class="modal-close" onclick="closeModal('quick-checkout')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">退房房间 <span class="required">*</span></label>
+        <select class="form-select" id="qco-room" onchange="updateCheckoutAmount()">
+          <option value="">请选择房间</option>
+          <option value="301">301 - 亲子间（入住中）</option>
+          <option value="302">302 - 亲子间（入住中）</option>
+          <option value="304">304 - 亲子间（入住中）</option>
+          <option value="201">201 - 大床房（入住中）</option>
+          <option value="202">202 - 大床房（入住中）</option>
+          <option value="203">203 - 大床房（入住中）</option>
+        </select>
+      </div>
+      <div class="checkout-summary">
+        <div class="checkout-summary-row"><span class="label">房费合计</span><span class="value" id="qco-amount-display">¥--</span></div>
+        <div class="checkout-summary-row"><span class="label">押金退还</span><span class="value green">¥100</span></div>
+        <div class="checkout-summary-row"><span class="label">实际应缴</span><span class="value red" id="qco-total-display">¥--</span></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">支付方式</label>
+        <select class="form-select" id="qco-pay">
+          <option value="wechat">微信支付</option>
+          <option value="alipay">支付宝</option>
+          <option value="cash">现金</option>
+          <option value="card">银行卡</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">退款金额</label>
+        <input type="number" class="form-input" id="qco-amount" value="128" placeholder="房费合计">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('quick-checkout')">取消</button>
+      <button class="modal-btn primary" onclick="submitQuickCheckout()">🚪 确认退房</button>
+    </div>
+  </div>
+</div>
+
+<!-- 改进1: 工单完整处理流程弹窗（三步骤：接单→处理→完成） -->
+<div class="modal-overlay hidden" id="modal-wo-process">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">📋 工单处理 - <span id="wop-id">WO-000000</span></div>
+      <button class="modal-close" onclick="closeModal('wo-process')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- 三步骤进度条 -->
+      <div style="display:flex;align-items:center;margin-bottom:20px;" id="wop-steps">
+        <div class="wop-step active current" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div class="step-dot" style="width:28px;height:28px;background:var(--blue);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">1</div>
+          <div style="font-size:11px;font-weight:600;color:var(--blue);">接单</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div style="height:2px;background:var(--border);flex:1;margin-bottom:14px;"></div>
+          <div class="step-dot" style="width:28px;height:28px;background:var(--border);color:var(--text-muted);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">2</div>
+          <div style="font-size:11px;color:var(--text-muted);">处理中</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div style="height:2px;background:var(--border);flex:1;margin-bottom:14px;"></div>
+          <div class="step-dot" style="width:28px;height:28px;background:var(--border);color:var(--text-muted);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">3</div>
+          <div style="font-size:11px;color:var(--text-muted);">已完成</div>
+        </div>
+      </div>
+      <!-- 工单基本信息 -->
+      <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:14px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+          <div><span style="color:var(--text-muted);">房间：</span><span style="font-weight:600;" id="wop-room">--</span></div>
+          <div><span style="color:var(--text-muted);">客户：</span><span style="font-weight:600;" id="wop-customer">--</span></div>
+          <div><span style="color:var(--text-muted);">紧急程度：</span><span id="wop-urgency">--</span></div>
+          <div><span style="color:var(--text-muted);">状态：</span><span id="wop-status">--</span></div>
+          <div><span style="color:var(--text-muted);">处理人：</span><span style="font-weight:600;" id="wop-handler">--</span></div>
+          <div><span style="color:var(--text-muted);">完成时间：</span><span id="wop-done">--</span></div>
+          <div style="grid-column:1/-1;"><span style="color:var(--text-muted);">内容：</span><span id="wop-content">--</span></div>
+        </div>
+      </div>
+      <!-- 满意度评价（仅完成后显示） -->
+      <div id="wop-rating-area" style="display:none;margin-bottom:14px;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">请对本次服务评分</div>
+        <div style="display:flex;gap:8px;">
+          <button class="action-btn small" onclick="setWoRating(1)">😡 不满意</button>
+          <button class="action-btn small" onclick="setWoRating(2)">😐 一般</button>
+          <button class="action-btn small" onclick="setWoRating(3)">😊 满意</button>
+          <button class="action-btn small" onclick="setWoRating(4)">😄 非常满意</button>
+        </div>
+        <div id="wop-rating-display" style="margin-top:6px;font-size:12px;color:var(--green);font-weight:600;"></div>
+      </div>
+      <div id="wop-action-area" style="display:flex;gap:10px;align-items:flex-end;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 改进4: 首页顶部实时同步状态栏 -->
+<div id="sync-status-bar" style="position:sticky;top:0;z-index:50;background:white;border-bottom:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:16px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="display:flex;align-items:center;gap:6px;color:var(--blue);font-weight:600;">
+    <span style="width:6px;height:6px;background:var(--green);border-radius:50%;animation:onlinePulse 2s ease-in-out infinite;"></span>
+    <span>🔄 实时同步中</span>
+  </div>
+  <div style="flex:1;display:flex;align-items:center;gap:8px;">
+    <span style="color:var(--text-muted);">上次同步：</span>
+    <span style="font-weight:600;color:var(--text);" id="sync-last-time">--:--:--</span>
+    <span style="color:var(--text-muted);">，下次自动同步：</span>
+    <span style="font-weight:600;color:var(--blue);" id="sync-countdown">30s</span>
+    <div style="flex:1;max-width:120px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+      <div id="sync-bar-inner" style="height:100%;background:var(--blue);border-radius:2px;transition:width 1s linear;width:0%;"></div>
+    </div>
+  </div>
+  <button class="action-btn small" onclick="manualSync()" style="padding:4px 10px;font-size:11px;">🔄 立即同步</button>
+</div>
+
+<!-- 改进5: 设备批量固件升级弹窗 -->
+<div class="modal-overlay hidden" id="modal-batch-upgrade">
+  <div class="modal" style="width:500px;">
+    <div class="modal-header">
+      <div class="modal-title">📦 批量固件升级</div>
+      <button class="modal-close" onclick="closeModal('batch-upgrade')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;">
+        <div style="font-size:32px;">📱</div>
+        <div>
+          <div style="font-size:14px;font-weight:600;">选中了 <span id="bup-device-count" style="color:var(--blue);font-size:18px;">0</span> 台设备</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">即将批量推送固件升级 v2.3.1 → v2.3.2</div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px;">
+          <span>升级进度</span>
+          <span id="bup-progress-text">0 / 0</span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+          <div id="bup-progress-bar" style="height:100%;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:4px;transition:width 0.5s ease;width:0%;"></div>
+        </div>
+      </div>
+      <div id="bup-status" style="padding:10px 12px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--text-muted);text-align:center;">准备就绪，等待开始...</div>
+      <div id="bup-result" style="margin-top:10px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('batch-upgrade')">取消</button>
+      <button class="modal-btn primary" id="bup-start-btn" onclick="startBatchUpgrade()">▶ 开始升级</button>
+    </div>
+  </div>
+</div>
+
+<!-- 为批量操作工具栏添加固件升级按钮 -->
+<script>
+var _origBatchToolbar = openBatchToolbar;
+function openBatchToolbar() {
+  _origBatchToolbar();
+  var toolbar = document.getElementById('batch-toolbar');
+  if (toolbar) {
+    var fwBtn = document.createElement('button');
+    fwBtn.className = 'action-btn small';
+    fwBtn.style.background = 'var(--purple-bg)';
+    fwBtn.style.color = 'var(--purple)';
+    fwBtn.style.borderColor = 'var(--purple)';
+    fwBtn.textContent = '📦 批量升级';
+    fwBtn.onclick = openBatchUpgradeModal;
+    toolbar.insertBefore(fwBtn, toolbar.firstChild);
+  }
+}
 </script>
 
 </body>
