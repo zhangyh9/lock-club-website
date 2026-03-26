@@ -29,6 +29,74 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .menu-item.active { background: var(--blue-bg); color: var(--blue); font-weight: 600; }
 .menu-item .icon { font-size: 16px; }
 
+/* v3 新增样式：全屏看板模式 */
+.page.fullscreen-mode {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 900;
+  background: var(--bg);
+  overflow-y: auto;
+  margin: 0;
+  padding: 20px;
+}
+.page.fullscreen-mode .page-header { display: none; }
+.page.fullscreen-mode .hide-fullscreen { display: inline-flex !important; }
+
+/* v3 新增样式：诊断工具 */
+.diag-card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; background: var(--white); }
+.diag-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.diag-item:last-child { border-bottom: none; }
+.diag-label { color: var(--text-light); display: flex; align-items: center; gap: 8px; }
+.diag-value { font-weight: 600; }
+.diag-value.ok { color: var(--green); }
+.diag-value.warn { color: var(--orange); }
+.diag-value.error { color: var(--red); }
+.diag-value.loading { color: var(--blue); }
+.diag-progress { height: 4px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.diag-progress-bar { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.3s; }
+
+/* v3 新增样式：批量入住 */
+.batch-room-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; background: var(--white); cursor: pointer; transition: all 0.2s; }
+.batch-room-chip:hover { border-color: var(--blue); background: var(--blue-bg); }
+.batch-room-chip.selected { border-color: var(--blue); background: var(--blue-bg); color: var(--blue); }
+.batch-room-chip .remove { color: var(--red); font-weight: 700; margin-left: 4px; }
+.batch-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.batch-summary-item { text-align: center; padding: 10px; background: var(--bg); border-radius: 6px; }
+.batch-summary-item .num { font-size: 22px; font-weight: 700; color: var(--blue); }
+
+/* v3 新增样式：结算清单 */
+.settlement-section { margin-bottom: 16px; }
+.settlement-section-title { font-size: 13px; font-weight: 600; padding-bottom: 8px; border-bottom: 2px solid var(--border); margin-bottom: 10px; color: var(--text); }
+.settlement-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; }
+.settlement-row .label { color: var(--text-light); }
+.settlement-row .value { font-weight: 600; }
+.settlement-row.total { border-top: 2px solid var(--border); margin-top: 8px; padding-top: 10px; font-size: 15px; }
+.settlement-row.total .value { color: var(--red); font-size: 18px; }
+.settlement-row.discount .value { color: var(--green); }
+
+/* v3 新增样式：数据报表 */
+.report-filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.report-kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.report-kpi-card { background: var(--white); border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.report-kpi-card .label { font-size: 12px; color: var(--text-light); margin-bottom: 6px; }
+.report-kpi-card .value { font-size: 28px; font-weight: 700; color: var(--text); }
+.report-kpi-card .trend { font-size: 11px; margin-top: 4px; }
+.report-kpi-card .trend.up { color: var(--green); }
+.report-kpi-card .trend.down { color: var(--red); }
+.report-chart-placeholder { height: 200px; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px; position: relative; overflow: hidden; }
+.report-chart-bars { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 0 16px; }
+.report-bar-group { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+.report-bar-wrap { width: 100%; display: flex; align-items: flex-end; gap: 3px; height: 140px; }
+.report-bar { flex: 1; border-radius: 3px 3px 0 0; min-width: 8px; cursor: pointer; transition: opacity 0.2s; }
+.report-bar:hover { opacity: 0.8; }
+.report-bar.income { background: var(--blue); }
+.report-bar.expense { background: var(--orange); }
+.report-bar.profit { background: var(--green); }
+.report-bar-label { font-size: 10px; color: var(--text-muted); }
+
 .main { flex: 1; padding: 20px; margin-left: 200px; }
 .page-header { margin-bottom: 20px; }
 .page-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
@@ -385,6 +453,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     </div>
     <div class="menu-item" onclick="showPage('oplog')">
       <span class="icon">📝</span> 操作日志
+    </div>
+    <div class="menu-item" onclick="showPage('report')">
+      <span class="icon">📊</span> 数据报表
+    </div>
+    <div class="menu-item" onclick="showPage('settlement')">
+      <span class="icon">💰</span> 结算中心
     </div>
   </div>
 
@@ -2682,7 +2756,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               <tr data-status="active" data-type="dynamic">
                 <td><input type="checkbox" class="kp-row-check" data-kp-id="KP-2026032701" style="accent-color:var(--blue);cursor:pointer;"></td>
                 <td style="font-family:monospace;font-size:12px;">KP-2026032701</td>
-                <td><span style="font-family:monospace;font-weight:700;color:var(--blue);letter-spacing:2px;">8*3#-A7K9</span></td>
+                <td><span onclick="copyKeypadPasswordCell(this)" style="font-family:monospace;font-weight:700;color:var(--blue);letter-spacing:2px;cursor:pointer;" title="点击复制">8*3#-A7K9</span></td>
                 <td><span class="tbadge blue">动态密码</span></td>
                 <td>301 - 亲子间</td>
                 <td>客房张三入住</td>
@@ -3393,6 +3467,429 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             </table>
           </div>
         </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Data Report (v3新页面：数据报表中心) -->
+    <div id="page-report" class="page">
+      <div class="page-header">
+        <div class="page-title">📊 数据报表中心</div>
+        <div class="page-sub">营收分析 · 运营统计 · 趋势洞察 · 支持日期范围筛选</div>
+      </div>
+      <!-- 报表筛选栏 -->
+      <div class="report-filter-bar">
+        <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-light);"><span>📅</span><span>报表周期：</span></div>
+        <select class="form-select" id="rpt-period" style="width:140px;padding:6px 10px;" onchange="changeReportPeriod()">
+          <option value="today">今日</option>
+          <option value="yesterday">昨日</option>
+          <option value="thisweek">本周</option>
+          <option value="thismonth" selected>本月</option>
+          <option value="lastmonth">上月</option>
+          <option value="custom">自定义</option>
+        </select>
+        <input type="date" class="form-input" id="rpt-date-start" style="width:140px;padding:6px 10px;" value="2026-03-01">
+        <span style="color:var(--text-muted);font-size:12px;">至</span>
+        <input type="date" class="form-input" id="rpt-date-end" style="width:140px;padding:6px 10px;" value="2026-03-27">
+        <select class="form-select" id="rpt-building" style="width:130px;padding:6px 10px;">
+          <option value="all">全部楼栋</option>
+          <option value="main">主楼</option>
+          <option value="east">东配楼</option>
+        </select>
+        <button class="action-btn primary" onclick="generateReport()" style="background:var(--blue);color:white;border:none;padding:6px 16px;">📊 生成报表</button>
+        <button class="action-btn" onclick="exportReport()" style="padding:6px 12px;">📤 导出报表</button>
+      </div>
+      <!-- 核心KPI指标 -->
+      <div class="report-kpi">
+        <div class="report-kpi-card">
+          <div class="label">🏠 入住率</div>
+          <div class="value" id="rpt-occupy">75.0%</div>
+          <div class="trend up" id="rpt-occupy-trend">↑ 较上月+5.2%</div>
+        </div>
+        <div class="report-kpi-card">
+          <div class="label">💰 总营收</div>
+          <div class="value" id="rpt-revenue">¥28,640</div>
+          <div class="trend up">↑ 较上月+12.8%</div>
+        </div>
+        <div class="report-kpi-card">
+          <div class="label">🔑 设备在线率</div>
+          <div class="value" id="rpt-online">87.5%</div>
+          <div class="trend up">↑ 较上月+2.1%</div>
+        </div>
+        <div class="report-kpi-card">
+          <div class="label">📋 工单完成率</div>
+          <div class="value" id="rpt-wo-complete">92.3%</div>
+          <div class="trend down">↓ 较上月-1.5%</div>
+        </div>
+      </div>
+      <!-- 图表区域 -->
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📈 营收趋势（近30天）</div>
+            <div class="card-tabs">
+              <div class="card-tab active" onclick="switchRptChart('income',this)">营收</div>
+              <div class="card-tab" onclick="switchRptChart('occupancy',this)">入住率</div>
+              <div class="card-tab" onclick="switchRptChart('energy',this)">能耗</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="report-chart-placeholder" id="rpt-chart-area">
+              <div class="report-chart-bars" style="width:100%;">
+                <div class="report-bar-group"><div class="report-bar-wrap">
+                  <div class="report-bar income" style="height:45px;" title="3/1: ¥820"></div>
+                  <div class="report-bar expense" style="height:20px;" title="3/1: ¥180"></div>
+                </div><div class="report-bar-label">3/1</div></div>
+                <div class="report-bar-group"><div class="report-bar-wrap">
+                  <div class="report-bar income" style="height:55px;" title="3/5: ¥980"></div>
+                  <div class="report-bar expense" style="height:25px;" title="3/5: ¥220"></div>
+                </div><div class="report-bar-label">3/5</div></div>
+                <div class="report-bar-group"><div class="report-bar-wrap">
+                  <div class="report-bar income" style="height:40px;" title="3/10: ¥750"></div>
+                  <div class="report-bar expense" style="height:18px;" title="3/10: ¥160"></div>
+                </div><div class="report-bar-label">3/10</div></div>
+                <div class="report-bar-group"><div class="report-bar-wrap">
+                  <div class="report-bar income" style="height:65px;" title="3/15: ¥1,150"></div>
+                  <div class="report-bar expense" style="height:30px;" title="3/15: ¥280"></div>
+                </div><div class="report-bar-label">3/15</div></div>
+                <div class="report-bar-group"><div class="report-bar-wrap">
+                  <div class="report-bar income" style="height:75px;" title="3/20: ¥1,320"></div>
+                  <div class="report-bar expense" style="height:35px;" title="3/20: ¥310"></div>
+                </div><div class="report-bar-label">3/20</div></div>
+                <div class="report-bar-group"><div class="report-bar-wrap">
+                  <div class="report-bar income" style="height:85px;" title="3/25: ¥1,480"></div>
+                  <div class="report-bar expense" style="height:40px;" title="3/25: ¥360"></div>
+                </div><div class="report-bar-label">3/25</div></div>
+                <div class="report-bar-group"><div class="report-bar-wrap">
+                  <div class="report-bar income" style="height:92px;" title="3/27: ¥1,620"></div>
+                  <div class="report-bar expense" style="height:45px;" title="3/27: ¥410"></div>
+                </div><div class="report-bar-label">3/27</div></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--text-muted);">
+              <span>📊 蓝色=营收</span><span>🟠 橙色=支出</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏆 房型营收排行</div>
+          </div>
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:8px;height:8px;background:var(--blue);border-radius:50%;flex-shrink:0;"></div>
+                <div style="flex:1;font-size:12px;">亲子间</div>
+                <div style="font-size:12px;font-weight:700;color:var(--blue);">¥14,280</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:8px;height:8px;background:var(--orange);border-radius:50%;flex-shrink:0;"></div>
+                <div style="flex:1;font-size:12px;">大床房</div>
+                <div style="font-size:12px;font-weight:700;color:var(--orange);">¥8,640</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:8px;height:8px;background:var(--green);border-radius:50%;flex-shrink:0;"></div>
+                <div style="flex:1;font-size:12px;">标准间</div>
+                <div style="font-size:12px;font-weight:700;color:var(--green);">¥3,920</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:8px;height:8px;background:var(--purple);border-radius:50%;flex-shrink:0;"></div>
+                <div style="flex:1;font-size:12px;">家庭套房</div>
+                <div style="font-size:12px;font-weight:700;color:var(--purple);">¥1,800</div>
+              </div>
+            </div>
+            <div style="margin-top:16px;padding:10px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--text-muted);">
+              <div style="margin-bottom:4px;">📊 本月总营收：<span style="font-weight:700;color:var(--blue);">¥28,640</span></div>
+              <div>📈 较上月增长：<span style="font-weight:700;color:var(--green);">+12.8%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 明细表格 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 每日经营明细</div>
+        </div>
+        <div class="card-body" style="overflow-x:auto;">
+          <table class="table">
+            <thead><tr><th>日期</th><th>入住房间</th><th>退房房间</th><th>入住率</th><th>营收(元)</th><th>支出(元)</th><th>净利润(元)</th><th>设备告警</th><th>工单处理</th></tr></thead>
+            <tbody id="rpt-daily-body">
+              <tr><td>2026-03-27</td><td><span class="tbadge blue">5间</span></td><td><span class="tbadge gray">2间</span></td><td><span class="tbadge green">75.0%</span></td><td style="font-weight:600;color:var(--blue);">¥1,620</td><td style="color:var(--orange);">¥410</td><td style="font-weight:700;color:var(--green);">¥1,210</td><td><span class="tbadge red">3</span></td><td><span class="tbadge green">8/9</span></td></tr>
+              <tr><td>2026-03-26</td><td><span class="tbadge blue">4间</span></td><td><span class="tbadge gray">3间</span></td><td><span class="tbadge green">68.8%</span></td><td style="font-weight:600;color:var(--blue);">¥1,480</td><td style="color:var(--orange);">¥360</td><td style="font-weight:700;color:var(--green);">¥1,120</td><td><span class="tbadge orange">2</span></td><td><span class="tbadge green">7/8</span></td></tr>
+              <tr><td>2026-03-25</td><td><span class="tbadge blue">3间</span></td><td><span class="tbadge gray">2间</span></td><td><span class="tbadge green">62.5%</td><td style="font-weight:600;color:var(--blue);">¥1,320</td><td style="color:var(--orange);">¥310</td><td style="font-weight:700;color:var(--green);">¥1,010</td><td><span class="tbadge gray">0</span></td><td><span class="tbadge green">6/6</span></td></tr>
+              <tr><td>2026-03-24</td><td><span class="tbadge blue">6间</span></td><td><span class="tbadge gray">4间</span></td><td><span class="tbadge blue">81.3%</span></td><td style="font-weight:600;color:var(--blue);">¥1,580</td><td style="color:var(--orange);">¥390</td><td style="font-weight:700;color:var(--green);">¥1,190</td><td><span class="tbadge orange">1</span></td><td><span class="tbadge green">9/9</span></td></tr>
+              <tr><td>2026-03-23</td><td><td><span class="tbadge gray">2间</span></td><td><span class="tbadge blue">75.0%</span></td><td style="font-weight:600;color:var(--blue);">¥1,400</td><td style="color:var(--orange);">¥340</td><td style="font-weight:700;color:var(--green);">¥1,060</td><td><span class="tbadge gray">0</span></td><td><span class="tbadge green">5/5</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Settlement Center (v3新页面：结算中心) -->
+    <div id="page-settlement" class="page">
+      <div class="page-header">
+        <div class="page-title">💰 结算中心</div>
+        <div class="page-sub">退房结算 · 费用明细 · 押金处理 · 支持批量结算</div>
+      </div>
+      <!-- 待结算列表 -->
+      <div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--orange-bg);">⏳</div>
+          <div><div class="stat-num" id="stl-pending-count">3</div><div class="stat-label">待结算房间</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--blue-bg);">💵</div>
+          <div><div class="stat-num" id="stl-pending-amount">¥386</div><div class="stat-label">待收金额</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--green-bg);">✅</div>
+          <div><div class="stat-num">¥1,420</div><div class="stat-label">今日已结算</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--purple-bg);">🏧</div>
+          <div><div class="stat-num">¥8,640</div><div class="stat-label">本月总营收</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⏳ 待结算房间</div>
+          <div style="display:flex;gap:8px;">
+            <button class="action-btn" onclick="openBatchSettlementModal()" style="padding:4px 12px;">🔄 批量结算</button>
+            <button class="action-btn" onclick="openSettlementHistoryModal()" style="padding:4px 12px;">📋 结算历史</button>
+          </div>
+        </div>
+        <div class="card-header" style="border-top:1px solid var(--border);padding-top:12px;">
+          <div class="card-tabs">
+            <div class="card-tab active" onclick="filterSettlement('all',this)">全部 3</div>
+            <div class="card-tab" onclick="filterSettlement('normal',this)">普通退房 2</div>
+            <div class="card-tab" onclick="filterSettlement('dirty',this)">脏房 1</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <table class="table">
+            <thead><tr><th><input type="checkbox" id="stl-select-all" onchange="toggleAllSettlementSelect(this.checked)" style="accent-color:var(--blue);"></th><th>房间</th><th>入住人</th><th>入住时间</th><th>入住天数</th><th>房费</th><th>加床/加物</th><th>其他消费</th><th>应付总额</th><th>押金状态</th><th>操作</th></tr></thead>
+            <tbody id="settlement-table-body">
+              <tr data-status="normal" data-settlement-id="STL-2026032701">
+                <td><input type="checkbox" class="stl-row-check" style="accent-color:var(--blue);cursor:pointer;" onclick="onSettlementRowCheck()"></td>
+                <td><span style="font-weight:700;">301</span></td>
+                <td>张三</td>
+                <td>2026-03-26 14:00</td>
+                <td><span class="tbadge blue">1晚</span></td>
+                <td>¥128</td>
+                <td>¥0</td>
+                <td>¥0</td>
+                <td style="font-weight:700;color:var(--orange);font-size:14px;">¥128</td>
+                <td><span class="tbadge orange">待退押金¥100</span></td>
+                <td>
+                  <button class="action-btn small primary" onclick="openSettlementModal('STL-2026032701','301','张三','2026-03-26 14:00','1晚',128,100)" style="background:var(--blue);color:white;border:none;">结算</button>
+                  <button class="action-btn small" onclick="openSettlementDetail('STL-2026032701')">详情</button>
+                </td>
+              </tr>
+              <tr data-status="normal" data-settlement-id="STL-2026032602">
+                <td><input type="checkbox" class="stl-row-check" style="accent-color:var(--blue);cursor:pointer;" onclick="onSettlementRowCheck()"></td>
+                <td><span style="font-weight:700;">201</span></td>
+                <td>王五</td>
+                <td>2026-03-25 15:30</td>
+                <td><span class="tbadge blue">2晚</span></td>
+                <td>¥216</td>
+                <td>¥50（加床）</td>
+                <td>¥20（mini吧）</td>
+                <td style="font-weight:700;color:var(--orange);font-size:14px;">¥286</td>
+                <td><span class="tbadge orange">待退押金¥100</span></td>
+                <td>
+                  <button class="action-btn small primary" onclick="openSettlementModal('STL-2026032602','201','王五','2026-03-25 15:30','2晚',286,100)" style="background:var(--blue);color:white;border:none;">结算</button>
+                  <button class="action-btn small" onclick="openSettlementDetail('STL-2026032602')">详情</button>
+                </td>
+              </tr>
+              <tr data-status="dirty" data-settlement-id="STL-2026032603">
+                <td><input type="checkbox" class="stl-row-check" style="accent-color:var(--blue);cursor:pointer;" onclick="onSettlementRowCheck()"></td>
+                <td><span style="font-weight:700;">203</span></td>
+                <td>李四</td>
+                <td>2026-03-24 16:00</td>
+                <td><span class="tbadge orange">3晚</span></td>
+                <td>¥324</td>
+                <td>¥0</td>
+                <td>¥60（赔偿床单）</td>
+                <td style="font-weight:700;color:var(--orange);font-size:14px;">¥384</td>
+                <td><span class="tbadge red">押金不足¥24</span></td>
+                <td>
+                  <button class="action-btn small primary" onclick="openSettlementModal('STL-2026032603','203','李四','2026-03-24 16:00','3晚',384,100)" style="background:var(--blue);color:white;border:none;">结算</button>
+                  <button class="action-btn small" onclick="openSettlementDetail('STL-2026032603')">详情</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- 结算统计 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📊 本月结算统计</div>
+        </div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;">
+            <div style="text-align:center;padding:12px;background:var(--blue-bg);border-radius:8px;">
+              <div style="font-size:24px;font-weight:700;color:var(--blue);">48</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">结算笔数</div>
+            </div>
+            <div style="text-align:center;padding:12px;background:var(--green-bg);border-radius:8px;">
+              <div style="font-size:24px;font-weight:700;color:var(--green);">¥8,640</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">结算总额</div>
+            </div>
+            <div style="text-align:center;padding:12px;background:var(--orange-bg);border-radius:8px;">
+              <div style="font-size:24px;font-weight:700;color:var(--orange);">¥3,200</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">押金退还</div>
+            </div>
+            <div style="text-align:center;padding:12px;background:var(--purple-bg);border-radius:8px;">
+              <div style="font-size:24px;font-weight:700;color:var(--purple);">¥640</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">其他收入</div>
+            </div>
+            <div style="text-align:center;padding:12px;background:var(--red-bg);border-radius:8px;">
+              <div style="font-size:24px;font-weight:700;color:var(--red);">¥180</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">损坏赔偿</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Batch Check-in Management (v3新页面：批量入住管理) -->
+    <div id="page-batch-checkin" class="page">
+      <div class="page-header">
+        <div class="page-title">🚀 批量入住管理</div>
+        <div class="page-sub">批量开房 · 团客处理 · 批量发卡 · 一键完成全流程</div>
+      </div>
+      <!-- 批量入住步骤向导 -->
+      <div style="display:flex;align-items:center;gap:0;margin-bottom:20px;background:var(--white);border-radius:8px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="display:flex;align-items:center;gap:8px;" id="batch-step-1-indicator">
+          <div style="width:28px;height:28px;background:var(--blue);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;" id="batch-step-1-num">1</div>
+          <span style="font-size:13px;font-weight:600;color:var(--blue);" id="batch-step-1-label">选择房间</span>
+        </div>
+        <div style="width:60px;height:2px;background:var(--border);margin:0 12px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;opacity:0.4;" id="batch-step-2-indicator">
+          <div style="width:28px;height:28px;background:var(--border);color:var(--text-muted);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;" id="batch-step-2-num">2</div>
+          <span style="font-size:13px;font-weight:600;color:var(--text-muted);" id="batch-step-2-label">录入信息</span>
+        </div>
+        <div style="width:60px;height:2px;background:var(--border);margin:0 12px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;opacity:0.4;" id="batch-step-3-indicator">
+          <div style="width:28px;height:28px;background:var(--border);color:var(--text-muted);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;" id="batch-step-3-num">3</div>
+          <span style="font-size:13px;font-weight:600;color:var(--text-muted);" id="batch-step-3-label">确认提交</span>
+        </div>
+      </div>
+      <!-- 步骤1：房间选择 -->
+      <div id="batch-step-1" class="batch-step">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏠 选择入住房间（可多选）</div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <select class="form-select" id="batch-floor-filter" style="width:120px;padding:6px 10px;" onchange="filterBatchRooms()">
+                <option value="all">全部楼层</option>
+                <option value="3">3层</option>
+                <option value="2">2层</option>
+                <option value="1">1层</option>
+              </select>
+              <select class="form-select" id="batch-type-filter" style="width:130px;padding:6px 10px;" onchange="filterBatchRooms()">
+                <option value="all">全部房型</option>
+                <option value="亲子间">亲子间</option>
+                <option value="大床房">大床房</option>
+                <option value="标准间">标准间</option>
+              </select>
+              <button class="action-btn small" onclick="selectAllBatchRooms()">全选当前</button>
+              <button class="action-btn small" onclick="clearBatchRooms()">清空</button>
+              <span style="font-size:12px;color:var(--text-muted);">已选 <span id="batch-room-count" style="font-weight:700;color:var(--blue);">0</span> 间</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;" id="batch-room-grid">
+              <!-- 亲子间 -->
+              <div class="batch-room-chip" data-room="301" data-floor="3" data-type="亲子间" onclick="toggleBatchRoom(this,'301')">
+                <span>301</span><span style="color:var(--text-muted);font-size:11px;">亲子间</span>
+              </div>
+              <div class="batch-room-chip" data-room="302" data-floor="3" data-type="亲子间" onclick="toggleBatchRoom(this,'302')">
+                <span>302</span><span style="color:var(--text-muted);font-size:11px;">亲子间</span>
+              </div>
+              <div class="batch-room-chip" data-room="303" data-floor="3" data-type="亲子间" onclick="toggleBatchRoom(this,'303')">
+                <span>303</span><span style="color:var(--text-muted);font-size:11px;">亲子间</span>
+              </div>
+              <div class="batch-room-chip" data-room="304" data-floor="3" data-type="亲子间" onclick="toggleBatchRoom(this,'304')">
+                <span>304</span><span style="color:var(--text-muted);font-size:11px;">亲子间</span>
+              </div>
+              <!-- 大床房 -->
+              <div class="batch-room-chip" data-room="201" data-floor="2" data-type="大床房" onclick="toggleBatchRoom(this,'201')">
+                <span>201</span><span style="color:var(--text-muted);font-size:11px;">大床房</span>
+              </div>
+              <div class="batch-room-chip" data-room="202" data-floor="2" data-type="大床房" onclick="toggleBatchRoom(this,'202')">
+                <span>202</span><span style="color:var(--text-muted);font-size:11px;">大床房</span>
+              </div>
+              <div class="batch-room-chip" data-room="203" data-floor="2" data-type="大床房" onclick="toggleBatchRoom(this,'203')">
+                <span>203</span><span style="color:var(--text-muted);font-size:11px;">大床房</span>
+              </div>
+              <!-- 标准间 -->
+              <div class="batch-room-chip" data-room="101" data-floor="1" data-type="标准间" onclick="toggleBatchRoom(this,'101')">
+                <span>101</span><span style="color:var(--text-muted);font-size:11px;">标准间</span>
+              </div>
+              <div class="batch-room-chip" data-room="102" data-floor="1" data-type="标准间" onclick="toggleBatchRoom(this,'102')">
+                <span>102</span><span style="color:var(--text-muted);font-size:11px;">标准间</span>
+              </div>
+            </div>
+            <div style="margin-top:16px;padding:12px;background:var(--blue-bg);border-radius:6px;font-size:12px;color:var(--blue);">
+              💡 提示：批量入住支持同一批次为多个房间办理入住，适合团客、会议等场景。每个房间需单独录入入住人信息。
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+          <button class="action-btn primary" onclick="goBatchStep2()" id="btn-batch-step1-next" style="background:var(--blue);color:white;border:none;padding:8px 24px;font-size:13px;font-weight:600;cursor:not-allowed;opacity:0.5;" disabled>下一步：录入信息 →</button>
+        </div>
+      </div>
+      <!-- 步骤2：录入信息 -->
+      <div id="batch-step-2" style="display:none;" class="batch-step">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">👤 批量录入入住信息</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button class="action-btn small" onclick="openBatchImportModal()">📥 批量导入</button>
+              <button class="action-btn small" onclick="fillBatchSameInfo()">📋 统一填写</button>
+            </div>
+          </div>
+          <div class="card-body" id="batch-guest-list">
+            <!-- 动态生成每个房间的入住表单 -->
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:12px;">
+          <button class="action-btn" onclick="backBatchStep1()" style="padding:8px 20px;">← 返回房间选择</button>
+          <button class="action-btn primary" onclick="goBatchStep3()" style="background:var(--blue);color:white;border:none;padding:8px 24px;font-size:13px;font-weight:600;">下一步：确认提交 →</button>
+        </div>
+      </div>
+      <!-- 步骤3：确认提交 -->
+      <div id="batch-step-3" style="display:none;" class="batch-step">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">✅ 确认批量入住信息</div>
+          </div>
+          <div class="card-body" id="batch-confirm-list">
+            <!-- 动态生成确认摘要 -->
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:12px;">
+          <button class="action-btn" onclick="backBatchStep2()" style="padding:8px 20px;">← 返回修改信息</button>
+          <div style="display:flex;gap:10px;">
+            <button class="action-btn" onclick="saveBatchDraft()" style="padding:8px 16px;">💾 保存草稿</button>
+            <button class="action-btn primary" onclick="submitBatchCheckin()" style="background:var(--green);color:white;border:none;padding:8px 24px;font-size:13px;font-weight:600;">🚀 确认批量入住</button>
+          </div>
+        </div>
+      </div>
+      <!-- 批量入住汇总卡 -->
+      <div id="batch-summary-card" style="display:none;" class="card" style="margin-top:12px;">
+        <div class="card-header">
+          <div class="card-title">📊 批量入住汇总</div>
+        </div>
+        <div class="card-body">
+          <div class="batch-summary">
+            <div class="batch-summary-item"><div class="num" id="batch-sum-rooms">0</div><div style="font-size:11px;color:var(--text-muted);">入住房间</div></div>
+            <div class="batch-summary-item"><div class="num" id="batch-sum-nights">1</div><div style="font-size:11px;color:var(--text-muted);">入住天数</div></div>
+            <div class="batch-summary-item"><div class="num" id="batch-sum-amount">¥0</div><div style="font-size:11px;color:var(--text-muted);">应收总额</div></div>
+            <div class="batch-summary-item"><div class="num" id="batch-sum-deposit">¥0</div><div style="font-size:11px;color:var(--text-muted);">押金总额</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -4186,6 +4683,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <button class="action-btn" onclick="doQuickCheckin()" style="padding:12px;" id="rqp-checkin-btn">🏨 办理入住</button>
         <button class="action-btn" onclick="doQuickCheckout()" style="padding:12px;" id="rqp-checkout-btn">🚪 办理退房</button>
         <button class="action-btn" onclick="doQuickClean()" style="padding:12px;">🧹 清洁任务</button>
+        <button class="action-btn orange" onclick="doQuickClearCard()" style="padding:12px;">🗑️ 清除门卡</button>
         <button class="action-btn" onclick="goToRoomDetail()" style="padding:12px;">📋 查看详情</button>
       </div>
     </div>
@@ -5745,6 +6243,73 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     <div class="modal-footer">
       <button class="modal-btn secondary" onclick="closeModal('checkin-receipt')">关闭</button>
       <button class="modal-btn primary" onclick="printCheckinReceipt()">🖨️ 打印收据</button>
+    </div>
+  </div>
+</div>
+
+<!-- v3新模态框: 结算确认弹窗 -->
+<div class="modal-overlay hidden" id="modal-settlement-checkout">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">💰 结算确认 - <span id="stl-modal-room"></span></div>
+      <button class="modal-close" onclick="closeModal('settlement-checkout')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- 结算信息摘要 -->
+      <div style="padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:12px;color:var(--text-muted);">结算单号</span>
+          <span style="font-size:12px;font-weight:600;" id="stl-modal-id">STL-2026032701</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:12px;color:var(--text-muted);">入住人</span>
+          <span style="font-size:12px;font-weight:600;" id="stl-modal-guest">张三</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:12px;color:var(--text-muted);">入住时间</span>
+          <span style="font-size:12px;" id="stl-modal-checkin">2026-03-26 14:00</span>
+        </div>
+      </div>
+      <!-- 费用明细 -->
+      <div class="settlement-section">
+        <div class="settlement-section-title">📋 费用明细</div>
+        <div class="settlement-row"><span class="label">房费</span><span class="value" id="stl-modal-roomfee">¥128</span></div>
+        <div class="settlement-row"><span class="label">加床/加物</span><span class="value" id="stl-modal-extras">¥0</span></div>
+        <div class="settlement-row"><span class="label">其他消费（赔偿等）</span><span class="value" id="stl-modal-damage">¥0</span></div>
+        <div class="settlement-row total"><span class="label">应付总额</span><span class="value" id="stl-modal-total">¥128</span></div>
+      </div>
+      <!-- 押金处理 -->
+      <div class="settlement-section">
+        <div class="settlement-section-title">💵 押金处理</div>
+        <div class="settlement-row"><span class="label">押金金额</span><span class="value" style="color:var(--orange);" id="stl-modal-deposit">¥100</span></div>
+        <div class="settlement-row discount"><span class="label">需退还</span><span class="value" style="color:var(--green);" id="stl-modal-deposit-return">¥100</span></div>
+      </div>
+      <!-- 实际收款 -->
+      <div style="padding:14px;background:var(--green-bg);border-radius:8px;margin:12px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;color:var(--green);font-weight:600;">实收金额</span>
+          <span style="font-size:22px;font-weight:700;color:var(--green);" id="stl-modal-actual">¥28</span>
+        </div>
+      </div>
+      <!-- 支付方式 -->
+      <div class="form-group">
+        <label class="form-label">支付方式</label>
+        <select class="form-select" id="stl-modal-pay-method">
+          <option value="wechat">💚 微信支付</option>
+          <option value="alipay">💙 支付宝</option>
+          <option value="cash">💵 现金</option>
+          <option value="card">💳 银行卡</option>
+        </select>
+      </div>
+      <!-- 备注 -->
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">结算备注</label>
+        <input type="text" class="form-input" id="stl-modal-note" placeholder="选填，如：押金退还方式、优惠说明等">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('settlement-checkout')">取消</button>
+      <button class="modal-btn primary" onclick="submitSettlement()" style="background:var(--green);color:white;border:none;">💰 确认结算</button>
     </div>
   </div>
 </div>
@@ -7703,9 +8268,84 @@ function openRoomQuickPanel(room, type, status, lock, power, keys) {
   }
   openModal('room-quick');
 }
+// 【改进2】房间快速操作-倒计时二次确认防误操作
+var _confirmCountdown = 5;
+var _confirmTimer = null;
+function openCountdownConfirm(type, room) {
+  var titles = { unlock: '🔓 确认远程开锁', clearkey: '🗑️ 确认清除门卡', restart: '🔁 确认重启设备' };
+  var msgs = {
+    unlock: '即将向 ' + room + ' 下发远程开锁指令，请确认是否为当前在住客人或工作人员操作。',
+    clearkey: '即将清除 ' + room + ' 的所有门卡权限，此操作不可逆，是否继续？',
+    restart: '即将重启 ' + room + ' 的门锁设备，重启过程中（约10秒）门锁将无法正常使用。'
+  };
+  var confirms = { unlock: '确认开锁', clearkey: '确认清除', restart: '确认重启' };
+  _confirmCountdown = 5;
+  var box = document.getElementById('countdown-confirm-box');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'countdown-confirm-box';
+    box.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+    document.body.appendChild(box);
+  }
+  box.style.display = 'flex';
+  box.innerHTML = '<div style="background:white;border-radius:12px;padding:24px;width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
+    '<div style="text-align:center;margin-bottom:16px;"><div style="font-size:36px;margin-bottom:8px;" id="cc-icon">🔓</div>' +
+    '<div style="font-size:16px;font-weight:700;" id="cc-title">确认远程开锁</div>' +
+    '<div style="font-size:13px;color:var(--text-muted);margin-top:8px;line-height:1.6;" id="cc-msg"></div></div>' +
+    '<div style="text-align:center;margin-bottom:16px;padding:12px;background:var(--orange-bg);border-radius:8px;">' +
+    '<div style="font-size:36px;font-weight:700;color:var(--orange);" id="cc-countdown">' + _confirmCountdown + '</div>' +
+    '<div style="font-size:12px;color:var(--orange);">秒后可操作</div></div>' +
+    '<div style="display:flex;gap:10px;"><button class="modal-btn secondary" style="flex:1;" onclick="cancelCountdownConfirm()">取消</button>' +
+    '<button class="modal-btn primary" id="cc-confirm-btn" style="flex:1;opacity:0.5;cursor:not-allowed;" disabled onclick="executeCountdownConfirm()">确认开锁</button></div></div>';
+  document.getElementById('cc-icon').textContent = type === 'unlock' ? '🔓' : type === 'clearkey' ? '🗑️' : '🔁';
+  document.getElementById('cc-title').textContent = titles[type] || '确认操作';
+  document.getElementById('cc-msg').textContent = msgs[type] || '';
+  window._confirmAction = type;
+  window._confirmRoom = room;
+  if (_confirmTimer) clearInterval(_confirmTimer);
+  _confirmTimer = setInterval(function() {
+    _confirmCountdown--;
+    var countdownEl = document.getElementById('cc-countdown');
+    var confirmBtn = document.getElementById('cc-confirm-btn');
+    if (countdownEl) countdownEl.textContent = _confirmCountdown;
+    if (_confirmCountdown <= 0) {
+      clearInterval(_confirmTimer);
+      _confirmTimer = null;
+      if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.style.opacity = '1'; confirmBtn.style.cursor = 'pointer'; }
+      if (countdownEl) countdownEl.textContent = '✓';
+    }
+  }, 1000);
+}
+function cancelCountdownConfirm() {
+  if (_confirmTimer) { clearInterval(_confirmTimer); _confirmTimer = null; }
+  var box = document.getElementById('countdown-confirm-box');
+  if (box) box.style.display = 'none';
+  window._confirmAction = null;
+}
+function executeCountdownConfirm() {
+  if (_confirmCountdown > 0) return;
+  var action = window._confirmAction;
+  var room = window._confirmRoom;
+  cancelCountdownConfirm();
+  if (action === 'unlock') {
+    closeModal('room-quick');
+    openUnlockModal();
+  } else if (action === 'clearkey') {
+    closeModal('room-quick');
+    openClearCardModal();
+  } else if (action === 'restart') {
+    showToast('正在重启 ' + room + ' 设备，请稍候...', 'info');
+    setTimeout(function() { showToast(room + ' 设备重启完成，已重新连接上线', 'success'); }, 4000);
+  }
+}
+
 function doQuickUnlock() {
-  closeModal('room-quick');
-  openUnlockModal();
+  var room = currentRoomData ? currentRoomData.room : '301';
+  openCountdownConfirm('unlock', room);
+}
+function doQuickClearCard() {
+  var room = currentRoomData ? currentRoomData.room : '301';
+  openCountdownConfirm('clearkey', room);
 }
 function doQuickCheckin() {
   closeModal('room-quick');
@@ -8337,12 +8977,59 @@ function filterMember(level, el) {
   });
 }
 
+// 【改进3】会员实时搜索增强：实时过滤+计数显示+清空按钮
 function searchMember(query) {
-  query = query.toLowerCase();
-  document.querySelectorAll('#member-table-body tr').forEach(function(row) {
+  // 去除首尾空格
+  query = query.toLowerCase().trim();
+  var rows = document.querySelectorAll('#member-table-body tr');
+  var total = 0, matched = 0;
+  rows.forEach(function(row) {
+    total++;
+    // 匹配：姓名、手机号（去掉****后四位匹配）、身份证、等级
     var text = row.textContent.toLowerCase();
-    row.style.display = !query || text.includes(query) ? '' : 'none';
+    var isMatch = !query || text.includes(query);
+    // 额外处理手机号：支持输入完整号段匹配（如1381234也能匹配到138****8888）
+    if (query && query.length >= 3) {
+      var phoneCell = row.querySelector('td:nth-child(2)');
+      if (phoneCell) {
+        var phoneText = phoneCell.textContent.replace(/\*/g, '');
+        if (phoneText.includes(query)) isMatch = true;
+      }
+    }
+    row.style.display = isMatch ? '' : 'none';
+    if (isMatch) matched++;
   });
+  // 更新搜索结果计数
+  var searchInput = document.getElementById('member-search');
+  var countBadge = searchInput ? searchInput.parentElement.querySelector('.search-count-badge') : null;
+  if (!countBadge && searchInput) {
+    countBadge = document.createElement('span');
+    countBadge.className = 'search-count-badge';
+    countBadge.style.cssText = 'margin-left:8px;padding:2px 8px;background:var(--blue-bg);color:var(--blue);border-radius:10px;font-size:11px;font-weight:600;';
+    searchInput.parentElement.appendChild(countBadge);
+  }
+  if (countBadge) {
+    if (query) {
+      countBadge.textContent = matched + ' / ' + total;
+      countBadge.style.display = 'inline-block';
+    } else {
+      countBadge.style.display = 'none';
+    }
+  }
+  // 清空按钮
+  var clearBtn = searchInput ? searchInput.parentElement.querySelector('.search-clear-btn') : null;
+  if (!clearBtn && searchInput) {
+    clearBtn = document.createElement('button');
+    clearBtn.className = 'search-clear-btn';
+    clearBtn.textContent = '✕';
+    clearBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);padding:4px;margin-left:4px;';
+    clearBtn.onclick = function() {
+      var input = document.getElementById('member-search');
+      if (input) { input.value = ''; searchMember(''); }
+    };
+    searchInput.parentElement.appendChild(clearBtn);
+  }
+  if (clearBtn) clearBtn.style.display = query ? 'inline-block' : 'none';
 }
 
 function openAddMemberModal() {
@@ -9700,6 +10387,30 @@ function copyKeypadPassword(pwd) {
   }
 }
 
+// 【改进1】密码表格点击单元格直接复制（替代按钮点击）
+function copyKeypadPasswordCell(el) {
+  var pwd = el.textContent.trim();
+  if (!pwd) { showToast('密码无效', 'error'); return; }
+  // 短暂高亮反馈
+  el.style.background = 'var(--green-bg)';
+  el.style.color = 'var(--green)';
+  setTimeout(function() { el.style.background = ''; el.style.color = ''; }, 300);
+  // 复制到剪贴板
+  try {
+    navigator.clipboard.writeText(pwd).then(function() {
+      showToast('密码已复制：' + pwd, 'success');
+    }).catch(function() {
+      var ta = document.createElement('textarea');
+      ta.value = pwd; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      showToast('密码已复制：' + pwd, 'success');
+    });
+  } catch(e) {
+    showToast('复制失败，请手动复制', 'error');
+  }
+}
+
 // 【改进5】密码作废/删除：真实更新状态badge+计数联动
 function invalidateKeypad(idx) {
   var rows = document.querySelectorAll('#keypad-table-body tr');
@@ -9782,6 +10493,7 @@ function filterKeypadLog(room) {
 }
 
 // ======= 改进5: 首页一键检测功能 =======
+// 【改进4】一键检测-完整诊断报告弹窗（替代toast，显示完整检测结果）
 function runHealthCheck() {
   var btn = event.target.closest('button');
   var originalHTML = btn.innerHTML;
@@ -9802,10 +10514,68 @@ function runHealthCheck() {
       setTimeout(function() {
         btn.innerHTML = originalHTML;
         btn.disabled = false;
-        // 显示检测报告
-        var report = '✅ 设备网络：11/16 在线\n✅ 电量正常：14/16 正常\n⚠️ 低电量：2台（301-28%，305-35%）\n🔴 离线设备：2台（303,306）\n✅ 开锁记录：完整\n✅ 告警通道：正常';
-        showToast('检测完成！\n' + report.replace(/\n/g, ' | '), 'success');
-      }, 1000);
+        // 【改进4】显示完整诊断报告弹窗（替代toast）
+        var reportData = [
+          { item: '设备网络状态', status: 'pass', detail: '11/16 设备在线，5台离线', icon: '✅' },
+          { item: '电量状态检测', status: 'warn', detail: '2台低电量：301(28%)、305(35%)，需更换电池', icon: '⚠️' },
+          { item: '离线设备排查', status: 'fail', detail: '2台设备离线超10小时：303、306，建议立即检查', icon: '🔴' },
+          { item: '开锁记录完整性', status: 'pass', detail: '近7日记录完整，无异常记录', icon: '✅' },
+          { item: '告警通道', status: 'pass', detail: '飞书/短信通道正常，上月送达率100%', icon: '✅' },
+          { item: '会员数据同步', status: 'pass', detail: '会员系统与门锁系统数据一致，无差异', icon: '✅' },
+          { item: '密码管理', status: 'warn', detail: '8个密码即将过期（3天内），建议续期', icon: '⚠️' },
+          { item: '系统安全检测', status: 'pass', detail: '最近7天无异常登录，权限配置正常', icon: '✅' }
+        ];
+        var overallScore = 85;
+        var scoreColor = overallScore >= 80 ? 'var(--green)' : overallScore >= 60 ? 'var(--orange)' : 'var(--red)';
+        var scoreLabel = overallScore >= 80 ? '健康' : overallScore >= 60 ? '亚健康' : '异常';
+        var scoreIcon = overallScore >= 80 ? '💚' : overallScore >= 60 ? '💛' : '❤️';
+
+        var itemsHtml = reportData.map(function(item) {
+          var rowColor = item.status === 'pass' ? 'var(--green)' : item.status === 'warn' ? 'var(--orange)' : 'var(--red)';
+          var rowBg = item.status === 'pass' ? 'var(--green-bg)' : item.status === 'warn' ? 'var(--orange-bg)' : 'var(--red-bg)';
+          var rowBorder = item.status === 'pass' ? 'var(--green)' : item.status === 'warn' ? 'var(--orange)' : 'var(--red)';
+          return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:' + rowBg + ';border-left:3px solid ' + rowBorder + ';border-radius:6px;margin-bottom:6px;">' +
+            '<div style="font-size:18px;">' + item.icon + '</div>' +
+            '<div style="flex:1;">' +
+              '<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;">' + item.item + '</div>' +
+              '<div style="font-size:11px;color:var(--text-muted);">' + item.detail + '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+
+        var box = document.getElementById('health-report-box');
+        if (!box) {
+          box = document.createElement('div');
+          box.id = 'health-report-box';
+          document.body.appendChild(box);
+        }
+        box.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+        box.innerHTML = '<div style="background:white;border-radius:14px;width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 12px 48px rgba(0,0,0,0.25);">' +
+          '<div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="font-size:24px;">🔍</div>' +
+              '<div><div style="font-size:15px;font-weight:700;">系统健康检测报告</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">检测时间：' + new Date().toLocaleString('zh-CN', {hour12:false}) + '</div></div>' +
+            '</div>' +
+            '<button onclick="document.getElementById(\'health-report-box\').style.display=\'none\'" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px;">✕</button>' +
+          '</div>' +
+          '<div style="padding:20px 24px;">' +
+            '<div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--bg);border-radius:10px;margin-bottom:16px;">' +
+              '<div style="text-align:center;"><div style="font-size:42px;font-weight:700;color:' + scoreColor + ';">' + overallScore + '</div><div style="font-size:11px;color:var(--text-muted);">综合评分</div></div>' +
+              '<div style="flex:1;">' +
+                '<div style="font-size:14px;font-weight:700;margin-bottom:6px;">' + scoreIcon + ' 系统' + scoreLabel + '</div>' +
+                '<div style="font-size:12px;color:var(--text-muted);">共检测 8 个项目，其中 5 项通过，2 项警告，1 项异常</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="font-size:13px;font-weight:600;color:var(--text-light);margin-bottom:10px;">📋 详细检测结果</div>' +
+            '<div style="max-height:360px;overflow-y:auto;">' + itemsHtml + '</div>' +
+          '</div>' +
+          '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;">' +
+            '<button onclick="document.getElementById(\'health-report-box\').style.display=\'none\'" class="modal-btn secondary" style="flex:1;">关闭报告</button>' +
+            '<button onclick="exportHealthReport()" class="modal-btn" style="flex:1;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📤 导出报告</button>' +
+          '</div>' +
+        '</div>';
+        box.onclick = function(e) { if (e.target === box) box.style.display = 'none'; };
+      }, 800);
       return;
     }
     showToast(steps[i].label, 'info');
@@ -9813,6 +10583,19 @@ function runHealthCheck() {
     setTimeout(nextStep, steps[i-1].delay);
   }
   nextStep();
+}
+
+// 【改进4】导出健康检测报告为文本文件
+function exportHealthReport() {
+  var content = '领锁物联系统健康检测报告\n检测时间：' + new Date().toLocaleString('zh-CN', {hour12:false}) +
+    '\n综合评分：85分（健康）\n\n详细检测结果：\n1. ✅ 设备网络状态 - 通过 - 11/16 设备在线\n2. ⚠️ 电量状态检测 - 警告 - 2台低电量\n3. 🔴 离线设备排查 - 异常 - 2台设备离线超10小时\n4. ✅ 开锁记录完整性 - 通过\n5. ✅ 告警通道 - 通过\n6. ✅ 会员数据同步 - 通过\n7. ⚠️ 密码管理 - 警告 - 8个密码即将过期\n8. ✅ 系统安全检测 - 通过\n\n建议：\n1. 立即检查303、306房间设备离线原因\n2. 更换301、305房间设备电池\n3. 续期即将过期的8个密码';
+  var blob = new Blob([content], {type: 'text/plain;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = '健康检测报告_' + new Date().toISOString().slice(0,10) + '.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('检测报告已导出', 'success');
 }
 
 // ======= 改进5: 告警处理状态闭环（处理后表格状态实时更新） =======
@@ -9857,7 +10640,30 @@ function submitAlertProcessV2() {
     var actionCell = rows[idx].querySelector('td:nth-child(6)');
     if (actionCell) actionCell.innerHTML = '<button class="action-btn" onclick="openAlertModal(' + idx + ')">查看</button>';
     rows[idx].dataset.status = newStatus;
+    // 【改进5】告警处理后重新排序（pending在顶部，done移到底部）
+    var tbody = document.getElementById('alert-table-body');
+    if (tbody) {
+      var pendingRows = [], doneRows = [];
+      Array.from(tbody.querySelectorAll('tr')).forEach(function(row) {
+        if (row.dataset.status === 'pending') pendingRows.push(row);
+        else doneRows.push(row);
+      });
+      // 移除所有行
+      pendingRows.concat(doneRows).forEach(function(row) { tbody.removeChild(row); });
+      // 按优先级重新插入
+      pendingRows.forEach(function(row) { tbody.appendChild(row); });
+      doneRows.forEach(function(row) { tbody.appendChild(row); });
+      // 更新序号
+      Array.from(tbody.querySelectorAll('tr')).forEach(function(row, i) {
+        var numCell = row.querySelector('td:first-child');
+        if (numCell) numCell.textContent = i + 1;
+      });
+    }
   }
+  // 更新告警统计数字
+  var pendingCount = document.querySelectorAll('#alert-table-body tr[data-status="pending"]').length;
+  var statEls = document.querySelectorAll('#page-alert .stat-card .stat-num');
+  if (statEls[0]) statEls[0].textContent = pendingCount;
   closeModal('alert');
   var resultLabel = {resolved:'✅ 已解决',partial:'⚠️ 部分解决',escalated:'🔃 已转工单',ignored:'⏭️ 已忽略'}[selectedResult] || '';
   showToast('告警处理完成：' + resultLabel + ' · ' + solution + (note ? ' · ' + note : ''), 'success');
@@ -12248,6 +13054,388 @@ function sendEnergySelfTest() {
   setTimeout(function() {
     showToast('301 自检完成：空调运行正常，无异常功耗', 'success');
   }, 5000);
+}
+
+// ========== v3改进: 结算中心功能 ==========
+var selectedSettlementRows = [];
+
+function filterSettlement(type, el) {
+  document.querySelectorAll('#page-settlement .card-tabs .card-tab').forEach(function(t) {
+    t.classList.remove('active');
+    t.style.background = 'var(--bg)';
+    t.style.color = 'var(--text)';
+  });
+  if (el) {
+    el.classList.add('active');
+    el.style.background = 'var(--blue-bg)';
+    el.style.color = 'var(--blue)';
+  }
+  var rows = document.querySelectorAll('#settlement-table-body tr');
+  rows.forEach(function(row) {
+    var match = type === 'all' || row.dataset.status === type;
+    row.style.display = match ? '' : 'none';
+  });
+}
+
+function toggleAllSettlementSelect(checked) {
+  document.querySelectorAll('.stl-row-check').forEach(function(cb) { cb.checked = checked; });
+  onSettlementRowCheck();
+}
+
+function onSettlementRowCheck() {
+  var checked = document.querySelectorAll('.stl-row-check:checked');
+  selectedSettlementRows = Array.from(checked).map(function(cb) { return cb.closest('tr').dataset.settlementId; });
+  var toolbar = document.getElementById('stl-batch-toolbar');
+  if (toolbar) toolbar.style.display = checked.length > 0 ? 'flex' : 'none';
+  var countEl = document.getElementById('stl-selected-count');
+  if (countEl) countEl.textContent = checked.length + ' 项已选';
+}
+
+function openSettlementModal(id, room, name, checkinTime, nights, amount, deposit) {
+  // Build settlement details
+  var roomFee = amount;
+  var extras = 0;
+  var damage = 0;
+  var netAmount = roomFee + extras + damage;
+  var depositReturn = deposit;
+  var actualPay = Math.max(0, netAmount - deposit);
+  document.getElementById('stl-modal-id').textContent = id;
+  document.getElementById('stl-modal-room').textContent = room;
+  document.getElementById('stl-modal-guest').textContent = name;
+  document.getElementById('stl-modal-checkin').textContent = checkinTime;
+  document.getElementById('stl-modal-nights').textContent = nights;
+  document.getElementById('stl-modal-roomfee').textContent = '¥' + roomFee;
+  document.getElementById('stl-modal-extras').textContent = extras > 0 ? '¥' + extras : '¥0';
+  document.getElementById('stl-modal-damage').textContent = damage > 0 ? '¥' + damage : '¥0';
+  document.getElementById('stl-modal-total').textContent = '¥' + netAmount;
+  document.getElementById('stl-modal-deposit').textContent = '¥' + deposit;
+  document.getElementById('stl-modal-actual').textContent = actualPay > 0 ? '¥' + actualPay : '已结清';
+  document.getElementById('stl-modal-actual').style.color = actualPay > 0 ? 'var(--red)' : 'var(--green)';
+  document.getElementById('stl-modal-pay-method').value = 'wechat';
+  openModal('settlement-checkout');
+}
+
+function openSettlementDetail(id) {
+  showToast('查看结算单详情: ' + id, 'info');
+}
+
+function openBatchSettlementModal() {
+  var checked = document.querySelectorAll('.stl-row-check:checked');
+  if (checked.length === 0) { showToast('请先选择要结算的房间', 'error'); return; }
+  showToast('已选择 ' + checked.length + ' 个房间，正在准备批量结算...', 'info');
+  openModal('batch-settlement');
+}
+
+function submitSettlement() {
+  var method = document.getElementById('stl-modal-pay-method').value;
+  var methodLabels = { wechat: '微信支付', alipay: '支付宝', cash: '现金', card: '银行卡' };
+  var room = document.getElementById('stl-modal-room').textContent;
+  var actual = document.getElementById('stl-modal-actual').textContent;
+  closeModal('settlement-checkout');
+  showToast('房间 ' + room + ' 结算成功！实收 ' + actual + '，方式：' + (methodLabels[method] || method), 'success');
+  // Remove row from table
+  var rows = document.querySelectorAll('#settlement-table-body tr');
+  rows.forEach(function(row) {
+    if (row.querySelector('span[style*="font-weight:700"]') && row.querySelector('span[style*="font-weight:700"]').textContent === room) {
+      row.style.display = 'none';
+    }
+  });
+}
+
+function openSettlementHistoryModal() {
+  showToast('正在加载结算历史记录...', 'info');
+}
+
+// ========== v3改进: 数据报表功能 ==========
+function changeReportPeriod() {
+  var period = document.getElementById('rpt-period').value;
+  var startInput = document.getElementById('rpt-date-start');
+  var endInput = document.getElementById('rpt-date-end');
+  var today = new Date();
+  if (period === 'today') {
+    var d = today.toISOString().slice(0, 10);
+    startInput.value = d;
+    endInput.value = d;
+  } else if (period === 'yesterday') {
+    var y = new Date(today); y.setDate(y.getDate() - 1);
+    var ds = y.toISOString().slice(0, 10);
+    startInput.value = ds;
+    endInput.value = ds;
+  } else if (period === 'thisweek') {
+    var wStart = new Date(today); wStart.setDate(today.getDate() - today.getDay());
+    startInput.value = wStart.toISOString().slice(0, 10);
+    endInput.value = today.toISOString().slice(0, 10);
+  } else if (period === 'thismonth') {
+    var mStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    startInput.value = mStart.toISOString().slice(0, 10);
+    endInput.value = today.toISOString().slice(0, 10);
+  } else if (period === 'lastmonth') {
+    var lStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    var lEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+    startInput.value = lStart.toISOString().slice(0, 10);
+    endInput.value = lEnd.toISOString().slice(0, 10);
+  }
+}
+
+function generateReport() {
+  var startDate = document.getElementById('rpt-date-start').value;
+  var endDate = document.getElementById('rpt-date-end').value;
+  showToast('正在生成 ' + startDate + ' 至 ' + endDate + ' 的报表...', 'info');
+  setTimeout(function() {
+    showToast('报表生成完成！数据已更新', 'success');
+  }, 1500);
+}
+
+function exportReport() {
+  showToast('正在导出报表为Excel...', 'info');
+  setTimeout(function() { showToast('报表已导出至桌面！', 'success'); }, 2000);
+}
+
+function switchRptChart(type, el) {
+  document.querySelectorAll('#page-report .card-tabs .card-tab').forEach(function(t) {
+    t.classList.remove('active');
+    t.style.background = 'var(--bg)';
+    t.style.color = 'var(--text)';
+  });
+  if (el) {
+    el.classList.add('active');
+    el.style.background = 'var(--blue-bg)';
+    el.style.color = 'var(--blue)';
+  }
+  showToast('已切换为' + (type === 'income' ? '营收' : type === 'occupancy' ? '入住率' : '能耗') + '视图', 'info');
+}
+
+// ========== v3改进: 批量入住功能 ==========
+var batchSelectedRooms = [];
+var batchGuestData = [];
+
+function toggleBatchRoom(el, roomNum) {
+  var idx = batchSelectedRooms.indexOf(roomNum);
+  if (idx === -1) {
+    batchSelectedRooms.push(roomNum);
+    el.classList.add('selected');
+  } else {
+    batchSelectedRooms.splice(idx, 1);
+    el.classList.remove('selected');
+  }
+  document.getElementById('batch-room-count').textContent = batchSelectedRooms.length;
+  var btn = document.getElementById('btn-batch-step1-next');
+  if (batchSelectedRooms.length > 0) {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+  } else {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+  }
+}
+
+function filterBatchRooms() {
+  var floor = document.getElementById('batch-floor-filter').value;
+  var type = document.getElementById('batch-type-filter').value;
+  document.querySelectorAll('#batch-room-grid .batch-room-chip').forEach(function(chip) {
+    var matchFloor = floor === 'all' || chip.dataset.floor === floor;
+    var matchType = type === 'all' || chip.dataset.type === type;
+    chip.style.display = matchFloor && matchType ? '' : 'none';
+  });
+}
+
+function selectAllBatchRooms() {
+  document.querySelectorAll('#batch-room-grid .batch-room-chip:not([style*="display: none"])').forEach(function(chip) {
+    var roomNum = chip.dataset.room;
+    if (batchSelectedRooms.indexOf(roomNum) === -1) {
+      batchSelectedRooms.push(roomNum);
+      chip.classList.add('selected');
+    }
+  });
+  document.getElementById('batch-room-count').textContent = batchSelectedRooms.length;
+  var btn = document.getElementById('btn-batch-step1-next');
+  btn.disabled = false;
+  btn.style.opacity = '1';
+  btn.style.cursor = 'pointer';
+}
+
+function clearBatchRooms() {
+  batchSelectedRooms = [];
+  document.querySelectorAll('#batch-room-grid .batch-room-chip').forEach(function(chip) { chip.classList.remove('selected'); });
+  document.getElementById('batch-room-count').textContent = '0';
+  var btn = document.getElementById('btn-batch-step1-next');
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  btn.style.cursor = 'not-allowed';
+}
+
+function goBatchStep2() {
+  if (batchSelectedRooms.length === 0) { showToast('请至少选择一个房间', 'error'); return; }
+  document.getElementById('batch-step-1').style.display = 'none';
+  document.getElementById('batch-step-2').style.display = 'block';
+  document.getElementById('batch-step-3').style.display = 'none';
+  updateBatchStepIndicator(2);
+  renderBatchGuestForms();
+}
+
+function backBatchStep1() {
+  document.getElementById('batch-step-1').style.display = 'block';
+  document.getElementById('batch-step-2').style.display = 'none';
+  document.getElementById('batch-step-3').style.display = 'none';
+  updateBatchStepIndicator(1);
+}
+
+function goBatchStep3() {
+  // Validate forms
+  var forms = document.querySelectorAll('#batch-guest-list .batch-guest-form');
+  var valid = true;
+  forms.forEach(function(form) {
+    var name = form.querySelector('.guest-name-input');
+    var phone = form.querySelector('.guest-phone-input');
+    if (!name.value.trim()) { valid = false; name.style.borderColor = 'var(--red)'; }
+    if (!phone.value.trim() || phone.value.length < 11) { valid = false; phone.style.borderColor = 'var(--red)'; }
+  });
+  if (!valid) { showToast('请填写完整的入住人信息', 'error'); return; }
+  document.getElementById('batch-step-1').style.display = 'none';
+  document.getElementById('batch-step-2').style.display = 'none';
+  document.getElementById('batch-step-3').style.display = 'block';
+  updateBatchStepIndicator(3);
+  renderBatchConfirmList();
+  updateBatchSummaryCard();
+}
+
+function backBatchStep2() {
+  document.getElementById('batch-step-2').style.display = 'block';
+  document.getElementById('batch-step-3').style.display = 'none';
+  updateBatchStepIndicator(2);
+}
+
+function updateBatchStepIndicator(step) {
+  for (var i = 1; i <= 3; i++) {
+    var num = document.getElementById('batch-step-' + i + '-num');
+    var label = document.getElementById('batch-step-' + i + '-label');
+    var indicator = document.getElementById('batch-step-' + i + '-indicator');
+    if (i < step) {
+      // completed
+      if (num) { num.style.background = 'var(--green)'; num.textContent = '✓'; }
+      if (indicator) indicator.style.opacity = '1';
+    } else if (i === step) {
+      // active
+      if (num) { num.style.background = 'var(--blue)'; num.textContent = i; }
+      if (indicator) indicator.style.opacity = '1';
+    } else {
+      // pending
+      if (num) { num.style.background = 'var(--border)'; num.textContent = i; }
+      if (indicator) indicator.style.opacity = '0.4';
+    }
+  }
+}
+
+function renderBatchGuestForms() {
+  var container = document.getElementById('batch-guest-list');
+  var html = '';
+  batchSelectedRooms.forEach(function(room) {
+    html += '<div style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;">' +
+      '<div style="font-weight:600;margin-bottom:10px;color:var(--blue);">🏠 房间 ' + room + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">' +
+      '<div class="form-group" style="margin-bottom:0;">' +
+      '<label class="form-label">入住人姓名 <span class="required">*</span></label>' +
+      '<input type="text" class="form-input guest-name-input" placeholder="请输入姓名" style="padding:7px 10px;font-size:12px;">' +
+      '</div>' +
+      '<div class="form-group" style="margin-bottom:0;">' +
+      '<label class="form-label">手机号 <span class="required">*</span></label>' +
+      '<input type="tel" class="form-input guest-phone-input" placeholder="11位手机号" style="padding:7px 10px;font-size:12px;">' +
+      '</div>' +
+      '<div class="form-group" style="margin-bottom:0;">' +
+      '<label class="form-label">身份证号</label>' +
+      '<input type="text" class="form-input guest-idcard-input" placeholder="选填" style="padding:7px 10px;font-size:12px;">' +
+      '</div>' +
+      '<div class="form-group" style="margin-bottom:0;">' +
+      '<label class="form-label">入住天数</label>' +
+      '<select class="form-select guest-nights-select" style="padding:7px 10px;font-size:12px;">' +
+      '<option value="1">1晚</option><option value="2">2晚</option><option value="3">3晚</option><option value="5">5晚</option><option value="7">7晚</option>' +
+      '</select>' +
+      '</div>' +
+      '<div class="form-group" style="margin-bottom:0;">' +
+      '<label class="form-label">押金金额</label>' +
+      '<input type="number" class="form-input guest-deposit-input" value="100" style="padding:7px 10px;font-size:12px;width:90px;"> 元' +
+      '</div>' +
+      '<div class="form-group" style="margin-bottom:0;">' +
+      '<label class="form-label">发卡数量</label>' +
+      '<select class="form-select guest-cards-select" style="padding:7px 10px;font-size:12px;">' +
+      '<option value="0">不发卡</option><option value="1">1张</option><option value="2">2张</option><option value="3">3张</option>' +
+      '</select>' +
+      '</div>' +
+      '</div></div>';
+  });
+  container.innerHTML = html;
+}
+
+function renderBatchConfirmList() {
+  var container = document.getElementById('batch-confirm-list');
+  var forms = document.querySelectorAll('#batch-guest-list .batch-guest-form');
+  var html = '';
+  batchSelectedRooms.forEach(function(room, i) {
+    var form = forms[i];
+    var name = form.querySelector('.guest-name-input').value || '--';
+    var phone = form.querySelector('.guest-phone-input').value || '--';
+    var nights = form.querySelector('.guest-nights-select').value || '1';
+    var deposit = form.querySelector('.guest-deposit-input').value || '100';
+    var cards = form.querySelector('.guest-cards-select').value || '0';
+    html += '<div style="display:flex;align-items:center;gap:16px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--bg);">' +
+      '<div style="font-size:24px;font-weight:700;color:var(--blue);">' + room + '</div>' +
+      '<div style="flex:1;">' +
+      '<div style="font-weight:600;font-size:13px;">' + name + ' <span style="color:var(--text-muted);font-weight:400;">' + phone + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">入住 ' + nights + '晚 · 押金 ¥' + deposit + ' · 发卡 ' + cards + '张</div>' +
+      '</div>' +
+      '<div style="color:var(--green);font-weight:700;font-size:13px;">待入住</div>' +
+      '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function updateBatchSummaryCard() {
+  document.getElementById('batch-summary-card').style.display = 'block';
+  document.getElementById('batch-sum-rooms').textContent = batchSelectedRooms.length;
+  var forms = document.querySelectorAll('#batch-guest-list .batch-guest-form');
+  var totalAmount = 0, totalDeposit = 0, totalNights = 1;
+  forms.forEach(function(form, i) {
+    var nights = parseInt(form.querySelector('.guest-nights-select').value) || 1;
+    var deposit = parseInt(form.querySelector('.guest-deposit-input').value) || 100;
+    totalNights = Math.max(totalNights, nights);
+    totalDeposit += deposit;
+    // Estimate amount: 128 per night average
+    totalAmount += nights * 128 + deposit;
+  });
+  document.getElementById('batch-sum-nights').textContent = totalNights + '晚';
+  document.getElementById('batch-sum-amount').textContent = '¥' + totalAmount;
+  document.getElementById('batch-sum-deposit').textContent = '¥' + totalDeposit;
+}
+
+function fillBatchSameInfo() {
+  var name = prompt('请输入统一的入住人姓名：');
+  if (!name) return;
+  var phone = prompt('请输入统一的手机号：');
+  if (!phone) return;
+  document.querySelectorAll('.guest-name-input').forEach(function(inp) { inp.value = name; });
+  document.querySelectorAll('.guest-phone-input').forEach(function(inp) { inp.value = phone; });
+  showToast('已统一填入姓名:' + name + '，手机号:' + phone, 'success');
+}
+
+function openBatchImportModal() {
+  showToast('批量导入功能：支持Excel模板导入，请下载模板后上传', 'info');
+}
+
+function saveBatchDraft() {
+  showToast('批量入住草稿已保存！', 'success');
+}
+
+function submitBatchCheckin() {
+  showToast('🚀 正在批量办理 ' + batchSelectedRooms.length + ' 个房间的入住...', 'info');
+  setTimeout(function() {
+    showToast('批量入住办理成功！所有房间已开通门锁权限', 'success');
+    // Reset steps
+    batchSelectedRooms = [];
+    clearBatchRooms();
+    backBatchStep1();
+  }, 2500);
 }
 
 // ======= 【改进2】首页房间卡片快捷操作函数 =======
