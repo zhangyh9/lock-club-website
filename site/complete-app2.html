@@ -63,6 +63,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
 .room-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s; }
 .room-card:hover { border-color: var(--blue); box-shadow: 0 2px 8px rgba(24,144,255,0.15); }
+.room-card { position: relative; }
+.room-quick-actions { display: none; position: absolute; top: 8px; right: 8px; gap: 4px; z-index: 10; }
+.room-card:hover .room-quick-actions { display: flex; flex-direction: column; gap: 3px; }
+.room-qa-btn { padding: 3px 7px; font-size: 10px; border-radius: 4px; border: none; cursor: pointer; font-weight: 600; opacity: 0.9; white-space: nowrap; }
+.room-qa-btn:hover { opacity: 1; }
+.room-qa-checkin { background: var(--green); color: white; }
+.room-qa-history { background: var(--blue); color: white; }
+.room-qa-unlock { background: var(--orange); color: white; }
 .room-card.hidden { display: none; }
 .room-card.alert { border-color: var(--red); background: var(--red-bg); }
 .room-card.low { border-color: var(--orange); background: var(--orange-bg); }
@@ -534,6 +542,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div class="card-body">
           <div class="room-grid" id="room-grid">
             <div class="room-card" data-status="in" onclick="openRoomQuickPanel('301','亲子间','in','已反锁','空调开启','2张')">
+              <div class="room-quick-actions">
+                <button class="room-qa-btn room-qa-checkin" onclick="event.stopPropagation();openQuickCheckinModalForRoom('301')">🏨 入住</button>
+                <button class="room-qa-btn room-qa-history" onclick="event.stopPropagation();showPage('history')">📜 记录</button>
+                <button class="room-qa-btn room-qa-unlock" onclick="event.stopPropagation();openUnlockForRoom('301')">🔓 开锁</button>
+              </div>
               <div class="room-card-header">
                 <div><div class="room-num">301</div><div class="room-type">亲子间</div></div>
                 <div class="room-badge badge-in">入住</div>
@@ -545,6 +558,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               <div class="room-footer"><span>🔑 生效钥匙</span><span class="key-count">2张</span></div>
             </div>
             <div class="room-card" data-status="empty" onclick="openRoomQuickPanel('302','亲子间','empty','已反锁','未取电','0张')">
+              <div class="room-quick-actions">
+                <button class="room-qa-btn room-qa-checkin" onclick="event.stopPropagation();openQuickCheckinModalForRoom('302')">🏨 入住</button>
+                <button class="room-qa-btn room-qa-history" onclick="event.stopPropagation();showPage('history')">📜 记录</button>
+              </div>
               <div class="room-card-header">
                 <div><div class="room-num">302</div><div class="room-type">亲子间</div></div>
                 <div class="room-badge badge-empty">空房</div>
@@ -556,6 +573,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               <div class="room-footer"><span>🔑 生效钥匙</span><span class="key-count">0张</span></div>
             </div>
             <div class="room-card alert" data-status="alert" onclick="openRoomQuickPanel('303','亲子间','alert','设备离线','未知','离线10h+')">
+              <div class="room-quick-actions">
+                <button class="room-qa-btn room-qa-history" onclick="event.stopPropagation();showPage('history')">📜 记录</button>
+              </div>
               <div class="room-card-header">
                 <div><div class="room-num">303</div><div class="room-type">亲子间</div></div>
                 <div class="room-badge badge-alert">离线</div>
@@ -1727,34 +1747,59 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
       </div>
       <div id="dev-content-unlock-log" style="display:none;">
-      <!-- 改进1: 设备详情内嵌开锁记录Tab -->
+      <!-- 【改进3】设备详情开锁记录Tab完善化：增加统计摘要+日期筛选+导出 -->
+      <!-- 开锁统计摘要 -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+        <div style="background:white;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;">
+          <div style="font-size:22px;font-weight:700;color:var(--blue);">28</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">总开锁次数</div>
+        </div>
+        <div style="background:white;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;">
+          <div style="font-size:22px;font-weight:700;color:var(--green);">25</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">成功次数</div>
+        </div>
+        <div style="background:white;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;">
+          <div style="font-size:22px;font-weight:700;color:var(--orange);">3</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">失败次数</div>
+        </div>
+        <div style="background:white;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;">
+          <div style="font-size:22px;font-weight:700;color:var(--purple);">19ms</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">平均响应</div>
+        </div>
+      </div>
+      <!-- 开锁记录筛选工具栏 -->
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+        <input type="date" class="form-input" id="dev-ulog-date-from" style="width:140px;padding:6px 10px;font-size:12px;" value="2026-03-20">
+        <span style="font-size:12px;color:var(--text-muted);">至</span>
+        <input type="date" class="form-input" id="dev-ulog-date-to" style="width:140px;padding:6px 10px;font-size:12px;" value="2026-03-27">
+        <select class="form-select" style="padding:5px 10px;font-size:12px;width:130px;" id="dev-ulog-method-filter" onchange="filterDevUnlockLog()">
+          <option value="all">全部方式</option>
+          <option value="phone">📱 手机开锁</option>
+          <option value="card">💳 门卡开锁</option>
+          <option value="pwd">🔢 密码开锁</option>
+          <option value="remote">🔓 远程开锁</option>
+        </select>
+        <button class="action-btn small" onclick="filterDevUnlockLog()" style="padding:4px 10px;font-size:11px;">🔍 筛选</button>
+        <button class="action-btn small" onclick="exportDevUnlockLog()" style="padding:4px 10px;font-size:11px;margin-left:4px;">📤 导出CSV</button>
+        <button class="action-btn small" onclick="openDoorUnlockHistoryModal('301')" style="padding:4px 10px;font-size:11px;margin-left:auto;">📋 全部记录</button>
+      </div>
       <div class="card" style="margin-bottom:16px;">
         <div class="card-header">
           <div class="card-title">🔓 开锁记录 - 301房间</div>
-          <div style="display:flex;gap:10px;align-items:center;">
-            <select class="form-select" style="padding:5px 10px;font-size:12px;width:130px;" onchange="filterUnlockLog(this.value)">
-              <option value="all">全部方式</option>
-              <option value="phone">手机开锁</option>
-              <option value="card">门卡开锁</option>
-              <option value="pwd">密码开锁</option>
-              <option value="remote">远程开锁</option>
-            </select>
-            <span style="font-size:12px;color:var(--text-muted);">共28条记录</span>
-            <button class="action-btn small" onclick="openDoorUnlockHistoryModal('301')" style="padding:3px 10px;font-size:11px;">📋 全部记录</button>
-          </div>
+          <span style="font-size:12px;color:var(--text-muted);" id="dev-ulog-count">共 8 条记录（已筛选）</span>
         </div>
         <div class="card-body" style="padding:0;">
           <table class="table">
-            <thead><tr><th>开锁时间</th><th>开锁方式</th><th>开锁人</th><th>设备响应</th><th>剩余电量</th></tr></thead>
+            <thead><tr><th>开锁时间</th><th>开锁方式</th><th>开锁人</th><th>设备响应</th><th>剩余电量</th><th>操作</th></tr></thead>
             <tbody id="dev-unlock-log-body">
-              <tr data-method="phone"><td>2026-03-26 10:32:08</td><td><span class="tbadge blue">📱 手机</span></td><td>张三</td><td><span class="tbadge green">成功</span> 23ms</td><td>88%</td></tr>
-              <tr data-method="card"><td>2026-03-26 09:15:42</td><td><span class="tbadge blue">💳 门卡</span></td><td>李四</td><td><span class="tbadge green">成功</span> 18ms</td><td>88%</td></tr>
-              <tr data-method="remote"><td>2026-03-25 22:15:00</td><td><span class="tbadge purple">🔓 远程</span></td><td>赵飞</td><td><span class="tbadge green">成功</span> 156ms</td><td>90%</td></tr>
-              <tr data-method="pwd"><td>2026-03-25 20:05:33</td><td><span class="tbadge orange">🔢 密码</span></td><td>王五</td><td><span class="tbadge green">成功</span> 31ms</td><td>90%</td></tr>
-              <tr data-method="phone"><td>2026-03-25 18:42:19</td><td><span class="tbadge blue">📱 手机</span></td><td>张三</td><td><span class="tbadge green">成功</span> 22ms</td><td>90%</td></tr>
-              <tr data-method="card"><td>2026-03-25 14:30:08</td><td><span class="tbadge blue">💳 门卡</span></td><td>李四</td><td><span class="tbadge red">失败</span> 电量低</td><td>15%</td></tr>
-              <tr data-method="phone"><td>2026-03-25 12:00:00</td><td><span class="tbadge blue">📱 手机</span></td><td>张三</td><td><span class="tbadge green">成功</span> 25ms</td><td>91%</td></tr>
-              <tr data-method="remote"><td>2026-03-24 23:10:00</td><td><span class="tbadge purple">🔓 远程</span></td><td>系统</td><td><span class="tbadge green">成功</span> 200ms</td><td>92%</td></tr>
+              <tr data-method="phone"><td>2026-03-26 10:32:08</td><td><span class="tbadge blue">📱 手机</span></td><td>张三</td><td><span class="tbadge green">成功</span> 23ms</td><td>88%</td><td><button class="action-btn small" onclick="showUnlockDetail('phone','2026-03-26 10:32:08','张三','成功')" style="padding:2px 6px;font-size:10px;">详情</button></td></tr>
+              <tr data-method="card"><td>2026-03-26 09:15:42</td><td><span class="tbadge blue">💳 门卡</span></td><td>李四</td><td><span class="tbadge green">成功</span> 18ms</td><td>88%</td><td><button class="action-btn small" onclick="showUnlockDetail('card','2026-03-26 09:15:42','李四','成功')" style="padding:2px 6px;font-size:10px;">详情</button></td></tr>
+              <tr data-method="remote"><td>2026-03-25 22:15:00</td><td><span class="tbadge purple">🔓 远程</span></td><td>赵飞</td><td><span class="tbadge green">成功</span> 156ms</td><td>90%</td><td><button class="action-btn small" onclick="showUnlockDetail('remote','2026-03-25 22:15:00','赵飞','成功')" style="padding:2px 6px;font-size:10px;">详情</button></td></tr>
+              <tr data-method="pwd"><td>2026-03-25 20:05:33</td><td><span class="tbadge orange">🔢 密码</span></td><td>王五</td><td><span class="tbadge green">成功</span> 31ms</td><td>90%</td><td><button class="action-btn small" onclick="showUnlockDetail('pwd','2026-03-25 20:05:33','王五','成功')" style="padding:2px 6px;font-size:10px;">详情</button></td></tr>
+              <tr data-method="phone"><td>2026-03-25 18:42:19</td><td><span class="tbadge blue">📱 手机</span></td><td>张三</td><td><span class="tbadge green">成功</span> 22ms</td><td>90%</td><td><button class="action-btn small" onclick="showUnlockDetail('phone','2026-03-25 18:42:19','张三','成功')" style="padding:2px 6px;font-size:10px;">详情</button></td></tr>
+              <tr data-method="card"><td>2026-03-25 14:30:08</td><td><span class="tbadge blue">💳 门卡</span></td><td>李四</td><td><span class="tbadge red">失败</span> 电量低</td><td>15%</td><td><button class="action-btn small" onclick="showUnlockDetail('card','2026-03-25 14:30:08','李四','失败')" style="padding:2px 6px;font-size:10px;">详情</button></td></tr>
+              <tr data-method="phone"><td>2026-03-25 12:00:00</td><td><span class="tbadge blue">📱 手机</span></td><td>张三</td><td><span class="tbadge green">成功</span> 25ms</td><td>91%</td><td><button class="action-btn small" onclick="showUnlockDetail('phone','2026-03-25 12:00:00','张三','成功')" style="padding:2px 6px;font-size:10px;">详情</button></td></tr>
+              <tr data-method="remote"><td>2026-03-24 23:10:00</td><td><span class="tbadge purple">🔓 远程</span></td><td>系统</td><td><span class="tbadge green">成功</span> 200ms</td><td>92%</td><td><button class="action-btn small" onclick="showUnlockDetail('remote','2026-03-24 23:10:00','系统','成功')" style="padding:2px 6px;font-size:10px;">详情</button></td></tr>
             </tbody>
           </table>
         </div>
@@ -2198,8 +2243,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div class="card-body">
           <div class="energy-card">
             <div class="energy-card-icon" style="background:var(--red-bg);">❄️</div>
-            <div class="energy-card-info">
-              <h4>301 - 亲子间</h4>
+            <div class="energy-card-info" style="cursor:pointer;" onclick="openEnergyDetailModal('301')">
+              <h4>301 - 亲子间 <span style="font-size:11px;color:var(--blue);font-weight:400;">[点击详情]</span></h4>
               <p>空调持续运行 12h，耗电异常偏高</p>
               <div class="energy-progress"><div class="energy-bar" style="width:92%;background:var(--red);"></div></div>
             </div>
@@ -2211,8 +2256,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           </div>
           <div class="energy-card">
             <div class="energy-card-icon" style="background:var(--orange-bg);">❄️</div>
-            <div class="energy-card-info">
-              <h4>304 - 亲子间</h4>
+            <div class="energy-card-info" style="cursor:pointer;" onclick="openEnergyDetailModal('304')">
+              <h4>304 - 亲子间 <span style="font-size:11px;color:var(--blue);font-weight:400;">[点击详情]</span></h4>
               <p>空调运行 10h，耗电偏高</p>
               <div class="energy-progress"><div class="energy-bar" style="width:76%;background:var(--orange);"></div></div>
             </div>
@@ -2224,8 +2269,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           </div>
           <div class="energy-card">
             <div class="energy-card-icon" style="background:var(--blue-bg);">❄️</div>
-            <div class="energy-card-info">
-              <h4>201 - 大床房</h4>
+            <div class="energy-card-info" style="cursor:pointer;" onclick="openEnergyDetailModal('201')">
+              <h4>201 - 大床房 <span style="font-size:11px;color:var(--blue);font-weight:400;">[点击详情]</span></h4>
               <p>空调正常运行</p>
               <div class="energy-progress"><div class="energy-bar" style="width:55%;background:var(--blue);"></div></div>
             </div>
@@ -4137,11 +4182,52 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <button class="action-btn green" onclick="doQuickUnlock()" style="padding:12px;">🔓 远程开锁</button>
+        <button class="action-btn orange" onclick="doQuickTempPwd()" style="padding:12px;">🔢 临时密码</button>
         <button class="action-btn" onclick="doQuickCheckin()" style="padding:12px;" id="rqp-checkin-btn">🏨 办理入住</button>
         <button class="action-btn" onclick="doQuickCheckout()" style="padding:12px;" id="rqp-checkout-btn">🚪 办理退房</button>
         <button class="action-btn" onclick="doQuickClean()" style="padding:12px;">🧹 清洁任务</button>
-        <button class="action-btn" onclick="goToRoomDetail()" style="padding:12px;grid-column:span 2;">📋 查看详情 →</button>
+        <button class="action-btn" onclick="goToRoomDetail()" style="padding:12px;">📋 查看详情</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进5】生成临时密码模态框 -->
+<div class="modal-overlay hidden" id="modal-temp-pwd">
+  <div class="modal" style="width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">🔢 生成临时密码</div>
+      <button class="modal-close" onclick="closeModal('temp-pwd')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center;margin-bottom:16px;padding:16px;background:var(--blue-bg);border-radius:10px;">
+        <div style="font-size:12px;color:var(--blue);margin-bottom:6px;">房间号</div>
+        <div style="font-size:28px;font-weight:700;color:var(--blue);" id="tp-room">301</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">密码有效期</label>
+        <select class="form-select" id="tp-validity">
+          <option value="1">1小时</option>
+          <option value="2" selected>2小时</option>
+          <option value="4">4小时</option>
+          <option value="8">8小时</option>
+          <option value="24">24小时</option>
+        </select>
+      </div>
+      <div style="text-align:center;margin:16px 0;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">生成的临时密码</div>
+        <div style="font-size:28px;font-weight:700;letter-spacing:4px;color:var(--text);padding:14px;background:var(--bg);border:2px dashed var(--border);border-radius:10px;font-family:monospace;" id="tp-pwd-display">------</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" id="tp-expire-time">有效期至：--</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <input type="text" class="form-input" id="tp-pwd-note" placeholder="如：保洁用、维修用">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('temp-pwd')">关闭</button>
+      <button class="modal-btn" style="background:var(--orange);color:white;border:none;" onclick="generateTempPassword()">🎲 生成密码</button>
+      <button class="modal-btn primary" id="tp-pwd-copy" onclick="copyTempPassword()" style="display:none;">📋 复制密码</button>
     </div>
   </div>
 </div>
@@ -4154,6 +4240,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
   <button class="action-btn small" onclick="batchExport()">📤 导出</button>
   <button class="action-btn small orange" onclick="batchRestart()">🔁 批量重启</button>
   <button class="action-btn small red" onclick="confirmBatchDelete()">🗑️ 批量删除</button>
+  <button class="action-btn small" onclick="openDeviceBatchModal()" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⚙️ 详细操作</button>
   <button class="action-btn small" onclick="clearBatch()" style="padding:3px 8px;">✕ 取消</button>
 </div>
 
@@ -4178,6 +4265,159 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     <div class="modal-footer">
       <button class="modal-btn secondary" onclick="closeModal('batch-delete-confirm')">取消</button>
       <button class="modal-btn" style="background:var(--red);color:white;border:none;" onclick="batchDelete()">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进1】设备批量操作弹窗（支持批量重启/同步/固件升级/删除，弥补原系统无批量硬件操作的缺失） -->
+<div class="modal-overlay hidden" id="modal-device-batch">
+  <div class="modal" style="width:500px;">
+    <div class="modal-header">
+      <div class="modal-title">📋 批量设备操作 <span id="db-batch-count" style="color:var(--blue);font-size:14px;"></span></div>
+      <button class="modal-close" onclick="closeModal('device-batch')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- 已选设备列表 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:8px;">已选设备 (<span id="db-device-num">0</span> 台)</div>
+        <div id="db-device-list" style="max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg);font-size:12px;"></div>
+      </div>
+      <!-- 操作类型选择 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:8px;">选择操作</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="db-op-item selected" data-op="restart" onclick="selectDbOp(this)" style="padding:14px;border:2px solid var(--blue);border-radius:10px;cursor:pointer;text-align:center;background:var(--blue-bg);transition:all 0.2s;">
+            <div style="font-size:28px;margin-bottom:6px;">🔁</div>
+            <div style="font-size:13px;font-weight:600;">远程重启</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">设备将离线约10秒</div>
+          </div>
+          <div class="db-op-item" data-op="sync" onclick="selectDbOp(this)" style="padding:14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
+            <div style="font-size:28px;margin-bottom:6px;">🔄</div>
+            <div style="font-size:13px;font-weight:600;">强制同步</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">拉取最新状态</div>
+          </div>
+          <div class="db-op-item" data-op="upgrade" onclick="selectDbOp(this)" style="padding:14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
+            <div style="font-size:28px;margin-bottom:6px;">📦</div>
+            <div style="font-size:13px;font-weight:600;">固件升级</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">批量推送升级</div>
+          </div>
+          <div class="db-op-item" data-op="delete" onclick="selectDbOp(this)" style="padding:14px;border:2px solid var(--red);border-radius:10px;cursor:pointer;text-align:center;background:var(--red-bg);transition:all 0.2s;">
+            <div style="font-size:28px;margin-bottom:6px;">🗑️</div>
+            <div style="font-size:13px;font-weight:600;color:var(--red);">批量删除</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">不可恢复操作</div>
+          </div>
+        </div>
+      </div>
+      <!-- 警告提示 -->
+      <div id="db-warning" style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);margin-bottom:12px;display:none;">
+        ⚠️ <span id="db-warning-text"></span>
+      </div>
+      <!-- 离线设备提示 -->
+      <div id="db-offline-warning" style="padding:10px 14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;font-size:12px;color:var(--red);margin-bottom:12px;display:none;">
+        ⚠️ 选中的 <span id="db-offline-count">0</span> 台设备处于离线状态，无法执行远程操作
+      </div>
+      <!-- 进度显示 -->
+      <div id="db-progress-area" style="display:none;">
+        <div style="margin-bottom:8px;display:flex;justify-content:space-between;font-size:12px;">
+          <span id="db-progress-label">正在处理...</span>
+          <span id="db-progress-count">0/0</span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+          <div id="db-progress-bar" style="height:100%;background:var(--blue);border-radius:4px;transition:width 0.3s;width:0%;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('device-batch')">取消</button>
+      <button class="modal-btn primary" id="db-submit-btn" onclick="submitDeviceBatch()">确认执行</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进5】能耗房间详情弹窗（弥补节能风控页无法深入查看单房历史用能的缺失） -->
+<div class="modal-overlay hidden" id="modal-energy-detail">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">⚡ <span id="ed-room-num">301</span> - 能耗详情</div>
+      <button class="modal-close" onclick="closeModal('energy-detail')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- 统计卡片 -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
+        <div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:var(--blue);" id="ed-today-kwh">8.6</div>
+          <div style="font-size:10px;color:var(--text-muted);">今日(kWh)</div>
+        </div>
+        <div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:var(--orange);" id="ed-yesterday-kwh">7.2</div>
+          <div style="font-size:10px;color:var(--text-muted);">昨日(kWh)</div>
+        </div>
+        <div style="padding:12px;background:var(--purple-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:var(--purple);" id="ed-week-avg">6.8</div>
+          <div style="font-size:10px;color:var(--text-muted);">周均(kWh)</div>
+        </div>
+        <div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:var(--green);" id="ed-month-total">186.4</div>
+          <div style="font-size:10px;color:var(--text-muted);">本月(度)</div>
+        </div>
+      </div>
+      <!-- 设备在线状态 -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--bg);border-radius:8px;font-size:12px;">
+        <span>设备状态：</span>
+        <span id="ed-device-status" style="font-weight:600;color:var(--green);">🟢 在线</span>
+        <span style="margin-left:auto;">门锁电量：</span>
+        <span id="ed-lock-battery" style="font-weight:600;">88%</span>
+        <span style="margin-left:12px;">空调状态：</span>
+        <span id="ed-ac-status" style="font-weight:600;color:var(--blue);">运行中</span>
+      </div>
+      <!-- 近7日趋势图 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;">📊 近7日用电趋势</div>
+        <div id="ed-chart" style="display:flex;align-items:flex-end;gap:8px;height:80px;padding-top:8px;">
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;">
+          <span style="font-size:10px;color:var(--text-muted);">03-21</span>
+          <span style="font-size:10px;color:var(--text-muted);">03-22</span>
+          <span style="font-size:10px;color:var(--text-muted);">03-23</span>
+          <span style="font-size:10px;color:var(--text-muted);">03-24</span>
+          <span style="font-size:10px;color:var(--text-muted);">03-25</span>
+          <span style="font-size:10px;color:var(--text-muted);">03-26</span>
+          <span style="font-size:10px;color:var(--blue);font-weight:600;">今天</span>
+        </div>
+      </div>
+      <!-- 用电时段分布 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;">⏰ 用电时段分析</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+            <span style="width:60px;color:var(--text-muted);">🌙 22-06时</span>
+            <div style="flex:1;height:16px;background:var(--blue-bg);border-radius:4px;overflow:hidden;">
+              <div style="height:100%;width:15%;background:var(--blue);border-radius:4px;"></div>
+            </div>
+            <span style="font-weight:600;min-width:40px;text-align:right;" id="ed-night-pct">15%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+            <span style="width:60px;color:var(--text-muted);">☀️ 06-14时</span>
+            <div style="flex:1;height:16px;background:var(--orange-bg);border-radius:4px;overflow:hidden;">
+              <div style="height:100%;width:35%;background:var(--orange);border-radius:4px;"></div>
+            </div>
+            <span style="font-weight:600;min-width:40px;text-align:right;" id="ed-day-pct">35%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+            <span style="width:60px;color:var(--text-muted);">🌆 14-22时</span>
+            <div style="flex:1;height:16px;background:var(--red-bg);border-radius:4px;overflow:hidden;">
+              <div style="height:100%;width:50%;background:var(--red);border-radius:4px;"></div>
+            </div>
+            <span style="font-weight:600;min-width:40px;text-align:right;" id="ed-evening-pct">50%</span>
+          </div>
+        </div>
+      </div>
+      <!-- 快捷操作 -->
+      <div style="display:flex;gap:10px;">
+        <button class="action-btn" style="flex:1;" onclick="openPowerControlModal(document.getElementById('ed-room-num').textContent,'on')">⚡ 断开电源</button>
+        <button class="action-btn" style="flex:1;" onclick="openPowerControlModal(document.getElementById('ed-room-num').textContent,'off')">⚡ 恢复供电</button>
+        <button class="action-btn green" style="flex:1;" onclick="sendEnergySelfTest()">🔬 能耗自检</button>
+      </div>
     </div>
   </div>
 </div>
@@ -5474,10 +5714,37 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <label class="form-label">备注</label>
         <textarea class="form-textarea" id="mf-note" placeholder="可选备注，如特殊需求等"></textarea>
       </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">初始积分</label>
+          <input type="number" class="form-input" id="mf-initial-points" placeholder="如：100" value="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">生日</label>
+          <input type="date" class="form-input" id="mf-birthday" value="">
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="modal-btn secondary" onclick="closeModal('member-form')">取消</button>
       <button class="modal-btn primary" onclick="submitMember()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进1】会员新增完善化：入住收据打印模态框（办理入住后生成可打印收据） -->
+<div class="modal-overlay hidden" id="modal-checkin-receipt">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">🧾 入住登记单 & 押金收据</div>
+      <button class="modal-close" onclick="closeModal('checkin-receipt')">✕</button>
+    </div>
+    <div class="modal-body" id="checkin-receipt-content" style="padding:20px;">
+      <!-- 动态填充收据内容 -->
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('checkin-receipt')">关闭</button>
+      <button class="modal-btn primary" onclick="printCheckinReceipt()">🖨️ 打印收据</button>
     </div>
   </div>
 </div>
@@ -6680,12 +6947,36 @@ function filterWorkorder(status, el) {
 }
 
 function openCreateWorkorderModal() { openModal('create-wo'); }
+// ======= 【改进4】服务工单创建完善化：自动插入列表+统计数据更新+工单统计卡实时更新 =======
 function submitCreateWorkorder() {
-  var content = document.getElementById('wo-create-content').value;
+  var content = document.getElementById('wo-create-content').value.trim();
+  var room = document.getElementById('wo-create-room').value.trim();
+  var customer = document.getElementById('wo-create-customer').value.trim();
+  var woType = document.getElementById('wo-create-type').value;
+  var priority = document.getElementById('wo-create-priority').value;
   if (!content) { showToast('请填写工单内容', 'error'); return; }
+  var typeLabels = { complaint: '🔴 客户投诉', delivery: '📦 送物服务', invoice: '📄 发票需求', review: '⭐ 点评表扬', other: '📝 其他' };
+  var typeColors = { complaint: 'red', delivery: 'blue', invoice: 'purple', review: 'green', other: 'gray' };
+  var priorityColors = { normal: 'var(--text-muted)', urgent: 'var(--orange)', low: 'var(--blue)' };
+  var priorityLabels = { normal: '普通', urgent: '🔴 紧急', low: '低优先级' };
+  var today = new Date();
+  var woId = 'WO-' + today.getFullYear() + String(today.getMonth()+1).padStart(2,'0') + String(today.getDate()).padStart(2,'0') + String(Math.floor(Math.random()*90+10));
+  var timeStr = '今天 ' + String(today.getHours()).padStart(2,'0') + ':' + String(today.getMinutes()).padStart(2,'0');
+  var newRow = document.createElement('tr');
+  newRow.dataset.status = 'pending';
+  newRow.innerHTML = '<td>' + woId + '</td><td><span class="tbadge ' + typeColors[woType] + '">' + typeLabels[woType] + '</span></td><td>' + (room || '--') + '</td><td>' + (customer || '--') + '</td><td>' + content.substring(0,20) + (content.length > 20 ? '...' : '') + '</td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>' + timeStr + '</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(' + workorderData.length + ')">处理</button></td>';
+  var tbody = document.getElementById('workorder-table-body');
+  if (tbody) tbody.insertBefore(newRow, tbody.firstChild);
+  workorderData.unshift({ id: woId, type: typeLabels[woType], room: room || '--', customer: customer || '--', content: content, status: 'pending', time: timeStr, assignee: null, completeTime: null });
+  // 更新统计数据
+  var statCards = document.querySelectorAll('#page-workorder .stats-row .stat-card');
+  if (statCards[0]) { var n = parseInt(statCards[0].querySelector('.stat-num').textContent) + 1; statCards[0].querySelector('.stat-num').textContent = n; }
+  if (statCards[1]) { var n = parseInt(statCards[1].querySelector('.stat-num').textContent) + 1; statCards[1].querySelector('.stat-num').textContent = n; }
   closeModal('create-wo');
-  showToast('工单 WO-' + Date.now() + ' 创建成功！', 'success');
+  showToast('工单 ' + woId + ' 创建成功！已自动加入待处理队列', 'success');
   document.getElementById('wo-create-content').value = '';
+  document.getElementById('wo-create-room').value = '';
+  document.getElementById('wo-create-customer').value = '';
 }
 
 function openWorkorderDetail(idx) {
@@ -6821,11 +7112,56 @@ function switchDevTab(tab) {
   document.getElementById('dev-content-runtime').style.display = tab === 'runtime' ? 'block' : 'none';
 }
 
-// ======= 改进1: 设备开锁记录过滤 =======
+// ======= 【改进3】设备开锁记录筛选+导出+详情 =======
 function filterUnlockLog(method) {
   document.querySelectorAll('#dev-unlock-log-body tr').forEach(function(row) {
     row.style.display = (method === 'all' || row.dataset.method === method) ? '' : 'none';
   });
+}
+function filterDevUnlockLog() {
+  var method = document.getElementById('dev-ulog-method-filter').value;
+  var dateFrom = document.getElementById('dev-ulog-date-from').value;
+  var dateTo = document.getElementById('dev-ulog-date-to').value;
+  var rows = document.querySelectorAll('#dev-unlock-log-body tr');
+  var count = 0;
+  rows.forEach(function(row) {
+    var show = true;
+    if (method !== 'all' && row.dataset.method !== method) show = false;
+    var rowDate = row.querySelector('td').textContent.slice(0, 10);
+    if (dateFrom && rowDate < dateFrom) show = false;
+    if (dateTo && rowDate > dateTo) show = false;
+    row.style.display = show ? '' : 'none';
+    if (show) count++;
+  });
+  var countEl = document.getElementById('dev-ulog-count');
+  if (countEl) countEl.textContent = '共 ' + count + ' 条记录（已筛选）';
+}
+function exportDevUnlockLog() {
+  var rows = document.querySelectorAll('#dev-unlock-log-body tr');
+  var csv = '\uFEFF开锁时间,开锁方式,开锁人,设备响应,剩余电量\n';
+  rows.forEach(function(row) {
+    if (row.style.display !== 'none') {
+      var tds = row.querySelectorAll('td');
+      if (tds.length >= 5) {
+        csv += '"' + tds[0].textContent + '","' + tds[1].textContent.replace(/<[^>]+>/g, '') + '","' + tds[2].textContent + '","' + tds[3].textContent.replace(/<[^>]+>/g, '').trim() + '","' + tds[4].textContent + '"\n';
+      }
+    }
+  });
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '设备开锁记录_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click(); URL.revokeObjectURL(a.href);
+  showToast('开锁记录已导出为CSV！', 'success');
+}
+function showUnlockDetail(method, time, operator, result) {
+  var methodNames = { phone: '📱 手机开锁', card: '💳 门卡开锁', pwd: '🔢 密码开锁', remote: '🔓 远程开锁' };
+  var detailInfo = {
+    phone: '手机型号：iPhone 15 Pro · APP版本：v2.3.1 · GPS：酒店3层走廊',
+    card: '卡号：8888-xxxx-xxxx · 发卡时间：2026-03-20 · 本周开锁第3次',
+    pwd: '密码类型：一次性密码 · 有效期：今天 14:00-16:00 · 已使用',
+    remote: '操作者：管理员 · 操作来源：后台系统 · 设备响应：正常'
+  };
+  alert('开锁详情\n时间：' + time + '\n方式：' + methodNames[method] + '\n操作人：' + operator + '\n结果：' + result + '\n\n' + (detailInfo[method] || ''));
 }
 
 // ======= 改进3: 设备运行日志导出功能 =======
@@ -7386,6 +7722,44 @@ function doQuickClean() {
 function goToRoomDetail() {
   closeModal('room-quick');
   showPage('room-detail');
+}
+
+// ======= 【改进5】房间快速操作面板：生成临时密码功能 =======
+function doQuickTempPwd() {
+  closeModal('room-quick');
+  openModal('temp-pwd');
+  var room = currentRoomData ? currentRoomData.room : '301';
+  document.getElementById('tp-room').textContent = room;
+  document.getElementById('tp-pwd-display').textContent = '------';
+  document.getElementById('tp-validity').value = '2';
+  document.getElementById('tp-pwd-note').value = '';
+}
+function generateTempPassword() {
+  var room = document.getElementById('tp-room').textContent;
+  var validity = parseInt(document.getElementById('tp-validity').value) || 2;
+  var pwd = Math.floor(100000 + Math.random() * 900000).toString();
+  var pwdDisplay = room.slice(-2) + pwd.slice(0, 2) + String(validity).padStart(2,'0') + pwd.slice(2);
+  document.getElementById('tp-pwd-display').textContent = pwdDisplay;
+  var expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + validity);
+  document.getElementById('tp-expire-time').textContent = expiresAt.toLocaleString('zh-CN', {hour12: false});
+  document.getElementById('tp-pwd-copy').style.display = 'inline-block';
+}
+function copyTempPassword() {
+  var pwd = document.getElementById('tp-pwd-display').textContent;
+  if (pwd && pwd !== '------') {
+    navigator.clipboard.writeText(pwd).then(function() {
+      showToast('临时密码 ' + pwd + ' 已复制到剪贴板！', 'success');
+    }).catch(function() {
+      var input = document.createElement('input');
+      input.value = pwd;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      showToast('临时密码已复制！', 'success');
+    });
+  }
 }
 
 // ======= 改进3: 设备管理批量操作 =======
@@ -8006,13 +8380,57 @@ function openMemberDetail(idx) {
   openModal('member-detail');
 }
 
+// ======= 【改进1】会员新增完善化：会员数据+动态添加到列表 =======
+var memberData = [
+  { name: '王浩', phone: '138****8888', idcard: '1101011990****3512', level: 'gold', nights: '28晚', total: '¥8,860', join: '2025-06-15' },
+  { name: '李娜', phone: '139****6666', idcard: '1101011988****4523', level: 'silver', nights: '12晚', total: '¥3,200', join: '2025-09-01' },
+  { name: '张伟', phone: '137****5555', idcard: '1101011995****1234', level: 'normal', nights: '3晚', total: '¥680', join: '2026-01-10' },
+  { name: '刘芳', phone: '136****4444', idcard: '1101011992****7890', level: 'gold', nights: '20晚', total: '¥6,200', join: '2025-03-20' },
+  { name: '陈明', phone: '135****3333', idcard: '1101011986****5678', level: 'vip', nights: '45晚', total: '¥15,800', join: '2024-11-05' }
+];
 function submitMember() {
-  var name = document.getElementById('mf-name').value;
-  var phone = document.getElementById('mf-phone').value;
-  if (!name || !phone) { showToast('请填写姓名和手机号', 'error'); return; }
+  var name = document.getElementById('mf-name').value.trim();
+  var phone = document.getElementById('mf-phone').value.trim();
+  var idcard = document.getElementById('mf-idcard').value.trim();
+  if (!name) { showToast('请填写会员姓名', 'error'); return; }
+  if (!phone || !/^1[3-9]\d{9}$/.test(phone)) { showToast('请填写正确的手机号（11位以1开头的数字）', 'error'); return; }
+  if (!idcard) { showToast('请填写身份证号码', 'error'); return; }
+  var level = document.getElementById('mf-level').value;
+  var note = document.getElementById('mf-note').value;
+  var isNew = document.getElementById('mf-modal-title').textContent.includes('新增');
   closeModal('member-form');
-  var title = document.getElementById('mf-modal-title').textContent;
-  showToast(title.includes('新增') ? '会员注册成功！' : '会员信息已更新', 'success');
+  // 构建新会员行并插入表格
+  var levelLabels = { normal: ['普通会员', 'var(--text-light)'], silver: ['🥈 银卡', 'var(--orange)'], gold: ['🥇 金卡', 'var(--purple)'], vip: ['💎 VIP', 'var(--green)'] };
+  var lvl = levelLabels[level] || levelLabels['normal'];
+  var today = new Date().toISOString().slice(0, 10);
+  var newRow = document.createElement('tr');
+  newRow.innerHTML = '<td><span style="font-weight:600;">' + name + '</span></td><td>' + phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') + '</td><td>' + idcard.replace(/(\d{6})\d{8}(\d{4})/, '$1********$2') + '</td><td><span class="tbadge" style="background:' + lvl[0].includes('银') ? 'var(--orange-bg)' : lvl[0].includes('金') ? 'var(--purple-bg)' : lvl[0].includes('VIP') ? 'var(--green-bg)' : 'var(--bg)' + ';color:' + lvl[1] + ';">' + lvl[0] + '</span></td><td><span class="tbadge blue">0晚</span></td><td style="font-weight:600;color:var(--orange);">¥0</td><td>' + today + '</td><td><button class="action-btn small" onclick="openMemberDetail(' + memberData.length + ')">详情</button> <button class="action-btn small" onclick="openEditMemberModal(' + memberData.length + ')">编辑</button></td>';
+  document.getElementById('member-table-body').appendChild(newRow);
+  // 更新统计数据
+  var statCards = document.querySelectorAll('#page-member .stat-card');
+  if (statCards[0]) { var n = parseInt(statCards[0].querySelector('.stat-num').textContent) + 1; statCards[0].querySelector('.stat-num').textContent = n; }
+  if (level === 'silver' && statCards[1]) { var n = parseInt(statCards[1].querySelector('.stat-num').textContent) + 1; statCards[1].querySelector('.stat-num').textContent = n; }
+  if (level === 'gold' && statCards[2]) { var n = parseInt(statCards[2].querySelector('.stat-num').textContent) + 1; statCards[2].querySelector('.stat-num').textContent = n; }
+  if (level === 'vip' && statCards[3]) { var n = parseInt(statCards[3].querySelector('.stat-num').textContent) + 1; statCards[3].querySelector('.stat-num').textContent = n; }
+  if (isNew) {
+    memberData.push({ name: name, phone: phone, idcard: idcard, level: level, nights: '0晚', total: '¥0', join: today });
+    showToast('会员 ' + name + ' 注册成功！', 'success');
+  } else {
+    showToast('会员信息已更新', 'success');
+  }
+}
+
+// ======= 【改进1】入住押金收据打印功能 =======
+function openCheckinReceiptModal(roomNum, guestName, phone, deposit, checkinTime) {
+  var receiptContent = document.getElementById('checkin-receipt-content');
+  receiptContent.innerHTML = '<div style="text-align:center;border-bottom:2px dashed var(--border);padding-bottom:12px;margin-bottom:12px;"><div style="font-size:16px;font-weight:700;">🏨 领锁智慧酒店</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px;">地址：北京市朝阳区建国路88号 · 电话：010-88888888</div></div><div style="font-size:13px;line-height:1.8;"><div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">入住单号</span><span style="font-weight:600;">IC-' + new Date().getTime().toString().slice(-8) + '</span></div><div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">入住时间</span><span>' + checkinTime + '</span></div><div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">房间号</span><span style="font-weight:700;color:var(--blue);">' + roomNum + '</span></div><div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">入住人</span><span>' + guestName + '</span></div><div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">手机号</span><span>' + phone + '</span></div><div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">押金金额</span><span style="font-weight:700;color:var(--green);font-size:15px;">¥' + deposit + '</span></div><div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">入住押金收据</span><span style="font-weight:700;color:var(--orange);font-size:15px;">¥' + deposit + '</span></div></div><div style="margin-top:12px;padding:10px;background:var(--blue-bg);border-radius:6px;font-size:11px;color:var(--blue);text-align:center;">✅ 入住登记成功！押金收据 · 请妥善保管</div>';
+  openModal('checkin-receipt');
+}
+function printCheckinReceipt() {
+  var content = document.getElementById('checkin-receipt-content').innerHTML;
+  var printWindow = window.open('', '_blank', 'width=400,height=600');
+  printWindow.document.write('<html><head><title>入住押金收据</title><style>body{font-family:-apple-system,sans-serif;padding:20px;max-width:380px;margin:0 auto;}</style></head><body>' + content + '<script>window.onload=function(){window.print();window.close();}<\/script></body></html>');
+  printWindow.document.close();
 }
 
 function openEditMemberLevelModal(idx) {
@@ -11664,6 +12082,261 @@ function markAllNotifRead() {
   notifData.forEach(function(n) { n.status = 'read'; });
   renderNotificationCenter();
   showToast('所有通知已标记为已读', 'success');
+}
+
+// ======= 【改进1】设备批量操作弹窗相关函数 =======
+var selectedBatchDevices = [];
+var selectedDbOp = 'restart';
+
+function openDeviceBatchModal() {
+  selectedBatchDevices = [];
+  document.querySelectorAll('.dev-row-check:checked').forEach(function(cb) {
+    var row = cb.closest('tr');
+    var cells = row.querySelectorAll('td');
+    if (cells.length >= 3) {
+      selectedBatchDevices.push({
+        id: cb.dataset.devId || 'DEV-' + Math.floor(Math.random() * 10000),
+        room: cells[1].textContent.trim(),
+        type: cells[2].textContent.trim(),
+        online: row.dataset.online === 'true'
+      });
+    }
+  });
+  if (selectedBatchDevices.length === 0) {
+    showToast('请先在设备列表中选择至少一台设备', 'error');
+    return;
+  }
+  selectedDbOp = 'restart';
+  renderDeviceBatchList();
+  updateDbOpUI();
+  openModal('device-batch');
+}
+
+function renderDeviceBatchList() {
+  var listEl = document.getElementById('db-device-list');
+  var countEl = document.getElementById('db-device-num');
+  var batchCountEl = document.getElementById('db-batch-count');
+  if (!listEl) return;
+  countEl.textContent = selectedBatchDevices.length;
+  batchCountEl.textContent = '（' + selectedBatchDevices.length + ' 台设备）';
+  listEl.innerHTML = selectedBatchDevices.map(function(d) {
+    return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);">' +
+      '<span style="font-weight:600;min-width:40px;">' + d.room + '</span>' +
+      '<span style="font-size:11px;color:var(--text-muted);">' + d.type + '</span>' +
+      '<span style="margin-left:auto;font-size:10px;color:' + (d.online ? 'var(--green)' : 'var(--red)') + ';">' + (d.online ? '🟢在线' : '🔴离线') + '</span>' +
+      '</div>';
+  }).join('');
+  // Update offline warning
+  var offlineCount = selectedBatchDevices.filter(function(d) { return !d.online; }).length;
+  var offlineWarn = document.getElementById('db-offline-warning');
+  if (offlineWarn) {
+    offlineWarn.style.display = offlineCount > 0 ? 'block' : 'none';
+    var countEl2 = document.getElementById('db-offline-count');
+    if (countEl2) countEl2.textContent = offlineCount;
+  }
+}
+
+function selectDbOp(el) {
+  document.querySelectorAll('.db-op-item').forEach(function(item) {
+    item.style.borderColor = item.dataset.op === 'delete' ? 'var(--red)' : 'var(--border)';
+    item.style.background = item.dataset.op === 'delete' ? 'var(--red-bg)' : 'var(--white)';
+  });
+  el.style.borderColor = el.dataset.op === 'delete' ? 'var(--red)' : 'var(--blue)';
+  el.style.background = el.dataset.op === 'delete' ? 'var(--red-bg)' : 'var(--blue-bg)';
+  selectedDbOp = el.dataset.op;
+  updateDbOpUI();
+}
+
+function updateDbOpUI() {
+  var warningEl = document.getElementById('db-warning');
+  var warningText = document.getElementById('db-warning-text');
+  var submitBtn = document.getElementById('db-submit-btn');
+  if (selectedDbOp === 'restart') {
+    if (warningEl) warningEl.style.display = 'none';
+    if (submitBtn) submitBtn.textContent = '确认重启';
+  } else if (selectedDbOp === 'sync') {
+    if (warningEl) { warningEl.style.display = 'block'; if (warningText) warningText.textContent = '强制同步可能造成设备短暂离线'; }
+    if (submitBtn) submitBtn.textContent = '确认同步';
+  } else if (selectedDbOp === 'upgrade') {
+    if (warningEl) { warningEl.style.display = 'block'; if (warningText) warningText.textContent = '固件升级后设备将自动重启，预计需要30-60秒'; }
+    if (submitBtn) submitBtn.textContent = '确认升级';
+  } else if (selectedDbOp === 'delete') {
+    if (warningEl) { warningEl.style.display = 'block'; if (warningText) warningText.textContent = '删除后设备数据不可恢复，请确认！'; }
+    if (submitBtn) submitBtn.textContent = '确认删除';
+  }
+}
+
+function submitDeviceBatch() {
+  var progressArea = document.getElementById('db-progress-area');
+  var progressBar = document.getElementById('db-progress-bar');
+  var progressCount = document.getElementById('db-progress-count');
+  var progressLabel = document.getElementById('db-progress-label');
+  if (progressArea) progressArea.style.display = 'block';
+  var total = selectedBatchDevices.length;
+  var current = 0;
+  var opLabels = { restart: '重启', sync: '同步', upgrade: '升级', delete: '删除' };
+  var successCount = 0;
+  var failCount = 0;
+  function tick() {
+    current++;
+    var pct = Math.round((current / total) * 100);
+    if (progressBar) progressBar.style.width = pct + '%';
+    if (progressCount) progressCount.textContent = current + '/' + total;
+    if (current < total) {
+      // Skip offline devices for remote ops
+      if (selectedBatchDevices[current - 1] && selectedBatchDevices[current - 1].online) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+      setTimeout(tick, 200);
+    } else {
+      // Final tick
+      if (selectedBatchDevices[total - 1] && selectedBatchDevices[total - 1].online) successCount++; else failCount++;
+      setTimeout(function() {
+        closeModal('device-batch');
+        if (selectedDbOp === 'delete') {
+          showToast('已删除 ' + successCount + ' 台设备' + (failCount > 0 ? '，' + failCount + ' 台离线设备跳过' : ''), 'success');
+        } else {
+          showToast(opLabels[selectedDbOp] + '成功 ' + successCount + ' 台' + (failCount > 0 ? '，' + failCount + ' 台离线' : ''), 'success');
+        }
+      }, 300);
+    }
+  }
+  if (progressLabel) progressLabel.textContent = '正在执行批量' + opLabels[selectedDbOp] + '...';
+  setTimeout(tick, 100);
+}
+
+// ======= 【改进5】能耗房间详情弹窗相关函数 =======
+var energyRoomData = {};
+
+function openEnergyDetailModal(roomNum) {
+  document.getElementById('ed-room-num').textContent = roomNum;
+  // Simulate data based on room
+  var dataMap = {
+    '301': { today: 8.6, yesterday: 7.2, weekAvg: 6.8, month: 186.4, lockBat: 88, acStatus: '运行中', deviceOnline: true, trend: [5.2, 6.1, 5.8, 7.0, 6.5, 7.2, 8.6] },
+    '302': { today: 1.2, yesterday: 1.1, weekAvg: 1.3, month: 32.5, lockBat: 95, acStatus: '未取电', deviceOnline: true, trend: [1.0, 1.2, 1.1, 1.3, 1.2, 1.1, 1.2] },
+    '304': { today: 7.1, yesterday: 6.8, weekAvg: 6.2, month: 148.2, lockBat: 65, acStatus: '运行中', deviceOnline: true, trend: [4.8, 5.5, 6.0, 5.8, 6.2, 6.8, 7.1] },
+    '201': { today: 5.2, yesterday: 5.0, weekAvg: 5.1, month: 130.8, lockBat: 72, acStatus: '空调节能', deviceOnline: false, trend: [4.5, 5.0, 5.2, 4.8, 5.1, 5.0, 5.2] }
+  };
+  var d = dataMap[roomNum] || { today: 3.0, yesterday: 2.8, weekAvg: 2.9, month: 78.0, lockBat: 80, acStatus: '未知', deviceOnline: true, trend: [2.5, 2.8, 2.6, 2.9, 2.7, 2.8, 3.0] };
+  energyRoomData[roomNum] = d;
+  document.getElementById('ed-today-kwh').textContent = d.today;
+  document.getElementById('ed-yesterday-kwh').textContent = d.yesterday;
+  document.getElementById('ed-week-avg').textContent = d.weekAvg;
+  document.getElementById('ed-month-total').textContent = d.month;
+  var statusEl = document.getElementById('ed-device-status');
+  if (statusEl) { statusEl.textContent = d.deviceOnline ? '🟢 在线' : '🔴 离线'; statusEl.style.color = d.deviceOnline ? 'var(--green)' : 'var(--red)'; }
+  if (document.getElementById('ed-lock-battery')) document.getElementById('ed-lock-battery').textContent = d.lockBat + '%';
+  if (document.getElementById('ed-ac-status')) document.getElementById('ed-ac-status').textContent = d.acStatus;
+  // Render trend chart
+  var chartEl = document.getElementById('ed-chart');
+  if (chartEl) {
+    var max = Math.max.apply(null, d.trend);
+    chartEl.innerHTML = d.trend.map(function(v, i) {
+      var h = Math.round((v / max) * 70) + 10;
+      var isLast = i === d.trend.length - 1;
+      return '<div style="flex:1;display:flex;align-items:flex-end;justify-content:center;"><div style="width:100%;height:' + h + 'px;background:' + (isLast ? 'var(--blue)' : 'var(--blue-bg)') + ';border-radius:3px 3px 0 0;transition:all 0.2s;"></div></div>';
+    }).join('');
+  }
+  openModal('energy-detail');
+}
+
+function sendEnergySelfTest() {
+  var room = document.getElementById('ed-room-num').textContent;
+  showToast('已向 ' + room + ' 发送能耗自检指令，预计5秒内返回结果', 'info');
+  setTimeout(function() {
+    showToast('301 自检完成：空调运行正常，无异常功耗', 'success');
+  }, 5000);
+}
+
+// ======= 【改进2】首页房间卡片快捷操作函数 =======
+function openQuickCheckinModalForRoom(roomNum) {
+  openCheckinNewModal(roomNum);
+}
+
+function openUnlockForRoom(roomNum) {
+  // Directly open unlock modal for this room
+  var unlockModal = document.getElementById('modal-unlock');
+  if (unlockModal) {
+    openModal('unlock');
+    var roomLabel = document.querySelector('#modal-unlock .modal-title');
+    if (roomLabel) roomLabel.textContent = '🔓 远程开锁 - ' + roomNum;
+  } else {
+    showToast('正在为 ' + roomNum + ' 执行远程开锁...', 'info');
+    setTimeout(function() { showToast(roomNum + ' 门锁已开（模拟）', 'success'); }, 1500);
+  }
+}
+
+// ======= 【改进3】员工表单手机号实时格式验证 =======
+function onEmpPhoneInput(val) {
+  var tip = document.getElementById('emp-phone-tip');
+  if (!tip) return;
+  var cleaned = val.replace(/\D/g, '');
+  if (cleaned.length === 0) {
+    tip.innerHTML = '✅ 手机号将作为员工登录账号使用';
+    tip.style.color = 'var(--text-muted)';
+  } else if (cleaned.length < 11) {
+    tip.innerHTML = '⚠️ 手机号需为11位数字';
+    tip.style.color = 'var(--orange)';
+  } else if (cleaned.length === 11) {
+    tip.innerHTML = '✅ 手机号格式正确';
+    tip.style.color = 'var(--green)';
+  } else {
+    tip.innerHTML = '⚠️ 手机号不能超过11位';
+    tip.style.color = 'var(--red)';
+  }
+}
+
+function checkPwdStrength(val) {
+  var strengthEl = document.getElementById('emp-pwd-strength');
+  var textEl = document.getElementById('emp-pwd-text');
+  if (!strengthEl || !textEl) return;
+  var score = 0;
+  if (val.length >= 6) score++;
+  if (val.length >= 8) score++;
+  if (/[a-z]/.test(val) && /[A-Z]/.test(val)) score++;
+  if (/\d/.test(val)) score++;
+  if (/[^a-zA-Z0-9]/.test(val)) score++;
+  var pct = Math.min(100, score * 20);
+  var colors = ['var(--border)', 'var(--red)', 'var(--orange)', 'var(--orange)', 'var(--green)', 'var(--green)'];
+  var labels = ['', '弱', '中等', '中等', '强', '很强'];
+  strengthEl.style.width = pct + '%';
+  strengthEl.style.background = colors[score];
+  textEl.textContent = labels[score];
+  textEl.style.color = colors[score];
+}
+
+// ======= 【改进4】办理记录完整状态筛选逻辑 =======
+function applyRecordFilter() {
+  var searchVal = document.getElementById('record-search-input') ? document.getElementById('record-search-input').value.trim().toLowerCase() : '';
+  var typeVal = document.getElementById('record-type-filter') ? document.getElementById('record-type-filter').value : 'all';
+  var statusVal = document.getElementById('record-status-filter') ? document.getElementById('record-status-filter').value : 'all';
+  var rows = document.querySelectorAll('#records-table-body tr');
+  var visibleCount = 0;
+  rows.forEach(function(row) {
+    var matchSearch = !searchVal || row.dataset.name.toLowerCase().indexOf(searchVal) !== -1 || row.dataset.room.toLowerCase().indexOf(searchVal) !== -1 || (row.dataset.phone && row.dataset.phone.toLowerCase().indexOf(searchVal) !== -1);
+    var matchType = typeVal === 'all' || row.dataset.type === typeVal;
+    var matchStatus = statusVal === 'all' || row.dataset.status === statusVal;
+    row.style.display = (matchSearch && matchType && matchStatus) ? '' : 'none';
+    if (row.style.display === '') visibleCount++;
+  });
+  var countEl = document.getElementById('record-filter-count');
+  if (countEl) countEl.textContent = '共 ' + visibleCount + ' 条记录';
+  // Toggle batch delete button visibility
+  var batchBtn = document.getElementById('record-batch-del-btn');
+  if (batchBtn) batchBtn.style.display = visibleCount > 0 ? 'inline-block' : 'none';
+}
+
+function resetRecordFilter() {
+  var searchInput = document.getElementById('record-search-input');
+  var typeFilter = document.getElementById('record-type-filter');
+  var statusFilter = document.getElementById('record-status-filter');
+  if (searchInput) searchInput.value = '';
+  if (typeFilter) typeFilter.value = 'all';
+  if (statusFilter) statusFilter.value = 'all';
+  applyRecordFilter();
+  showToast('筛选条件已重置', 'info');
 }
 
 // 初始化通知中心
