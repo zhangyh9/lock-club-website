@@ -493,7 +493,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       <div class="stats-row" id="homepage-stats">
         <div class="stat-card" style="cursor:pointer;" onclick="showPage('device')">
           <div class="stat-icon" style="background: var(--blue-bg);">🏨</div>
-          <div><div class="stat-num">16</div><div class="stat-label">房间总数</div></div>
+          <div><div class="stat-num" id="home-stat-total">16</div><div class="stat-label">房间总数</div></div>
         </div>
         <div class="stat-card" style="cursor:pointer;" onclick="showPage('device')">
           <div class="stat-icon" style="background: var(--green-bg);">🔓</div>
@@ -501,7 +501,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
         <div class="stat-card" style="cursor:pointer;" onclick="showPage('alert')">
           <div class="stat-icon" style="background: var(--orange-bg);">⚡</div>
-          <div><div class="stat-num">2</div><div class="stat-label">低电量告警</div></div>
+          <div><div class="stat-num" id="home-stat-alert">3</div><div class="stat-label">待处理告警</div></div>
         </div>
         <div class="stat-card" id="health-score-card" style="border:2px solid var(--green);">
           <div class="stat-icon" style="background: var(--green-bg);" id="health-icon-container">💚</div>
@@ -514,9 +514,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             <div style="font-size:10px;color:var(--text-muted);margin-top:2px;" id="health-detail">优秀 · 14台正常</div>
           </div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" id="home-stat-offline-card">
           <div class="stat-icon" style="background: var(--red-bg);">📡</div>
-          <div><div class="stat-num">2</div><div class="stat-label">设备离线</div></div>
+          <div><div class="stat-num" id="home-stat-offline">2</div><div class="stat-label">设备离线</div></div>
         </div>
       </div>
       <div class="card">
@@ -3550,8 +3550,33 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
   </div>
   <button class="action-btn small" onclick="batchExport()">📤 导出</button>
   <button class="action-btn small orange" onclick="batchRestart()">🔁 批量重启</button>
-  <button class="action-btn small red" onclick="batchDelete()">🗑️ 批量删除</button>
+  <button class="action-btn small red" onclick="confirmBatchDelete()">🗑️ 批量删除</button>
   <button class="action-btn small" onclick="clearBatch()" style="padding:3px 8px;">✕ 取消</button>
+</div>
+
+<!-- 【改进2】批量删除确认弹窗 -->
+<div class="modal-overlay hidden" id="modal-batch-delete-confirm">
+  <div class="modal" style="width:440px;">
+    <div class="modal-header">
+      <div class="modal-title">⚠️ 批量删除确认</div>
+      <button class="modal-close" onclick="closeModal('batch-delete-confirm')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:48px;margin-bottom:12px;">🗑️</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px;">确定要删除选中的 <span id="bd-count" style="color:var(--red);">0</span> 台设备吗？</div>
+        <div style="font-size:13px;color:var(--text-muted);">此操作不可恢复，设备将从列表中永久移除</div>
+      </div>
+      <div id="bd-device-list" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg);margin-bottom:16px;"></div>
+      <div style="padding:10px;background:var(--red-bg);border:1px solid var(--red);border-radius:6px;font-size:12px;color:var(--red);">
+        ⚠️ 删除后设备数据无法恢复，请确认所选设备无误
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('batch-delete-confirm')">取消</button>
+      <button class="modal-btn" style="background:var(--red);color:white;border:none;" onclick="batchDelete()">确认删除</button>
+    </div>
+  </div>
 </div>
 
 <!-- 改进4: 系统设置模态框 -->
@@ -5355,6 +5380,64 @@ let unlockCountdownTimer = null;
 let currentAlertIdx = 0;
 let selectedSolution = '现场处理';
 
+// ======= 【改进3】首页实时统计数据（联动入住/退房/告警处理动态更新） =======
+var dashboardStats = {
+  todayCheckin: 2,
+  todayCheckout: 1,
+  occupiedRooms: 9,
+  activeAlerts: 3,
+  pendingWorkorders: 3,
+  lowBatteryDevices: 2,
+  totalDevices: 16,
+  onlineDevices: 11
+};
+function animateStatChange(statId) {
+  var el = document.getElementById(statId);
+  if (!el) return;
+  el.style.transition = 'transform 0.3s ease';
+  el.style.transform = 'scale(1.4)';
+  el.style.color = 'var(--blue)';
+  setTimeout(function() {
+    el.style.transform = 'scale(1)';
+    el.style.color = '';
+  }, 400);
+}
+function updateHomeStat(statKey, newVal, statId) {
+  dashboardStats[statKey] = newVal;
+  if (statId) animateStatChange(statId);
+  // Refresh all home stat cards
+  var homeOnline = document.getElementById('home-stat-online');
+  var homeAlert = document.getElementById('home-stat-alert');
+  var homeWo = document.getElementById('home-stat-wo');
+  if (homeOnline) homeOnline.textContent = dashboardStats.onlineDevices;
+  if (homeAlert) homeAlert.textContent = dashboardStats.activeAlerts;
+  if (homeWo) homeWo.textContent = dashboardStats.pendingWorkorders;
+  // Update home page alert card
+  var alertCard = document.querySelector('#page-home .stat-card:nth-child(3) .stat-num');
+  if (alertCard) alertCard.textContent = dashboardStats.activeAlerts;
+}
+
+// ======= 【改进4】告警计数系统（实时联动首页+侧边栏+工单统计） =======
+var globalAlertCount = 3; // 初始3条待处理告警
+function updateGlobalAlertCount(delta) {
+  globalAlertCount = Math.max(0, globalAlertCount + delta);
+  // 更新侧边栏告警徽标
+  var badge = document.getElementById('notif-bell-badge');
+  if (badge) {
+    if (globalAlertCount > 0) {
+      badge.textContent = globalAlertCount > 9 ? '9+' : globalAlertCount;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+  // 更新首页告警统计
+  updateHomeStat('activeAlerts', globalAlertCount, 'home-stat-alert');
+  // 更新工单待处理统计（如果工单页面可见）
+  var woPending = document.querySelector('#page-workorder .stat-card:nth-child(2) .stat-num');
+  if (woPending) woPending.textContent = dashboardStats.pendingWorkorders;
+}
+
 // ======= 页面导航 =======
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -5406,7 +5489,144 @@ function filterCheckin(type, el) {
   });
 }
 
-// ======= 告警表格筛选 =======
+// ======= 【改进1】通知中心功能（通知数据+展开/关闭+标记已读+一键清空） =======
+var notifData = [
+  { id: 1, icon: '⚠️', iconBg: 'var(--red)', cat: 'device', title: '303设备离线超过10小时', time: '10分钟前', read: false },
+  { id: 2, icon: '🔋', iconBg: 'var(--orange)', cat: 'device', title: '305设备电量低于20%', time: '2小时前', read: false },
+  { id: 3, icon: '✅', iconBg: 'var(--green)', cat: 'device', title: '304设备恢复在线', time: '昨天 15:30', read: true },
+  { id: 4, icon: '🏨', iconBg: 'var(--blue)', cat: 'checkin', title: '301入住办理成功', time: '今天 10:32', read: false },
+  { id: 5, icon: '📋', iconBg: 'var(--purple)', cat: 'workorder', title: 'WO-2026032601 新工单待接受', time: '今天 10:15', read: false },
+  { id: 6, icon: '🔋', iconBg: 'var(--orange)', cat: 'device', title: '202设备电量偏低', time: '5小时前', read: false }
+];
+
+function toggleNotificationPanel() {
+  var panel = document.getElementById('notif-panel');
+  if (!panel) return;
+  if (panel.style.display === 'none' || panel.style.display === '') {
+    panel.style.display = 'block';
+    renderNotifList();
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+function renderNotifList() {
+  var container = document.getElementById('notif-list');
+  if (!container) return;
+  var unreadCount = notifData.filter(function(n) { return !n.read; }).length;
+  // Update bell badge
+  var badge = document.getElementById('notif-bell-badge');
+  if (badge) {
+    if (unreadCount > 0) {
+      badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+  // Render items
+  var html = '';
+  notifData.forEach(function(n) {
+    var actionBtn = '';
+    if (!n.read && n.cat === 'device') {
+      actionBtn = '<button class="action-btn small" onclick="handleNotifAction(' + n.id + ',\'device\')" style="padding:2px 8px;font-size:10px;">处理</button>';
+    } else if (!n.read && n.cat === 'workorder') {
+      actionBtn = '<button class="action-btn small" onclick="handleNotifAction(' + n.id + ',\'workorder\')" style="padding:2px 8px;font-size:10px;">处理</button>';
+    } else if (!n.read) {
+      actionBtn = '<button class="action-btn small" onclick="markNotifRead(' + n.id + ')" style="padding:2px 8px;font-size:10px;">✓ 已读</button>';
+    } else {
+      actionBtn = '<span style="font-size:10px;color:var(--text-muted);">已读</span>';
+    }
+    html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);' + (n.read ? 'opacity:0.6;' : '') + '" id="notif-item-' + n.id + '">' +
+      '<div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;background:' + n.iconBg + ';color:white;">' + n.icon + '</div>' +
+      '<div style="flex:1;min-width:0;cursor:pointer;" onclick="handleNotifClick(' + n.id + ')">' +
+        '<div style="font-size:12px;font-weight:' + (n.read ? '400' : '600') + ';margin-bottom:2px;">' + n.title + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);">' + n.time + '</div>' +
+      '</div>' +
+      '<div style="flex-shrink:0;">' + actionBtn + '</div>' +
+    '</div>';
+  });
+  if (notifData.length === 0) {
+    html = '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">暂无通知</div>';
+  }
+  container.innerHTML = html;
+}
+
+function handleNotifAction(id, cat) {
+  markNotifRead(id);
+  if (cat === 'device') {
+    toggleNotificationPanel();
+    showPage('alert');
+  } else if (cat === 'workorder') {
+    toggleNotificationPanel();
+    showPage('workorder');
+  }
+}
+
+function handleNotifClick(id) {
+  markNotifRead(id);
+  var n = notifData.find(function(d) { return d.id === id; });
+  if (n) {
+    if (n.cat === 'device') {
+      toggleNotificationPanel();
+      showPage('alert');
+    } else if (n.cat === 'workorder') {
+      toggleNotificationPanel();
+      showPage('workorder');
+    } else if (n.cat === 'checkin') {
+      toggleNotificationPanel();
+      showPage('room-detail');
+    }
+  }
+}
+
+function markNotifRead(id) {
+  var n = notifData.find(function(d) { return d.id === id; });
+  if (n) n.read = true;
+  var item = document.getElementById('notif-item-' + id);
+  if (item) {
+    item.style.opacity = '0.6';
+    var btn = item.querySelector('button');
+    if (btn) btn.replaceWith('<span style="font-size:10px;color:var(--text-muted);">已读</span>');
+  }
+  // Update badge count
+  var unreadCount = notifData.filter(function(n) { return !n.read; }).length;
+  var badge = document.getElementById('notif-bell-badge');
+  if (badge) {
+    if (unreadCount > 0) {
+      badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+}
+
+function markAllNotifRead() {
+  notifData.forEach(function(n) { n.read = true; });
+  renderNotifList();
+  showToast('全部通知已标记为已读', 'success');
+}
+
+function clearAllNotif() {
+  notifData = [];
+  renderNotifList();
+  var badge = document.getElementById('notif-bell-badge');
+  if (badge) badge.style.display = 'none';
+  showToast('通知中心已清空', 'success');
+}
+
+// Add a notification when alert is processed
+function addNotif(icon, iconBg, cat, title) {
+  var now = new Date();
+  var timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  notifData.unshift({ id: Date.now(), icon: icon, iconBg: iconBg, cat: cat, title: title, time: timeStr, read: false });
+  renderNotifList();
+  // Update global alert count if device alert
+  if (cat === 'device') updateGlobalAlertCount(1);
+}
+
+
 function filterAlertTable(status, el) {
   el.parentElement.querySelectorAll('.card-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
@@ -5626,6 +5846,9 @@ function selectSolution(el, val) {
 }
 function submitAlertProcess() {
   var note = document.getElementById('alert-note').value;
+  // 【改进4】告警处理后实时更新全局告警计数
+  updateGlobalAlertCount(-1);
+  addNotif('✅', 'var(--green)', 'device', '告警已处理：' + selectedSolution);
   closeModal('alert');
   showToast('告警已处理：' + selectedSolution + (note ? '，备注：' + note : ''), 'success');
 }
@@ -6236,6 +6459,15 @@ function submitCheckout() {
     }
   });
   showToast('退房办理成功！' + name + '已退房，房间' + roomNum + '已更新为空房', 'success');
+  // 【改进3】退房后更新首页统计数据
+  dashboardStats.todayCheckout++;
+  dashboardStats.occupiedRooms = Math.max(0, dashboardStats.occupiedRooms - 1);
+  var checkinStatEl = document.querySelector('#page-home .stat-card:nth-child(1) .stat-num');
+  var checkoutStatEl = document.querySelector('#page-home .stat-card:nth-child(2) .stat-num');
+  var occupiedStatEl = document.querySelector('#page-home .stat-card:nth-child(5) .stat-num');
+  if (checkinStatEl) checkinStatEl.textContent = dashboardStats.todayCheckin;
+  if (checkoutStatEl) checkoutStatEl.textContent = dashboardStats.todayCheckout;
+  if (occupiedStatEl) occupiedStatEl.textContent = dashboardStats.occupiedRooms + '/' + (dashboardStats.occupiedRooms + 10);
   closeModal('checkout');
 }
 
@@ -6331,19 +6563,27 @@ function onDeviceCheckChange() {
   updateBatchUI();
 }
 function updateBatchUI() {
-  var checked = Array.from(document.querySelectorAll('.device-check')).filter(cb => cb.checked);
-  selectedDevices = checked.map(cb => cb.closest('tr').dataset.uuid);
-  var count = checked.length;
-  document.getElementById('batch-count').textContent = count;
-  document.getElementById('batch-action-btn').style.display = count > 0 ? 'inline-block' : 'none';
-  document.getElementById('batch-toolbar').style.display = count > 0 ? 'flex' : 'none';
+  var checked = Array.from(document.querySelectorAll('.device-check:checked'));
+  selectedDevices = checked.map(function(cb) {
+    var tr = cb.closest('tr');
+    return tr ? tr.dataset.uuid : null;
+  }).filter(function(u) { return u; });
+  var count = selectedDevices.length;
+  var countEl = document.getElementById('batch-count');
+  var actionBtnEl = document.getElementById('batch-action-btn');
+  var toolbarEl = document.getElementById('batch-toolbar');
+  if (countEl) countEl.textContent = count;
+  if (actionBtnEl) actionBtnEl.style.display = count > 0 ? 'inline-block' : 'none';
+  if (toolbarEl) toolbarEl.style.display = count > 0 ? 'flex' : 'none';
 }
 function openBatchToolbar() {
-  document.getElementById('batch-toolbar').style.display = 'flex';
+  var toolbarEl = document.getElementById('batch-toolbar');
+  if (toolbarEl) toolbarEl.style.display = 'flex';
 }
 function clearBatch() {
-  document.querySelectorAll('.device-check').forEach(cb => cb.checked = false);
-  document.getElementById('select-all-devices').checked = false;
+  document.querySelectorAll('.device-check').forEach(function(cb) { cb.checked = false; });
+  var selAll = document.getElementById('select-all-devices');
+  if (selAll) selAll.checked = false;
   updateBatchUI();
 }
 // 【改进3】设备管理批量操作真实闭环（导出CSV/重启倒计时反馈/删除逐行动画+状态实时更新）
@@ -6358,7 +6598,7 @@ function batchExport() {
     if (selectedSet.has(uuid)) {
       var tds = row.querySelectorAll('td');
       var rowData = [];
-      // UUID (td 1), 房间 (td 2), 状态(td 3 text), 电量(td 4), 信号(td 5), 最后同步(td 6)
+      // UUID (td 2), 房间 (td 3), 状态(td 4), 电量(td 5), 信号(td 6), 最后同步(td 7)
       if (tds.length >= 7) {
         rowData = [
           uuid,
@@ -6385,29 +6625,25 @@ function batchExport() {
 }
 function batchRestart() {
   if (selectedDevices.length === 0) { showToast('请先选择要重启的设备', 'error'); return; }
-  if (!confirm('确定要批量重启选中的 ' + selectedDevices.length + ' 台设备吗？重启期间设备将临时离线。')) return;
   var total = selectedDevices.length;
-  var done = 0;
-  var failed = 0;
   showToast('批量重启指令已下发，设备将依次重启（约10秒/台）...', 'info');
-  // 逐台重启模拟，每台间隔1.5秒，总计1.5*total秒
-  var checkIdx = 0;
+  // 逐台重启模拟，每台间隔1.5秒
+  var done = 0;
   var checkInterval = setInterval(function() {
     var rows = document.querySelectorAll('#device-table-body tr');
     rows.forEach(function(row) {
       var uuid = row.dataset.uuid;
       if (selectedDevices.indexOf(uuid) !== -1 && done < total) {
         var statusTd = row.querySelector('td:nth-child(4)');
-        if (statusTd && done < total) {
-          var currentText = statusTd.textContent.trim();
-          if (currentText.indexOf('重启中') === -1 && currentText.indexOf('🔄') === -1) {
+        if (statusTd) {
+          var text = statusTd.textContent.trim();
+          if (text.indexOf('重启中') === -1 && text.indexOf('🔄') === -1 && text.indexOf('离线') === -1) {
             statusTd.innerHTML = '<span class="tbadge" style="background:var(--orange-bg);color:var(--orange);">🔄 重启中</span>';
           }
         }
       }
     });
   }, 500);
-  // 每1.5秒完成一台
   var finishInterval = setInterval(function() {
     var uuid = selectedDevices[done];
     var row = document.querySelector('tr[data-uuid="' + uuid + '"]');
@@ -6426,11 +6662,62 @@ function batchRestart() {
     }
   }, 1500);
 }
-function batchDelete() {
+function confirmBatchDelete() {
   if (selectedDevices.length === 0) { showToast('请先选择要删除的设备', 'error'); return; }
-  if (!confirm('确定要删除选中的 ' + selectedDevices.length + ' 台设备吗？此操作不可恢复！')) return;
-  showToast('正在删除 ' + selectedDevices.length + ' 台设备...', 'info');
+  // Populate confirmation modal with selected device list
+  document.getElementById('bd-count').textContent = selectedDevices.length;
+  var listEl = document.getElementById('bd-device-list');
+  var rows = document.querySelectorAll('#device-table-body tr');
+  var selectedSet = new Set(selectedDevices);
+  var html = '';
+  rows.forEach(function(row) {
+    var uuid = row.dataset.uuid;
+    if (selectedSet.has(uuid)) {
+      var tds = row.querySelectorAll('td');
+      if (tds.length >= 3) {
+        html += '<div style="display:flex;justify-content:space-between;padding:4px 8px;font-size:12px;border-bottom:1px solid var(--border);">';
+        html += '<span style="font-family:monospace;">' + uuid + '</span>';
+        html += '<span style="color:var(--text-muted);">' + tds[2].textContent.trim() + '</span></div>';
+      }
+    }
+  });
+  listEl.innerHTML = html || '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:10px;">无设备数据</div>';
+  openModal('batch-delete-confirm');
+}
+function batchDelete() {
+  closeModal('batch-delete-confirm');
+  if (selectedDevices.length === 0) { return; }
+  var total = selectedDevices.length;
   var deleted = 0;
+  var selectedSet = new Set(selectedDevices);
+  showToast('正在删除 ' + total + ' 台设备...', 'info');
+  var interval = setInterval(function() {
+    if (deleted >= total) {
+      clearInterval(interval);
+      // Remove rows from DOM
+      selectedDevices.forEach(function(uuid) {
+        var row = document.querySelector('tr[data-uuid="' + uuid + '"]');
+        if (row) {
+          row.style.transition = 'all 0.3s';
+          row.style.opacity = '0';
+          row.style.transform = 'translateX(-20px)';
+          setTimeout(function() { row.remove(); }, 300);
+        }
+      });
+      // Update dashboard stats
+      dashboardStats.onlineDevices = Math.max(0, dashboardStats.onlineDevices - total);
+      dashboardStats.totalDevices = Math.max(0, dashboardStats.totalDevices - total);
+      updateHomeStat('totalDevices', dashboardStats.totalDevices, null);
+      updateHomeStat('onlineDevices', dashboardStats.onlineDevices, 'home-stat-online');
+      setTimeout(function() {
+        clearBatch();
+        showToast('批量删除完成！' + total + ' 台设备已从列表移除', 'success');
+      }, 500);
+      return;
+    }
+    deleted++;
+  }, 400);
+}
   var total = selectedDevices.length;
   var selectedSet = new Set(selectedDevices);
   // 逐行删除动画，每400ms删一行
@@ -6555,6 +6842,15 @@ function submitCiStep3() {
       showToast('入住办理成功！' + roomNum + '已更新为入住状态', 'success');
     }
   });
+  // 【改进3】入住成功后更新首页统计数据
+  dashboardStats.todayCheckin++;
+  dashboardStats.occupiedRooms++;
+  var checkinStatEl = document.querySelector('#page-home .stat-card:nth-child(1) .stat-num');
+  var occupiedStatEl = document.querySelector('#page-home .stat-card:nth-child(5) .stat-num');
+  if (checkinStatEl) checkinStatEl.textContent = dashboardStats.todayCheckin;
+  if (occupiedStatEl) occupiedStatEl.textContent = dashboardStats.occupiedRooms + '/' + (dashboardStats.occupiedRooms + 10);
+  // 添加通知
+  addNotif('🏨', 'var(--blue)', 'checkin', '新入住：' + roomNum + ' · ' + name);
   closeModal('checkin-new');
 }
 
@@ -7880,9 +8176,16 @@ function submitKeypad() {
   var purpose = document.getElementById('kp-purpose').value;
   if (!purpose) { showToast('请填写密码用途', 'error'); return; }
   var pwd = document.getElementById('kp-generated-code').textContent;
-  if (!pwd || pwd === '--') { showToast('请先生成密码预览', 'error'); return; }
+  // 【改进5】密码生成器：如果尚未生成预览，自动生成
+  if (!pwd || pwd === '--') {
+    generateKeypadPreview();
+    pwd = document.getElementById('kp-generated-code').textContent;
+  }
+  var roomLabel = document.querySelector('#kp-room option[value="' + room + '"]');
+  var roomText = roomLabel ? roomLabel.textContent : room;
   closeModal('keypad');
-  showToast('密码生成成功！' + pwd + ' 已关联至 ' + room + '，可复制使用', 'success');
+  showToast('密码生成成功！' + pwd + ' 已关联至 ' + roomText + '，可复制使用', 'success');
+  addNotif('🔑', 'var(--blue)', 'checkin', '新密码已生成：' + pwd + ' · ' + roomText);
   document.getElementById('kp-generated-preview').style.display = 'none';
   document.getElementById('kp-preview-box').style.display = 'block';
 }
@@ -9591,6 +9894,340 @@ function openBatchToolbar() {
     fwBtn.onclick = openBatchUpgradeModal;
     toolbar.insertBefore(fwBtn, toolbar.firstChild);
   }
+}
+
+// ======= 【改进A】楼栋管理：楼栋→楼层级联完整实现，楼层切换自动刷新房间网格+统计联动 =======
+function selectBuildingFloor(floor, el) {
+  currentFloor = parseInt(floor);
+  // 更新楼层chip高亮状态
+  document.querySelectorAll('.floor-chip').forEach(function(chip) {
+    chip.classList.remove('active');
+    chip.style.background = 'var(--bg)';
+    chip.style.border = '1px solid var(--border)';
+    chip.style.color = 'var(--text)';
+  });
+  if (el) {
+    el.classList.add('active');
+    el.style.background = 'var(--blue)';
+    el.style.color = 'white';
+    el.style.border = 'none';
+  }
+  updateFloorRoomGrid();
+  updateFloorStats();
+}
+
+function updateFloorRoomGrid() {
+  var bldKey = currentBuilding || 'main';
+  var bld = buildingFloorData[bldKey];
+  if (!bld || !bld.floors || !bld.floors[currentFloor]) return;
+  var rooms = bld.floors[currentFloor];
+  var grid = document.getElementById('floor-rooms-display');
+  if (!grid) return;
+  var html = '';
+  rooms.forEach(function(r) {
+    var statusColor = r.status === 'in' ? 'var(--blue)' : r.status === 'empty' ? 'var(--green)' : r.status === 'alert' ? 'var(--red)' : 'var(--orange)';
+    var bgColor = r.status === 'in' ? 'var(--blue-bg)' : r.status === 'empty' ? 'var(--green-bg)' : r.status === 'alert' ? 'var(--red-bg)' : 'var(--orange-bg)';
+    var badgeText = r.status === 'in' ? '入住' : r.status === 'empty' ? '空房' : r.status === 'alert' ? '告警' : '低电量';
+    var keyColor = r.keys > 0 ? 'var(--blue)' : 'var(--text-muted)';
+    html += '<div onclick="showPage(\'room-detail\')" style="padding:10px;background:' + bgColor + ';border:1.5px solid ' + statusColor + ';border-radius:8px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 4px 12px rgba(0,0,0,0.1)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'">';
+    html += '<div style="font-size:16px;font-weight:700;color:' + statusColor + ';">' + r.room + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">' + r.type + '</div>';
+    html += '<div style="font-size:9px;font-weight:600;color:' + statusColor + ';background:white;border-radius:8px;padding:1px 5px;display:inline-block;">' + badgeText + '</div>';
+    html += '<div style="font-size:10px;margin-top:3px;color:' + keyColor + ';">🔑 ' + r.keys + '张</div>';
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+  // 更新统计标签
+  var statLabel = document.getElementById('floor-stat-label');
+  if (statLabel) statLabel.textContent = currentFloor + '层 · ' + bld.name;
+}
+
+function updateFloorStats() {
+  var bldKey = currentBuilding || 'main';
+  var bld = buildingFloorData[bldKey];
+  if (!bld || !bld.floors || !bld.floors[currentFloor]) return;
+  var rooms = bld.floors[currentFloor];
+  var stats = {in: 0, empty: 0, alert: 0};
+  rooms.forEach(function(r) {
+    if (r.status === 'in') stats.in++;
+    else if (r.status === 'empty') stats.empty++;
+    else stats.alert++;
+  });
+  var fsIn = document.getElementById('fs-in');
+  var fsEmpty = document.getElementById('fs-empty');
+  var fsAlert = document.getElementById('fs-alert');
+  if (fsIn) fsIn.textContent = stats.in;
+  if (fsEmpty) fsEmpty.textContent = stats.empty;
+  if (fsAlert) fsAlert.textContent = stats.alert;
+}
+
+// ======= 【改进B】办理记录：完整CRUD操作（详情+删除+换房弹窗+表格行真实删除） =======
+var recordsData = [
+  {type:'in', typeLabel:'🏨 入住', name:'张三', room:'301', roomType:'亲子间', phone:'138****8888', time:'2026-03-27 10:32', status:'active', statusLabel:'✅ 进行中', deposit:'¥100', keyCount:1, operator:'前台-赵飞', note:'手机开锁开通'},
+  {type:'in', typeLabel:'🏨 入住', name:'李四', room:'203', roomType:'亲子间', phone:'139****6666', time:'2026-03-26 15:20', status:'done', statusLabel:'📪 已完成', deposit:'¥100', keyCount:2, operator:'前台-赵飞', note:''},
+  {type:'out', typeLabel:'🚪 退房', name:'王五', room:'201', roomType:'大床房', phone:'137****5555', time:'2026-03-26 14:20', status:'done', statusLabel:'📪 已完成', deposit:'¥100', keyCount:1, operator:'前台-周敏', note:'押金已退'},
+  {type:'change', typeLabel:'🔄 换房', name:'钱七', room:'304', roomType:'亲子间', phone:'136****4444', time:'2026-03-25 16:00', status:'done', statusLabel:'📪 已完成', deposit:'¥0', keyCount:2, operator:'前台-赵飞', note:'从203换房至304，噪音原因'},
+  {type:'cancel', typeLabel:'❌ 取消', name:'赵六', room:'202', roomType:'标准间', phone:'135****3333', time:'2026-03-25 11:00', status:'cancelled', statusLabel:'❌ 已取消', deposit:'¥0', keyCount:0, operator:'前台-周敏', note:'客人临时有事取消'},
+  {type:'out', typeLabel:'🚪 退房', name:'周八', room:'305', roomType:'大床房', phone:'134****2222', time:'2026-03-24 12:00', status:'done', statusLabel:'📪 已完成', deposit:'¥100', keyCount:1, operator:'前台-赵飞', note:''}
+];
+
+function openRecordDetailModal(idx) {
+  var d = recordsData[idx];
+  if (!d) return;
+  document.getElementById('rd-type').textContent = d.typeLabel;
+  document.getElementById('rd-type').parentElement.querySelector('.value').style.color = d.type === 'in' ? 'var(--blue)' : d.type === 'out' ? 'var(--green)' : d.type === 'change' ? 'var(--orange)' : 'var(--red)';
+  document.getElementById('rd-status').textContent = d.statusLabel;
+  document.getElementById('rd-status').style.color = d.status === 'active' ? 'var(--green)' : d.status === 'cancelled' ? 'var(--red)' : 'var(--text-muted)';
+  document.getElementById('rd-name').textContent = d.name;
+  document.getElementById('rd-room').textContent = d.room + ' · ' + d.roomType;
+  document.getElementById('rd-phone').textContent = d.phone;
+  document.getElementById('rd-time').textContent = d.time;
+  document.getElementById('rd-deposit').textContent = d.deposit;
+  document.getElementById('rd-keycount').textContent = d.keyCount + ' 张';
+  document.getElementById('rd-operator').textContent = d.operator || '系统自动';
+  document.getElementById('rd-note').textContent = d.note || '无备注';
+  openModal('record-detail');
+}
+
+function deleteRecord(idx) {
+  if (!confirm('确定要删除该办理记录吗？删除后无法恢复。')) return;
+  // 从表格中移除行
+  var rows = document.querySelectorAll('#records-table-body tr');
+  if (rows[idx]) {
+    rows[idx].style.transition = 'opacity 0.3s';
+    rows[idx].style.opacity = '0';
+    setTimeout(function() {
+      rows[idx].remove();
+      // 更新计数
+      var countEl = document.getElementById('record-filter-count');
+      if (countEl) {
+        var current = parseInt(countEl.textContent.replace('共 ', '').replace(' 条记录', ''));
+        countEl.textContent = '共 ' + Math.max(0, current - 1) + ' 条记录';
+      }
+    }, 300);
+  }
+  showToast('办理记录已删除', 'success');
+  // 删除数据
+  recordsData.splice(idx, 1);
+}
+
+function openChangeRoomRecordModal(idx) {
+  var d = recordsData[idx];
+  if (!d) return;
+  var modal = document.getElementById('modal-change-room-record');
+  if (modal) {
+    var titleEl = modal.querySelector('.modal-title');
+    if (titleEl) titleEl.textContent = '🔄 换房 - ' + d.room + ' (' + d.name + ')';
+    openModal('change-room-record');
+  }
+}
+
+// ======= 【改进C】管理配置：Tab切换+保存/重置功能完整实现 =======
+function switchConfigTab(tab, el) {
+  // 高亮Tab
+  document.querySelectorAll('.config-tab').forEach(function(t) {
+    t.classList.remove('active');
+    t.style.background = 'var(--bg)';
+    t.style.color = 'var(--text)';
+    t.style.border = '1px solid var(--border)';
+    t.style.borderBottom = 'none';
+  });
+  if (el) {
+    el.classList.add('active');
+    el.style.background = 'var(--blue)';
+    el.style.color = 'white';
+    el.style.border = 'none';
+  }
+  // 切换内容
+  var contents = ['basic', 'notify', 'device', 'security'];
+  contents.forEach(function(c) {
+    var content = document.getElementById('cfg-content-' + c);
+    if (content) content.style.display = c === tab ? '' : 'none';
+  });
+}
+
+function saveConfigTab(tab) {
+  var messages = {
+    basic: '基本配置',
+    notify: '通知设置',
+    device: '设备阈值',
+    security: '安全设置'
+  };
+  // 收集配置数据（真实读取表单值）
+  var configs = {};
+  if (tab === 'basic') {
+    configs.hotelName = document.getElementById('cfg-hotel-name') ? document.getElementById('cfg-hotel-name').value : '';
+    configs.hotelAddr = document.getElementById('cfg-hotel-address') ? document.getElementById('cfg-hotel-address').value : '';
+    configs.checkoutTime = document.getElementById('cfg-checkout-time') ? document.getElementById('cfg-checkout-time').value : '';
+    configs.checkinTime = document.getElementById('cfg-checkin-time') ? document.getElementById('cfg-checkin-time').value : '';
+  } else if (tab === 'notify') {
+    configs.notifyOffline = document.getElementById('cfg-notify-offline') ? document.getElementById('cfg-notify-offline').checked : false;
+    configs.notifyBattery = document.getElementById('cfg-notify-battery') ? document.getElementById('cfg-notify-battery').checked : false;
+    configs.adminPhone = document.getElementById('cfg-admin-phone') ? document.getElementById('cfg-admin-phone').value : '';
+  } else if (tab === 'device') {
+    configs.batteryThreshold = document.getElementById('cfg-battery-threshold') ? document.getElementById('cfg-battery-threshold').value : 30;
+    configs.offlineThreshold = document.getElementById('cfg-offline-threshold') ? document.getElementById('cfg-offline-threshold').value : 1;
+  } else if (tab === 'security') {
+    configs.pwdExpire = document.getElementById('cfg-pwd-expire') ? document.getElementById('cfg-pwd-expire').checked : false;
+    configs.auditRemote = document.getElementById('cfg-audit-remote') ? document.getElementById('cfg-audit-remote').checked : false;
+    configs.logRetain = document.getElementById('cfg-log-retain') ? document.getElementById('cfg-log-retain').value : 90;
+  }
+  // 模拟保存到本地存储
+  try {
+    localStorage.setItem('lockclub_cfg_' + tab, JSON.stringify(configs));
+  } catch(e) {}
+  var savedCount = Object.keys(configs).length;
+  showToast(messages[tab] + ' 已保存！' + savedCount + ' 项配置更新', 'success');
+}
+
+function resetConfigTab(tab) {
+  var messages = {
+    basic: '基本配置',
+    notify: '通知设置',
+    device: '设备阈值',
+    security: '安全设置'
+  };
+  if (tab === 'basic') {
+    var el = document.getElementById('cfg-hotel-name');
+    if (el) el.value = '小度语音智慧房体验店';
+    var addr = document.getElementById('cfg-hotel-addr');
+    if (addr) addr.value = '北京市朝阳区某街道1号';
+    var phone = document.getElementById('cfg-hotel-phone');
+    if (phone) phone.value = '010-12345678';
+  } else if (tab === 'device') {
+    var bt = document.getElementById('cfg-battery-threshold');
+    if (bt) { bt.value = 30; document.getElementById('cfg-battery-val').textContent = '30%'; }
+    var ot = document.getElementById('cfg-offline-threshold');
+    if (ot) { ot.value = 1; document.getElementById('cfg-offline-val').textContent = '1小时'; }
+  } else if (tab === 'security') {
+    var pe = document.getElementById('cfg-pwd-expire');
+    if (pe) pe.checked = true;
+  }
+  showToast(messages[tab] + ' 已重置为默认值', 'info');
+}
+
+// ======= 【改进D】工单管理：状态变更后统计数字实时联动更新 =======
+var workorderStats = { pending: 3, processing: 1, done: 6 };
+
+function updateWorkorderStatsOnChange(oldStatus, newStatus) {
+  if (oldStatus === newStatus) return;
+  workorderStats[oldStatus] = Math.max(0, workorderStats[oldStatus] - 1);
+  workorderStats[newStatus] = (workorderStats[newStatus] || 0) + 1;
+  // 找到工单页面，更新统计卡
+  var statPending = document.querySelector('#page-workorder .stat-card:nth-child(2) .stat-num');
+  var statProcessing = document.querySelector('#page-workorder .stat-card:nth-child(3) .stat-num');
+  var statDone = document.querySelector('#page-workorder .stat-card:nth-child(4) .stat-num');
+  if (statPending) statPending.textContent = workorderStats.pending;
+  if (statProcessing) statProcessing.textContent = workorderStats.processing;
+  if (statDone) statDone.textContent = workorderStats.done;
+  // 更新Tab计数
+  var tabs = document.querySelectorAll('#page-workorder .card-tabs .card-tab');
+  if (tabs[0]) tabs[0].textContent = '全部 ' + (workorderStats.pending + workorderStats.processing + workorderStats.done);
+  if (tabs[1]) tabs[1].textContent = '待处理 ' + workorderStats.pending;
+  if (tabs[2]) tabs[2].textContent = '处理中 ' + workorderStats.processing;
+  if (tabs[3]) tabs[3].textContent = '已完成 ' + workorderStats.done;
+}
+
+function submitWoComplete() {
+  // 标记完成时，统计联动
+  var rows = document.querySelectorAll('#page-workorder tbody tr');
+  var targetRow = null;
+  rows.forEach(function(row) {
+    var statusCell = row.querySelector('td:nth-child(6) span');
+    if (statusCell && statusCell.textContent.indexOf('处理中') !== -1) {
+      targetRow = row;
+    }
+  });
+  if (targetRow) {
+    var oldStatus = 'processing';
+    updateWorkorderStatsOnChange(oldStatus, 'done');
+  }
+  closeModal('wo-handle');
+  showToast('工单处理完成！统计已更新', 'success');
+}
+
+function submitWoPending() {
+  var oldStatus = 'pending';
+  updateWorkorderStatsOnChange(oldStatus, 'processing');
+  closeModal('wo-handle');
+  showToast('工单已标记为处理中', 'success');
+}
+
+// ======= 【改进E】退房办理：点击房间卡片自动弹出退房模态框（房间卡片→退房表单预填充） =======
+var checkoutPrefillData = {};
+
+function openCheckoutFromRoom(roomNum, roomType, guestName, deposit) {
+  checkoutPrefillData = { room: roomNum, roomType: roomType, guest: guestName, deposit: deposit || 100 };
+  // 预填充退房弹窗
+  var roomLabel = document.getElementById('checkout-room-label');
+  if (roomLabel) roomLabel.textContent = roomNum;
+  var depositEl = document.getElementById('checkout-deposit-val');
+  if (depositEl) depositEl.textContent = '¥' + (deposit || 100);
+  // 自动计算费用
+  setTimeout(function() {
+    updateCheckoutCalc();
+    updateCheckoutAmount();
+  }, 100);
+  openModal('checkout');
+}
+
+// 退房费用自动计算联动
+function updateCheckoutAmount() {
+  var deposit = checkoutPrefillData.deposit || 100;
+  var roomFee = 128; // 模拟房费（实际应从房间数据读取）
+  var refund = Math.max(0, deposit - roomFee);
+  var totalEl = document.querySelector('#modal-checkout .checkout-summary-row:nth-child(1) .value');
+  if (totalEl) totalEl.textContent = '¥' + roomFee;
+  var refundEl = document.querySelector('#modal-checkout .checkout-summary-row:last-child .value');
+  if (refundEl) {
+    refundEl.textContent = refund > 0 ? '¥' + refund + '（退给客人）' : '¥0';
+    refundEl.style.color = refund > 0 ? 'var(--green)' : 'var(--text-muted)';
+  }
+}
+
+// 点击首页房间卡片的"退房"快捷入口
+function openQuickCheckoutFromCard(roomNum) {
+  // 模拟查找当前入住客人
+  var guestMap = {
+    '301': {name: '张三', deposit: 100},
+    '304': {name: '钱七', deposit: 100},
+    '201': {name: '钱八', deposit: 100},
+    '202': {name: '孙九', deposit: 100},
+    '203': {name: '周十', deposit: 100}
+  };
+  var guest = guestMap[roomNum] || {name: '未知客人', deposit: 100};
+  openCheckoutFromRoom(roomNum, '亲子间', guest.name, guest.deposit);
+}
+
+// 给房间卡片动态注入快捷退房按钮
+function injectQuickCheckoutButtons() {
+  var roomGrid = document.getElementById('room-grid');
+  if (!roomGrid) return;
+  var cards = roomGrid.querySelectorAll('.room-card');
+  cards.forEach(function(card) {
+    var badge = card.querySelector('.room-badge');
+    if (!badge) return;
+    var isIn = badge.textContent.indexOf('入住') !== -1;
+    if (!isIn) return;
+    var roomNum = card.querySelector('.room-num');
+    if (!roomNum) return;
+    var rNum = roomNum.textContent.trim();
+    // 检查是否已有快捷退房按钮
+    if (card.dataset.quickCheckoutInjected) return;
+    card.dataset.quickCheckoutInjected = 'true';
+    var footer = card.querySelector('.room-footer');
+    if (footer) {
+      var btn = document.createElement('button');
+      btn.textContent = '退房';
+      btn.className = 'action-btn small';
+      btn.style.cssText = 'margin-left:4px;padding:2px 6px;font-size:10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);';
+      btn.onclick = function(e) {
+        e.stopPropagation();
+        openQuickCheckoutFromCard(rNum);
+      };
+      footer.appendChild(btn);
+    }
+  });
 }
 </script>
 
