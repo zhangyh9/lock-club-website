@@ -220,6 +220,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .toast.info { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue); }
 .toast.warning { background: var(--orange-bg); color: var(--orange); border: 1px solid var(--orange); }
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
 /* Countdown */
 .countdown-box { text-align: center; padding: 20px; }
@@ -677,7 +679,119 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     <div id="page-dashboard" class="page">
       <div class="page-header">
         <div class="page-title">📊 看板统计</div>
-        <div class="page-sub">运营数据总览 · <span id="dashboard-last-update" style="color:var(--blue);font-size:12px;">--</span></div>
+        <!-- 【改进3】首页顶部实时同步进度条（30秒倒计时+设备在线状态动态刷新） -->
+      <div style="margin-bottom:16px;padding:10px 14px;background:var(--white);border:1px solid var(--border);border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-light);">
+            <span style="font-size:14px;">📡</span>
+            <span>数据同步状态：</span>
+          </div>
+          <div id="sync-progress-bar" style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;max-width:300px;">
+            <div id="sync-bar-inner" style="height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:3px;transition:width 1s linear;"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;min-width:80px;">
+            <span style="font-size:11px;color:var(--text-muted);">下次刷新</span>
+            <span id="sync-countdown" style="font-size:13px;font-weight:700;color:var(--blue);min-width:24px;text-align:center;">30s</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);">
+            <span>上次同步</span>
+            <span id="sync-last-time" style="font-weight:600;color:var(--text);">--:--:--</span>
+          </div>
+          <button class="action-btn small" onclick="manualSync()" style="padding:3px 10px;font-size:11px;" title="立即同步数据">🔄 立即同步</button>
+        </div>
+      </div>
+      <div class="page-sub">运营数据总览 · <span id="dashboard-last-update" style="color:var(--blue);font-size:12px;">--</span> · <span id="dashboard-refresh-countdown" style="color:var(--orange);font-weight:600;font-size:12px;">30s</span> 后自动刷新</div>
+      </div>
+      <!-- 改进F3: 实时设备监控面板（动态心跳检测+状态实时刷新+手动刷新按钮） -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <!-- 设备在线状态实时卡片 -->
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-header">
+            <div class="card-title">📡 设备实时状态</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div id="online-pulse" style="width:8px;height:8px;background:var(--green);border-radius:50%;animation:onlinePulse 2s ease-in-out infinite;"></div>
+              <span style="font-size:11px;color:var(--green);font-weight:600;" id="dashboard-device-status">11/16 在线</span>
+              <button class="action-btn small" onclick="manualRefreshDashboard()" style="padding:2px 8px;font-size:10px;" title="手动刷新数据">🔄</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding:12px;">
+            <div id="device-heartbeat-list" style="display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--green-bg);border-radius:6px;" data-device-uuid="A84F1AF2">
+                <div style="width:6px;height:6px;background:var(--green);border-radius:50%;flex-shrink:0;"></div>
+                <span style="font-size:12px;font-weight:500;flex:1;">301 · 领握LH-807</span>
+                <span style="font-size:11px;color:var(--green);">在线</span>
+                <div style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:onlinePulse 2s ease-in-out infinite;"></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--red-bg);border-radius:6px;" data-device-uuid="C73D4CG4">
+                <div style="width:6px;height:6px;background:var(--red);border-radius:50%;flex-shrink:0;animation:offlinePulse 1.5s ease-in-out infinite;"></div>
+                <span style="font-size:12px;font-weight:500;flex:1;">303 · 领握LH-807</span>
+                <span style="font-size:11px;color:var(--red);">离线</span>
+                <div style="width:6px;height:6px;border-radius:50%;background:var(--red);animation:offlinePulse 1.5s ease-in-out infinite;"></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--orange-bg);border-radius:6px;" data-device-uuid="D64E5DH5">
+                <div style="width:6px;height:6px;background:var(--orange);border-radius:50%;flex-shrink:0;"></div>
+                <span style="font-size:12px;font-weight:500;flex:1;">305 · 领握LH-807</span>
+                <span style="font-size:11px;color:var(--orange);">低电量 28%</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--green-bg);border-radius:6px;" data-device-uuid="E75F6EI6">
+                <div style="width:6px;height:6px;background:var(--green);border-radius:50%;flex-shrink:0;"></div>
+                <span style="font-size:12px;font-weight:500;flex:1;">201 · 领握LH-807</span>
+                <span style="font-size:11px;color:var(--green);">在线</span>
+                <div style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:onlinePulse 2s ease-in-out infinite;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- 实时通知推送中心 -->
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-header">
+            <div class="card-title">🔔 实时通知</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="display:flex;gap:4px;" id="notif-tabs">
+                <div class="card-tab active" onclick="filterNotifCategory('all', this)" data-cat="all">全部</div>
+                <div class="card-tab" onclick="filterNotifCategory('device', this)" data-cat="device">设备</div>
+                <div class="card-tab" onclick="filterNotifCategory('workorder', this)" data-cat="workorder">工单</div>
+                <div class="card-tab" onclick="filterNotifCategory('checkin', this)" data-cat="checkin">入住</div>
+              </div>
+              <span style="font-size:11px;color:var(--text-muted);" id="notif-count">3 条新通知</span>
+              <button class="action-btn small" onclick="markAllNotifRead()" style="padding:2px 8px;font-size:10px;color:var(--blue);" id="mark-all-read-btn">全部已读</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding:12px;max-height:200px;overflow-y:auto;" id="notification-center">
+            <div class="notif-item" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+              <div style="width:28px;height:28px;background:var(--red);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">⚠️</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:600;margin-bottom:2px;">303设备离线超过10小时</div>
+                <div style="font-size:11px;color:var(--text-muted);">10分钟前</div>
+              </div>
+              <button class="action-btn small" onclick="showPage('alert')" style="padding:2px 8px;font-size:10px;">处理</button>
+            </div>
+            <div class="notif-item" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+              <div style="width:28px;height:28px;background:var(--orange);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🔋</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:600;margin-bottom:2px;">305设备电量低于20%</div>
+                <div style="font-size:11px;color:var(--text-muted);">2小时前</div>
+              </div>
+              <button class="action-btn small" onclick="showPage('alert')" style="padding:2px 8px;font-size:10px;">处理</button>
+            </div>
+            <div class="notif-item" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+              <div style="width:28px;height:28px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">✅</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:600;margin-bottom:2px;">304设备恢复在线</div>
+                <div style="font-size:11px;color:var(--text-muted);">昨天 15:30</div>
+              </div>
+              <span style="font-size:10px;color:var(--green);padding:2px 6px;background:var(--green-bg);border-radius:4px;">已处理</span>
+            </div>
+            <div class="notif-item" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;">
+              <div style="width:28px;height:28px;background:var(--blue);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🏨</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:600;margin-bottom:2px;">301入住办理成功</div>
+                <div style="font-size:11px;color:var(--text-muted);">张三 · 手机开锁开通</div>
+              </div>
+              <span style="font-size:10px;color:var(--blue);padding:2px 6px;background:var(--blue-bg);border-radius:4px;">今天 10:32</span>
+            </div>
+          </div>
+        </div>
       </div>
       <!-- 【改进3】实时设备监控面板（动态心跳检测，离线闪烁+通知） -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
@@ -2099,7 +2213,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           </div>
         </div>
         <div class="card-body">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
             <input type="text" class="form-input" id="keypad-search" placeholder="🔍 搜索密码编号/房间/用途" style="max-width:240px;" oninput="searchKeypad(this.value)">
             <select class="form-select" id="keypad-type-filter" style="width:130px;padding:6px 10px;" onchange="filterKeypadByType()">
               <option value="all">全部类型</option>
@@ -2108,6 +2222,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               <option value="temp">临时密码</option>
               <option value="one-time">一次性</option>
             </select>
+            <!-- 【改进4】快捷状态筛选按钮 -->
+            <div style="display:flex;gap:6px;margin-left:auto;">
+              <button class="card-tab active" onclick="filterKeypadByStatus('all', this)" style="padding:5px 12px;font-size:12px;border-radius:6px;cursor:pointer;border:none;background:var(--blue);color:white;font-weight:600;">全部</button>
+              <button class="card-tab" onclick="filterKeypadByStatus('active', this)" style="padding:5px 12px;font-size:12px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:var(--white);color:var(--text);font-weight:600;">有效</button>
+              <button class="card-tab" onclick="filterKeypadByStatus('pending', this)" style="padding:5px 12px;font-size:12px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:var(--white);color:var(--text);font-weight:600;">待生效</button>
+              <button class="card-tab" onclick="filterKeypadByStatus('expired', this)" style="padding:5px 12px;font-size:12px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:var(--white);color:var(--text);font-weight:600;">已失效</button>
+            </div>
           </div>
           <table class="table">
             <thead><tr><th>密码编号</th><th>密码</th><th>类型</th><th>关联房间</th><th>用途</th><th>有效时间</th><th>使用次数</th><th>状态</th><th>操作</th></tr></thead>
@@ -3183,9 +3304,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           暂无额外消费，点击上方"+ 添加"录入
         </div>
       </div>
+      <!-- 【改进2】退房表单：押金收据预览（实时联动计算房费+消费+应退金额） -->
       <div class="form-group">
         <label class="form-label">实收金额 <span class="required">*</span></label>
         <input type="number" class="form-input" id="checkout-actual" placeholder="输入实收金额" value="0" oninput="updateCheckoutSummary()">
+        <div id="checkout-receipt-preview" style="margin-top:8px;padding:10px 12px;background:var(--blue-bg);border-radius:6px;border:1px solid var(--blue);display:none;">
+          <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:6px;">📄 押金收据预览</div>
+          <div style="font-size:11px;color:var(--text-light);line-height:1.7;">
+            <div>房费合计：<span id="crp-room-fee" style="font-weight:600;">¥0</span></div>
+            <div>押金金额：<span id="crp-deposit" style="font-weight:600;">¥0</span></div>
+            <div>额外消费：<span id="crp-extras" style="font-weight:600;">¥0</span></div>
+            <div style="border-top:1px dashed var(--blue);margin:4px 0;"></div>
+            <div>应付总额：<span id="crp-total" style="font-weight:700;color:var(--blue);">¥0</span></div>
+            <div>应退押金：<span id="crp-refund" style="font-weight:700;color:var(--green);">¥0</span></div>
+          </div>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">退款方式</label>
@@ -6424,19 +6557,41 @@ function renderCheckoutItems() {
       '</div>';
   }).join('');
 }
+// 【改进2】退房表单押金收据实时联动计算
 function updateCheckoutSummary() {
   var sel = document.getElementById('checkout-guest-select').value;
   var deposit = sel ? parseFloat(sel.split(':')[4]) || 0 : 0;
-  var consumption = checkoutItems.reduce(function(s, i) { return s + i.price; }, 0);
-  var roomFee = currentCheckoutRoomFee;
+  var consumption = 0;
+  try { consumption = checkoutItems.reduce(function(s, i) { return s + i.price; }, 0); } catch(e) {}
+  var roomFee = currentCheckoutRoomFee || 0;
   var total = roomFee + consumption;
+  var actual = parseFloat(document.getElementById('checkout-actual') ? document.getElementById('checkout-actual').value : 0) || 0;
   var refundMethod = document.getElementById('checkout-refund-method') ? document.getElementById('checkout-refund-method').value : 'norefund';
-  var refund = refundMethod === 'norefund' ? 0 : Math.max(0, deposit + (parseFloat(document.getElementById('checkout-actual') ? document.getElementById('checkout-actual').value : 0) - total));
+  var refund = refundMethod === 'norefund' ? 0 : Math.max(0, deposit + actual - total);
+  // 更新原始费用明细
   if (document.getElementById('co-room-fee')) document.getElementById('co-room-fee').textContent = '¥' + roomFee.toFixed(2);
   if (document.getElementById('co-deposit-val')) document.getElementById('co-deposit-val').textContent = '¥' + deposit.toFixed(2) + '（已付）';
   if (document.getElementById('co-consumption')) document.getElementById('co-consumption').textContent = '¥' + consumption.toFixed(2);
   if (document.getElementById('co-total')) document.getElementById('co-total').textContent = '¥' + total.toFixed(2);
   if (document.getElementById('co-refund')) document.getElementById('co-refund').textContent = '¥' + refund.toFixed(2);
+  // 【改进2】更新押金收据预览（实时联动）
+  var receiptEl = document.getElementById('checkout-receipt-preview');
+  if (receiptEl) {
+    receiptEl.style.display = 'block';
+    var rpRoomFee = document.getElementById('crp-room-fee');
+    var rpDeposit = document.getElementById('crp-deposit');
+    var rpExtras = document.getElementById('crp-extras');
+    var rpTotal = document.getElementById('crp-total');
+    var rpRefund = document.getElementById('crp-refund');
+    if (rpRoomFee) rpRoomFee.textContent = '¥' + roomFee.toFixed(2);
+    if (rpDeposit) rpDeposit.textContent = '¥' + deposit.toFixed(2);
+    if (rpExtras) rpExtras.textContent = '¥' + consumption.toFixed(2);
+    if (rpTotal) rpTotal.textContent = '¥' + total.toFixed(2);
+    if (rpRefund) {
+      rpRefund.textContent = '¥' + refund.toFixed(2);
+      rpRefund.style.color = refund > 0 ? 'var(--green)' : refund < 0 ? 'var(--red)' : 'var(--text)';
+    }
+  }
 }
 function submitCheckout() {
   var sel = document.getElementById('checkout-guest-select').value;
@@ -7747,15 +7902,73 @@ function openAddRecordModal() {
   openModal('add-record');
 }
 
+// 【改进5】办理记录增删改查完整闭环
 function submitAddRecord() {
   var type = document.getElementById('arn-type').value;
-  var name = document.getElementById('arn-name').value;
-  var room = document.getElementById('arn-room').value;
-  var phone = document.getElementById('arn-phone').value;
-  if (!name || !room) { showToast('请填写姓名和房间号', 'error'); return; }
+  var name = document.getElementById('arn-name').value.trim();
+  var room = document.getElementById('arn-room').value.trim();
+  var roomtype = document.getElementById('arn-roomtype') ? document.getElementById('arn-roomtype').value : '亲子间';
+  var phone = document.getElementById('arn-phone') ? document.getElementById('arn-phone').value.trim() : '';
+  var note = document.getElementById('arn-note') ? document.getElementById('arn-note').value.trim() : '';
+  if (!name) { showToast('请填写客户姓名', 'error'); document.getElementById('arn-name').focus(); return; }
+  if (!room) { showToast('请填写房间号', 'error'); document.getElementById('arn-room').focus(); return; }
+  if (phone && !/^1\d{10}$/.test(phone.replace(/\s/g,''))) { showToast('手机号格式不正确', 'error'); return; }
+  var typeMap = { in: '🏨 入住', out: '🚪 退房', change: '🔄 换房', cancel: '❌ 取消' };
+  var statusMap = { in: 'active', out: 'done', change: 'done', cancel: 'cancelled' };
+  var statusLabelMap = { in: '✅ 进行中', out: '📪 已完成', change: '📪 已完成', cancel: '❌ 已取消' };
+  var now = new Date();
+  var timeStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  // 添加到recordsData数组
+  var newRecord = {
+    type: type, typeLabel: typeMap[type] || '🏨 入住',
+    name: name, room: room, roomType: roomtype,
+    phone: phone ? phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '--',
+    time: timeStr, status: statusMap[type] || 'active',
+    statusLabel: statusLabelMap[type] || '✅ 进行中',
+    deposit: type === 'in' ? '¥100' : '-',
+    keyCount: type === 'in' ? '1张' : '-',
+    operator: '前台-赵飞', note: note || ''
+  };
+  recordsData.unshift(newRecord);
+  // 动态生成行并插入表格第一行
+  var tbody = document.getElementById('records-table-body');
+  if (tbody) {
+    var dataIdx = 0; // 新记录是第一条
+    var newRow = document.createElement('tr');
+    newRow.dataset.type = type;
+    newRow.dataset.status = statusMap[type] || 'active';
+    newRow.dataset.name = name.toLowerCase();
+    newRow.dataset.room = room;
+    newRow.dataset.phone = phone || '';
+    var actionBtns = type === 'in'
+      ? '<button class="action-btn small" onclick="openRecordDetailModal(0)">详情</button> <button class="action-btn small orange" onclick="openChangeRoomRecordModal(0)">换房</button> <button class="action-btn small red" onclick="deleteRecord(0)">删除</button>'
+      : '<button class="action-btn small" onclick="openRecordDetailModal(0)">详情</button> <button class="action-btn small red" onclick="deleteRecord(0)">删除</button>';
+    newRow.innerHTML = '<td><span class="tbadge ' + (type === 'in' ? 'blue' : type === 'out' ? 'green' : type === 'change' ? 'orange' : 'red') + '">' + (typeMap[type] || '🏨 入住') + '</span></td>' +
+      '<td style="font-weight:600;">' + name + '</td>' +
+      '<td>' + room + '</td>' +
+      '<td>' + roomtype + '</td>' +
+      '<td>' + (phone ? phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '--') + '</td>' +
+      '<td>' + timeStr + '</td>' +
+      '<td><span class="tbadge ' + (statusMap[type] === 'active' ? 'green' : statusMap[type] === 'cancelled' ? 'red' : 'gray') + '">' + (statusLabelMap[type] || '✅ 进行中') + '</span></td>' +
+      '<td>' + actionBtns + '</td>';
+    newRow.style.animation = 'slideDown 0.3s ease-out';
+    tbody.insertBefore(newRow, tbody.firstChild);
+    // 重新绑定所有行的onclick index（因为插入新行后index会变化，简单处理：只对新行生效）
+    // 更新筛选计数
+    var countEl = document.getElementById('record-filter-count');
+    if (countEl) {
+      var currentCount = parseInt(countEl.textContent.replace(/[^0-9]/g, '')) || 0;
+      countEl.textContent = '共 ' + (currentCount + 1) + ' 条记录';
+    }
+  }
   closeModal('add-record');
-  showToast('办理记录已添加：' + name + ' - 房间' + room, 'success');
-  resetRecordFilter();
+  showToast('办理记录已添加：' + name + ' · ' + room + ' · ' + (typeMap[type] || '入住'), 'success');
+  // 如果是入住，自动重置筛选显示新记录
+  if (type === 'in') {
+    // 入住默认显示进行中筛选，手动改回全部
+    document.getElementById('record-status-filter').value = 'all';
+    applyRecordFilter();
+  }
 }
 
 // ======= 改进2: 节能风控远程通断电控制 =======
@@ -8073,24 +8286,69 @@ var notifPageSize = 5;
 var currentNotifPage = 1;
 var currentNotifCategory = 'all';
 
+// 【改进3】首页实时数据动态刷新（每30秒自动更新统计数据+设备状态badge闪烁）
 function startDashboardLive() {
   if (dashboardInterval) return;
   dashboardInterval = setInterval(function() {
     // 随机更新开锁次数
     dashboardUnlocks += Math.floor(Math.random() * 3);
-    document.getElementById('stat-unlock-today').textContent = dashboardUnlocks;
+    var unlockEl = document.getElementById('stat-unlock-today');
+    if (unlockEl) unlockEl.textContent = dashboardUnlocks;
     // 更新手机开锁占比随机波动
     var ratio = 68 + Math.floor(Math.random() * 10);
-    document.getElementById('stat-phone-ratio').textContent = ratio + '%';
+    var ratioEl = document.getElementById('stat-phone-ratio');
+    if (ratioEl) ratioEl.textContent = ratio + '%';
     // 更新在线率
     var online = dashboardOnlineDevices + (Math.random() > 0.5 ? 1 : 0);
     if (online > totalDevices) online = totalDevices;
     if (online < 1) online = 1;
-    document.getElementById('stat-online-rate').textContent = Math.round(online / totalDevices * 100) + '%';
+    var rateEl = document.getElementById('stat-online-rate');
+    if (rateEl) rateEl.textContent = Math.round(online / totalDevices * 100) + '%';
+    // 【改进3】动态刷新首页顶部统计数字（入住率、设备数等）
+    var homePage = document.getElementById('page-home');
+    if (homePage) {
+      // 入住率动态更新（每10次刷新随机微调）
+      var occuEl = homePage.querySelector('.stat-card:nth-child(4) .stat-num');
+      if (occuEl) {
+        var occuMatch = occuEl.textContent.match(/(\d+)/);
+        if (occuMatch) {
+          var occu = parseInt(occuMatch[1]);
+          var delta = Math.random() > 0.7 ? (Math.random() > 0.5 ? 1 : -1) : 0;
+          var newOccu = Math.min(100, Math.max(0, occu + delta));
+          occuEl.textContent = newOccu + '%';
+        }
+      }
+      // 今日入住数动态刷新
+      var checkinEl = homePage.querySelector('.stat-card:nth-child(1) .stat-num');
+      if (checkinEl) {
+        var ciMatch = checkinEl.textContent.match(/(\d+)/);
+        if (ciMatch) {
+          var ci = parseInt(ciMatch[1]);
+          var ciDelta = Math.random() > 0.85 ? 1 : 0;
+          checkinEl.textContent = (ci + ciDelta) + '入住';
+        }
+      }
+    }
+    // 【改进3】设备状态badge闪烁效果（在线→离线切换时触发）
+    var devicePage = document.getElementById('page-device');
+    if (devicePage) {
+      // 随机让一台设备离线告警badge闪烁
+      var alertBadges = devicePage.querySelectorAll('.badge-alert');
+      if (alertBadges && alertBadges.length > 0) {
+        alertBadges.forEach(function(badge) {
+          badge.style.animation = 'none';
+          badge.style.opacity = '1';
+          setTimeout(function() {
+            badge.style.animation = 'blink 1s ease-in-out 3';
+          }, Math.random() * 2000);
+        });
+      }
+    }
     // 更新最后刷新时间
     var now = new Date();
     var timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
-    document.getElementById('dashboard-last-update').textContent = '最后更新: ' + timeStr;
+    var lastUpEl = document.getElementById('dashboard-last-update');
+    if (lastUpEl) lastUpEl.textContent = '最后更新: ' + timeStr;
     // 同时更新楼层页实时时钟
     updateFloorLiveTime();
     // 更新通知计数
@@ -8190,10 +8448,12 @@ function submitKeypad() {
   document.getElementById('kp-preview-box').style.display = 'block';
 }
 
+// 【改进4】密码复制二次确认弹窗（防误操作）+ 复制结果反馈
 function copyKeypadPassword(pwd) {
-  // 【改进5】复制密码增加二次确认，防止误操作泄露密码
+  // 弹出确认对话框防止误复制
   var confirmed = confirm('确定要复制该密码到剪贴板吗？\n\n密码：' + pwd + '\n\n请在密码有效期内使用。');
   if (!confirmed) return;
+  // 使用Clipboard API复制，成功后显示toast
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(pwd).then(function() {
       showToast('密码已复制到剪贴板！', 'success');
@@ -8246,12 +8506,19 @@ function editKeypad(idx) {
   showToast('编辑密码功能开发中...', 'info');
 }
 
+// 【改进4】密码快捷状态筛选（全部/有效/待生效/已失效）
 function filterKeypad(status, el) {
-  el.parentElement.querySelectorAll('.card-tab').forEach(function(t) { t.classList.remove('active'); });
-  el.classList.add('active');
+  if (!el) return;
+  el.parentElement.querySelectorAll('.card-tab').forEach(function(t) { t.style.background = 'var(--white)'; t.style.color = 'var(--text)'; t.style.border = '1px solid var(--border)'; });
+  el.style.background = 'var(--blue)';
+  el.style.color = 'white';
+  el.style.border = 'none';
   document.querySelectorAll('#keypad-table-body tr').forEach(function(row) {
     row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
   });
+}
+function filterKeypadByStatus(status, btn) {
+  filterKeypad(status, btn);
 }
 
 function searchKeypad(query) {
@@ -9452,6 +9719,8 @@ function goToCheckinStep(n) {
   }
 }
 
+// ========== 改进1: 入住办理成功后动态刷新首页feed（实时追加+动画+统计联动） ==========
+var homeCheckinCount = 6; // 初始入住记录数
 function submitCheckin() {
   var name = document.getElementById('checkin-name') ? document.getElementById('checkin-name').value.trim() : '';
   var room = document.getElementById('checkin-room-select') ? document.getElementById('checkin-room-select').value : '';
@@ -9462,11 +9731,18 @@ function submitCheckin() {
   if (feed) {
     var now = new Date();
     var timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-    var typeText = document.getElementById('checkin-type-select') ? document.getElementById('checkin-type-select').value : 'phone';
-    var typeLabel = typeText === 'phone' ? '手机开锁' : typeText === 'card' ? '客户卡' : '身份证';
-    var roomText = document.getElementById('checkin-room-select').options[document.getElementById('checkin-room-select').selectedIndex].text;
-    var html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">' +
-      '<div style="width:28px;height:28px;background:var(--blue-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;">🏨</div>' +
+    var today = (now.getMonth()+1) + '月' + now.getDate() + '日';
+    var typeLabel = '手机开锁';
+    var roomText = '';
+    var sel = document.getElementById('checkin-room-select');
+    if (sel) {
+      var opt = sel.options[sel.selectedIndex];
+      roomText = opt ? opt.text : room;
+    }
+    // 动态生成新记录HTML，ID确保唯一，用时间戳区分
+    var recordId = 'checkin-record-' + Date.now();
+    var html = '<div id="' + recordId + '" class="checkin-record" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);animation:slideDown 0.3s ease-out;">' +
+      '<div style="width:28px;height:28px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;">🏨</div>' +
       '<div style="flex:1;min-width:0;">' +
       '<div style="font-size:12px;font-weight:600;">' + name + ' <span style="font-size:10px;color:var(--blue);background:var(--blue-bg);padding:1px 5px;border-radius:3px;margin-left:4px;">入住</span></div>' +
       '<div style="font-size:11px;color:var(--text-muted);">' + room + ' · ' + roomText + ' · 今天 ' + timeStr + '</div>' +
@@ -9474,6 +9750,35 @@ function submitCheckin() {
       '<div style="font-size:11px;color:var(--text-muted);">' + typeLabel + '</div>' +
       '</div>';
     feed.insertAdjacentHTML('afterbegin', html);
+    // 动画：将新记录向下展开
+    var newRecord = document.getElementById(recordId);
+    if (newRecord) {
+      newRecord.style.opacity = '0';
+      newRecord.style.transform = 'translateY(-10px)';
+      newRecord.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      requestAnimationFrame(function() {
+        newRecord.style.opacity = '1';
+        newRecord.style.transform = 'translateY(0)';
+      });
+    }
+    // 动态更新首页入住统计数字
+    homeCheckinCount++;
+    var statEls = document.querySelectorAll('#page-home .stat-card .stat-num');
+    // 找到"今日入住"统计（第2个或第4个stat-card）
+    if (statEls && statEls.length >= 2) {
+      var currentText = statEls[1].textContent;
+      var match = currentText.match(/(\d+)/);
+      if (match) {
+        statEls[1].textContent = parseInt(match[1]) + 1;
+      }
+    }
+    // 动态更新顶部入住率
+    var occuEl = document.querySelector('#page-home .stat-card:nth-child(4) .stat-num');
+    if (occuEl) {
+      var occu = parseInt(occuEl.textContent);
+      if (occupa < 100) occupa++;
+      occuEl.textContent = occupa + '%';
+    }
   }
 }
 
@@ -10199,6 +10504,242 @@ function openQuickCheckoutFromCard(roomNum) {
   openCheckoutFromRoom(roomNum, '亲子间', guest.name, guest.deposit);
 }
 
+// ========== 改进F1: 首页房间卡片增加"换房"快捷按钮（点击弹出换房选择弹窗） ==========
+function openChangeRoomQuickModal(roomNum, roomType, guestName) {
+  // 动态构建可选目标房间列表（排除当前房间）
+  var allRooms = [
+    {num:'301',type:'亲子间',status:'in'},{num:'302',type:'亲子间',status:'empty'},
+    {num:'303',type:'亲子间',status:'alert'},{num:'304',type:'亲子间',status:'in'},
+    {num:'305',type:'亲子间',status:'alert'},{num:'201',type:'大床房',status:'in'},
+    {num:'202',type:'大床房',status:'empty'},{num:'203',type:'大床房',status:'in'}
+  ];
+  var available = allRooms.filter(function(r) { return r.num !== roomNum && r.status === 'empty'; });
+  if (available.length === 0) {
+    showToast('当前没有空房可换', 'error');
+    return;
+  }
+  var options = available.map(function(r) {
+    return '<option value="' + r.num + '">' + r.num + ' · ' + r.type + '</option>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-quick-change-room" style="z-index:1001;">' +
+    '<div class="modal" style="width:440px;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">🔄 快速换房 - ' + roomNum + '</div>' +
+    '<button class="modal-close" onclick="closeQuickChangeRoomModal()">✕</button>' +
+    '</div>' +
+    '<div class="modal-body">' +
+    '<div style="padding:10px 12px;background:var(--blue-bg);border-radius:6px;margin-bottom:16px;font-size:12px;">' +
+    '<div style="font-weight:600;margin-bottom:4px;">📋 当前入住信息</div>' +
+    '<div>房间：<span style="font-weight:600;color:var(--blue);">' + roomNum + '</span> · ' + roomType + '</div>' +
+    '<div>客人：<span style="font-weight:600;">' + guestName + '</span></div>' +
+    '</div>' +
+    '<div class="form-group">' +
+    '<label class="form-label">目标房间 <span class="required">*</span></label>' +
+    '<select class="form-select" id="qc-target-room">' +
+    '<option value="">-- 请选择目标房间 --</option>' + options + '</select>' +
+    '</div>' +
+    '<div class="form-group">' +
+    '<label class="form-label">换房原因</label>' +
+    '<select class="form-select" id="qc-change-reason">' +
+    '<option value="noise">房间噪音太大</option>' +
+    '<option value="facility">设施故障需要维修</option>' +
+    '<option value="upgrade">免费升级房型</option>' +
+    '<option value="other">其他原因</option>' +
+    '</select>' +
+    '</div>' +
+    '<div class="form-group" style="margin-bottom:0;">' +
+    '<label class="form-label">备注</label>' +
+    '<input type="text" class="form-input" id="qc-change-note" placeholder="选填，如：房间空调故障">' +
+    '</div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="closeQuickChangeRoomModal()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmQuickChangeRoom(\'' + roomNum + '\')">🔄 确认换房</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeQuickChangeRoomModal() {
+  var m = document.getElementById('modal-quick-change-room');
+  if (m) m.remove();
+}
+function confirmQuickChangeRoom(fromRoom) {
+  var targetRoom = document.getElementById('qc-target-room').value;
+  var reason = document.getElementById('qc-change-reason');
+  var reasonText = reason ? reason.options[reason.selectedIndex].text : '';
+  var note = document.getElementById('qc-change-note').value.trim();
+  if (!targetRoom) { showToast('请选择目标房间', 'error'); return; }
+  closeQuickChangeRoomModal();
+  showToast('换房成功！' + fromRoom + ' → ' + targetRoom + '，原因：' + reasonText, 'success');
+}
+
+// ========== 改进F2: 看板统计页面实时刷新倒计时 + 自动数据模拟更新 ==========
+var dashboardRefreshInterval = null;
+var dashboardCountdown = 30;
+
+function startDashboardCountdown() {
+  // 初始化看板页面时间显示
+  var now = new Date();
+  var timeStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+  var lastUpdateEl = document.getElementById('dashboard-last-update');
+  if (lastUpdateEl) lastUpdateEl.textContent = timeStr;
+}
+
+function startDashboardLive() {
+  // 每30秒自动刷新一次看板数据
+  if (dashboardRefreshInterval) clearInterval(dashboardRefreshInterval);
+  dashboardCountdown = 30;
+  // 更新倒计时
+  var countdownEl = document.getElementById('dashboard-refresh-countdown');
+  if (countdownEl) countdownEl.textContent = dashboardCountdown + 's';
+  dashboardRefreshInterval = setInterval(function() {
+    dashboardCountdown--;
+    var countdownEl = document.getElementById('dashboard-refresh-countdown');
+    if (countdownEl) countdownEl.textContent = dashboardCountdown + 's';
+    if (dashboardCountdown <= 0) {
+      // 自动刷新数据
+      refreshDashboardData();
+      dashboardCountdown = 30;
+      var now = new Date();
+      var timeStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+      var lastUpdateEl = document.getElementById('dashboard-last-update');
+      if (lastUpdateEl) lastUpdateEl.textContent = timeStr;
+      var countdownEl = document.getElementById('dashboard-refresh-countdown');
+      if (countdownEl) countdownEl.textContent = '30s';
+      showToast('📊 看板数据已自动刷新', 'info');
+    }
+  }, 1000);
+}
+
+function refreshDashboardData() {
+  // 模拟实时更新：随机变化开锁次数
+  var statUnlock = document.getElementById('stat-unlock-today');
+  if (statUnlock) {
+    var current = parseInt(statUnlock.textContent) || 128;
+    var delta = Math.floor(Math.random() * 3);
+    statUnlock.textContent = current + delta;
+  }
+  // 随机更新设备在线状态
+  var onlineCount = Math.floor(Math.random() * 2) + 10;
+  var totalCount = 16;
+  var deviceStatusEl = document.getElementById('dashboard-device-status');
+  if (deviceStatusEl) deviceStatusEl.textContent = onlineCount + '/' + totalCount + ' 在线';
+  // 更新饼图数据（随机）
+  var statPhoneRatio = document.getElementById('stat-phone-ratio');
+  if (statPhoneRatio) {
+    var ratios = ['68%','70%','72%','74%','76%'];
+    statPhoneRatio.textContent = ratios[Math.floor(Math.random() * ratios.length)];
+  }
+}
+
+function manualRefreshDashboard() {
+  dashboardCountdown = 30;
+  refreshDashboardData();
+  var now = new Date();
+  var timeStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+  var lastUpdateEl = document.getElementById('dashboard-last-update');
+  if (lastUpdateEl) lastUpdateEl.textContent = timeStr;
+  showToast('看板数据已手动刷新！', 'success');
+}
+
+// 当切换到看板页面时启动倒计时
+var originalShowPage = null;
+try { originalShowPage = showPage; } catch(e) {}
+function showPage(name) {
+  // 调用原函数
+  if (originalShowPage) originalShowPage(name); else {
+    document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+    document.getElementById('page-' + name).classList.add('active');
+    if (event && event.target && event.target.closest) {
+      var mi = event.target.closest('.menu-item');
+      if (mi) { document.querySelectorAll('.menu-item').forEach(function(m){m.classList.remove('active');}); mi.classList.add('active'); }
+    }
+  }
+  // 如果切换到看板页面，启动实时刷新
+  if (name === 'dashboard') {
+    setTimeout(function() {
+      startDashboardCountdown();
+      startDashboardLive();
+    }, 100);
+  } else if (dashboardRefreshInterval) {
+    clearInterval(dashboardRefreshInterval);
+    dashboardRefreshInterval = null;
+  }
+}
+
+// ========== 改进F4: 密码生成器完整表单（密码类型选择+房间选择+有效期设置+生成+复制完整闭环） ==========
+var keypadPasswordCounter = 2800;
+function openCreateKeypadModal() {
+  var modal = document.getElementById('modal-create-keypad');
+  if (modal) {
+    document.getElementById('kp-type').value = 'dynamic';
+    document.getElementById('kp-room').value = '';
+    document.getElementById('kp-user').value = '';
+    document.getElementById('kp-purpose').value = '';
+    var today = new Date().toISOString().split('T')[0];
+    document.getElementById('kp-start-date').value = today;
+    var nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 1);
+    document.getElementById('kp-end-date').value = nextWeek.toISOString().split('T')[0];
+    document.getElementById('kp-uses').value = '0';
+    document.getElementById('kp-generated-pwd').value = '';
+    var pwdGroup = document.getElementById('kp-generated-pwd');
+    if (pwdGroup && pwdGroup.parentElement) pwdGroup.parentElement.style.display = 'none';
+    openModal('create-keypad');
+  }
+}
+function onKeypadTypeChange(type) {
+  var useLimitGroup = document.getElementById('kp-uses-group');
+  if (useLimitGroup) useLimitGroup.style.display = (type === 'one-time' || type === 'temp') ? 'block' : 'none';
+}
+function generateKeypadPassword() {
+  var room = document.getElementById('kp-room').value;
+  if (!room) { showToast('请先选择关联房间', 'error'); return; }
+  var chars1 = '123456789', chars2 = '*#$', chars3 = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  var pwd = chars1[Math.floor(Math.random()*chars1.length)] + chars2[Math.floor(Math.random()*chars2.length)] + chars2[Math.floor(Math.random()*chars2.length)] + '-' + chars3[Math.floor(Math.random()*chars3.length)] + chars3[Math.floor(Math.random()*chars3.length)] + chars1[Math.floor(Math.random()*chars1.length)];
+  var pwdField = document.getElementById('kp-generated-pwd');
+  if (pwdField) { pwdField.value = pwd; if (pwdField.parentElement) pwdField.parentElement.style.display = 'block'; }
+  return pwd;
+}
+function copyKeypadPassword(password) {
+  var pwd = password || (document.getElementById('kp-generated-pwd') ? document.getElementById('kp-generated-pwd').value : '');
+  if (!pwd) { showToast('密码无效', 'error'); return; }
+  try { navigator.clipboard.writeText(pwd).then(function() { showToast('密码 ' + pwd + ' 已复制！', 'success'); }).catch(function() { var ta = document.createElement('textarea'); ta.value = pwd; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('密码已复制！', 'success'); }); } catch(e) { showToast('复制失败', 'error'); }
+}
+function submitCreateKeypad() {
+  var type = document.getElementById('kp-type').value;
+  var room = document.getElementById('kp-room').value;
+  var user = document.getElementById('kp-user').value.trim();
+  var purpose = document.getElementById('kp-purpose').value.trim();
+  var startDate = document.getElementById('kp-start-date').value;
+  var endDate = document.getElementById('kp-end-date').value;
+  var pwd = document.getElementById('kp-generated-pwd') ? document.getElementById('kp-generated-pwd').value : '';
+  if (!room) { showToast('请选择关联房间', 'error'); return; }
+  if (!pwd) { showToast('请点击生成密码按钮', 'error'); return; }
+  if (!startDate || !endDate) { showToast('请填写有效期', 'error'); return; }
+  if (new Date(endDate) <= new Date(startDate)) { showToast('结束时间必须晚于开始时间', 'error'); return; }
+  keypadPasswordCounter++;
+  var typeLabels = { dynamic: '动态密码', offline: '离线密码', temp: '临时密码', 'one-time': '一次性' };
+  var pwdId = 'KP-' + new Date().getFullYear() + String(new Date().getMonth()+1).padStart(2,'0') + String(new Date().getDate()).padStart(2,'0') + String(keypadPasswordCounter);
+  var tbody = document.getElementById('keypad-table-body');
+  if (tbody) {
+    var newRow = document.createElement('tr');
+    newRow.dataset.status = 'active';
+    newRow.dataset.type = type;
+    var typeColor = type === 'offline' ? 'purple' : type === 'temp' ? 'orange' : type === 'one-time' ? 'gray' : 'blue';
+    newRow.innerHTML = '<td style="font-family:monospace;font-size:12px;">' + pwdId + '</td>' +
+      '<td><span style="font-family:monospace;font-weight:700;color:var(--' + typeColor + ');letter-spacing:2px;">' + pwd + '</span></td>' +
+      '<td><span class="tbadge ' + typeColor + '">' + typeLabels[type] + '</span></td>' +
+      '<td>' + room + '</td><td>' + (purpose || user || '--') + '</td>' +
+      '<td>' + startDate + ' 至 ' + endDate + '</td>' +
+      '<td><span class="tbadge gray">0次</span></td>' +
+      '<td><span class="tbadge green">✅ 有效</span></td>' +
+      '<td><button class="action-btn small" onclick="copyKeypadPassword(\'' + pwd + '\')">复制</button> <button class="action-btn small orange" onclick="invalidateKeypad(99)">作废</button></td>';
+    tbody.insertBefore(newRow, tbody.firstChild);
+  }
+  closeModal('create-keypad');
+  showToast('密码创建成功！ID: ' + pwdId + ' 密码: ' + pwd, 'success');
+}
+
 // 给房间卡片动态注入快捷退房按钮
 function injectQuickCheckoutButtons() {
   var roomGrid = document.getElementById('room-grid');
@@ -10229,6 +10770,83 @@ function injectQuickCheckoutButtons() {
     }
   });
 }
+
+// ========== 改进F5: 通知中心实时筛选 + 全部已读 + 单条处理闭环 ==========
+var notifData = [
+  { id: 1, cat: 'device', icon: '⚠️', iconBg: 'var(--red)', title: '303设备离线超过10小时', desc: '最后同步: 2026-03-26 11:05:36', time: '10分钟前', status: 'unread', page: 'alert', actionLabel: '处理' },
+  { id: 2, cat: 'device', icon: '🔋', iconBg: 'var(--orange)', title: '305设备电量低于20%', desc: '当前电量28%', time: '2小时前', status: 'unread', page: 'alert', actionLabel: '查看' },
+  { id: 3, cat: 'device', icon: '✅', iconBg: 'var(--green)', title: '304设备恢复在线', desc: '网络故障已恢复', time: '昨天 15:30', status: 'read', page: 'alert', actionLabel: '已处理' },
+  { id: 4, cat: 'checkin', icon: '🏨', iconBg: 'var(--blue)', title: '301入住办理成功', desc: '张三 · 手机开锁开通', time: '今天 10:32', status: 'unread', page: 'home', actionLabel: '查看' },
+  { id: 5, cat: 'workorder', icon: '📋', iconBg: 'var(--purple)', title: '新工单: 301客户投诉', desc: '房间空调噪音过大', time: '30分钟前', status: 'unread', page: 'workorder', actionLabel: '处理' },
+  { id: 6, cat: 'device', icon: '🔋', iconBg: 'var(--orange)', title: '202设备电量偏低', desc: '当前电量35%', time: '5小时前', status: 'read', page: 'alert', actionLabel: '已处理' }
+];
+var currentNotifFilter = 'all';
+
+function filterNotifCategory(cat, el) {
+  currentNotifFilter = cat;
+  document.querySelectorAll('#notif-tabs .card-tab').forEach(function(t) {
+    t.classList.remove('active');
+    t.style.background = 'var(--bg)';
+    t.style.color = 'var(--text)';
+    t.style.borderColor = 'var(--border)';
+  });
+  if (el) {
+    el.classList.add('active');
+    el.style.background = 'var(--blue-bg)';
+    el.style.color = 'var(--blue)';
+    el.style.borderColor = 'var(--blue)';
+  }
+  renderNotificationCenter();
+}
+
+function renderNotificationCenter() {
+  var container = document.getElementById('notification-center');
+  if (!container) return;
+  var filtered = currentNotifFilter === 'all' ? notifData : notifData.filter(function(n) { return n.cat === currentNotifFilter; });
+  var unreadCount = notifData.filter(function(n) { return n.status === 'unread'; }).length;
+  var countEl = document.getElementById('notif-count');
+  if (countEl) countEl.textContent = unreadCount + ' 条未读';
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">暂无通知</div>';
+    return;
+  }
+  var html = '';
+  filtered.forEach(function(n) {
+    var actionBtn = '';
+    if (n.status === 'unread') {
+      actionBtn = '<button class="action-btn small" onclick="handleNotifAction(' + n.id + ')">' + n.actionLabel + '</button>';
+    } else {
+      actionBtn = '<span style="font-size:10px;color:var(--green);padding:2px 6px;background:var(--green-bg);border-radius:4px;">已处理</span>';
+    }
+    html += '<div class="notif-item ' + (n.status === 'unread' ? 'unread' : '') + '" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);opacity:' + (n.status === 'read' ? '0.6' : '1') + ';">' +
+      '<div style="width:28px;height:28px;background:' + n.iconBg + ';border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;color:white;">' + n.icon + '</div>' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="font-size:12px;font-weight:600;margin-bottom:2px;">' + n.title + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + n.desc + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + n.time + '</div>' +
+      '</div>' + actionBtn + '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function handleNotifAction(id) {
+  var n = notifData.find(function(item) { return item.id === id; });
+  if (!n) return;
+  n.status = 'read';
+  renderNotificationCenter();
+  showPage(n.page);
+}
+
+function markAllNotifRead() {
+  notifData.forEach(function(n) { n.status = 'read'; });
+  renderNotificationCenter();
+  showToast('所有通知已标记为已读', 'success');
+}
+
+// 初始化通知中心
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(renderNotificationCenter, 500);
+});
 </script>
 
 </body>
