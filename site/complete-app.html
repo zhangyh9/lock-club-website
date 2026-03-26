@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta name="description" content="领锁智能锁，酒店智能门锁专家，提供安全、节能、省心的智能锁解决方案。">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>领锁物联后台管理系统</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #f5f6f8;
+  --white: #fff;
+  --border: #e8e8e8;
+  --text: #333;
+  --text-light: #666;
+  --text-muted: #999;
+  --blue: #1890ff;
+  --blue-bg: #e6f4ff;
+  --green: #52c41a;
+  --green-bg: #f6ffed;
+  --red: #ff4d4f;
+  --red-bg: #fff1f0;
+  --orange: #fa8c16;
+  --orange-bg: #fff7e6;
+  --purple: #722ed1;
+  --purple-bg: #f9f0ff;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* Layout */
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 200px; background: var(--white); border-right: 1px solid var(--border); padding: 20px 0; flex-shrink: 0; }
+.sidebar-logo { padding: 0 20px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.sidebar-logo .icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--blue), #69c0ff); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.sidebar-logo span { font-size: 16px; font-weight: 600; }
+.menu-item { padding: 12px 20px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s; color: var(--text-light); font-size: 14px; }
+.menu-item:hover { background: var(--blue-bg); color: var(--blue); }
+.menu-item.active { background: var(--blue-bg); color: var(--blue); font-weight: 600; }
+.menu-item .icon { font-size: 18px; }
+.main { flex: 1; padding: 24px; overflow-y: auto; }
+.page-header { margin-bottom: 24px; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.page-sub { font-size: 13px; color: var(--text-light); }
+
+/* Alert Banner */
+.alert-banner { background: var(--red-bg); border: 1px solid var(--red); border-radius: 8px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.alert-banner .icon { width: 40px; height: 40px; background: var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; flex-shrink: 0; }
+.alert-banner .content { flex: 1; }
+.alert-banner .content h4 { color: var(--red); font-size: 14px; margin-bottom: 2px; }
+.alert-banner .content p { font-size: 13px; color: var(--text-light); }
+.alert-banner .btn { padding: 8px 16px; background: var(--red); color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+/* Stats Row */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+.stat-card { background: var(--white); border-radius: 8px; padding: 16px; display: flex; align-items: center; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.stat-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.stat-num { font-size: 26px; font-weight: 700; }
+.stat-label { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+
+/* Card */
+.card { background: var(--white); border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.card-title { font-size: 15px; font-weight: 600; }
+.card-tabs { display: flex; gap: 8px; }
+.card-tab { padding: 4px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; color: var(--text-light); cursor: pointer; }
+.card-tab.active { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
+
+/* Room Grid */
+.room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.room-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer; transition: all 0.2s; }
+.room-card:hover { border-color: var(--blue); box-shadow: 0 2px 8px rgba(24,144,255,0.15); }
+.room-card.alert { border-color: var(--red); background: var(--red-bg); }
+.room-card.low { border-color: var(--orange); background: var(--orange-bg); }
+.room-card .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.room-card .num { font-size: 18px; font-weight: 700; }
+.room-card .type { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.room-card .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+.badge-in { background: var(--blue-bg); color: var(--blue); }
+.badge-empty { background: var(--green-bg); color: var(--green); }
+.badge-alert { background: var(--red-bg); color: var(--red); }
+.badge-low { background: var(--orange-bg); color: var(--orange); }
+.room-card .info { display: flex; flex-direction: column; gap: 6px; }
+.room-card .info-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.room-card .info-row .icon { font-size: 14px; }
+.room-card .info-row .lbl { color: var(--text-muted); }
+.room-card .info-row .val { font-weight: 500; }
+.room-card .info-row .val.green { color: var(--green); }
+.room-card .info-row .val.red { color: var(--red); }
+.room-card .info-row .val.orange { color: var(--orange); }
+.room-card .footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-light); }
+.room-card .footer .key-count { padding: 2px 8px; background: var(--blue-bg); color: var(--blue); border-radius: 4px; font-weight: 600; }
+.room-card .footer .key-count.alert { background: var(--red-bg); color: var(--red); }
+
+/* Charts */
+.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.bar-chart { display: flex; align-items: flex-end; gap: 12px; height: 160px; padding-top: 20px; }
+.bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.bar { width: 100%; border-radius: 4px 4px 0 0; cursor: pointer; transition: all 0.2s; }
+.bar:hover { opacity: 0.8; }
+.bar.blue { background: linear-gradient(180deg, var(--blue), #69c0ff); }
+.bar.green { background: linear-gradient(180deg, var(--green), #95de64); }
+.bar .val { font-size: 11px; font-weight: 600; color: var(--text); }
+.bar .lbl { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+.pie-row { display: flex; align-items: center; gap: 40px; }
+.pie-chart { width: 140px; height: 140px; position: relative; }
+.pie-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+.pie-center .num { font-size: 24px; font-weight: 700; }
+.pie-center .lbl { font-size: 11px; color: var(--text-muted); }
+.pie-legend { display: flex; flex-direction: column; gap: 12px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+/* Alert List */
+.alert-list { display: flex; flex-direction: column; gap: 12px; }
+.alert-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg); border-radius: 8px; border-left: 3px solid; }
+.alert-item.red { border-color: var(--red); background: var(--red-bg); }
+.alert-item.orange { border-color: var(--orange); background: var(--orange-bg); }
+.alert-item .icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.alert-item.red .icon { background: var(--red); color: white; }
+.alert-item.orange .icon { background: var(--orange); color: white; }
+.alert-item .content { flex: 1; }
+.alert-item .content h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.alert-item .content p { font-size: 12px; color: var(--text-light); }
+.alert-item .time { font-size: 12px; color: var(--text-muted); }
+.alert-item .action { padding: 6px 12px; background: white; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; cursor: pointer; color: var(--text-light); }
+.alert-item .action:hover { color: var(--blue); border-color: var(--blue); }
+
+/* Table */
+.table { width: 100%; border-collapse: collapse; }
+.table th { text-align: left; padding: 12px 16px; background: var(--bg); border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text-light); }
+.table td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.table tr:last-child td { border-bottom: none; }
+.tbadge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.tbadge.phone { background: var(--green-bg); color: var(--green); }
+.tbadge.card { background: var(--blue-bg); color: var(--blue); }
+.tbadge.admin { background: var(--orange-bg); color: var(--orange); }
+
+/* Page Visibility */
+.page { display: none; }
+.page.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="icon">🔐</div>
+      <span>领锁物联</span>
+    </div>
+    <div class="menu-item active" onclick="showPage('home')">
+      <span class="icon">🏠</span> 首页
+    </div>
+    <div class="menu-item" onclick="showPage('dashboard')">
+      <span class="icon">📊</span> 看板统计
+    </div>
+    <div class="menu-item" onclick="showPage('alert')">
+      <span class="icon">🔔</span> 告警记录
+    </div>
+    <div class="menu-item" onclick="showPage('log')">
+      <span class="icon">📋</span> 开锁记录
+    </div>
+    <div class="menu-item" onclick="showPage('device')">
+      <span class="icon">🔧</span> 设备管理
+    </div>
+    <div class="menu-item" onclick="showPage('config')">
+      <span class="icon">⚙️</span> 管理配置
+    </div>
+  </div>
+  
+  <!-- Main Content -->
+  <div class="main">
+    
+    <!-- Page: Home -->
+    <div id="page-home" class="page active">
+      <div class="page-header">
+        <div class="page-title">🏠 首页 - 房态总览</div>
+        <div class="page-sub">小度语音智慧房体验店 · 实时监控</div>
+      </div>
+      
+      <div class="alert-banner">
+        <div class="icon">⚠️</div>
+        <div class="content">
+          <h4>2 台设备需要关注</h4>
+          <p>303房间离线超过10小时 · 306房间电量低于20%</p>
+        </div>
+        <button class="btn" onclick="showPage('alert')">立即处理</button>
+      </div>
+      
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon" style="background: var(--blue-bg);">🏨</div>
+          <div>
+            <div class="stat-num">16</div>
+            <div class="stat-label">房间总数</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: var(--green-bg);">🔓</div>
+          <div>
+            <div class="stat-num">11</div>
+            <div class="stat-label">设备在线</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: var(--orange-bg);">⚡</div>
+          <div>
+            <div class="stat-num">2</div>
+            <div class="stat-label">低电量告警</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: var(--red-bg);">📡</div>
+          <div>
+            <div class="stat-num">2</div>
+            <div class="stat-label">设备离线</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏠 房间状态</div>
+          <div class="card-tabs">
+            <div class="card-tab active">全部 16</div>
+            <div class="card-tab">告警 2</div>
+            <div class="card-tab">入住 8</div>
+            <div class="card-tab">空房 8</div>
+          </div>
+        </div>
+        <div class="room-grid">
+          <div class="room-card">
+            <div class="top">
+              <div><div class="num">301</div><div class="type">亲子间</div></div>
+              <div class="badge badge-in">入住</div>
+            </div>
+            <div class="info">
+              <div class="info-row"><span class="icon">🚪</span><span class="lbl">门锁：</span><span class="val green">已反锁</span></div>
+              <div class="info-row"><span class="icon">⚡</span><span class="lbl">通电：</span><span class="val">空调开启</span></div>
+            </div>
+            <div class="footer"><span>🔑 生效钥匙</span><span class="key-count">2张</span></div>
+          </div>
+          <div class="room-card">
+            <div class="top">
+              <div><div class="num">302</div><div class="type">亲子间</div></div>
+              <div class="badge badge-empty">空房</div>
+            </div>
+            <div class="info">
+              <div class="info-row"><span class="icon">🚪</span><span class="lbl">门锁：</span><span class="val green">已反锁</span></div>
+              <div class="info-row"><span class="icon">⚡</span><span class="lbl">通电：</span><span class="val">未取电</span></div>
+            </div>
+            <div class="footer"><span>🔑 生效钥匙</span><span class="key-count">0张</span></div>
+          </div>
+          <div class="room-card alert">
+            <div class="top">
+              <div><div class="num">303</div><div class="type">亲子间</div></div>
+              <div class="badge badge-alert">离线</div>
+            </div>
+            <div class="info">
+              <div class="info-row"><span class="icon">🚪</span><span class="lbl">门锁：</span><span class="val red">⚠️ 设备离线</span></div>
+              <div class="info-row"><span class="icon">⚡</span><span class="lbl">通电：</span><span class="val">未知</span></div>
+            </div>
+            <div class="footer"><span>🔑 生效钥匙</span><span class="key-count alert">离线10h+</span></div>
+          </div>
+          <div class="room-card">
+            <div class="top">
+              <div><div class="num">304</div><div class="type">亲子间</div></div>
+              <div class="badge badge-in">入住</div>
+            </div>
+            <div class="info">
+              <div class="info-row"><span class="icon">🚪</span><span class="lbl">门锁：</span><span class="val green">已反锁</span></div>
+              <div class="info-row"><span class="icon">⚡</span><span class="lbl">通电：</span><span class="val">空调节能</span></div>
+            </div>
+            <div class="footer"><span>🔑 生效钥匙</span><span class="key-count">3张</span></div>
+          </div>
+          <div class="room-card low">
+            <div class="top">
+              <div><div class="num">305</div><div class="type">亲子间</div></div>
+              <div class="badge badge-low">低电量</div>
+            </div>
+            <div class="info">
+              <div class="info-row"><span class="icon">🚪</span><span class="lbl">门锁：</span><span class="val orange">⚠️ 电量28%</span></div>
+              <div class="info-row"><span class="icon">⚡</span><span class="lbl">通电：</span><span class="val">未取电</span></div>
+            </div>
+            <div class="footer"><span>🔑 生效钥匙</span><span class="key-count alert">请换电池</span></div>
+          </div>
+          <div class="room-card">
+            <div class="top">
+              <div><div class="num">201</div><div class="type">大床房</div></div>
+              <div class="badge badge-in">入住</div>
+            </div>
+            <div class="info">
+              <div class="info-row"><span class="icon">🚪</span><span class="lbl">门锁：</span><span class="val green">已反锁</span></div>
+              <div class="info-row"><span class="icon">⚡</span><span class="lbl">通电：</span><span class="val">空调开启</span></div>
+            </div>
+            <div class="footer"><span>🔑 生效钥匙</span><span class="key-count">2张</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Page: Dashboard -->
+    <div id="page-dashboard" class="page">
+      <div class="page-header">
+        <div class="page-title">📊 看板统计</div>
+        <div class="page-sub">运营数据总览</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon" style="background: var(--blue-bg);">🔓</div>
+          <div><div class="stat-num">128</div><div class="stat-label">今日开锁次数</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: var(--green-bg);">📱</div>
+          <div><div class="stat-num">72%</div><div class="stat-label">手机开锁占比</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: var(--purple-bg);">📊</div>
+          <div><div class="stat-num">94%</div><div class="stat-label">设备在线率</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: var(--green-bg);">✅</div>
+          <div><div class="stat-num">85%</div><div class="stat-label">告警处理率</div></div>
+        </div>
+      </div>
+      <div class="charts-row">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📈 开锁趋势（近7天）</div>
+            <div class="card-tabs"><div class="card-tab active">日</div><div class="card-tab">周</div></div>
+          </div>
+          <div class="bar-chart">
+            <div class="bar-group"><div class="val">86</div><div class="bar blue" style="height:80px;"></div><div class="lbl">周一</div></div>
+            <div class="bar-group"><div class="val">102</div><div class="bar blue" style="height:110px;"></div><div class="lbl">周二</div></div>
+            <div class="bar-group"><div class="val">95</div><div class="bar blue" style="height:100px;"></div><div class="lbl">周三</div></div>
+            <div class="bar-group"><div class="val">118</div><div class="bar blue" style="height:130px;"></div><div class="lbl">周四</div></div>
+            <div class="bar-group"><div class="val">156</div><div class="bar green" style="height:170px;"></div><div class="lbl">周五</div></div>
+            <div class="bar-group"><div class="val">182</div><div class="bar green" style="height:200px;"></div><div class="lbl">周六</div></div>
+            <div class="bar-group"><div class="val">168</div><div class="bar green" style="height:185px;"></div><div class="lbl">周日</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🥧 开锁方式分布</div>
+            <div class="card-tabs"><div class="card-tab active">今日</div><div class="card-tab">本周</div></div>
+          </div>
+          <div class="pie-row">
+            <div class="pie-chart">
+              <svg viewBox="0 0 100 100" style="transform:rotate(-90deg);">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--green)" stroke-dasharray="113.1 138.2" stroke-dashoffset="0"></circle>
+                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--blue)" stroke-dasharray="75.4 138.2" stroke-dashoffset="-113.1"></circle>
+                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--orange)" stroke-dasharray="25.1 138.2" stroke-dashoffset="-188.5"></circle>
+              </svg>
+              <div class="pie-center"><div class="num">128</div><div class="lbl">总开锁</div></div>
+            </div>
+            <div class="pie-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div> 手机开锁 72%</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--blue);"></div> 客户卡 38%</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--orange);"></div> 通卡/应急 8%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Page: Alert -->
+    <div id="page-alert" class="page">
+      <div class="page-header">
+        <div class="page-title">🔔 告警记录</div>
+        <div class="page-sub">设备告警与处理状态</div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🚨 实时告警</div>
+          <div class="card-tabs"><div class="card-tab active">全部</div><div class="card-tab">未处理</div></div>
+        </div>
+        <div class="alert-list">
+          <div class="alert-item red">
+            <div class="icon">⚠️</div>
+            <div class="content"><h4>303房间设备离线</h4><p>最后同步 2026-03-26 11:05:36，已离线超过10小时</p></div>
+            <div class="time">10小时前</div>
+            <div class="action">处理</div>
+          </div>
+          <div class="alert-item orange">
+            <div class="icon">🔋</div>
+            <div class="content"><h4>305房间电量低于20%</h4><p>当前电量28%，请及时更换电池</p></div>
+            <div class="time">2小时前</div>
+            <div class="action">处理</div>
+          </div>
+          <div class="alert-item orange">
+            <div class="icon">🔋</div>
+            <div class="content"><h4>202房间电量偏低</h4><p>当前电量35%，建议关注</p></div>
+            <div class="time">5小时前</div>
+            <div class="action">处理</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Page: Log -->
+    <div id="page-log" class="page">
+      <div class="page-header">
+        <div class="page-title">📋 开锁记录</div>
+        <div class="page-sub">开锁日志查询</div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">最近开锁记录</div>
+          <div class="card-tabs"><div class="card-tab active">全部</div><div class="card-tab">手机</div><div class="card-tab">卡片</div></div>
+        </div>
+        <table class="table">
+          <thead><tr><th>时间</th><th>房间</th><th>方式</th><th>操作人</th></tr></thead>
+          <tbody>
+            <tr><td>10:32:08</td><td>301</td><td><span class="tbadge phone">手机开锁</span></td><td>张三</td></tr>
+            <tr><td>10:15:22</td><td>203</td><td><span class="tbadge card">客户卡</span></td><td>李四</td></tr>
+            <tr><td>09:48:05</td><td>304</td><td><span class="tbadge phone">手机开锁</span></td><td>王五</td></tr>
+            <tr><td>09:30:18</td><td>102</td><td><span class="tbadge admin">通卡</span></td><td>赵飞</td></tr>
+            <tr><td>09:12:44</td><td>201</td><td><span class="tbadge card">客户卡</span></td><td>钱七</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Page: Device -->
+    <div id="page-device" class="page">
+      <div class="page-header">
+        <div class="page-title">🔧 设备管理</div>
+        <div class="page-sub">硬件设备列表与详情</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon" style="background: var(--blue-bg);">📱</div>
+          <div><div class="stat-num">16</div><div class="stat-label">设备总数</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: var(--green-bg);">🟢</div>
+          <div><div class="stat-num">11</div><div class="stat-label">在线</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: var(--red-bg);">🔴</div>
+          <div><div class="stat-num">2</div><div class="stat-label">离线</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: var(--orange-bg);">🟡</div>
+          <div><div class="stat-num">2</div><div class="stat-label">低电量</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 设备列表</div>
+          <div class="card-tabs"><div class="card-tab active">全部</div><div class="card-tab">在线</div><div class="card-tab">离线</div></div>
+        </div>
+        <table class="table">
+          <thead><tr><th>设备UUID</th><th>房间</th><th>状态</th><th>电量</th><th>最后同步</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr><td>A84F1AF2-...</td><td>301</td><td><span class="tbadge phone">在线</span></td><td>88%</td><td>10:32:08</td><td><div class="action" style="display:inline-block;padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:12px;cursor:pointer;">详情</div></td></tr>
+            <tr><td>B92F3BF3-...</td><td>302</td><td><span class="tbadge phone">在线</span></td><td>85%</td><td>10:30:22</td><td><div class="action" style="display:inline-block;padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:12px;cursor:pointer;">详情</div></td></tr>
+            <tr><td>C73D4CG4-</td><td>303</td><td><span class="tbadge admin">离线</span></td><td>--</td><td>11:05:36</td><td><div class="action" style="display:inline-block;padding:4px 10px;background:var(--red-bg);color:var(--red);border-radius:4px;font-size:12px;cursor:pointer;">离线</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Page: Config -->
+    <div id="page-config" class="page">
+      <div class="page-header">
+        <div class="page-title">⚙️ 管理配置</div>
+        <div class="page-sub">系统设置</div>
+      </div>
+      <div class="charts-row">
+        <div class="card">
+          <div class="card-title">🏢 房型管理</div>
+          <table class="table">
+            <thead><tr><th>房型</th><th>床型</th><th>价格</th><th>状态</th></tr></thead>
+            <tbody>
+              <tr><td>标准间</td><td>大床1.8m</td><td>98元/12小时</td><td><span class="tbadge admin">关闭</span></td></tr>
+              <tr><td>大床房</td><td>大床1.5m</td><td>108元/12小时</td><td><span class="tbadge admin">关闭</span></td></tr>
+              <tr><td>亲子间</td><td>多床</td><td>128元/12小时</td><td><span class="tbadge admin">关闭</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-title">👥 会员管理</div>
+          <table class="table">
+            <thead><tr><th>等级</th><th>折扣权益</th><th>办卡权益</th></tr></thead>
+            <tbody>
+              <tr><td>普通会员</td><td>默认</td><td>默认</td></tr>
+              <tr><td>银卡会员</td><td>9.5折</td><td>9折</td></tr>
+              <tr><td>金卡会员</td><td>9折</td><td>8.5折</td></tr>
+              <tr><td>VIP会员</td><td>8.5折</td><td>8折</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</div>
+
+<script>
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+  event.target.closest('.menu-item').classList.add('active');
+}
+</script>
+
+</body>
+</html>

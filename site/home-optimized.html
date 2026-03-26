@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta name="description" content="领锁智能锁，酒店智能门锁专家，提供安全、节能、省心的智能锁解决方案。">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>领锁物联后台 - 首页优化版</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f6f8; color: #333; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+/* Alert Banner */
+.alert-banner {
+  background: linear-gradient(135deg, #fff1f0, #ffccc7);
+  border: 1px solid #ff4d4f;
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.alert-banner .alert-icon {
+  width: 44px; height: 44px;
+  background: #ff4d4f;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 20px;
+  flex-shrink: 0;
+}
+.alert-banner .alert-content { flex: 1; }
+.alert-banner .alert-content h4 { color: #cf1322; font-size: 15px; margin-bottom: 4px; }
+.alert-banner .alert-content p { color: #666; font-size: 13px; }
+.alert-banner .alert-btn {
+  padding: 10px 20px;
+  background: #ff4d4f; color: #fff; border: none; border-radius: 6px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+}
+
+/* Stats Cards */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+.stat-card {
+  background: #fff; border-radius: 8px; padding: 16px;
+  display: flex; align-items: center; gap: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.stat-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.stat-icon.blue { background: #e6f4ff; }
+.stat-icon.green { background: #f6ffed; }
+.stat-icon.orange { background: #fff7e6; }
+.stat-icon.red { background: #fff1f0; }
+.stat-info h3 { font-size: 26px; font-weight: 700; color: #333; }
+.stat-info p { font-size: 13px; color: #666; margin-top: 2px; }
+
+/* Section */
+.section { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.section-title { font-size: 16px; font-weight: 600; color: #333; }
+.section-tabs { display: flex; gap: 8px; }
+.section-tab { padding: 6px 14px; background: #f5f6f8; border: 1px solid #e8e8e8; border-radius: 4px; font-size: 13px; color: #666; cursor: pointer; }
+.section-tab.active { background: #e6f4ff; border-color: #1890ff; color: #1890ff; }
+
+/* Room Grid */
+.room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.room-card {
+  background: #fafafa; border: 1px solid #f0f0f0; border-radius: 8px; padding: 14px;
+  cursor: pointer; transition: all 0.2s; position: relative;
+}
+.room-card:hover { border-color: #1890ff; box-shadow: 0 2px 8px rgba(24,144,255,0.15); }
+.room-card.alert { border-color: #ff4d4f; background: #fff1f0; }
+.room-card.low-battery { border-color: #fa8c16; background: #fff7e6; }
+
+/* Card Top Indicator */
+.room-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  border-radius: 8px 8px 0 0;
+}
+.room-card.ok::before { background: #52c41a; }
+.room-card.offline::before { background: #ff4d4f; }
+.room-card.low-battery::before { background: #fa8c16; }
+
+.room-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.room-number { font-size: 18px; font-weight: 700; color: #333; }
+.room-type { font-size: 11px; color: #999; margin-top: 2px; }
+.room-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+.badge-checkin { background: #e6f4ff; color: #1890ff; }
+.badge-empty { background: #f6ffed; color: #52c41a; }
+.badge-alert { background: #fff1f0; color: #ff4d4f; }
+.badge-low { background: #fff7e6; color: #fa8c16; }
+
+.room-info { display: flex; flex-direction: column; gap: 6px; }
+.room-info-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.room-info-row .icon { font-size: 14px; }
+.room-info-row .label { color: #999; }
+.room-info-row .value { color: #333; font-weight: 500; }
+.room-info-row .value.green { color: #52c41a; }
+.room-info-row .value.red { color: #ff4d4f; }
+.room-info-row .value.orange { color: #fa8c16; }
+
+.room-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+.key-info { font-size: 12px; color: #666; display: flex; align-items: center; gap: 4px; }
+.key-count { background: #f5f5f5; color: #666; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.key-count.alert { background: #fff1f0; color: #ff4d4f; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  
+  <!-- Alert Banner -->
+  <div class="alert-banner">
+    <div class="alert-icon">⚠️</div>
+    <div class="alert-content">
+      <h4>2 台设备需要关注</h4>
+      <p>303房间离线超过10小时 · 306房间电量低于20%</p>
+    </div>
+    <button class="alert-btn">立即处理</button>
+  </div>
+  
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon blue">🏨</div>
+      <div class="stat-info">
+        <h3>16</h3>
+        <p>房间总数</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green">🔓</div>
+      <div class="stat-info">
+        <h3>11</h3>
+        <p>设备在线</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon orange">⚡</div>
+      <div class="stat-info">
+        <h3>2</h3>
+        <p>低电量告警</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon red">📡</div>
+      <div class="stat-info">
+        <h3>2</h3>
+        <p>设备离线</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Room Section -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">🏠 房间状态（实时）</div>
+      <div class="section-tabs">
+        <div class="section-tab active">全部 16</div>
+        <div class="section-tab">告警 2</div>
+        <div class="section-tab">入住 8</div>
+        <div class="section-tab">空房 8</div>
+      </div>
+    </div>
+    
+    <div class="room-grid">
+      
+      <!-- Room 301 - 入住正常 -->
+      <div class="room-card ok">
+        <div class="room-header">
+          <div>
+            <div class="room-number">301</div>
+            <div class="room-type">亲子间</div>
+          </div>
+          <div class="room-badge badge-checkin">入住</div>
+        </div>
+        <div class="room-info">
+          <div class="room-info-row">
+            <span class="icon">🚪</span>
+            <span class="label">门锁：</span>
+            <span class="value green">已反锁</span>
+          </div>
+          <div class="room-info-row">
+            <span class="icon">⚡</span>
+            <span class="label">通电：</span>
+            <span class="value">空调开启</span>
+          </div>
+        </div>
+        <div class="room-footer">
+          <div class="key-info">🔑 生效钥匙</div>
+          <div class="key-count">2张</div>
+        </div>
+      </div>
+      
+      <!-- Room 302 - 空房正常 -->
+      <div class="room-card ok">
+        <div class="room-header">
+          <div>
+            <div class="room-number">302</div>
+            <div class="room-type">亲子间</div>
+          </div>
+          <div class="room-badge badge-empty">空房</div>
+        </div>
+        <div class="room-info">
+          <div class="room-info-row">
+            <span class="icon">🚪</span>
+            <span class="label">门锁：</span>
+            <span class="value green">已反锁</span>
+          </div>
+          <div class="room-info-row">
+            <span class="icon">⚡</span>
+            <span class="label">通电：</span>
+            <span class="value">未取电</span>
+          </div>
+        </div>
+        <div class="room-footer">
+          <div class="key-info">🔑 生效钥匙</div>
+          <div class="key-count">0张</div>
+        </div>
+      </div>
+      
+      <!-- Room 303 - 离线告警 -->
+      <div class="room-card alert">
+        <div class="room-header">
+          <div>
+            <div class="room-number">303</div>
+            <div class="room-type">亲子间</div>
+          </div>
+          <div class="room-badge badge-alert">离线</div>
+        </div>
+        <div class="room-info">
+          <div class="room-info-row">
+            <span class="icon">🚪</span>
+            <span class="label">门锁：</span>
+            <span class="value red">⚠️ 设备离线</span>
+          </div>
+          <div class="room-info-row">
+            <span class="icon">⚡</span>
+            <span class="label">通电：</span>
+            <span class="value">未知</span>
+          </div>
+        </div>
+        <div class="room-footer">
+          <div class="key-info">🔑 生效钥匙</div>
+          <div class="key-count alert">离线10h+</div>
+        </div>
+      </div>
+      
+      <!-- Room 304 - 入住正常 -->
+      <div class="room-card ok">
+        <div class="room-header">
+          <div>
+            <div class="room-number">304</div>
+            <div class="room-type">亲子间</div>
+          </div>
+          <div class="room-badge badge-checkin">入住</div>
+        </div>
+        <div class="room-info">
+          <div class="room-info-row">
+            <span class="icon">🚪</span>
+            <span class="label">门锁：</span>
+            <span class="value green">已反锁</span>
+          </div>
+          <div class="room-info-row">
+            <span class="icon">⚡</span>
+            <span class="label">通电：</span>
+            <span class="value">空调节能</span>
+          </div>
+        </div>
+        <div class="room-footer">
+          <div class="key-info">🔑 生效钥匙</div>
+          <div class="key-count">3张</div>
+        </div>
+      </div>
+      
+      <!-- Room 305 - 低电量 -->
+      <div class="room-card low-battery">
+        <div class="room-header">
+          <div>
+            <div class="room-number">305</div>
+            <div class="room-type">亲子间</div>
+          </div>
+          <div class="room-badge badge-low">低电量</div>
+        </div>
+        <div class="room-info">
+          <div class="room-info-row">
+            <span class="icon">🚪</span>
+            <span class="label">门锁：</span>
+            <span class="value orange">⚠️ 电量28%</span>
+          </div>
+          <div class="room-info-row">
+            <span class="icon">⚡</span>
+            <span class="label">通电：</span>
+            <span class="value">未取电</span>
+          </div>
+        </div>
+        <div class="room-footer">
+          <div class="key-info">🔑 生效钥匙</div>
+          <div class="key-count alert">请换电池</div>
+        </div>
+      </div>
+      
+      <!-- Room 201 - 入住正常 -->
+      <div class="room-card ok">
+        <div class="room-header">
+          <div>
+            <div class="room-number">201</div>
+            <div class="room-type">大床房</div>
+          </div>
+          <div class="room-badge badge-checkin">入住</div>
+        </div>
+        <div class="room-info">
+          <div class="room-info-row">
+            <span class="icon">🚪</span>
+            <span class="label">门锁：</span>
+            <span class="value green">已反锁</span>
+          </div>
+          <div class="room-info-row">
+            <span class="icon">⚡</span>
+            <span class="label">通电：</span>
+            <span class="value">空调开启</span>
+          </div>
+        </div>
+        <div class="room-footer">
+          <div class="key-info">🔑 生效钥匙</div>
+          <div class="key-count">2张</div>
+        </div>
+      </div>
+      
+      <!-- Room 202 - 空房正常 -->
+      <div class="room-card ok">
+        <div class="room-header">
+          <div>
+            <div class="room-number">202</div>
+            <div class="room-type">大床房</div>
+          </div>
+          <div class="room-badge badge-empty">空房</div>
+        </div>
+        <div class="room-info">
+          <div class="room-info-row">
+            <span class="icon">🚪</span>
+            <span class="label">门锁：</span>
+            <span class="value green">已反锁</span>
+          </div>
+          <div class="room-info-row">
+            <span class="icon">⚡</span>
+            <span class="label">通电：</span>
+            <span class="value">未取电</span>
+          </div>
+        </div>
+        <div class="room-footer">
+          <div class="key-info">🔑 生效钥匙</div>
+          <div class="key-count">0张</div>
+        </div>
+      </div>
+      
+      <!-- Room 203 - 入住正常 -->
+      <div class="room-card ok">
+        <div class="room-header">
+          <div>
+            <div class="room-number">203</div>
+            <div class="room-type">大床房</div>
+          </div>
+          <div class="room-badge badge-checkin">入住</div>
+        </div>
+        <div class="room-info">
+          <div class="room-info-row">
+            <span class="icon">🚪</span>
+            <span class="label">门锁：</span>
+            <span class="value green">已反锁</span>
+          </div>
+          <div class="room-info-row">
+            <span class="icon">⚡</span>
+            <span class="label">通电：</span>
+            <span class="value">空调节能</span>
+          </div>
+        </div>
+        <div class="room-footer">
+          <div class="key-info">🔑 生效钥匙</div>
+          <div class="key-count">1张</div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+  
+</div>
+
+</body>
+</html>
