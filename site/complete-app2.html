@@ -5877,7 +5877,72 @@ function closeDeviceDiagnosticModal() {
       renderAlertRuleList();
       showToast('规则已删除', 'success');
     }
-    function openFirmwareComparisonModal() { showToast('固件对比表功能开发中', 'info'); }
+    function openFirmwareComparisonModal() {
+  var old = document.getElementById('modal-firmware-compare');
+  if (old) old.remove();
+  var devices = [
+    {room:'301', current:'v2.1.3', target:'v2.2.0', size:'3.2MB', status:'ready'},
+    {room:'302', current:'v2.1.3', target:'v2.2.0', size:'3.2MB', status:'ready'},
+    {room:'303', current:'v2.0.8', target:'v2.2.0', size:'3.2MB', status:'outdated'},
+    {room:'304', current:'v2.2.0', target:'v2.2.0', size:'3.2MB', status:'latest'},
+    {room:'305', current:'v2.1.3', target:'v2.2.0', size:'3.2MB', status:'ready'},
+    {room:'201', current:'v2.0.5', target:'v2.2.0', size:'3.2MB', status:'critical'}
+  ];
+  var stats = {
+    total: devices.length,
+    ready: devices.filter(function(d){ return d.status==='ready'; }).length,
+    outdated: devices.filter(function(d){ return d.status==='outdated'; }).length,
+    latest: devices.filter(function(d){ return d.status==='latest'; }).length,
+    critical: devices.filter(function(d){ return d.status==='critical'; }).length
+  };
+  var rowsHtml = devices.map(function(d, i) {
+    var statusConfig = {
+      ready:{color:'var(--blue)',bg:'var(--blue-bg)',label:'待升级',icon:'⏳'},
+      outdated:{color:'var(--orange)',bg:'var(--orange-bg)',label:'版本落后',icon:'⚠️'},
+      latest:{color:'var(--green)',bg:'var(--green-bg)',label:'已是最新',icon:'✅'},
+      critical:{color:'var(--red)',bg:'var(--red-bg)',label:'急需升级',icon:'🔴'}
+    };
+    var s = statusConfig[d.status] || statusConfig.ready;
+    var changed = d.current !== d.target;
+    return '<tr>' +
+      '<td style="font-weight:600;">' + d.room + '</td>' +
+      '<td><span style="font-size:11px;color:var(--text-muted);">' + d.current + '</span></td>' +
+      '<td><span style="font-size:12px;font-weight:700;color:var(--blue);">' + d.target + '</span></td>' +
+      '<td><span style="font-size:11px;color:var(--text-muted);">' + d.size + '</span></td>' +
+      '<td><span class="tbadge" style="background:' + s.bg + ';color:' + s.color + ';font-size:11px;padding:2px 8px;border-radius:10px;">' + s.icon + ' ' + s.label + '</span></td>' +
+      '<td>' + (changed ? '<button class="action-btn small" onclick="startFirmwareUpgrade(\'' + d.room + '\')" style="padding:3px 8px;font-size:11px;background:var(--blue);color:white;border:none;">▶ 升级</button>' : '<span style="font-size:11px;color:var(--text-muted);">—</span>') + '</td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-firmware-compare" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="background:white;border-radius:14px;width:680px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
+    '<div style="font-size:22px;">📋</div>' +
+    '<div style="flex:1;"><div style="font-size:16px;font-weight:700;">📋 固件版本对比表</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">当前版本 vs 目标版本 · 批量升级前必查</div></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;text-align:center;margin-right:8px;">' +
+    '<div style="padding:6px 10px;background:var(--blue-bg);border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--blue);">' + stats.ready + '</div><div style="font-size:10px;color:var(--text-muted);">待升级</div></div>' +
+    '<div style="padding:6px 10px;background:var(--orange-bg);border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--orange);">' + (stats.outdated+stats.critical) + '</div><div style="font-size:10px;color:var(--text-muted);">落后/紧急</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-firmware-compare\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:16px 24px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);">' +
+    '<button class="action-btn" onclick="startBatchFirmwareUpgrade(\'all\')" style="padding:6px 14px;background:var(--blue);color:white;border:none;font-size:12px;">▶ 全部升级</button>' +
+    '<button class="action-btn" onclick="startBatchFirmwareUpgrade(\'ready\')" style="padding:6px 14px;background:var(--orange);color:white;border:none;font-size:12px;">▶ 仅升级待升级(' + stats.ready + '台)</button>' +
+    '<button class="action-btn" onclick="startBatchFirmwareUpgrade(\'critical\')" style="padding:6px 14px;background:var(--red);color:white;border:none;font-size:12px;">🔴 仅升级紧急(' + stats.critical + '台)</button>' +
+    '<div style="margin-left:auto;font-size:11px;color:var(--text-muted);">📦 目标版本 v2.2.0 · 单台大小 3.2MB</div></div>' +
+    '<div style="overflow-y:auto;flex:1;padding:16px 24px;">' +
+    '<table class="table" style="font-size:13px;">' +
+    '<thead><tr><th>房间</th><th>当前版本</th><th>目标版本</th><th>包大小</th><th>状态</th><th>操作</th></tr></thead>' +
+    '<tbody>' + rowsHtml + '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;background:var(--bg);">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-firmware-compare\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function startFirmwareUpgrade(room) {
+  showToast('正在向 ' + room + ' 推送固件升级包 v2.2.0...', 'info');
+  setTimeout(function(){ showToast('✅ ' + room + ' 固件升级完成，当前版本 v2.2.0', 'success'); }, 2500);
+}
+function startBatchFirmwareUpgrade(mode) {
+  var targets = {all:'全部设备', ready:'待升级设备', critical:'紧急设备'};
+  showToast('正在批量升级：' + targets[mode] + '...', 'info');
+  setTimeout(function(){ showToast('✅ ' + targets[mode] + ' 批量升级完成', 'success'); }, 3000);
+}
 
     // ============================================================
     // 【改进4】批量固件升级进度跟踪弹窗
@@ -8431,6 +8496,7 @@ function openEditMemberLevelModalV2(idx) {
       <div class="card">
         <div class="card-header">
           <div class="card-title">📋 工单列表</div>
+          <button class="action-btn small" onclick="openWorkorderStatsDashboard()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);font-size:11px;margin-left:auto;">📊 工单统计</button>
           <div style="display:flex;gap:8px;align-items:center;">
             <!-- 【改进5】工单自动派发规则配置入口 -->
             <button class="action-btn" onclick="openWorkorderAutoRuleModal()" style="padding:4px 10px;font-size:11px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⚙️ 自动派发</button>
@@ -9253,6 +9319,7 @@ function openEditMemberLevelModalV2(idx) {
         <div class="card-header">
           <div class="card-title">👥 角色列表</div>
           <button class="action-btn" onclick="openAddRoleModal()" style="padding:4px 12px;">+ 新增角色</button>
+          <button class="action-btn" onclick="openRoleAuditLogModal()" style="padding:4px 12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);font-size:12px;">📜 权限变更日志</button>
           <button class="action-btn" onclick="openRolePermissionEditorModal(0)" style="padding:4px 12px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🛡️ 可视化权限编辑器</button>
         </div>
         <div class="card-body">
@@ -10914,6 +10981,13 @@ function openEditMemberLevelModalV2(idx) {
             </div>
           </div>
         </div>
+      </div>
+      <!-- 【改进v3-3】会员入住历史完整记录面板入口 -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">
+        <span style="font-size:12px;font-weight:600;color:var(--blue);">📋 会员运营工具：</span>
+        <button class="action-btn small" onclick="openMemberHistoryPanel()" style="padding:4px 10px;background:var(--white);color:var(--blue);border-color:var(--blue);">📋 入住历史查询</button>
+        <button class="action-btn small" onclick="openMemberBehaviorPanel()" style="padding:4px 10px;background:var(--white);color:var(--purple);border-color:var(--purple);">🔍 行为分析</button>
+        <span style="margin-left:auto;font-size:11px;color:var(--blue);">💡 可按会员姓名/手机号/房间号查询历史入住记录</span>
       </div>
       <script>
       (function(){
@@ -24138,6 +24212,116 @@ function openMemberLevelBenefitModal(level) {
   html += '<button class="action-btn primary" onclick="openMemberUpgradeRuleModal();document.getElementById(\'modal-member-benefit\').remove();" style="padding:8px 16px;background:var(--purple);color:white;border-color:var(--purple);">✏️ 编辑权益</button></div></div></div>';
   var existing = document.getElementById('modal-member-benefit');
   if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+// 【改进v3-3】会员入住历史完整记录面板：支持按姓名/手机/房间号查询
+var memberCheckinHistoryData = [
+  {name:'张三', phone:'138****1234', room:'301', roomType:'亲子间', checkin:'2026-03-25 14:30', checkout:'2026-03-27 12:00', nights:2, deposit:'¥100', keyCount:'1张', operator:'赵飞', total:'¥456'},
+  {name:'张三', phone:'138****1234', room:'205', roomType:'大床房', checkin:'2026-03-10 15:00', checkout:'2026-03-12 11:30', nights:2, deposit:'¥100', keyCount:'1张', operator:'郑强', total:'¥388'},
+  {name:'李四', phone:'139****5678', room:'302', roomType:'亲子间', checkin:'2026-03-20 16:00', checkout:'2026-03-22 12:00', nights:2, deposit:'¥100', keyCount:'1张', operator:'赵飞', total:'¥412'},
+  {name:'王五', phone:'137****9012', room:'101', roomType:'套房', checkin:'2026-03-15 10:00', checkout:'2026-03-18 14:00', nights:3, deposit:'¥200', keyCount:'2张', operator:'郑强', total:'¥1280'},
+  {name:'赵六', phone:'136****3456', room:'201', roomType:'大床房', checkin:'2026-03-22 15:30', checkout:'2026-03-23 11:00', nights:1, deposit:'¥100', keyCount:'1张', operator:'吴倩', total:'¥218'},
+  {name:'孙七', phone:'135****7890', room:'306', roomType:'标准间', checkin:'2026-03-18 14:00', checkout:'2026-03-20 12:30', nights:2, deposit:'¥100', keyCount:'1张', operator:'赵飞', total:'¥380'},
+  {name:'张三', phone:'138****1234', room:'104', roomType:'套房', checkin:'2026-02-14 15:00', checkout:'2026-02-17 13:00', nights:3, deposit:'¥200', keyCount:'2张', operator:'郑强', total:'¥1380'},
+];
+function openMemberHistoryPanel() {
+  var old = document.getElementById('modal-member-history');
+  if (old) old.remove();
+  var rowsHtml = memberCheckinHistoryData.map(function(r, i) {
+    return '<tr>' +
+      '<td><span style="font-weight:600;font-size:12px;">' + r.name + '</span><div style="font-size:10px;color:var(--text-muted);">' + r.phone + '</div></td>' +
+      '<td><span style="font-weight:600;color:var(--blue);">' + r.room + '</span><div style="font-size:10px;color:var(--text-muted);">' + r.roomType + '</div></td>' +
+      '<td><span style="font-size:11px;">' + r.checkin + '</span></td>' +
+      '<td><span style="font-size:11px;">' + (r.checkout || '—') + '</span></td>' +
+      '<td><span class="tbadge blue" style="font-size:10px;">' + r.nights + '晚</span></td>' +
+      '<td><span style="font-size:12px;font-weight:700;color:var(--orange);">' + r.total + '</span></td>' +
+      '<td><span style="font-size:11px;color:var(--text-muted);">' + r.operator + '</span></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-member-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="background:white;border-radius:14px;width:800px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:22px;">📋</div>' +
+    '<div style="flex:1;"><div style="font-size:16px;font-weight:700;">📋 会员入住历史查询</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">支持按姓名/手机号/房间号查询 · 共 ' + memberCheckinHistoryData.length + ' 条记录</div></div>' +
+    '<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);">' +
+    '<span>🟢 本月入住</span><span style="font-size:16px;font-weight:700;color:var(--green);">7</span><span style="margin-left:4px;">次</span></div>' +
+    '<button onclick="document.getElementById(\'modal-member-history\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:16px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;background:var(--bg);">' +
+    '<input type="text" id="mh-search" placeholder="搜索会员姓名/手机/房间号..." oninput="filterMemberHistory()" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;">' +
+    '<select id="mh-month" onchange="filterMemberHistory()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text);">' +
+    '<option value="">全部月份</option><option value="2026-03">2026年3月</option><option value="2026-02">2026年2月</option></select>' +
+    '<select id="mh-nights" onchange="filterMemberHistory()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text);">' +
+    '<option value="">全部房晚</option><option value="1">1晚</option><option value="2">2晚</option><option value="3">3晚以上</option></select>' +
+    '<button class="action-btn" onclick="exportMemberHistory()" style="padding:6px 14px;background:var(--green);color:white;border:none;font-size:12px;">📤 导出</button></div>' +
+    '<div style="overflow-y:auto;flex:1;padding:0 24px 16px;">' +
+    '<table class="table" id="member-history-table" style="font-size:13px;">' +
+    '<thead><tr><th>会员信息</th><th>房间</th><th>入住时间</th><th>退房时间</th><th>入住晚数</th><th>消费金额</th><th>操作员</th></tr></thead>' +
+    '<tbody id="member-history-body">' + rowsHtml + '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;align-items:center;background:var(--bg);">' +
+    '<div style="font-size:12px;color:var(--text-muted);">显示 <strong id="mh-count">' + memberCheckinHistoryData.length + '</strong> 条记录 · 累计消费 <strong style="color:var(--orange);">¥' + memberCheckinHistoryData.reduce(function(s,r){return s+parseInt(r.total.replace(/[^0-9]/g,''));},0) + '</strong></div>' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-history\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function filterMemberHistory() {
+  var query = document.getElementById('mh-search').value.toLowerCase();
+  var month = document.getElementById('mh-month').value;
+  var nights = document.getElementById('mh-nights').value;
+  var rows = document.querySelectorAll('#member-history-body tr');
+  var count = 0;
+  rows.forEach(function(row) {
+    var text = row.textContent.toLowerCase();
+    var show = text.indexOf(query) !== -1;
+    if (month && !row.textContent.match(month)) show = false;
+    if (nights) {
+      var nightVal = parseInt(row.querySelector('.tbadge') ? row.querySelector('.tbadge').textContent : '0');
+      if (nights === '3' ? nightVal < 3 : nightVal !== parseInt(nights)) show = false;
+    }
+    row.style.display = show ? '' : 'none';
+    if (show) count++;
+  });
+  document.getElementById('mh-count').textContent = count;
+}
+function exportMemberHistory() {
+  var blob = new Blob([JSON.stringify(memberCheckinHistoryData, null, 2)], {type:'application/json'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'member_history_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast('📤 入住历史已导出', 'success');
+}
+// 【改进v3-3】会员行为分析面板：偏好房型/入住时段/消费习惯
+var memberBehaviorData = {
+  '张三': {totalNights:4, favoriteRoom:'亲子间', avgSpend:'¥420', checkinHours:['14:00-16:00'], preferences:['无烟房','高楼层'], risk:'low'},
+  '李四': {totalNights:2, favoriteRoom:'大床房', avgSpend:'¥380', checkinHours:['15:00-17:00'], preferences:['无烟房'], risk:'low'},
+  '王五': {totalNights:3, favoriteRoom:'套房', avgSpend:'¥680', checkinHours:['09:00-12:00'], preferences:['套房','高楼层','早餐'], risk:'low'},
+  '赵六': {totalNights:1, favoriteRoom:'大床房', avgSpend:'¥218', checkinHours:['14:00-16:00'], preferences:['大床房'], risk:'medium'},
+  '孙七': {totalNights:2, favoriteRoom:'标准间', avgSpend:'¥320', checkinHours:['13:00-15:00'], preferences:['标准间'], risk:'low'},
+};
+function openMemberBehaviorPanel() {
+  var old = document.getElementById('modal-member-behavior');
+  if (old) old.remove();
+  var cardsHtml = Object.keys(memberBehaviorData).map(function(name) {
+    var d = memberBehaviorData[name];
+    var riskColors = {low:'var(--green)', medium:'var(--orange)', high:'var(--red)'};
+    var riskBg = {low:'var(--green-bg)', medium:'var(--orange-bg)', high:'var(--red-bg)'};
+    return '<div style="padding:14px;background:var(--bg);border-radius:8px;margin-bottom:10px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
+      '<span style="font-size:14px;font-weight:700;">' + name + '</span>' +
+      '<span class="tbadge" style="background:' + riskBg[d.risk] + ';color:' + riskColors[d.risk] + ';font-size:11px;padding:2px 8px;">' + (d.risk==='low'?'🟢 低风险':'🟡 中风险') + '</span></div>' +
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">' +
+      '<div style="text-align:center;padding:8px;background:white;border-radius:6px;"><div style="font-size:18px;font-weight:700;color:var(--blue);">' + d.totalNights + '</div><div style="font-size:10px;color:var(--text-muted);">累计入住</div><div style="font-size:10px;color:var(--text-muted);">（晚）</div></div>' +
+      '<div style="text-align:center;padding:8px;background:white;border-radius:6px;"><div style="font-size:13px;font-weight:700;color:var(--purple);">' + d.favoriteRoom + '</div><div style="font-size:10px;color:var(--text-muted);">偏好房型</div></div>' +
+      '<div style="text-align:center;padding:8px;background:white;border-radius:6px;"><div style="font-size:13px;font-weight:700;color:var(--orange);">' + d.avgSpend + '</div><div style="font-size:10px;color:var(--text-muted);">平均消费</div></div></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);"><span style="font-weight:600;color:var(--text);">入住高峰时段：</span>' + d.checkinHours.join(', ') + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;"><span style="font-weight:600;color:var(--text);">偏好：</span>' + d.preferences.join(' · ') + '</div></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-member-behavior" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="background:white;border-radius:14px;width:560px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:22px;">🔍</div>' +
+    '<div style="flex:1;"><div style="font-size:16px;font-weight:700;">🔍 会员行为分析</div><div style="font-size:11px;color:var(--text-muted);">入住偏好/消费习惯/风险评估</div></div>' +
+    '<button onclick="document.getElementById(\'modal-member-behavior\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:16px 24px;overflow-y:auto;flex:1;">' + cardsHtml + '</div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;background:var(--bg);">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-behavior\').remove()">关闭</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
 function openMemberUpgradeRuleModal() {
@@ -49381,6 +49565,68 @@ function openRolePermissionEditorModal(idx){var role=rolePermissionData[idx];var
 function closeRolePermEditor(){var m=document.getElementById('modal-role-perm-editor');if(m)m.remove();}
 function toggleRolePerm(idx,p,checked,cb){var role=rolePermissionData[idx];role.perms[p]=checked;var label=cb.parentElement;label.style.background=checked?'var(--blue-bg)':'var(--bg)';label.querySelector('span:nth-child(2)').style.color=checked?'var(--blue)':'var(--text)';label.querySelector('span:nth-child(2)').style.fontWeight=checked?'600':'400';var totalPerms=Object.values(role.perms).filter(Boolean).length;var totalPossible=Object.keys(rolePermissionLabels).length;var infoEl=document.querySelector('#modal-role-perm-editor [style*="blue-bg"]');if(infoEl)infoEl.innerHTML='当前权限：<strong>'+totalPerms+'/'+totalPossible+'</strong>（'+Math.round(totalPerms/totalPossible*100)+'%），系统保留权限不可修改';}
 function saveRolePerms(idx){var role=rolePermissionData[idx];var permNames=Object.entries(role.perms).filter(function(e){return e[1];}).map(function(e){return rolePermissionLabels[e[0]];}).join('、');addOpLog('config','赵飞','更新角色「'+role.name+'」权限：'+permNames,'');showToast('角色「'+role.name+'」权限已保存，'+role.count+'名成员权限已同步更新','success');closeRolePermEditor();}
+// 【改进v3-2】角色权限审计日志：记录所有权限变更操作
+var roleAuditLogs = [
+  {time:'2026-03-27 16:42', operator:'赵飞', role:'🔧 运维人员', action:'更新权限', details:'「设备重启」「固件升级」权限已开启', ip:'192.168.1.101'},
+  {time:'2026-03-27 14:15', operator:'赵飞', role:'🧹 客房人员', action:'更新权限', details:'「办理入住」「办理退房」权限已关闭', ip:'192.168.1.101'},
+  {time:'2026-03-26 10:30', operator:'管理员', role:'👁️ 前台只读', action:'新建角色', details:'新建「前台只读」角色，包含查看权限', ip:'192.168.1.100'},
+  {time:'2026-03-25 09:00', operator:'管理员', role:'🔧 运维人员', action:'重置权限', details:'权限重置为默认值', ip:'192.168.1.100'},
+  {time:'2026-03-24 18:20', operator:'赵飞', role:'🧹 客房人员', action:'更新权限', details:'「创建工单」权限已开启', ip:'192.168.1.101'}
+];
+function openRoleAuditLogModal() {
+  var old = document.getElementById('modal-role-audit');
+  if (old) old.remove();
+  var rowsHtml = roleAuditLogs.map(function(log) {
+    var actionColors = {更新权限:'var(--blue)', 新建角色:'var(--green)', 删除角色:'var(--red)', 重置权限:'var(--orange)'};
+    var color = actionColors[log.action] || 'var(--text)';
+    return '<tr>' +
+      '<td><span style="font-size:11px;color:var(--text-muted);">' + log.time + '</span></td>' +
+      '<td><span style="font-size:12px;font-weight:600;">' + log.operator + '</span></td>' +
+      '<td><span style="font-size:12px;">' + log.role + '</span></td>' +
+      '<td><span class="tbadge" style="background:var(--blue-bg);color:' + color + ';font-size:11px;padding:2px 8px;border-radius:10px;">' + log.action + '</span></td>' +
+      '<td><span style="font-size:12px;color:var(--text);">' + log.details + '</span></td>' +
+      '<td><span style="font-size:11px;color:var(--text-muted);">' + (log.ip || '—') + '</span></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-role-audit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="background:white;border-radius:14px;width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:22px;">📜</div>' +
+    '<div style="flex:1;"><div style="font-size:16px;font-weight:700;">🛡️ 角色权限变更审计日志</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">记录所有角色权限的变更操作，支持追溯</div></div>' +
+    '<button onclick="document.getElementById(\'modal-role-audit\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:16px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;">' +
+    '<input type="text" placeholder="搜索操作人/角色..." oninput="filterRoleAuditLog(this.value)" style="flex:1;padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;">' +
+    '<select onchange="filterRoleAuditLogByAction(this.value)" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text);">' +
+    '<option value="">全部操作</option><option value="更新权限">更新权限</option><option value="新建角色">新建角色</option><option value="重置权限">重置权限</option><option value="删除角色">删除角色</option></select>' +
+    '<button class="action-btn" onclick="exportRoleAuditLog()" style="padding:6px 12px;background:var(--green);color:white;border:none;font-size:12px;">📤 导出日志</button></div>' +
+    '<div style="overflow-y:auto;flex:1;padding:0 24px 16px;">' +
+    '<table class="table" id="role-audit-table" style="font-size:13px;">' +
+    '<thead><tr><th>时间</th><th>操作人</th><th>角色</th><th>操作类型</th><th>变更详情</th><th>IP地址</th></tr></thead>' +
+    '<tbody id="role-audit-body">' + rowsHtml + '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;background:var(--bg);">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-role-audit\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function filterRoleAuditLog(query) {
+  var rows = document.querySelectorAll('#role-audit-body tr');
+  rows.forEach(function(row) {
+    var text = row.textContent;
+    row.style.display = text.toLowerCase().indexOf(query.toLowerCase()) !== -1 ? '' : 'none';
+  });
+}
+function filterRoleAuditLogByAction(action) {
+  var rows = document.querySelectorAll('#role-audit-body tr');
+  rows.forEach(function(row) {
+    if (!action) { row.style.display = ''; return; }
+    row.style.display = row.textContent.indexOf(action) !== -1 ? '' : 'none';
+  });
+}
+function exportRoleAuditLog() {
+  var blob = new Blob([JSON.stringify(roleAuditLogs, null, 2)], {type:'application/json'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'role_audit_log_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast('📤 审计日志已导出', 'success');
+}
 function resetRolePerms(idx){if(!confirm('确定重置该角色的所有权限？'))return;var role=rolePermissionData[idx];Object.keys(role.perms).forEach(function(k){role.perms[k]=false;});showToast('权限已重置，请重新勾选后保存','info');closeRolePermEditor();openRolePermissionEditorModal(idx);}
 
 // ======= 【改进v3-4】工单完整详情弹窗：时间线+处理历史+内部备注完整闭环 =======
@@ -51236,6 +51482,93 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ======= 【改进2】服务工单看板视图 ==============================
 var kanbanDragData = { woId: null, fromStatus: null };
+// 【改进v3-4】工单统计面板：完整指标体系+趋势图+排行+完成率
+function openWorkorderStatsDashboard() {
+  var old = document.getElementById('modal-wo-stats');
+  if (old) old.remove();
+  // 统计数据（模拟）
+  var stats = {
+    total: 68, completed: 52, pending: 10, urgent: 4, avgTime: 18, // 分钟
+    today: 12, todayComplete: 9,
+    weekData: [8, 12, 10, 15, 11, 9, 12], // 近7天工单数
+    topTypes: [{name:'🔧 设备维修', count:22, pct:32, color:'var(--blue)'}, {name:'📦 送物服务', count:18, pct:26, color:'var(--green)'}, {name:'🔴 客户投诉', count:12, pct:18, color:'var(--red)'}, {name:'🔑 密码问题', count:10, pct:15, color:'var(--orange)'}, {name:'📋 其他', count:6, pct:9, color:'var(--text-muted)'}],
+    staffRanking: [{name:'赵飞', handle:28, avgTime:'12分钟', rate:'98%'}, {name:'郑强', handle:20, avgTime:'15分钟', rate:'95%'}, {name:'吴倩', handle:15, avgTime:'22分钟', rate:'88%'}],
+    completionRate: Math.round(52/68*100)
+  };
+  var maxWeek = Math.max.apply(null, stats.weekData);
+  var barsHtml = stats.weekData.map(function(v, i) {
+    var days = ['一','二','三','四','五','六','日'];
+    var h = Math.round(v / maxWeek * 80);
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">' +
+      '<div style="height:80px;display:flex;align-items:flex-end;gap:2px;">' +
+      '<div style="width:28px;background:var(--blue);border-radius:4px 4px 0 0;height:' + h + 'px;"></div></div>' +
+      '<div style="font-size:10px;color:var(--text-muted);">周' + days[i] + '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:var(--blue);">' + v + '</div></div>';
+  }).join('');
+  var typeRowsHtml = stats.topTypes.map(function(t) {
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+      '<span style="font-size:12px;color:var(--text);width:100px;flex-shrink:0;">' + t.name + '</span>' +
+      '<div style="flex:1;height:14px;background:var(--bg);border-radius:7px;overflow:hidden;">' +
+      '<div style="height:100%;width:' + t.pct + '%;background:' + t.color + ';border-radius:7px;"></div></div>' +
+      '<span style="font-size:12px;font-weight:700;color:' + t.color + ';width:36px;text-align:right;">' + t.count + '</span>' +
+      '<span style="font-size:11px;color:var(--text-muted);width:36px;text-align:right;">' + t.pct + '%</span></div>';
+  }).join('');
+  var rankRowsHtml = stats.staffRanking.map(function(s, i) {
+    var medal = ['🥇','🥈','🥉'][i] || '4.';
+    return '<tr><td style="font-size:13px;font-weight:700;">' + medal + ' ' + s.name + '</td>' +
+      '<td><span style="font-size:12px;font-weight:600;color:var(--blue);">' + s.handle + '</span> 单</td>' +
+      '<td><span style="font-size:12px;">' + s.avgTime + '</span></td>' +
+      '<td><span class="tbadge green" style="font-size:11px;">' + s.rate + '</span></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-wo-stats" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="background:white;border-radius:14px;width:760px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:22px;">📊</div>' +
+    '<div style="flex:1;"><div style="font-size:16px;font-weight:700;">📊 工单统计面板</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">工单总量 · 完成率 · 趋势分析 · 员工排行</div></div>' +
+    '<div style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-radius:10px;font-size:12px;font-weight:600;">今日完成 ' + stats.todayComplete + '/' + stats.today + '</div>' +
+    '<button onclick="document.getElementById(\'modal-wo-stats\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="overflow-y:auto;flex:1;padding:20px 24px;">' +
+    // 核心指标行
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:14px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:28px;font-weight:700;color:var(--blue);">' + stats.total + '</div><div style="font-size:11px;color:var(--text-muted);">工单总量</div></div>' +
+    '<div style="padding:14px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:28px;font-weight:700;color:var(--green);">' + stats.completed + '</div><div style="font-size:11px;color:var(--text-muted);">已完成</div></div>' +
+    '<div style="padding:14px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:28px;font-weight:700;color:var(--orange);">' + stats.pending + '</div><div style="font-size:11px;color:var(--text-muted);">进行中</div></div>' +
+    '<div style="padding:14px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:28px;font-weight:700;color:var(--red);">' + stats.urgent + '</div><div style="font-size:11px;color:var(--text-muted);">紧急待处理</div></div>' +
+    '<div style="padding:14px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:28px;font-weight:700;color:var(--purple);">' + stats.avgTime + 'min</div><div style="font-size:11px;color:var(--text-muted);">平均处理时长</div></div></div>' +
+    // 图表行
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">' +
+    // 趋势图
+    '<div style="padding:14px;background:white;border:1px solid var(--border);border-radius:8px;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📈 近7天工单趋势</div>' +
+    '<div style="display:flex;align-items:flex-end;justify-content:space-between;height:100px;gap:4px;">' + barsHtml + '</div>' +
+    '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--text-muted);"><span>周一</span><span>周二</span><span>周三</span><span>周四</span><span>周五</span><span>周六</span><span>周日</span></div></div>' +
+    // 完成率
+    '<div style="padding:14px;background:white;border:1px solid var(--border);border-radius:8px;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🎯 工单完成率</div>' +
+    '<div style="display:flex;align-items:center;gap:16px;">' +
+    '<div style="position:relative;width:100px;height:100px;flex-shrink:0;">' +
+    '<svg width="100" height="100" viewBox="0 0 100 100" style="transform:rotate(-90deg);">' +
+    '<circle cx="50" cy="50" r="42" fill="none" stroke="var(--bg)" stroke-width="14"/>' +
+    '<circle cx="50" cy="50" r="42" fill="none" stroke="var(--green)" stroke-width="14" stroke-dasharray="' + (stats.completionRate*2.64) + ' 264" stroke-dashoffset="0" stroke-linecap="round"/></svg>' +
+    '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);">' + stats.completionRate + '%</div><div style="font-size:9px;color:var(--text-muted);">完成率</div></div></div>' +
+    '<div style="flex:1;">' +
+    '<div style="margin-bottom:8px;"><div style="font-size:12px;color:var(--text);margin-bottom:2px;">已完成 <strong style="color:var(--green);">' + stats.completed + '</strong> 单</div>' +
+    '<div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + stats.completionRate + '%;background:var(--green);border-radius:4px;"></div></div></div>' +
+    '<div style="margin-bottom:8px;"><div style="font-size:12px;color:var(--text);margin-bottom:2px;">进行中 <strong style="color:var(--orange);">' + stats.pending + '</strong> 单</div>' +
+    '<div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + Math.round(stats.pending/stats.total*100) + '%;background:var(--orange);border-radius:4px;"></div></div></div>' +
+    '<div><div style="font-size:12px;color:var(--text);margin-bottom:2px;">紧急 <strong style="color:var(--red);">' + stats.urgent + '</strong> 单</div>' +
+    '<div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + Math.round(stats.urgent/stats.total*100) + '%;background:var(--red);border-radius:4px;"></div></div></div></div></div></div>' +
+    // 类型占比+员工排行
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+    '<div style="padding:14px;background:white;border:1px solid var(--border);border-radius:8px;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📂 工单类型分布</div>' + typeRowsHtml + '</div>' +
+    '<div style="padding:14px;background:white;border:1px solid var(--border);border-radius:8px;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🏆 员工处理排行（本月）</div>' +
+    '<table class="table" style="font-size:12px;"><thead><tr><th>员工</th><th>处理量</th><th>平均时长</th><th>完成率</th></tr></thead><tbody>' + rankRowsHtml + '</tbody></table></div></div></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;background:var(--bg);">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-stats\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
 function openWorkorderKanbanModal() {
   openModal('wo-kanban');
 }
@@ -52364,6 +52697,70 @@ function deleteConfig(id) {
   if (modal) modal.remove();
   openConfigBackupCenterModal();
   showToast('✅ 备份已删除', 'success');
+}
+// 【改进v3-5】配置自动备份设置面板
+function openConfigAutoBackupSettings() {
+  var old = document.getElementById('modal-config-auto-backup');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-config-auto-backup" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="background:white;border-radius:14px;width:520px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:22px;">⏰</div>' +
+    '<div style="flex:1;"><div style="font-size:16px;font-weight:700;">⏰ 配置自动备份计划</div><div style="font-size:11px;color:var(--text-muted);">设置定时自动备份规则</div></div>' +
+    '<button onclick="document.getElementById(\'modal-config-auto-backup\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;overflow-y:auto;flex:1;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;">' +
+    '<div><div style="font-size:13px;font-weight:600;">🔔 自动备份总开关</div><div style="font-size:11px;color:var(--text-muted);">开启后按计划自动备份系统配置</div></div>' +
+    '<div id="auto-backup-toggle" style="width:44px;height:24px;background:var(--green);border-radius:12px;position:relative;cursor:pointer;" onclick="toggleAutoBackup(this)">' +
+    '<div style="position:absolute;width:20px;height:20px;background:white;border-radius:50%;top:2px;right:2px;transition:all 0.2s;"></div></div></div>' +
+    '<div class="form-group"><label class="form-label">备份频率</label>' +
+    '<select class="form-select" id="ab-frequency" style="font-size:13px;">' +
+    '<option value="daily">每天</option><option value="weekly">每周</option><option value="monthly">每月</option></select></div>' +
+    '<div class="form-group"><label class="form-label">备份时间</label>' +
+    '<input type="time" class="form-input" id="ab-time" value="02:00" style="font-size:13px;"></div>' +
+    '<div class="form-group"><label class="form-label">保留份数</label>' +
+    '<select class="form-select" id="ab-retain" style="font-size:13px;">' +
+    '<option value="7">保留最近7份</option><option value="14">保留最近14份</option><option value="30">保留最近30份</option></select></div>' +
+    '<div class="form-group"><label class="form-label">触发条件</label>' +
+    '<div style="padding:10px 12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-muted);line-height:1.8;">' +
+    '☑️ 每周一凌晨2:00 自动备份<br>' +
+    '☑️ 系统重大变更前 提醒备份<br>' +
+    '☑️ 固件升级前 自动备份<br>' +
+    '☑️ 最多保留 14 份，超出自动清理最旧版本</div></div>' +
+    '<div id="ab-status" style="padding:10px 14px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;font-size:12px;color:var(--green);">' +
+    '🟢 自动备份已启用 · 下次备份：周一 02:00 · 保留14份</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-config-auto-backup\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="saveAutoBackupSettings()" style="background:var(--green);border-color:var(--green);">💾 保存计划</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function toggleAutoBackup(el) {
+  var isOn = el.style.background.indexOf('green') !== -1 || el.style.background === 'var(--green)';
+  el.style.background = isOn ? 'var(--border)' : 'var(--green)';
+  el.querySelector('div').style.right = isOn ? 'auto' : '2px';
+  el.querySelector('div').style.left = isOn ? '2px' : 'auto';
+  var status = document.getElementById('ab-status');
+  if (status) {
+    if (isOn) {
+      status.style.background = 'var(--orange-bg)';
+      status.style.color = 'var(--orange)';
+      status.style.borderColor = 'var(--orange)';
+      status.innerHTML = '🟡 自动备份已暂停 · 修改保存后生效';
+    } else {
+      status.style.background = 'var(--green-bg)';
+      status.style.color = 'var(--green)';
+      status.style.borderColor = 'var(--green)';
+      status.innerHTML = '🟢 自动备份已启用 · 下次备份：周一 02:00 · 保留14份';
+    }
+  }
+}
+function saveAutoBackupSettings() {
+  var freq = document.getElementById('ab-frequency').value;
+  var time = document.getElementById('ab-time').value;
+  var retain = document.getElementById('ab-retain').value;
+  var freqLabels = {daily:'每天', weekly:'每周', monthly:'每月'};
+  document.getElementById('modal-config-auto-backup').remove();
+  showToast('✅ 自动备份计划已保存：' + freqLabels[freq] + ' ' + time + ' · 保留' + retain + '份', 'success');
 }
 function openConfigVersionCompare() {
   var old = document.getElementById('modal-config-compare');
