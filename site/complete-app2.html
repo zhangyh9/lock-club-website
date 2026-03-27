@@ -33200,10 +33200,11 @@ function renderPendingCheckinFeed() {
     var badgeBg = item.status === 'pending' ? 'var(--orange-bg)' : 'var(--bg)';
     html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">' +
       '<div style="width:28px;height:28px;background:var(--purple-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;">⏳</div>' +
-      '<div style="flex:1;min-width:0;">' +
+      '<div style="flex:1;min-width:0;cursor:pointer;" onclick="openRecordDetailModal(' + i + ')">' +
       '<div style="font-size:12px;font-weight:600;">' + item.name + ' <span style="font-size:10px;color:' + badgeColor + ';background:' + badgeBg + ';padding:1px 5px;border-radius:3px;margin-left:4px;">' + badge + '</span></div>' +
       '<div style="font-size:11px;color:var(--text-muted);">' + item.room + ' · ' + item.type + ' · ' + item.time + '</div></div>' +
-      '<button class="action-btn small" onclick="confirmPendingCheckin(' + i + ')" style="padding:2px 8px;font-size:10px;background:var(--blue);color:white;border:none;">确认</button></div>';
+      '<button class="action-btn small" onclick="confirmPendingCheckin(' + i + ')" style="padding:2px 8px;font-size:10px;background:var(--blue);color:white;border:none;">确认</button>' +
+      '<button class="action-btn small" onclick="openRecordDetailModal(' + i + ')" style="padding:2px 8px;font-size:10px;background:var(--bg);border:1px solid var(--border);color:var(--text);">详情</button></div>';
   });
   feed.innerHTML = html;
 }
@@ -33221,6 +33222,257 @@ function saveTouPricing() {
   closeEnergyTouConfigModal();
   showToast('分时电价配置已保存！', 'success');
 }
+
+// 【改进v3-1】入住记录详情完整弹窗（支持查看入住信息、退房结算、钥匙状态）
+function openRecordDetailModal(idx) {
+  var records = [
+    {name:'张三', phone:'138****8888', id:'110101199001011234', room:'301', type:'亲子间', method:'手机开锁', checkin:'2026-03-27 10:32', checkout:'-', deposit:'¥100', status:'in', keys:[
+      {type:'📱 手机钥匙', holder:'张三', count:12, expiry:'2026-04-27', status:'生效中'},
+      {type:'💳 客户卡', holder:'张三', count:3, expiry:'2026-04-27', status:'生效中'}
+    ]},
+    {name:'李四', phone:'139****6666', id:'110101199002022345', room:'302', type:'大床房', method:'客户卡', checkin:'2026-03-26 15:00', checkout:'2026-03-27 12:00', deposit:'¥100', status:'out', keys:[
+      {type:'💳 客户卡', holder:'李四', count:5, expiry:'已失效', status:'已退房'}
+    ]},
+    {name:'钱七', phone:'137****5555', id:'110101199003033456', room:'303', type:'亲子间', method:'密码开锁', checkin:'2026-03-25 14:00', checkout:'-', deposit:'¥100', status:'change', keys:[
+      {type:'🔢 临时密码', holder:'钱七', count:8, expiry:'2026-03-27 14:00', status:'即将过期'}
+    ]}
+  ];
+  var r = records[idx] || records[0];
+  var keyRows = r.keys.map(function(k){ return '<tr><td>'+k.type+'</td><td>'+k.holder+'</td><td>'+k.count+'次</td><td>'+k.expiry+'</td><td><span class="tbadge '+(k.status==='生效中'?'green':k.status==='已退房'?'gray':'orange')+'">'+k.status+'</span></td></tr>'; }).join('');
+  var html = '<div class="modal-overlay" id="modal-record-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)closeRecordDetailModal()">' +
+    '<div class="modal" style="width:640px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:16px;font-weight:700;">📋 办理详情 - '+r.name+'</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;">' +
+    '<span class="tbadge '+(r.status==='in'?'blue':r.status==='out'?'green':'orange')+'">'+(r.status==='in'?'🏨 入住中':r.status==='out'?'🚪 已退房':'🔄 换房中')+'</span>' +
+    '<button onclick="closeRecordDetailModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);padding:4px;line-height:1;">✕</button></div></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">' +
+    '<div style="padding:14px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">姓名</div><div style="font-size:15px;font-weight:700;">'+r.name+'</div></div>' +
+    '<div style="padding:14px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">手机号</div><div style="font-size:15px;font-weight:700;">'+r.phone+'</div></div>' +
+    '<div style="padding:14px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">房间号</div><div style="font-size:15px;font-weight:700;color:var(--blue);">'+r.room+' - '+r.type+'</div></div>' +
+    '<div style="padding:14px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">入住方式</div><div style="font-size:15px;font-weight:700;">'+r.method+'</div></div>' +
+    '<div style="padding:14px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">入住时间</div><div style="font-size:14px;font-weight:600;">'+r.checkin+'</div></div>' +
+    '<div style="padding:14px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">'+((r.status==='out')?'退房时间':'预计退房')+'</div><div style="font-size:14px;font-weight:600;">'+(r.checkout || '未退房')+'</div></div></div>' +
+    '<div style="margin-bottom:16px;padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;display:flex;justify-content:space-between;align-items:center;">' +
+    '<div><div style="font-size:12px;color:var(--blue);font-weight:600;">押金状态</div><div style="font-size:13px;margin-top:2px;">押金 ¥100 '+(r.status==='out'?'✅ 已退':'📌 系统中')+'</div></div>' +
+    '<div style="text-align:right;"><div style="font-size:12px;color:var(--text-muted);">入住天数</div><div style="font-size:22px;font-weight:700;color:var(--blue);">'+(r.status==='out'?'1':'2')+'<span style="font-size:12px;font-weight:400;">天</span></div></div></div>' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🔑 钥匙状态 <span style="font-size:11px;font-weight:400;color:var(--text-muted);">('+r.keys.length+'个)</span></div>' +
+    '<table class="table" style="font-size:12px;"><thead><tr><th>钥匙类型</th><th>持有人</th><th>开锁次数</th><th>有效期</th><th>状态</th></tr></thead><tbody>'+keyRows+'</tbody></table>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    (r.status==='in' ? '<button class="action-btn" onclick="closeRecordDetailModal();openChangeRoomModal()" style="padding:6px 16px;">🔄 换房</button><button class="action-btn orange" onclick="closeRecordDetailModal();openEarlyCheckoutModal()" style="padding:6px 16px;background:var(--orange);color:white;border:none;">🚪 退房</button>' : '') +
+    '<button class="action-btn secondary" onclick="closeRecordDetailModal()" style="padding:6px 16px;">关闭</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeRecordDetailModal() { var m = document.getElementById('modal-record-detail'); if (m) m.remove(); }
+
+// 【改进v3-2】会员充值完整表单（支持充值金额、赠送积分、会员等级变更、支付方式）
+function openMemberRechargeModal(idx) {
+  var m = {name:'VIP会员', level:'gold', points:2800, balance:680, phone:'138****8888', id:'110101199001011234'};
+  var html = '<div class="modal-overlay" id="modal-member-recharge" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)closeMemberRechargeModal()">' +
+    '<div class="modal" style="width:520px;background:white;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:16px;font-weight:700;">💳 会员充值 - '+m.name+'</div>' +
+    '<button onclick="closeMemberRechargeModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);">当前余额</div><div style="font-size:18px;font-weight:700;color:var(--blue);">¥'+m.balance+'</div></div>' +
+    '<div style="padding:10px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);">剩余积分</div><div style="font-size:18px;font-weight:700;color:var(--purple);">'+m.points+'</div></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);">会员等级</div><div style="font-size:14px;font-weight:700;color:var(--orange);">'+(m.level==='gold'?'金卡':m.level==='silver'?'银卡':'普通')+'</div></div></div>' +
+    '<div style="margin-bottom:14px;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">💰 充值金额</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;">' +
+    '<button class="recharge-amt-btn active" onclick="selectRechargeAmt(this,100)" style="padding:10px;border:2px solid var(--blue);background:var(--blue-bg);border-radius:8px;cursor:pointer;font-weight:700;color:var(--blue);">¥100</button>' +
+    '<button class="recharge-amt-btn" onclick="selectRechargeAmt(this,200)" style="padding:10px;border:1px solid var(--border);background:white;border-radius:8px;cursor:pointer;">¥200</button>' +
+    '<button class="recharge-amt-btn" onclick="selectRechargeAmt(this,500)" style="padding:10px;border:1px solid var(--border);background:white;border-radius:8px;cursor:pointer;">¥500</button>' +
+    '<button class="recharge-amt-btn" onclick="selectRechargeAmt(this,1000)" style="padding:10px;border:1px solid var(--border);background:white;border-radius:8px;cursor:pointer;">¥1000</button></div>' +
+    '<input type="number" id="recharge-custom-amt" class="form-input" placeholder="输入自定义金额" style="padding:8px 12px;font-size:14px;" oninput="onRechargeAmtChange()"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
+    '<div><div style="font-size:13px;font-weight:600;margin-bottom:6px;">🎁 支付方式</div>' +
+    '<select class="form-select" id="recharge-pay-method" style="padding:8px 10px;font-size:13px;"><option value="wx">微信支付</option><option value="alipay">支付宝</option><option value="cash">现金</option><option value="card">银行卡</option></select></div>' +
+    '<div><div style="font-size:13px;font-weight:600;margin-bottom:6px;">📝 充值备注</div>' +
+    '<input type="text" class="form-input" id="recharge-remark" placeholder="可选" style="padding:8px 10px;font-size:13px;"></div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;margin-bottom:16px;">' +
+    '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span>充值金额</span><span id="ra-amount">¥100.00</span></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span>赠送积分</span><span style="color:var(--green);">+100</span></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding-top:6px;border-top:1px dashed var(--green);"><span>实际到账</span><span style="color:var(--green);" id="ra-total">¥100.00 + 100积分</span></div></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><input type="checkbox" id="recharge-issue-invoice" style="accent-color:var(--blue);width:16px;height:16px;"><span style="font-size:13px;">需要开具发票</span></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="action-btn secondary" onclick="closeMemberRechargeModal()" style="padding:8px 20px;">取消</button>' +
+    '<button class="action-btn primary" onclick="submitMemberRecharge()" style="background:var(--blue);color:white;border:none;padding:8px 24px;font-weight:700;">确认充值 ¥100</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function selectRechargeAmt(btn, amt) {
+  document.querySelectorAll('.recharge-amt-btn').forEach(function(b){ b.classList.remove('active'); b.style.border='1px solid var(--border)'; b.style.background='white'; });
+  btn.classList.add('active');
+  btn.style.border='2px solid var(--blue)';
+  btn.style.background='var(--blue-bg)';
+  document.getElementById('recharge-custom-amt').value = amt;
+  onRechargeAmtChange();
+}
+function onRechargeAmtChange() {
+  var amt = parseFloat(document.getElementById('recharge-custom-amt').value) || 0;
+  var bonus = Math.floor(amt);
+  document.getElementById('ra-amount').textContent = '¥' + amt.toFixed(2);
+  document.getElementById('ra-total').textContent = '¥' + amt.toFixed(2) + ' + ' + bonus + '积分';
+  var btn = document.querySelector('.recharge-amt-btn.active');
+  var confirmBtn = document.querySelector('#modal-member-recharge .modal-footer .action-btn.primary');
+  if (confirmBtn) confirmBtn.textContent = '确认充值 ¥' + (amt || 0).toFixed(0);
+}
+function submitMemberRecharge() {
+  var amt = parseFloat(document.getElementById('recharge-custom-amt').value) || 0;
+  if (amt <= 0) { showToast('请输入充值金额', 'error'); return; }
+  closeMemberRechargeModal();
+  showToast('充值成功：¥' + amt + ' + ' + Math.floor(amt) + '积分已到账！', 'success');
+  addOpLog('config', '赵飞', '会员充值：¥' + amt, '');
+}
+
+// 【改进v3-3】客房清洁任务派单完整表单（支持选择房型、清洁类型、优先级、派单人）
+function openHousekeepingDispatchModal() {
+  var html = '<div class="modal-overlay" id="modal-housekeeping-dispatch" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)closeHousekeepingDispatchModal()">' +
+    '<div class="modal" style="width:500px;background:white;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:16px;font-weight:700;">🧹 客房清洁派单</div>' +
+    '<button onclick="closeHousekeepingDispatchModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">房间号 <span class="required">*</span></label>' +
+    '<select class="form-select" id="hk-room" style="padding:8px 10px;"><option value="">请选择房间</option><option value="301">301 - 亲子间（入住中）</option><option value="302">302 - 亲子间（空房）</option><option value="303">303 - 亲子间（空房）</option><option value="304">304 - 亲子间（入住中）</option><option value="201">201 - 大床房（入住中）</option><option value="202">202 - 大床房（空房）</option></select></div>' +
+    '<div class="form-group"><label class="form-label">清洁类型 <span class="required">*</span></label>' +
+    '<select class="form-select" id="hk-type" style="padding:8px 10px;"><option value="checkout">🚪 退房清洁</option><option value="routine">🧹 例行清洁</option><option value="deep">✨ 深层清洁</option><option value="emergency">⚡ 紧急清洁</option></select></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">优先级</label>' +
+    '<select class="form-select" id="hk-priority" style="padding:8px 10px;"><option value="normal">普通</option><option value="urgent">紧急</option><option value="vip">VIP优先</option></select></div>' +
+    '<div class="form-group"><label class="form-label">派单给</label>' +
+    '<select class="form-select" id="hk-assign" style="padding:8px 10px;"><option value="">待分配</option><option value="郑强">郑强（清洁人员）</option><option value="吴倩">吴倩（客房主管）</option><option value="周敏">周敏（前厅接待）</option></select></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">要求完成时间</label>' +
+    '<input type="datetime-local" class="form-input" id="hk-due" style="padding:8px 10px;" value="2026-03-27T17:00"></div>' +
+    '<div class="form-group"><label class="form-label">预计时长</label>' +
+    '<select class="form-select" id="hk-duration" style="padding:8px 10px;"><option value="30">30分钟</option><option value="45" selected>45分钟</option><option value="60">1小时</option><option value="90">1.5小时</option><option value="120">2小时</option></select></div></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<textarea class="form-textarea" id="hk-remark" placeholder="特殊清洁要求（选填）" style="min-height:60px;padding:8px 10px;"></textarea></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-top:8px;">' +
+    '<input type="checkbox" id="hk-notify-staff" checked style="accent-color:var(--orange);width:16px;height:16px;">' +
+    '<span style="font-size:12px;color:var(--orange);">📱 派单后立即通知清洁人员</span></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="action-btn secondary" onclick="closeHousekeepingDispatchModal()" style="padding:8px 20px;">取消</button>' +
+    '<button class="action-btn primary" onclick="submitHousekeepingDispatch()" style="background:var(--orange);color:white;border:none;padding:8px 24px;font-weight:700;">📨 确认派单</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeHousekeepingDispatchModal() { var m = document.getElementById('modal-housekeeping-dispatch'); if (m) m.remove(); }
+function submitHousekeepingDispatch() {
+  var room = document.getElementById('hk-room').value;
+  var type = document.getElementById('hk-type').value;
+  if (!room) { showToast('请选择房间号', 'error'); return; }
+  closeHousekeepingDispatchModal();
+  showToast('清洁任务已派单：' + room + ' - ' + (type==='checkout'?'退房清洁':type==='routine'?'例行清洁':type==='deep'?'深层清洁':'紧急清洁'), 'success');
+  addOpLog('checkin', '赵飞', '客房清洁派单：' + room, '');
+}
+
+// 【改进v3-4】能源详细分析弹窗（支持7天/30天切换、费用计算、节能建议）
+function openEnergyAnalysisModal(roomNo) {
+  var html = '<div class="modal-overlay" id="modal-energy-analysis-v2" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)closeEnergyAnalysisModalV2()">' +
+    '<div class="modal" style="width:700px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:16px;font-weight:700;">📊 能源详细分析' + (roomNo ? ' - ' + roomNo + '房间' : ' - 全楼汇总') + '</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;"><div class="card-tabs" style="display:flex;gap:4px;">' +
+    '<button class="card-tab active" id="ea-tab-7d" onclick="switchEnergyAnalysisPeriod(this,\'7d\')" style="padding:4px 12px;font-size:12px;cursor:pointer;border-radius:4px;border:none;background:var(--blue);color:white;">近7天</button>' +
+    '<button class="card-tab" id="ea-tab-30d" onclick="switchEnergyAnalysisPeriod(this,\'30d\')" style="padding:4px 12px;font-size:12px;cursor:pointer;border-radius:4px;border:1px solid var(--border);background:white;color:var(--text);">近30天</button></div>' +
+    '<button onclick="closeEnergyAnalysisModalV2()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);padding:4px;line-height:1;">✕</button></div></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:14px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);">总用电量</div><div style="font-size:22px;font-weight:700;color:var(--blue);">48.2<span style="font-size:12px;font-weight:400;">kWh</span></div><div style="font-size:10px;color:var(--text-muted);">7天</div></div>' +
+    '<div style="padding:14px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);">总电费</div><div style="font-size:22px;font-weight:700;color:var(--orange);">¥24.10</div><div style="font-size:10px;color:var(--text-muted);">按均价¥0.5</div></div>' +
+    '<div style="padding:14px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);">日均用电</div><div style="font-size:22px;font-weight:700;color:var(--red);">6.9<span style="font-size:12px;font-weight:400;">kWh</span></div><div style="font-size:10px;color:var(--red);">↑ 偏高</div></div>' +
+    '<div style="padding:14px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);">峰谷占比</div><div style="font-size:22px;font-weight:700;color:var(--green);">62<span style="font-size:12px;font-weight:400;">%</span></div><div style="font-size:10px;color:var(--text-muted);">峰时用电</div></div></div>' +
+    '<div style="margin-bottom:16px;"><div style="font-size:13px;font-weight:700;margin-bottom:10px;">📈 用电量趋势（7天）</div>' +
+    '<div style="display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 8px;">' +
+    '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;background:var(--blue);border-radius:4px 4px 0 0;height:65%;"></div><div style="font-size:10px;color:var(--text-muted);">03-21</div><div style="font-size:10px;font-weight:600;">6.5kWh</div></div>' +
+    '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;background:var(--blue);border-radius:4px 4px 0 0;height:80%;"></div><div style="font-size:10px;color:var(--text-muted);">03-22</div><div style="font-size:10px;font-weight:600;">8.0kWh</div></div>' +
+    '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;background:var(--red);border-radius:4px 4px 0 0;height:95%;"></div><div style="font-size:10px;color:var(--text-muted);">03-23</div><div style="font-size:10px;font-weight:600;color:var(--red);">9.5kWh</div></div>' +
+    '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;background:var(--orange);border-radius:4px 4px 0 0;height:72%;"></div><div style="font-size:10px;color:var(--text-muted);">03-24</div><div style="font-size:10px;font-weight:600;">7.2kWh</div></div>' +
+    '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;background:var(--orange);border-radius:4px 4px 0 0;height:60%;"></div><div style="font-size:10px;color:var(--text-muted);">03-25</div><div style="font-size:10px;font-weight:600;">6.0kWh</div></div>' +
+    '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;background:var(--blue);border-radius:4px 4px 0 0;height:55%;"></div><div style="font-size:10px;color:var(--text-muted);">03-26</div><div style="font-size:10px;font-weight:600;">5.5kWh</div></div>' +
+    '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;background:var(--blue);border-radius:4px 4px 0 0;height:45%;border:2px solid var(--blue);"></div><div style="font-size:10px;color:var(--text-muted);">03-27</div><div style="font-size:10px;font-weight:600;">4.5kWh</div></div></div></div>' +
+    '<div style="margin-bottom:16px;"><div style="font-size:13px;font-weight:700;margin-bottom:10px;">💡 节能优化建议</div>' +
+    '<div style="display:flex;flex-direction:column;gap:8px;">' +
+    '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;"><span style="font-size:16px;">🔴</span><div><div style="font-size:12px;font-weight:600;color:var(--red);">03-23用电异常偏高</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">当天用电9.5kWh，超出日均42%，疑似空调未关闭。建议检查退房后是否及时断电。</div></div></div>' +
+    '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;"><span style="font-size:16px;">🟡</span><div><div style="font-size:12px;font-weight:600;color:var(--orange);">峰时用电占比过高</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">尖峰+高峰时段用电占62%，建议开启分时电价策略，将高功率设备运行时间调整至低谷时段。</div></div></div>' +
+    '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;"><span style="font-size:16px;">🟢</span><div><div style="font-size:12px;font-weight:600;color:var(--green);">近期用电呈下降趋势</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">最近3天用电持续下降，当前已低于日均7kWh基准，建议保持当前用电习惯。</div></div></div></div></div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:16px;border-top:1px solid var(--border);">' +
+    '<div style="font-size:12px;color:var(--text-muted);">数据更新：2026-03-27 17:00</div>' +
+    '<div style="display:flex;gap:8px;"><button class="action-btn small" onclick="exportEnergyDetailReport()" style="padding:5px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出报告</button><button class="action-btn secondary" onclick="closeEnergyAnalysisModalV2()" style="padding:5px 16px;">关闭</button></div></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeEnergyAnalysisModalV2() { var m = document.getElementById('modal-energy-analysis-v2'); if (m) m.remove(); }
+function switchEnergyAnalysisPeriod(btn, period) {
+  document.getElementById('ea-tab-7d').classList.remove('active');
+  document.getElementById('ea-tab-30d').classList.remove('active');
+  document.getElementById('ea-tab-7d').style.background = 'white';
+  document.getElementById('ea-tab-7d').style.color = 'var(--text)';
+  document.getElementById('ea-tab-30d').style.background = 'white';
+  document.getElementById('ea-tab-30d').style.color = 'var(--text)';
+  btn.classList.add('active');
+  btn.style.background = 'var(--blue)';
+  btn.style.color = 'white';
+  showToast('已切换至' + (period==='7d'?'近7天':'近30天') + '数据', 'info');
+}
+function exportEnergyDetailReport() { showToast('能源分析报告已导出（CSV）', 'success'); }
+
+// 【改进v3-5】角色权限新增/编辑完整表单（支持权限勾选、角色类型、描述）
+function openAddRoleModal() {
+  var html = '<div class="modal-overlay" id="modal-role-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)closeRoleFormModal()">' +
+    '<div class="modal" style="width:560px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:16px;font-weight:700;" id="role-form-title">➕ 新增角色</div>' +
+    '<button onclick="closeRoleFormModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group" style="margin-bottom:14px;"><label class="form-label">角色名称 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="role-name" placeholder="如：前台接待、客房经理" style="padding:8px 12px;font-size:14px;"></div>' +
+    '<div class="form-row" style="margin-bottom:14px;"><div class="form-group"><label class="form-label">角色类型</label>' +
+    '<select class="form-select" id="role-type" style="padding:8px 10px;font-size:13px;"><option value="custom">自定义角色</option><option value="system">系统角色</option></select></div>' +
+    '<div class=\"form-group\"><label class=\"form-label\">状态</label>' +
+    '<select class="form-select" id="role-status" style="padding:8px 10px;font-size:13px;"><option value="enabled">启用</option><option value="disabled">禁用</option></select></div></div>' +
+    '<div class="form-group" style="margin-bottom:14px;"><label class="form-label">角色描述</label>' +
+    '<input type="text" class="form-input" id="role-desc" placeholder="角色职责说明（选填）" style="padding:8px 12px;font-size:13px;"></div>' +
+    '<div class="form-group"><label class="form-label">🔐 权限配置</label>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">' +
+    '<div style="padding:10px 12px;background:var(--bg);border-bottom:1px solid var(--border);font-size:12px;font-weight:600;">模块权限</div>' +
+    '<div style="padding:10px 12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="role-perm" value="room_view" checked style="accent-color:var(--blue);">🏠 房间查看</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="role-perm" value="room_edit" style="accent-color:var(--blue);">🏠 房间编辑</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="role-perm" value="checkin" checked style="accent-color:var(--blue);">🏨 入住办理</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="role-perm" value="checkout" style="accent-color:var(--blue);">🚪 退房结算</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="role-perm" value="key_view" checked style="accent-color:var(--blue);">🔑 钥匙查看</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="role-perm" value="key_manage" style="accent-color:var(--blue);">🔑 钥匙管理</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="role-perm" value="device" style="accent-color:var(--blue);">📱 设备管理</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="role-perm" value="energy" style="accent-color:var(--blue);">⚡ 能耗查看</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="role-perm" value="workorder" checked style="accent-color:var(--blue);">📋 工单管理</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="role-perm" value="staff" style="accent-color:var(--blue);">👥 员工管理</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="role-perm" value="config" style="accent-color:var(--blue);">⚙️ 系统配置</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" class="role-perm" value="report" style="accent-color:var(--blue);">📊 数据报表</label></div></div></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="action-btn secondary" onclick="closeRoleFormModal()" style="padding:8px 20px;">取消</button>' +
+    '<button class="action-btn primary" onclick="submitRoleForm()" style="background:var(--blue);color:white;border:none;padding:8px 24px;font-weight:700;">💾 保存角色</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeRoleFormModal() { var m = document.getElementById('modal-role-form'); if (m) m.remove(); }
+function submitRoleForm() {
+  var name = document.getElementById('role-name').value.trim();
+  if (!name) { showToast('请输入角色名称', 'error'); return; }
+  var perms = [];
+  document.querySelectorAll('.role-perm:checked').forEach(function(c){ perms.push(c.value); });
+  closeRoleFormModal();
+  showToast('角色「' + name + '」已保存（含' + perms.length + '项权限）', 'success');
+  addOpLog('config', '赵飞', '新增角色：' + name + '，权限：' + perms.join('/'), '');
+}
+function openEditRoleModal(idx) { openAddRoleModal(); document.getElementById('role-form-title').textContent = '✏️ 编辑角色'; document.getElementById('role-name').value = ['运维人员','客房人员','前台只读','前厅经理'][idx] || ''; }
+function deleteRole(idx) { if(confirm('确认删除该角色？')) { showToast('角色已删除', 'success'); addOpLog('config','赵飞','删除角色 ID:'+idx,''); } }
+
+// 操作日志通用函数
+function addOpLog(type, user, content, ip) {
+  console.log('[OPLOG]', type, user, content);
+}
+function exportOplog() { showToast('操作日志已导出（CSV）', 'success'); }
+function filterOplog() { showToast('日志筛选已更新', 'info'); }
 </script>
 </body>
 </html>
