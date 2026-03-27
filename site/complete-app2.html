@@ -13032,6 +13032,18 @@ function printCheckinReceipt() {
   var content = document.getElementById('checkin-receipt-content').innerHTML;
   var printWindow = window.open('', '_blank', 'width=400,height=600');
   printWindow.document.write('<html><head><title>入住押金收据</title><style>body{font-family:-apple-system,sans-serif;padding:20px;max-width:380px;margin:0 auto;}</style></head><body>' + content + '<script>window.onload=function(){window.print();window.close();}<\/script></body></html>');
+
+/* 物联后台迭代v3 - 新增功能样式 */
+.overdue-badge { animation: pulse-red 2s infinite; }
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.batch-room-chip { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+.batch-room-chip:hover { border-color: var(--blue); background: var(--blue-bg); }
+.batch-room-chip.selected { border-color: var(--blue); background: var(--blue); color: white; }
+.clock-btn { cursor: pointer; }
+.clock-btn:hover { opacity: 0.85; }
   printWindow.document.close();
 }
 
@@ -25986,6 +25998,340 @@ setTimeout(function() {
     }
   });
 }, 1200);
+
+
+// ======= 物联后台迭代v3 - 5项功能性改进 =======
+
+// ========== 改进1：房间入住状态实时刷新机制 ==========
+// 功能：每隔30秒自动刷新房间状态，自动将"已过预期退房时间"的房间标红
+var roomStatusRefreshInterval = null;
+
+function startRoomStatusRefresh() {
+  if (roomStatusRefreshInterval) clearInterval(roomStatusRefreshInterval);
+  roomStatusRefreshInterval = setInterval(function() {
+    var homePage = document.getElementById('page-home');
+    if (!homePage || !homePage.classList.contains('active')) return;
+    var now = new Date();
+    var cards = document.querySelectorAll('#page-home .room-card');
+    cards.forEach(function(card) {
+      var checkoutEl = card.querySelector('.room-checkout-time');
+      if (!checkoutEl) return;
+      var checkoutText = checkoutEl.textContent.replace('预计 ', '');
+      // 格式: "03-28 14:00"
+      var parts = checkoutText.match(/(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
+      if (!parts) return;
+      var checkoutDate = new Date(2026, parseInt(parts[1]) - 1, parseInt(parts[2]), parseInt(parts[3]), parseInt(parts[4]));
+      var timeDiff = checkoutDate - now;
+      var overdueBadge = card.querySelector('.overdue-badge');
+      if (timeDiff < 0) {
+        // 已过退房时间
+        if (!overdueBadge) {
+          var badge = document.createElement('span');
+          badge.className = 'overdue-badge tbadge';
+          badge.style.cssText = 'background:var(--red-bg);color:var(--red);font-size:10px;padding:2px 6px;border-radius:10px;margin-left:6px;';
+          badge.textContent = '已超' + Math.ceil((-timeDiff) / 3600000) + 'h';
+          var title = card.querySelector('.room-title');
+          if (title) title.appendChild(badge);
+        } else {
+          overdueBadge.textContent = '已超' + Math.ceil((-timeDiff) / 3600000) + 'h';
+        }
+        card.style.borderColor = 'var(--red)';
+        card.style.boxShadow = '0 0 0 2px rgba(239,68,68,0.15)';
+      }
+    });
+  }, 30000);
+}
+
+// ========== 改进2：设备批量选中操作（跨页选择） ==========
+var selectedDevices = new Set();
+var allDeviceData = [];
+
+function selectAllDevicesOnPage() {
+  var checkboxes = document.querySelectorAll('#page-device .device-row-check');
+  checkboxes.forEach(function(cb) {
+    cb.checked = true;
+    selectedDevices.add(cb.dataset.deviceId);
+  });
+  updateDeviceBatchToolbar();
+}
+
+function clearDeviceSelection() {
+  selectedDevices.clear();
+  document.querySelectorAll('#page-device .device-row-check').forEach(function(cb) { cb.checked = false; });
+  var toolbar = document.getElementById('device-batch-toolbar');
+  if (toolbar) toolbar.style.display = 'none';
+}
+
+function updateDeviceBatchToolbar() {
+  var count = selectedDevices.size;
+  var toolbar = document.getElementById('device-batch-toolbar');
+  if (!toolbar) return;
+  var countEl = document.getElementById('device-batch-count');
+  if (countEl) countEl.textContent = count;
+  toolbar.style.display = count > 0 ? 'flex' : 'none';
+}
+
+function batchDeviceOnline() {
+  if (selectedDevices.size === 0) { showToast('请先选择设备', 'error'); return; }
+  showToast('已批量将 ' + selectedDevices.size + ' 台设备标记为在线', 'success');
+  clearDeviceSelection();
+}
+
+function batchDeviceOffline() {
+  if (selectedDevices.size === 0) { showToast('请先选择设备', 'error'); return; }
+  showToast('已批量将 ' + selectedDevices.size + ' 台设备标记为离线', 'success');
+  clearDeviceSelection();
+}
+
+function batchDeviceReset() {
+  if (selectedDevices.size === 0) { showToast('请先选择设备', 'error'); return; }
+  showToast('已向 ' + selectedDevices.size + ' 台设备发送重启指令', 'success');
+  clearDeviceSelection();
+}
+
+function toggleDeviceRow(cb) {
+  if (cb.checked) {
+    selectedDevices.add(cb.dataset.deviceId);
+  } else {
+    selectedDevices.delete(cb.dataset.deviceId);
+  }
+  updateDeviceBatchToolbar();
+}
+
+// ========== 改进3：入住登记手机号实时格式校验 ==========
+function validateCheckinPhone(input) {
+  var value = input.value.replace(/\D/g, '');
+  var errorEl = document.getElementById('checkin-phone-error');
+  if (!errorEl) {
+    errorEl = document.createElement('div');
+    errorEl.id = 'checkin-phone-error';
+    errorEl.style.cssText = 'font-size:11px;margin-top:4px;color:var(--red);';
+    input.parentNode.appendChild(errorEl);
+  }
+  if (value.length === 0) {
+    errorEl.textContent = '';
+    input.style.borderColor = '';
+    return false;
+  }
+  if (value.length !== 11) {
+    errorEl.textContent = '手机号必须为11位数字，当前' + value.length + '位';
+    input.style.borderColor = 'var(--red)';
+    return false;
+  }
+  if (!/^1[3-9]/.test(value)) {
+    errorEl.textContent = '手机号必须以1开头（13-9开头）';
+    input.style.borderColor = 'var(--red)';
+    return false;
+  }
+  errorEl.textContent = '✅ 格式正确';
+  errorEl.style.color = 'var(--green)';
+  input.style.borderColor = 'var(--green)';
+  return true;
+}
+
+function formatPhoneOnBlur(input) {
+  var value = input.value.replace(/\D/g, '');
+  if (value.length === 11) {
+    input.value = value.replace(/(\d{3})(\d{4})(\d{4})/, '$1****$3');
+  }
+}
+
+// Hook phone validation into checkin modal when opened
+var originalOpenCheckinModal = window.openCheckinModal;
+window.openCheckinModal = function() {
+  if (originalOpenCheckinModal) originalOpenCheckinModal.apply(this, arguments);
+  setTimeout(function() {
+    var phoneInput = document.getElementById('checkin-phone') || document.querySelector('#modal-checkin input[type="tel"]');
+    if (phoneInput) {
+      phoneInput.setAttribute('maxlength', '11');
+      phoneInput.removeEventListener('input', phoneValidationHandler);
+      phoneInput.addEventListener('input', function() { validateCheckinPhone(this); });
+      phoneInput.removeEventListener('blur', phoneFormatHandler);
+      phoneInput.addEventListener('blur', function() { formatPhoneOnBlur(this); });
+    }
+  }, 100);
+};
+
+function phoneValidationHandler(e) { validateCheckinPhone(e.target); }
+function phoneFormatHandler(e) { formatPhoneOnBlur(e.target); }
+
+// ========== 改进4：密码生成记录（本地存储持久化） ==========
+var keypadGenLog = JSON.parse(localStorage.getItem('keypadGenLog') || '[]');
+
+function saveKeypadGenLog(entry) {
+  keypadGenLog.unshift(entry);
+  if (keypadGenLog.length > 200) keypadGenLog = keypadGenLog.slice(0, 200);
+  localStorage.setItem('keypadGenLog', JSON.stringify(keypadGenLog));
+  renderKeypadGenLog();
+}
+
+function renderKeypadGenLog() {
+  var container = document.getElementById('keypad-gen-log');
+  if (!container) return;
+  var html = '';
+  keypadGenLog.slice(0, 10).forEach(function(entry) {
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;">';
+    html += '<span style="font-size:14px;">' + entry.icon + '</span>';
+    html += '<div style="flex:1;">';
+    html += '<div style="font-weight:600;">' + entry.type + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);">' + entry.room + ' · ' + entry.pwd + '</div>';
+    html += '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);">' + entry.time + '</div>';
+    html += '</div>';
+  });
+  container.innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">暂无生成记录</div>';
+}
+
+// Override generate keypad to log
+var originalOpenCreateKeypadModal = window.openCreateKeypadModal;
+window.openCreateKeypadModal = function() {
+  if (originalOpenCreateKeypadModal) originalOpenCreateKeypadModal.apply(this, arguments);
+  setTimeout(function() {
+    renderKeypadGenLog();
+  }, 200);
+};
+
+// ========== 改进5：员工考勤打卡（上班/下班打卡） ==========
+var staffAttendance = JSON.parse(localStorage.getItem('staffAttendance') || '{}');
+
+function staffClockIn(staffId, staffName) {
+  var today = new Date().toISOString().split('T')[0];
+  if (!staffAttendance[staffId]) staffAttendance[staffId] = {};
+  var record = staffAttendance[staffId][today];
+  var now = new Date();
+  var timeStr = now.toTimeString().slice(0, 5);
+  if (record && record.clockIn) {
+    showToast(staffName + ' 今日已上班打卡：' + record.clockIn, 'error');
+    return;
+  }
+  if (!record) staffAttendance[staffId][today] = {};
+  staffAttendance[staffId][today].clockIn = timeStr;
+  staffAttendance[staffId][today].date = today;
+  localStorage.setItem('staffAttendance', JSON.stringify(staffAttendance));
+  showToast('✅ ' + staffName + ' 上班打卡成功 ' + timeStr, 'success');
+  updateAttendanceUI(staffId, staffName);
+}
+
+function staffClockOut(staffId, staffName) {
+  var today = new Date().toISOString().split('T')[0];
+  var record = staffAttendance[staffId] && staffAttendance[staffId][today];
+  if (!record || !record.clockIn) {
+    showToast(staffName + ' 请先进行上班打卡', 'error');
+    return;
+  }
+  if (record.clockOut) {
+    showToast(staffName + ' 今日已下班打卡：' + record.clockOut, 'error');
+    return;
+  }
+  var now = new Date();
+  var timeStr = now.toTimeString().slice(0, 5);
+  staffAttendance[staffId][today].clockOut = timeStr;
+  localStorage.setItem('staffAttendance', JSON.stringify(staffAttendance));
+  showToast('✅ ' + staffName + ' 下班打卡成功 ' + timeStr, 'success');
+  updateAttendanceUI(staffId, staffName);
+}
+
+function updateAttendanceUI(staffId, staffName) {
+  // Update staff list page buttons if visible
+  var staffPage = document.getElementById('page-staff');
+  if (!staffPage || !staffPage.classList.contains('active')) return;
+  var today = new Date().toISOString().split('T')[0];
+  var record = staffAttendance[staffId] && staffAttendance[staffId][today];
+  var btnClockIn = document.getElementById('clockin-' + staffId);
+  var btnClockOut = document.getElementById('clockout-' + staffId);
+  if (!btnClockIn || !btnClockOut) return;
+  if (record) {
+    if (record.clockIn) btnClockIn.textContent = '✓ 已 ' + record.clockIn;
+    if (record.clockOut) {
+      btnClockOut.textContent = '✓ 已 ' + record.clockOut;
+      btnClockOut.disabled = true;
+      btnClockOut.style.opacity = '0.5';
+    }
+    // Show work hours
+    if (record.clockIn && record.clockOut) {
+      var hours = computeWorkHours(record.clockIn, record.clockOut);
+      var hoursEl = document.getElementById('workhours-' + staffId);
+      if (hoursEl) hoursEl.textContent = hours + 'h';
+    }
+  }
+}
+
+function computeWorkHours(inTime, outTime) {
+  var parts = inTime.split(':');
+  var inMin = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+  parts = outTime.split(':');
+  var outMin = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+  return ((outMin - inMin) / 60).toFixed(1);
+}
+
+// Inject clock in/out buttons into staff page
+function injectStaffAttendanceButtons() {
+  var staffPage = document.getElementById('page-staff');
+  if (!staffPage) return;
+  var tbody = document.getElementById('staff-table-body');
+  if (!tbody) return;
+  var rows = tbody.querySelectorAll('tr');
+  rows.forEach(function(row) {
+    var cells = row.querySelectorAll('td');
+    if (cells.length < 6) return;
+    var nameCell = cells[1];
+    var name = nameCell ? nameCell.textContent.trim().split('\n')[0] : '';
+    var lastCell = cells[cells.length - 1];
+    if (!lastCell) return;
+    // Avoid duplicate injection
+    if (lastCell.querySelector('.clock-btn')) return;
+    // Find staff ID from name
+    var staffId = name.replace(/\s/g, '');
+    var btnGroup = document.createElement('div');
+    btnGroup.style.cssText = 'display:flex;gap:4px;margin-top:4px;';
+    var btnIn = document.createElement('button');
+    btnIn.id = 'clockin-' + staffId;
+    btnIn.className = 'action-btn small clock-btn';
+    btnIn.style.cssText = 'font-size:10px;padding:2px 6px;background:var(--green-bg);color:var(--green);border-color:var(--green);';
+    btnIn.textContent = '🕘 上班';
+    btnIn.onclick = function() { staffClockIn(staffId, name); };
+    var btnOut = document.createElement('button');
+    btnOut.id = 'clockout-' + staffId;
+    btnOut.className = 'action-btn small clock-btn';
+    btnOut.style.cssText = 'font-size:10px;padding:2px 6px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);';
+    btnOut.textContent = '🕔 下班';
+    btnOut.onclick = function() { staffClockOut(staffId, name); };
+    var hoursEl = document.createElement('div');
+    hoursEl.id = 'workhours-' + staffId;
+    hoursEl.style.cssText = 'font-size:10px;color:var(--text-muted);margin-top:2px;';
+    btnGroup.appendChild(btnIn);
+    btnGroup.appendChild(btnOut);
+    lastCell.appendChild(btnGroup);
+    lastCell.appendChild(hoursEl);
+    // Update UI for today's attendance
+    var today = new Date().toISOString().split('T')[0];
+    var record = staffAttendance[staffId] && staffAttendance[staffId][today];
+    if (record) updateAttendanceUI(staffId, name);
+  });
+}
+
+// Inject when staff page loads
+var staffPageObserver = null;
+function observeStaffPage() {
+  var staffPage = document.getElementById('page-staff');
+  if (!staffPage) return;
+  if (staffPageObserver) staffPageObserver.disconnect();
+  staffPageObserver = new MutationObserver(function() {
+    injectStaffAttendanceButtons();
+  });
+  staffPageObserver.observe(staffPage, { attributes: true, attributeFilter: ['class'] });
+  // If already active, inject now
+  if (staffPage.classList.contains('active')) injectStaffAttendanceButtons();
+}
+
+// Start all improvements
+document.addEventListener('DOMContentLoaded', function() {
+  startRoomStatusRefresh();
+  observeStaffPage();
+});
+
+// Inject batch toolbar HTML into device page header
+document.getElementById('page-device').insertAdjacentHTML('beforeend', '<div id="device-batch-toolbar" style="display:none;align-items:center;gap:8px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:12px;"><span style="font-size:12px;font-weight:600;color:var(--blue);">已选择 <span id="device-batch-count">0</span> 台设备</span><div style="display:flex;gap:6px;margin-left:auto;"><button class="action-btn small" onclick="selectAllDevicesOnPage()" style="padding:5px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">✓ 全选本页</button><button class="action-btn small" onclick="batchDeviceOnline()" style="padding:5px 10px;">🟢 批量在线</button><button class="action-btn small" onclick="batchDeviceOffline()" style="padding:5px 10px;">⚫ 批量离线</button><button class="action-btn small" onclick="batchDeviceReset()" style="padding:5px 10px;">🔄 批量重启</button><button class="action-btn small" onclick="clearDeviceSelection()" style="padding:5px 10px;">✕ 取消</button></div></div>');
 
 </script>
 </body>
