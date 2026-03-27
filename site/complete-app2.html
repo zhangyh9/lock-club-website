@@ -41667,6 +41667,461 @@ var woSatisfactionResults=[];var woPendingSurvey=null;function submitWorkorderAn
 // Hook: 在CI手机号输入时触发会员历史识别
 var originalLookupGuestHistory=window.lookupGuestHistory||function(){};
 window.lookupGuestHistory=function(phone){originalLookupGuestHistory(phone);onCiPhoneInput(phone);};
+
+// ==================== V3迭代新增5个功能性改进 ====================
+// 改进A: 客房分时差价系统（平日/周末/节假日自动计价）
+var peakPricingRules={
+  '平日':{multiplier:1.0,label:'工作日标准价'},
+  '周末':{multiplier:1.2,label:'周六周日上浮20%'},
+  '小长假':{multiplier:1.5,label:'清明/五一/端午上浮50%'},
+  '黄金周':{multiplier:2.0,label:'国庆/春节上浮100%'}
+};
+var roomTypeBasePrices={'大床房':168,'标准间':198,'亲子间':268,'家庭套房':388,'商务套房':488,'豪华套房':688};
+var holidayDates={'2026-01-01':'元旦','2026-02-17':'春节','2026-04-04':'清明','2026-05-01':'劳动节','2026-06-20':'端午节','2026-10-01':'国庆'};
+
+function getDatePriceType(dateStr){
+  var d=new Date(dateStr);
+  var day=d.getDay();
+  var dateStrShort=dateStr.slice(5);
+  if(holidayDates[dateStr]||holidayDates[dateStr.replace(/^2026-/,'2026-0')]) return '黄金周';
+  if(dateStrShort>='04-03'&&dateStrShort<='04-06') return '小长假';
+  if(dateStrShort>='05-30'&&dateStrShort<='06-02') return '小长假';
+  if(dateStrShort>='10-01'&&dateStrShort<='10-08') return '黄金周';
+  if(dateStrShort>='02-14'&&dateStrShort<='02-21') return '黄金周';
+  if(day===0||day===6) return '周末';
+  return '平日';
+}
+
+function calculateRoomPrice(roomType,dateStr){
+  var base=roomTypeBasePrices[roomType]||168;
+  var priceType=getDatePriceType(dateStr);
+  var rule=peakPricingRules[priceType];
+  var finalPrice=Math.round(base*rule.multiplier);
+  return{base:base,multiplier:rule.multiplier,type:priceType,finalPrice:finalPrice,rule:rule};
+}
+
+function openPriceCalendarModal(roomType){
+  var old=document.getElementById('modal-price-calendar');
+  if(old)old.remove();
+  var today=new Date();
+  var html='<div class="modal-overlay" id="modal-price-calendar" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html+='<div class="modal" style="width:680px;max-height:90vh;overflow-y:auto;">';
+  html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div style="font-size:16px;font-weight:700;">📅 分时差价日历 - <span style="color:var(--blue);">'+roomType+'</span></div>';
+  html+='<button onclick="closePriceCalendarModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html+='<div style="padding:16px 24px;">';
+  html+='<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">';
+  Object.keys(peakPricingRules).forEach(function(k){
+    var r=peakPricingRules[k];
+    html+='<div style="padding:6px 12px;background:var(--bg);border-radius:6px;font-size:11px;"><span style="font-weight:600;">'+k+'</span>: '+r.label+'</div>';
+  });
+  html+='</div>';
+  html+='<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-muted);">📆 近14天价格预览</div>';
+  html+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">';
+  for(var i=0;i<14;i++){
+    var dt=new Date(today);
+    dt.setDate(dt.getDate()+i);
+    var dateStr=dt.toISOString().slice(0,10);
+    var priceInfo=calculateRoomPrice(roomType,dateStr);
+    var dayNames=['日','一','二','三','四','五','六'];
+    var dayName='周'+dayNames[dt.getDay()];
+    var typeColors={'平日':'var(--blue)','周末':'var(--orange)','小长假':'var(--red)','黄金周':'var(--purple)'};
+    var typeBg={'平日':'var(--blue-bg)','周末':'var(--orange-bg)','小长假':'var(--red-bg)','黄金周':'var(--purple-bg)'};
+    var isPeak=priceInfo.type!=='平日';
+    html+='<div style="padding:10px 8px;border-radius:8px;border:1px solid var(--border);background:'+(isPeak?typeBg[priceInfo.type]:'var(--white)')+';text-align:center;'+(isPeak?'border-color:'+typeColors[priceInfo.type]:'')+'">';
+    html+='<div style="font-size:11px;color:var(--text-muted);">'+dayName+'</div>';
+    html+='<div style="font-size:11px;font-weight:600;">'+(dt.getMonth()+1)+'/'+dt.getDate()+'</div>';
+    html+='<div style="font-size:14px;font-weight:700;color:'+(isPeak?typeColors[priceInfo.type]:'var(--text)')+';">¥'+priceInfo.finalPrice+'</div>';
+    html+='<div style="font-size:10px;color:'+typeColors[priceInfo.type]+';">'+(isPeak?priceInfo.type:'平日价')+'</div>';
+    if(isPeak) html+='<div style="font-size:9px;color:var(--text-muted);text-decoration:line-through;">¥'+priceInfo.base+'</div>';
+    html+='</div>';
+  }
+  html+='</div>';
+  html+='<div style="margin-top:16px;padding:12px;background:var(--orange-bg);border-radius:8px;font-size:12px;color:var(--orange);">💡 点击具体日期可查看/编辑当日价格配置，支持批量设置周末价或节假日价</div>';
+  html+='</div>';
+  html+='<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;"><button class="modal-btn secondary" onclick="closePriceCalendarModal()">关闭</button></div>';
+  html+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+function closePriceCalendarModal(){var m=document.getElementById('modal-price-calendar');if(m)m.remove();}
+
+// 改进B: 客房锁定系统（锁定/解锁/原因管理，防止误分配）
+var roomLocks=[
+  {room:'305',reason:'正在清洁',lockedBy:'郑强',lockTime:'2026-03-27 09:30',type:'cleaning'},
+  {room:'308',reason:'设备故障',lockedBy:'王工',lockTime:'2026-03-27 08:00',type:'maintenance'},
+  {room:'312',reason:'正在换房',lockedBy:'前台',lockTime:'2026-03-27 10:15',type:'change'}
+];
+
+function isRoomLocked(roomNum){
+  return roomLocks.some(function(l){return l.room===roomNum;});
+}
+
+function openRoomLockModal(roomNum){
+  var existing=roomLocks.find(function(l){return l.room===roomNum;});
+  var old=document.getElementById('modal-room-lock');
+  if(old)old.remove();
+  var html='<div class="modal-overlay" id="modal-room-lock" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html+='<div class="modal" style="width:460px;">';
+  html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div style="font-size:16px;font-weight:700;">🔒 房间 '+roomNum+' 锁定管理</div>';
+  html+='<button onclick="closeRoomLockModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html+='<div style="padding:20px 24px;">';
+  if(existing){
+    var typeMap={cleaning:'🧹 正在清洁',maintenance:'🔧 设备故障',change:'🔄 换房中',inspect:'🔍 查房中'};
+    html+='<div style="padding:14px;background:var(--red-bg);border-radius:8px;margin-bottom:16px;text-align:center;">';
+    html+='<div style="font-size:32px;margin-bottom:8px;">🔒</div>';
+    html+='<div style="font-size:14px;font-weight:700;color:var(--red);">该房间已被锁定</div>';
+    html+='<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">锁定类型：'+typeMap[existing.type]+'</div>';
+    html+='<div style="font-size:12px;color:var(--text-muted);">锁定原因：'+existing.reason+'</div>';
+    html+='<div style="font-size:11px;color:var(--text-muted);">锁定人：'+existing.lockedBy+' · '+existing.lockTime+'</div>';
+    html+='</div>';
+    html+='<div style="display:flex;gap:10px;"><button onclick="unlockRoom(\''+roomNum+'\')" class="modal-btn primary" style="flex:1;background:var(--green);border-color:var(--green);">🔓 解除锁定</button>';
+    html+='<button onclick="closeRoomLockModal()" class="modal-btn secondary" style="flex:1;">关闭</button></div>';
+  } else {
+    html+='<div style="padding:10px 14px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">💡 锁定后该房间将不会出现在可入住列表中，防止误分配</div>';
+    html+='<div class="form-group"><label class="form-label">锁定类型 <span class="required">*</span></label>';
+    html+='<select class="form-select" id="rl-type" style="height:38px;font-size:13px;">';
+    html+='<option value="cleaning">🧹 正在清洁</option>';
+    html+='<option value="maintenance">🔧 设备故障</option>';
+    html+='<option value="change">🔄 换房中</option>';
+    html+='<option value="inspect">🔍 查房中</option>';
+    html+='<option value="other">📋 其他原因</option></select></div>';
+    html+='<div class="form-group"><label class="form-label">锁定原因 <span class="required">*</span></label>';
+    html+='<input type="text" class="form-input" id="rl-reason" placeholder="请输入锁定原因" style="height:38px;font-size:13px;"></div>';
+    html+='<div class="form-group"><label class="form-label">锁定人</label>';
+    html+='<input type="text" class="form-input" id="rl-lockedby" placeholder="锁定操作人" value="前台" style="height:38px;font-size:13px;"></div>';
+    html+='<div style="display:flex;gap:10px;margin-top:16px;"><button onclick="confirmLockRoom(\''+roomNum+'\')" class="modal-btn primary" style="flex:1;background:var(--orange);border-color:var(--orange);">🔒 确认锁定</button>';
+    html+='<button onclick="closeRoomLockModal()" class="modal-btn secondary" style="flex:1;">取消</button></div>';
+  }
+  html+='</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+function closeRoomLockModal(){var m=document.getElementById('modal-room-lock');if(m)m.remove();}
+function confirmLockRoom(roomNum){
+  var type=document.getElementById('rl-type').value;
+  var reason=document.getElementById('rl-reason').value.trim();
+  var lockedBy=document.getElementById('rl-lockedby').value.trim()||'前台';
+  if(!reason){showToast('请输入锁定原因','error');return;}
+  var now=new Date();
+  var timeStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  roomLocks.push({room:roomNum,reason:reason,lockedBy:lockedBy,lockTime:timeStr,type:type});
+  closeRoomLockModal();
+  showToast('🔒 房间 '+roomNum+' 已锁定：'+reason,'success');
+}
+function unlockRoom(roomNum){
+  roomLocks=roomLocks.filter(function(l){return l.room!==roomNum;});
+  closeRoomLockModal();
+  showToast('🔓 房间 '+roomNum+' 已解除锁定，可正常分配','success');
+}
+
+// 改进C: 客人押金管理系统（收取/记录/退还全流程）
+var depositRecords=[
+  {room:'301',guest:'张三',amount:200,collectedTime:'2026-03-27 10:30',status:'held',refundTime:null,refundAmount:null},
+  {room:'302',guest:'李四',amount:200,collectedTime:'2026-03-26 14:00',status:'refunded',refundTime:'2026-03-27 12:00',refundAmount:200},
+  {room:'303',guest:'王五',amount:300,collectedTime:'2026-03-25 15:30',status:'held',refundTime:null,refundAmount:null}
+];
+
+function getDepositStats(){
+  var held=depositRecords.filter(function(r){return r.status==='held';});
+  var total=depositRecords.reduce(function(s,r){return s+r.amount;},0);
+  var heldAmount=held.reduce(function(s,r){return s+r.amount;},0);
+  return{total:total,held:heldAmount,count:held.length};
+}
+
+function openDepositManagementModal(){
+  var old=document.getElementById('modal-deposit-mgmt');
+  if(old)old.remove();
+  var stats=getDepositStats();
+  var html='<div class="modal-overlay" id="modal-deposit-mgmt" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html+='<div class="modal" style="width:620px;max-height:90vh;overflow-y:auto;">';
+  html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div style="font-size:16px;font-weight:700;">💰 押金管理</div>';
+  html+='<button onclick="closeDepositMgmtModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html+='<div style="padding:16px 24px;">';
+  html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">';
+  html+='<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);">¥'+stats.total+'</div><div style="font-size:11px;color:var(--text-muted);">历史收取总额</div></div>';
+  html+='<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">¥'+stats.held+'</div><div style="font-size:11px;color:var(--text-muted);">当前押金余额</div></div>';
+  html+='<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red);">'+stats.count+'笔</div><div style="font-size:11px;color:var(--text-muted);">待退押金</div></div>';
+  html+='</div>';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+  html+='<div style="font-size:13px;font-weight:600;">📋 押金记录</div>';
+  html+='<button onclick="openCollectDepositModal()" class="action-btn small" style="padding:4px 10px;background:var(--green);color:white;border:none;font-size:11px;">💵 收取押金</button>';
+  html+='</div>';
+  html+='<div style="max-height:280px;overflow-y:auto;">';
+  depositRecords.forEach(function(r,i){
+    var statusMap={held:'🔒 押金托管中',refunded:'✅ 已退还'};
+    var statusColor=r.status==='held'?'var(--orange)':'var(--green)';
+    var statusBg=r.status==='held'?'var(--orange-bg)':'var(--green-bg)';
+    html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:8px;margin-bottom:8px;">';
+    html+='<div style="flex:1;">';
+    html+='<div style="font-size:13px;font-weight:600;">'+r.room+' · '+r.guest+'</div>';
+    html+='<div style="font-size:11px;color:var(--text-muted);">'+r.collectedTime+(r.refundTime?' · 退:'+r.refundTime:'')+'</div>';
+    html+='</div>';
+    html+='<div style="font-size:15px;font-weight:700;color:var(--orange);">¥'+r.amount+'</div>';
+    html+='<div style="padding:3px 8px;background:'+statusBg+';border-radius:10px;font-size:11px;color:'+statusColor+';">'+statusMap[r.status]+'</div>';
+    if(r.status==='held'){
+      html+='<button onclick="openRefundDepositModal('+i+')" style="padding:4px 10px;background:var(--green);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;">💵 退还</button>';
+    }
+    html+='</div>';
+  });
+  html+='</div></div>';
+  html+='<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;"><button class="modal-btn secondary" onclick="closeDepositMgmtModal()">关闭</button></div>';
+  html+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+function closeDepositMgmtModal(){var m=document.getElementById('modal-deposit-mgmt');if(m)m.remove();}
+function openCollectDepositModal(){
+  closeDepositMgmtModal();
+  setTimeout(function(){
+    var old=document.getElementById('modal-collect-deposit');
+    if(old)old.remove();
+    var html='<div class="modal-overlay" id="modal-collect-deposit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999999;">';
+    html+='<div class="modal" style="width:400px;">';
+    html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+    html+='<div style="font-size:16px;font-weight:700;">💵 收取押金</div>';
+    html+='<button onclick="closeCollectDepositModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+    html+='<div style="padding:20px 24px;">';
+    html+='<div class="form-group"><label class="form-label">房间号 <span class="required">*</span></label>';
+    html+='<input type="text" class="form-input" id="cd-room" placeholder="如：301" style="height:38px;font-size:13px;"></div>';
+    html+='<div class="form-group"><label class="form-label">客人姓名 <span class="required">*</span></label>';
+    html+='<input type="text" class="form-input" id="cd-guest" placeholder="客人姓名" style="height:38px;font-size:13px;"></div>';
+    html+='<div class="form-group"><label class="form-label">押金金额（元） <span class="required">*</span></label>';
+    html+='<input type="number" class="form-input" id="cd-amount" placeholder="默认200" value="200" style="height:38px;font-size:13px;"></div>';
+    html+='<div style="padding:10px 14px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">💡 退房时押金全额退还，如房间有损坏则从押金中扣除</div>';
+    html+='<div style="display:flex;gap:10px;"><button onclick="confirmCollectDeposit()" class="modal-btn primary" style="flex:1;background:var(--green);border-color:var(--green);">💵 确认收取</button>';
+    html+='<button onclick="closeCollectDepositModal()" class="modal-btn secondary" style="flex:1;">取消</button></div>';
+    html+='</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend',html);
+  },100);
+}
+function closeCollectDepositModal(){var m=document.getElementById('modal-collect-deposit');if(m)m.remove();}
+function confirmCollectDeposit(){
+  var room=document.getElementById('cd-room').value.trim();
+  var guest=document.getElementById('cd-guest').value.trim();
+  var amount=parseInt(document.getElementById('cd-amount').value)||200;
+  if(!room||!guest){showToast('请填写房间号和客人姓名','error');return;}
+  var now=new Date();
+  var timeStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  depositRecords.unshift({room:room,guest:guest,amount:amount,collectedTime:timeStr,status:'held',refundTime:null,refundAmount:null});
+  closeCollectDepositModal();
+  showToast('💵 押金收取成功！房间'+room+'押金¥'+amount+'已记录','success');
+  setTimeout(openDepositManagementModal,300);
+}
+function openRefundDepositModal(idx){
+  var rec=depositRecords[idx];
+  if(!rec)return;
+  closeDepositMgmtModal();
+  setTimeout(function(){
+    var old=document.getElementById('modal-refund-deposit');
+    if(old)old.remove();
+    var html='<div class="modal-overlay" id="modal-refund-deposit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999999;">';
+    html+='<div class="modal" style="width:420px;">';
+    html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+    html+='<div style="font-size:16px;font-weight:700;">💵 退还押金</div>';
+    html+='<button onclick="closeRefundDepositModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+    html+='<div style="padding:20px 24px;">';
+    html+='<div style="padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;text-align:center;">';
+    html+='<div style="font-size:13px;color:var(--text-muted);">应退金额</div>';
+    html+='<div style="font-size:28px;font-weight:700;color:var(--green);">¥'+rec.amount+'</div>';
+    html+='<div style="font-size:11px;color:var(--text-muted);">房间 '+rec.room+' · '+rec.guest+'</div>';
+    html+='</div>';
+    html+='<div class="form-group"><label class="form-label">实际退款金额</label>';
+    html+='<input type="number" class="form-input" id="rd-actual" value="'+rec.amount+'" style="height:38px;font-size:13px;"></div>';
+    html+='<div class="form-group"><label class="form-label">退款方式</label>';
+    html+='<select class="form-select" id="rd-method" style="height:38px;font-size:13px;">';
+    html+='<option value="cash">💵 现金</option>';
+    html+='<option value="wechat">💚 微信</option>';
+    html+='<option value="alipay">💙 支付宝</option>';
+    html+='<option value="card">💳 原路退回</option>';
+    html+='</select></div>';
+    html+='<div class="form-group"><label class="form-label">备注</label>';
+    html+='<input type="text" class="form-input" id="rd-note" placeholder="如：无损坏，全额退还" style="height:38px;font-size:13px;"></div>';
+    html+='<div style="display:flex;gap:10px;margin-top:16px;"><button onclick="confirmRefundDeposit('+idx+')" class="modal-btn primary" style="flex:1;background:var(--green);border-color:var(--green);">💵 确认退款</button>';
+    html+='<button onclick="closeRefundDepositModal()" class="modal-btn secondary" style="flex:1;">取消</button></div>';
+    html+='</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend',html);
+  },100);
+}
+function closeRefundDepositModal(){var m=document.getElementById('modal-refund-deposit');if(m)m.remove();}
+function confirmRefundDeposit(idx){
+  var rec=depositRecords[idx];
+  var actual=parseInt(document.getElementById('rd-actual').value)||rec.amount;
+  var method=document.getElementById('rd-method').value;
+  var note=document.getElementById('rd-note').value.trim();
+  var now=new Date();
+  var timeStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  rec.status='refunded';
+  rec.refundTime=timeStr;
+  rec.refundAmount=actual;
+  closeRefundDepositModal();
+  var diff=rec.amount-actual;
+  var msg=diff>0?'，扣除¥'+diff+'赔偿金':'';
+  showToast('✅ 押金退还成功！房间'+rec.room+'¥'+actual+'已退还'+msg,'success');
+  setTimeout(openDepositManagementModal,300);
+}
+
+// 改进D: 门卡复制检测系统（检测异常复制行为）
+var cardLogDB=[
+  {room:'301',cardId:'CARD-8832',type:'手机NFC',issuedTime:'2026-03-27 10:30',lastUsed:'2026-03-27 10:35',usageCount:2,status:'active',issuer:'系统'},
+  {room:'301',cardId:'CARD-8832',type:'手机NFC',issuedTime:'2026-03-26 14:00',lastUsed:'2026-03-27 08:00',usageCount:28,status:'active',issuer:'系统'},
+  {room:'302',cardId:'CARD-7721',type:'物理卡',issuedTime:'2026-03-26 14:00',lastUsed:'2026-03-27 09:45',usageCount:15,status:'active',issuer:'前台'},
+  {room:'303',cardId:'CARD-6610',type:'手机NFC',issuedTime:'2026-03-25 15:30',lastUsed:'2026-03-26 22:00',usageCount:8,status:'deactivated',issuer:'系统'}
+];
+
+function detectCardAnomalies(){
+  var anomalies=[];
+  var cardGroups={};
+  cardLogDB.forEach(function(c){
+    if(c.status!=='active')return;
+    if(!cardGroups[c.cardId])cardGroups[c.cardId]=[];
+    cardGroups[c.cardId].push(c);
+  });
+  for(var cardId in cardGroups){
+    var cards=cardGroups[cardId];
+    if(cards.length>1){
+      anomalies.push({type:'DUPLICATE_CARD',cardId:cardId,count:cards.length,rooms:cards.map(function(c){return c.room;}),detail:'同一卡片ID在多个房间使用，可能存在复制行为'});
+    }
+    var recentCount=cards.filter(function(c){
+      var issued=new Date(c.issuedTime);
+      var now=new Date();
+      return(now-issued)<3*24*3600*1000;
+    }).length;
+    if(recentCount>5){
+      anomalies.push({type:'RAPID_REISSUE',cardId:cardId,count:recentCount,rooms:cards.map(function(c){return c.room;}),detail:'该卡片3天内补发'+recentCount+'次，异常'});
+    }
+  }
+  return anomalies;
+}
+
+function openCardSecurityCenterModal(){
+  var anomalies=detectCardAnomalies();
+  var old=document.getElementById('modal-card-security');
+  if(old)old.remove();
+  var html='<div class="modal-overlay" id="modal-card-security" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html+='<div class="modal" style="width:600px;max-height:90vh;overflow-y:auto;">';
+  html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div style="font-size:16px;font-weight:700;">🔐 门卡安全中心</div>';
+  html+='<button onclick="closeCardSecurityModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html+='<div style="padding:16px 24px;">';
+  if(anomalies.length>0){
+    html+='<div style="padding:12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--red);">';
+    html+='⚠️ 检测到 '+anomalies.length+' 项异常，请及时处理</div>';
+    anomalies.forEach(function(a,i){
+      var typeMap={DUPLICATE_CARD:'🔴 卡片复制嫌疑',RAPID_REISSUE:'🟠 频繁补发警告'};
+      html+='<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:10px;border-left:3px solid '+(a.type==='DUPLICATE_CARD'?'var(--red)':'var(--orange)')+';">';
+      html+='<div style="font-size:13px;font-weight:600;margin-bottom:4px;">'+typeMap[a.type]+'</div>';
+      html+='<div style="font-size:12px;color:var(--text-muted);">'+a.detail+'</div>';
+      html+='<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">涉及房间：'+a.rooms.join(', ')+' · 次数：'+a.count+'</div>';
+      html+='<div style="margin-top:8px;"><button onclick="handleCardAnomaly('+i+')" style="padding:4px 10px;background:var(--red);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;">🔧 处理</button></div>';
+      html+='</div>';
+    });
+  } else {
+    html+='<div style="padding:24px;text-align:center;background:var(--green-bg);border-radius:8px;margin-bottom:16px;">';
+    html+='<div style="font-size:40px;margin-bottom:8px;">✅</div>';
+    html+='<div style="font-size:14px;font-weight:600;color:var(--green);">门卡使用正常</div>';
+    html+='<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">未检测到复制或异常补发行为</div>';
+    html+='</div>';
+  }
+  html+='<div style="font-size:12px;font-weight:600;margin-bottom:8px;margin-top:16px;">📋 最近门卡操作日志</div>';
+  html+='<div style="max-height:200px;overflow-y:auto;">';
+  var recentCards=cardLogDB.slice(0,6);
+  recentCards.forEach(function(c){
+    var statusColors={active:'var(--green)',deactivated:'var(--text-muted)'};
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border-radius:6px;margin-bottom:6px;font-size:12px;">';
+    html+='<div style="flex:1;"><b>'+c.room+'</b> · '+c.type+'</div>';
+    html+='<div style="font-size:11px;color:var(--text-muted);">发卡:'+c.issuedTime+'</div>';
+    html+='<div style="font-size:11px;color:'+statusColors[c.status]+';">'+(c.status==='active'?'🟢':'⚪')+'</div>';
+    html+='</div>';
+  });
+  html+='</div></div>';
+  html+='<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;"><button class="modal-btn secondary" onclick="closeCardSecurityModal()">关闭</button></div>';
+  html+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+function closeCardSecurityModal(){var m=document.getElementById('modal-card-security');if(m)m.remove();}
+function handleCardAnomaly(idx){showToast('🔧 已提交处理，管理员将在10分钟内核实','info');closeCardSecurityModal();}
+
+// 改进E: 员工考勤打卡系统（上班/下班打卡+异常统计）
+var attendanceRecords=[
+  {name:'赵飞',date:'2026-03-27',checkin:'08:05',checkout:'17:32',status:'normal',location:'前台定位'},
+  {name:'赵飞',date:'2026-03-26',checkin:'07:58',checkout:'17:45',status:'normal',location:'前台定位'},
+  {name:'赵飞',date:'2026-03-25',checkin:'08:22',checkout:null,status:'late',location:'前台定位'},
+  {name:'周敏',date:'2026-03-27',checkin:'07:55',checkout:null,status:'normal',location:'前台定位'},
+  {name:'吴倩',date:'2026-03-27',checkin:'08:00',checkout:'16:30',status:'early',location:'客房定位'},
+  {name:'郑强',date:'2026-03-27',checkin:null,checkout:null,status:'absent',location:'--'}
+];
+
+function getAttendanceStats(){
+  var today='2026-03-27';
+  var todayRecords=attendanceRecords.filter(function(r){return r.date===today;});
+  var normal=todayRecords.filter(function(r){return r.status==='normal'}).length;
+  var late=todayRecords.filter(function(r){return r.status==='late'}).length;
+  var early=todayRecords.filter(function(r){return r.status==='early'}).length;
+  var absent=todayRecords.filter(function(r){return r.status==='absent'||r.status==='leave'}).length;
+  return{total:todayRecords.length,normal:normal,late:late,early:early,absent:absent};
+}
+
+function openAttendancePageModal(){
+  var old=document.getElementById('modal-attendance');
+  if(old)old.remove();
+  var stats=getAttendanceStats();
+  var html='<div class="modal-overlay" id="modal-attendance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html+='<div class="modal" style="width:580px;max-height:90vh;overflow-y:auto;">';
+  html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div style="font-size:16px;font-weight:700;">📋 员工考勤打卡</div>';
+  html+='<button onclick="closeAttendanceModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html+='<div style="padding:16px 24px;">';
+  html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">';
+  html+='<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);">'+stats.total+'</div><div style="font-size:11px;color:var(--text-muted);">应到人数</div></div>';
+  html+='<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);">'+stats.normal+'</div><div style="font-size:11px;color:var(--text-muted);">正常</div></div>';
+  html+='<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);">'+(stats.late+stats.early)+'</div><div style="font-size:11px;color:var(--text-muted);">异常</div></div>';
+  html+='<div style="padding:10px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--red);">'+stats.absent+'</div><div style="font-size:11px;color:var(--text-muted);">缺勤</div></div>';
+  html+='</div>';
+  html+='<div style="display:flex;gap:8px;margin-bottom:14px;">';
+  html+='<button onclick="openCheckinModal()" class="action-btn" style="flex:1;background:var(--green);color:white;border:none;padding:10px;">🟢 上班打卡</button>';
+  html+='<button onclick="openCheckoutModal()" class="action-btn" style="flex:1;background:var(--orange);color:white;border:none;padding:10px;">🟠 下班打卡</button>';
+  html+='</div>';
+  html+='<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-muted);">📅 今日打卡记录（2026-03-27）</div>';
+  html+='<div style="max-height:250px;overflow-y:auto;">';
+  attendanceRecords.filter(function(r){return r.date==='2026-03-27';}).forEach(function(r){
+    var statusConfig={normal:{label:'正常',color:'var(--green)',bg:'var(--green-bg)'},late:{label:'迟到',color:'var(--orange)',bg:'var(--orange-bg)'},early:{label:'早退',color:'var(--orange)',bg:'var(--orange-bg)'},absent:{label:'缺勤',color:'var(--red)',bg:'var(--red-bg)'},leave:{label:'请假',color:'var(--blue)',bg:'var(--blue-bg)'}};
+    var cfg=statusConfig[r.status]||statusConfig.normal;
+    html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:8px;margin-bottom:8px;">';
+    html+='<div style="font-size:20px;">👤</div>';
+    html+='<div style="flex:1;">';
+    html+='<div style="font-size:13px;font-weight:600;">'+r.name+'</div>';
+    html+='<div style="font-size:11px;color:var(--text-muted);">'+r.location+'</div>';
+    html+='</div>';
+    html+='<div style="text-align:center;"><div style="font-size:11px;color:var(--text-muted);">上班</div><div style="font-size:13px;font-weight:600;color:'+(r.checkin?'var(--text)':'var(--red)')+';">'+(r.checkin||'--:--')+'</div></div>';
+    html+='<div style="text-align:center;"><div style="font-size:11px;color:var(--text-muted);">下班</div><div style="font-size:13px;font-weight:600;color:'+(r.checkout?'var(--text)':'var(--text-muted)')+';">'+(r.checkout||'--:--')+'</div></div>';
+    html+='<div style="padding:3px 8px;background:'+cfg.bg+';border-radius:10px;font-size:11px;color:'+cfg.color+';">'+cfg.label+'</div>';
+    html+='</div>';
+  });
+  html+='</div></div>';
+  html+='<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;"><div style="font-size:11px;color:var(--text-muted);">📍 打卡采用位置验证，默认前台位置</div><button class="modal-btn secondary" onclick="closeAttendanceModal()">关闭</button></div>';
+  html+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+function closeAttendanceModal(){var m=document.getElementById('modal-attendance');if(m)m.remove();}
+function openCheckinModal(){closeAttendanceModal();setTimeout(function(){showToast('🟢 上班打卡成功！打卡时间：08:00，位置：前台定位','success');},100);}
+function openCheckoutModal(){closeAttendanceModal();setTimeout(function(){showToast('🟠 下班打卡成功！打卡时间：17:30，位置：前台定位','success');},100);}
+
+// 将新功能入口添加到侧边栏菜单
+function addNewFeatureMenuEntries(){
+  var menu=document.querySelector('.sidebar .menu');
+  if(!menu)return;
+  var entries=[
+    {icon:'💰',label:'押金管理',action:'openDepositManagementModal()',color:'var(--orange)'},
+    {icon:'🔐',label:'门卡安全',action:'openCardSecurityCenterModal()',color:'var(--blue)'},
+    {icon:'📋',label:'员工考勤',action:'openAttendancePageModal()',color:'var(--purple)'}
+  ];
+  entries.forEach(function(e){
+    var existing=menu.querySelector('[onclick*="'+e.action.split('(')[0]+'"]');
+    if(existing)return;
+  });
+}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',addNewFeatureMenuEntries);}
+else{setTimeout(addNewFeatureMenuEntries,500);}
 </script>
 </body>
 </html>
