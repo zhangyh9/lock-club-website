@@ -2483,6 +2483,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             <button class="action-btn" style="width:100%;margin-bottom:8px;" onclick="openSyncModal()">🔄 立即同步</button>
             <button class="action-btn" style="width:100%;margin-bottom:8px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);" onclick="openDeviceDiagnosticModal()">🔧 设备诊断</button>
             <button class="action-btn" style="width:100%;margin-bottom:8px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);" onclick="openDeviceHealthReportModal('301')">🏥 健康度报告</button>
+            <!-- 【改进5】设备详情页新增一键报修按钮 -->
+            <button class="action-btn" style="width:100%;background:var(--red-bg);color:var(--red);border-color:var(--red);" onclick="openDeviceRepairRequestModal('301', '领握LH-807智能锁', '88%', '🟢 在线')">🔧 一键报修</button>
             <!-- 【改进v3-新1】设备参数配置入口 -->
             <button class="action-btn" style="width:100%;margin-bottom:8px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);" onclick="openDeviceConfigModal()">⚙️ 参数配置</button>
             <button class="action-btn" style="width:100%;background:var(--red-bg);color:var(--red);border-color:var(--red);" onclick="openAlertModal(0)">⚠️ 设备告警</button>
@@ -8522,6 +8524,119 @@ setInterval(function() {
       sugEl.innerHTML = sugHtml;
       openModal('device-health-report');
     }
+    // 【改进5】设备详情页一键报修：从设备卡片直接发起报修工单
+    function openDeviceRepairRequestModal(room, deviceName, battery, status) {
+      var old = document.getElementById('modal-device-repair-request');
+      if (old) old.remove();
+      var html = '<div class="modal-overlay" id="modal-device-repair-request" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">' +
+        '<div class="modal" style="width:500px;max-height:85vh;overflow-y:auto;">' +
+        '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+        '<div style="font-size:22px;">🔧</div><div style="flex:1;"><div style="font-size:15px;font-weight:700;">设备报修 - 一键生成维修工单</div><div style="font-size:11px;color:var(--text-muted);">' + (room||'') + ' · ' + (deviceName||'智能锁') + '</div></div>' +
+        '<button onclick="closeDeviceRepairRequestModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+        '<div style="padding:20px 24px;">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
+        '<div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;">' +
+        '<div style="font-size:11px;color:var(--text-muted);">房间</div><div style="font-size:13px;font-weight:700;">' + (room||'-') + '</div></div>' +
+        '<div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;">' +
+        '<div style="font-size:11px;color:var(--text-muted);">电量</div><div style="font-size:13px;font-weight:700;">' + (battery||'-') + '</div></div>' +
+        '<div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;">' +
+        '<div style="font-size:11px;color:var(--text-muted);">状态</div><div style="font-size:13px;font-weight:700;">' + (status||'-') + '</div></div></div>' +
+        '<div class="form-group"><label class="form-label">工单类型 <span class="required">*</span></label>' +
+        '<select class="form-select" id="dr-type" onchange="updateDeviceRepairSuggestions()">' +
+        '<option value="maintain">🔧 设施维修</option>' +
+        '<option value="repair">🔩 设备故障</option>' +
+        '<option value="battery">🔋 电池更换</option>' +
+        '<option value="firmware">📦 固件升级</option>' +
+        '<option value="other">📝 其他</option></select></div>' +
+        '<div class="form-group"><label class="form-label">问题描述 <span class="required">*</span></label>' +
+        '<textarea class="form-textarea" id="dr-content" placeholder="请简要描述设备故障或需要维修的问题..." style="min-height:80px;font-size:13px;"></textarea></div>' +
+        '<div class="form-group"><label class="form-label">建议处理方式</label>' +
+        '<div id="dr-suggestions" style="display:flex;flex-direction:column;gap:6px;"></div></div>' +
+        '<div class="form-group"><label class="form-label">派发给</label>' +
+        '<select class="form-select" id="dr-handler">' +
+        '<option value="engineer">🔧 工程师（推荐）</option>' +
+        '<option value="maintenance">🛠️ 维修人员</option>' +
+        '<option value="manager">👤 客房经理</option></select></div>' +
+        '<div class="form-group"><label class="form-label">紧急程度</label>' +
+        '<div style="display:flex;gap:8px;">' +
+        '<label style="flex:1;text-align:center;padding:8px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;" id="dr-urgent-low" onclick="setRepairUrgent(\'low\',this)">⚪ 低</label>' +
+        '<label style="flex:1;text-align:center;padding:8px;border:2px solid var(--blue);border-radius:8px;cursor:pointer;font-size:12px;background:var(--blue-bg);color:var(--blue);" id="dr-urgent-normal" onclick="setRepairUrgent(\'normal\',this)">🟡 普通</label>' +
+        '<label style="flex:1;text-align:center;padding:8px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;" id="dr-urgent-high" onclick="setRepairUrgent(\'high\',this)">🟠 高</label>' +
+        '<label style="flex:1;text-align:center;padding:8px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;" id="dr-urgent-urgent" onclick="setRepairUrgent(\'urgent\',this)">🔴 紧急</label></div></div>' +
+        '<div style="padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);margin-bottom:8px;">' +
+        '⚠️ 报修提交后将自动创建维修工单并通知相关人员处理</div>' +
+        '</div>' +
+        '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+        '<button onclick="closeDeviceRepairRequestModal()" class="modal-btn secondary">取消</button>' +
+        '<button onclick="submitDeviceRepairRequest()" class="modal-btn primary" style="background:var(--blue);border-color:var(--blue);">🔧 提交报修工单</button></div>' +
+        '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+      window.deviceRepairUrgent = 'normal';
+      updateDeviceRepairSuggestions();
+    }
+    function setRepairUrgent(level, el) {
+      window.deviceRepairUrgent = level;
+      ['low','normal','high','urgent'].forEach(function(l) {
+        var e = document.getElementById('dr-urgent-' + l);
+        if (e) { e.style.border = '1px solid var(--border)'; e.style.background = ''; e.style.color = ''; e.style.borderRadius = '8px'; }
+      });
+      if (el) { el.style.border = '2px solid var(--blue)'; el.style.background = 'var(--blue-bg)'; el.style.color = 'var(--blue)'; }
+    }
+    function updateDeviceRepairSuggestions() {
+      var type = (document.getElementById('dr-type') || {}).value || 'maintain';
+      var suggestions = {
+        maintain: [
+          {icon:'🔧', text:'建议安排工程师上门检查门锁机械结构'},
+          {icon:'📋', text:'检查门锁安装是否牢固，螺丝是否松动'}
+        ],
+        repair: [
+          {icon:'🔍', text:'建议先远程诊断设备运行状态'},
+          {icon:'🔄', text:'可尝试远程重启设备看是否能恢复'}
+        ],
+        battery: [
+          {icon:'🔋', text:'建议尽快更换电池（预计费用：¥20-50）'},
+          {icon:'📋', text:'更换后需重新同步设备数据'}
+        ],
+        firmware: [
+          {icon:'📦', text:'固件升级预计需要5-10分钟'},
+          {icon:'⚠️', text:'升级过程中门锁将短暂离线'}
+        ],
+        other: [
+          {icon:'📝', text:'请详细描述问题以便工程师判断'},
+          {icon:'📷', text:'如有异常图片建议附上以便排查'}
+        ]
+      };
+      var items = suggestions[type] || suggestions.other;
+      var html = items.map(function(item) {
+        return '<div style="padding:8px 12px;background:var(--bg);border-radius:6px;font-size:12px;display:flex;align-items:flex-start;gap:8px;"><span style="font-size:14px;">' + item.icon + '</span><span>' + item.text + '</span></div>';
+      }).join('');
+      var el = document.getElementById('dr-suggestions');
+      if (el) el.innerHTML = html;
+    }
+    function closeDeviceRepairRequestModal() {
+      var m = document.getElementById('modal-device-repair-request');
+      if (m) m.remove();
+    }
+    function submitDeviceRepairRequest() {
+      var content = (document.getElementById('dr-content') || {}).value.trim();
+      if (!content) { showToast('请填写问题描述', 'error'); return; }
+      var type = (document.getElementById('dr-type') || {}).value || 'maintain';
+      var handler = (document.getElementById('dr-handler') || {}).value || 'engineer';
+      var urgent = window.deviceRepairUrgent || 'normal';
+      var room = '301';
+      var woId = 'WO-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + String(workorderList.length + 1).padStart(2,'0');
+      var handlerLabels = {engineer:'🔧 工程师', maintenance:'🛠️ 维修人员', manager:'👤 客房经理'};
+      var typeLabels = {maintain:'🔧 设施维修', repair:'🔩 设备故障', battery:'🔋 电池更换', firmware:'📦 固件升级', other:'📝 其他'};
+      workorderList.unshift({
+        id: woId, type: type, room: room, customer: '设备自检',
+        content: '【设备报修】' + content, status: 'pending',
+        priority: urgent, overdue: false, handler: handlerLabels[handler] || handler,
+        createTime: '今天 ' + new Date().toTimeString().slice(0,5), completeTime: ''
+      });
+      closeDeviceRepairRequestModal();
+      renderWorkorderTable();
+      showToast('✅ 报修工单已创建！工单号：' + woId + '，已通知' + (handlerLabels[handler]||handler), 'success');
+    }
     function exportDeviceHealthReport() {
       showToast('📤 设备健康度报告已导出至桌面', 'success');
     }
@@ -9208,6 +9323,32 @@ setInterval(function() {
     <div id="page-keypad" class="page">
       <div class="page-header">
         <div class="page-title">🔑 密码管理</div>
+        <!-- 【改进3】密码管理增强：搜索+状态筛选+排序 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <input type="text" id="kp-search-input" placeholder="🔍 搜索房间号/密码类型/住户名..." oninput="applyKeypadSearch()" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:240px;">
+          <select id="kp-type-filter" onchange="applyKeypadSearch()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+            <option value="all">全部类型</option>
+            <option value="permanent">🔐 永久密码</option>
+            <option value="one-time">⏰ 一次性密码</option>
+            <option value="period">📅 时段密码</option>
+            <option value="offline">📴 离线密码</option>
+          </select>
+          <select id="kp-status-filter" onchange="applyKeypadSearch()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+            <option value="all">全部状态</option>
+            <option value="active">🟢 生效中</option>
+            <option value="expired">🔴 已失效</option>
+            <option value="pending">🟡 待生效</option>
+          </select>
+          <select id="kp-sort" onchange="applyKeypadSearch()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+            <option value="newest">🕐 最新创建</option>
+            <option value="oldest">🕰️ 最旧创建</option>
+            <option value="room-asc">🏠 房间号升序</option>
+            <option value="room-desc">🏠 房间号降序</option>
+            <option value="expires">⏱️ 即将过期</option>
+          </select>
+          <button class="action-btn small" onclick="resetKeypadSearch()" style="padding:5px 10px;font-size:12px;">重置</button>
+          <span id="kp-result-count" style="font-size:11px;color:var(--text-muted);margin-left:auto;"></span>
+        </div>
         <div class="page-sub">动态密码/离线密码生成 · 权限管控 · 使用记录</div>
       </div>
       <div class="stats-row" style="grid-template-columns:repeat(5,1fr);">
@@ -10166,6 +10307,8 @@ setInterval(function() {
         <div class="config-tab" id="cfg-tab-building" onclick="switchConfigTab('building',this)" style="padding:8px 18px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;font-size:13px;">🏢 楼栋管理</div>
         <!-- 【改进5】系统设置新增「角色权限」Tab -->
         <div class="config-tab" id="cfg-tab-roles" onclick="switchConfigTab('roles',this)" style="padding:8px 18px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;font-size:13px;">🛡️ 角色权限</div>
+        <!-- 【改进4】系统设置新增「数据备份」Tab -->
+        <div class="config-tab" id="cfg-tab-backup" onclick="switchConfigTab('backup',this)" style="padding:8px 18px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;font-size:13px;">💾 数据备份</div>
       </div>
       <div style="background:var(--white);border:1px solid var(--border);border-radius:0 12px 12px 12px;padding:24px;">
         <!-- 基本配置 Tab -->
@@ -10511,6 +10654,95 @@ setInterval(function() {
                 <tr><td>📦 固件升级</td><td><span style="color:var(--green);">✓</span></td><td><span style="color:var(--green);">✓</span></td><td><span style="color:var(--red);">✕</span></td><td><span style="color:var(--red);">✕</span></td></tr>
                 <tr><td>🏨 入住办理</td><td><span style="color:var(--green);">✓</span></td><td><span style="color:var(--red);">✕</span></td><td><span style="color:var(--green);">✓</span></td><td><span style="color:var(--red);">✕</span></td></tr>
                 <tr><td>📋 处理工单</td><td><span style="color:var(--green);">✓</span></td><td><span style="color:var(--red);">✕</span></td><td><span style="color:var(--green);">✓</span></td><td><span style="color:var(--red);">✕</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <!-- 【改进4】数据备份Tab内容 -->
+      <div id="cfg-content-backup" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="detail-card">
+            <div class="detail-card-title">📦 数据备份</div>
+            <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:8px;">
+                <div>
+                  <div style="font-size:13px;font-weight:600;">🕐 自动备份</div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">每日凌晨3:00自动备份</div>
+                </div>
+                <label style="cursor:pointer;"><input type="checkbox" id="cfg-auto-backup" checked style="accent-color:var(--blue);width:18px;height:18px;"></label>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:8px;">
+                <div>
+                  <div style="font-size:13px;font-weight:600;">📁 备份保留份数</div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">超出份数将自动删除最早的备份</div>
+                </div>
+                <select id="cfg-backup-keep" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+                  <option value="7">保留7份</option>
+                  <option value="14" selected>保留14份</option>
+                  <option value="30">保留30份</option>
+                </select>
+              </div>
+              <div style="padding:12px;background:var(--blue-bg);border-radius:8px;border:1px solid var(--blue);">
+                <div style="font-size:12px;color:var(--blue);margin-bottom:8px;">📦 最近备份记录</div>
+                <div style="font-size:12px;display:flex;flex-direction:column;gap:6px;">
+                  <div style="display:flex;justify-content:space-between;"><span>2026-03-27 03:00</span><span style="color:var(--green);">✅ 成功</span></div>
+                  <div style="display:flex;justify-content:space-between;"><span>2026-03-26 03:00</span><span style="color:var(--green);">✅ 成功</span></div>
+                  <div style="display:flex;justify-content:space-between;"><span>2026-03-25 03:00</span><span style="color:var(--green);">✅ 成功</span></div>
+                </div>
+              </div>
+              <button class="action-btn primary" onclick="triggerManualBackup()" style="background:var(--blue);color:white;border:none;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">💾 立即备份</button>
+            </div>
+          </div>
+          <div class="detail-card">
+            <div class="detail-card-title">📥 数据恢复</div>
+            <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">
+              <div style="padding:16px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;">
+                <div style="font-size:13px;font-weight:600;color:var(--orange);margin-bottom:8px;">⚠️ 恢复数据须知</div>
+                <ul style="font-size:12px;color:var(--text);margin:0;padding-left:16px;line-height:1.8;">
+                  <li>恢复操作将覆盖当前所有数据</li>
+                  <li>建议在恢复前先手动备份当前数据</li>
+                  <li>恢复过程预计需要1-3分钟</li>
+                  <li>恢复完成后需重新登录系统</li>
+                </ul>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">选择恢复点</label>
+                <select class="form-select" id="cfg-restore-point" style="padding:8px 12px;font-size:13px;">
+                  <option value="20260327">2026-03-27 03:00（推荐）</option>
+                  <option value="20260326">2026-03-26 03:00</option>
+                  <option value="20260325">2026-03-25 03:00</option>
+                  <option value="20260324">2026-03-24 03:00</option>
+                </select>
+              </div>
+              <button class="action-btn" onclick="openRestoreConfirmModal()" style="padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;border-color:var(--red);color:var(--red);background:var(--red-bg);cursor:pointer;">📥 执行数据恢复</button>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">📤 导入外部备份文件</label>
+                <div style="border:2px dashed var(--border);border-radius:8px;padding:24px;text-align:center;cursor:pointer;" onclick="document.getElementById('cfg-external-backup').click()">
+                  <div style="font-size:28px;margin-bottom:8px;">📁</div>
+                  <div style="font-size:12px;color:var(--text-muted);">点击选择 .json 或 .zip 备份文件</div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">或拖拽文件到此处</div>
+                </div>
+                <input type="file" id="cfg-external-backup" accept=".json,.zip" style="display:none;" onchange="handleExternalBackupFile(this)">
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- 备份任务日志 -->
+        <div class="card" style="margin-top:20px;">
+          <div class="card-header">
+            <div class="card-title">📋 备份任务日志</div>
+            <button class="action-btn small" onclick="exportBackupLog()" style="padding:4px 10px;">📤 导出日志</button>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <table class="table">
+              <thead><tr><th>时间</th><th>类型</th><th>备份大小</th><th>状态</th><th>操作人</th></tr></thead>
+              <tbody id="backup-log-body">
+                <tr><td>2026-03-27 03:00:12</td><td><span class="tbadge blue">自动备份</span></td><td>24.5 MB</td><td><span class="tbadge green">成功</span></td><td>系统</td></tr>
+                <tr><td>2026-03-26 03:00:08</td><td><span class="tbadge blue">自动备份</span></td><td>23.8 MB</td><td><span class="tbadge green">成功</span></td><td>系统</td></tr>
+                <tr><td>2026-03-26 14:32:45</td><td><span class="tbadge green">手动备份</span></td><td>24.1 MB</td><td><span class="tbadge green">成功</span></td><td>赵飞</td></tr>
+                <tr><td>2026-03-25 03:00:33</td><td><span class="tbadge blue">自动备份</span></td><td>23.2 MB</td><td><span class="tbadge green">成功</span></td><td>系统</td></tr>
+                <tr><td>2026-03-24 03:00:15</td><td><span class="tbadge blue">自动备份</span></td><td>22.9 MB</td><td><span class="tbadge green">成功</span></td><td>系统</td></tr>
               </tbody>
             </table>
           </div>
@@ -18899,6 +19131,78 @@ function switchConfigTab(tab, el) {
   // 【改进5】角色权限Tab
   var rolesEl = document.getElementById('cfg-content-roles');
   if (rolesEl) rolesEl.style.display = tab === 'roles' ? 'block' : 'none';
+  // 【改进4】数据备份Tab
+  var backupEl = document.getElementById('cfg-content-backup');
+  if (backupEl) backupEl.style.display = tab === 'backup' ? 'block' : 'none';
+}
+
+// 【改进4】数据备份相关功能
+function triggerManualBackup() {
+  showToast('💾 正在执行数据备份，请稍候...', 'info');
+  var btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ 备份中...';
+  setTimeout(function() {
+    var now = new Date();
+    var timeStr = now.toLocaleString('zh-CN');
+    var logBody = document.getElementById('backup-log-body');
+    if (logBody) {
+      var newRow = '<tr><td>' + timeStr + '</td><td><span class="tbadge green">手动备份</span></td><td>' + (20 + Math.random()*10).toFixed(1) + ' MB</td><td><span class="tbadge green">成功</span></td><td>赵飞</td></tr>';
+      logBody.innerHTML = newRow + logBody.innerHTML;
+    }
+    btn.disabled = false;
+    btn.textContent = '💾 立即备份';
+    showToast('✅ 数据备份成功！备份文件已保存至云端存储', 'success');
+  }, 2500);
+}
+
+function openRestoreConfirmModal() {
+  var restorePoint = (document.getElementById('cfg-restore-point') || {}).value || '20260327';
+  if (!confirm('⚠️ 确定要从 ' + restorePoint + ' 恢复数据吗？\n\n此操作将覆盖当前所有数据，建议先手动备份当前数据。')) return;
+  showToast('📥 正在从备份点恢复数据...', 'warn');
+  setTimeout(function() {
+    showToast('✅ 数据恢复成功！系统已重新加载最新配置', 'success');
+  }, 3000);
+}
+
+function handleExternalBackupFile(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var ext = file.name.split('.').pop().toLowerCase();
+  if (ext !== 'json' && ext !== 'zip') {
+    showToast('仅支持 .json 或 .zip 格式的备份文件', 'error');
+    return;
+  }
+  showToast('📂 已选择文件：' + file.name + '，正在验证备份文件完整性...', 'info');
+  setTimeout(function() {
+    showToast('✅ 备份文件验证通过！点击"执行数据恢复"完成导入', 'success');
+  }, 1500);
+}
+
+function exportBackupLog() {
+  var tbody = document.getElementById('backup-log-body');
+  if (!tbody) return;
+  var rows = [['时间', '类型', '备份大小', '状态', '操作人']];
+  tbody.querySelectorAll('tr').forEach(function(tr) {
+    var cells = tr.querySelectorAll('td');
+    if (cells.length >= 5) {
+      rows.push([cells[0].textContent.trim(), cells[1].textContent.trim(), cells[2].textContent.trim(), cells[3].textContent.trim(), cells[4].textContent.trim()]);
+    }
+  });
+  var csv = rows.map(function(r) { return r.join(','); }).join('\n');
+  downloadFile('备份日志_' + new Date().toISOString().slice(0,10) + '.csv', csv, 'text/csv');
+  showToast('📤 备份日志已导出', 'success');
+}
+
+// 下载文件通用函数
+function downloadFile(filename, content, mimeType) {
+  var blob = new Blob([content], {type: mimeType});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 // 【改进3】系统配置：增加保存前确认弹窗 + 完成后写入操作日志
 var pendingSaveTab = '';
@@ -25175,7 +25479,31 @@ function submitHomepageBatchCheckin() {
   if (!phone || phone.length !== 11) { showToast('请输入11位手机号', 'error'); return; }
   showToast('🏨 正在批量办理 ' + hbciSelectedRooms.length + ' 个房间入住...', 'info');
   setTimeout(function() {
-    showToast('✅ 批量入住办理成功！' + name + '已入住 ' + hbciSelectedRooms.join('、'), 'success');
+    // 【改进1】批量入住提交后自动写入办理记录数据
+    var now = new Date();
+    var timeStr = now.toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g,'-') + ' ' + now.toTimeString().slice(0,5);
+    hbciSelectedRooms.forEach(function(roomNum) {
+      recordsData.unshift({
+        id: 'REC' + Date.now() + Math.floor(Math.random()*100),
+        time: timeStr,
+        type: 'checkin',
+        operator: '前台-赵飞',
+        detail: '批量入住：' + roomNum + '房间 - ' + name + '（' + phone + '）',
+        ip: '192.168.1.' + Math.floor(Math.random()*200+10),
+        status: 'success'
+      });
+    });
+    // 同时更新房间状态为入住
+    hbciSelectedRooms.forEach(function(roomNum) {
+      if (roomStatusMap && roomStatusMap[roomNum]) {
+        roomStatusMap[roomNum].status = 'in';
+        roomStatusMap[roomNum].guest = name;
+      }
+    });
+    localStorage.removeItem('hbci_draft');
+    renderRecordsTable();
+    if (typeof updateHomeStats === 'function') updateHomeStats();
+    showToast('✅ 批量入住办理成功！' + name + '已入住 ' + hbciSelectedRooms.join('、') + '，已自动生成办理记录', 'success');
     closeHomepageBatchCheckin();
   }, 2000);
 }
@@ -28252,6 +28580,66 @@ function renderKeypadTable() {
       '</tr>';
   });
   tbody.innerHTML = html;
+}
+
+// ======= 【改进3】密码管理搜索筛选排序功能 =======
+function applyKeypadSearch() {
+  var keyword = (document.getElementById('kp-search-input') || {}).value || '';
+  var typeFilter = (document.getElementById('kp-type-filter') || {}).value || 'all';
+  var statusFilter = (document.getElementById('kp-status-filter') || {}).value || 'all';
+  var sortBy = (document.getElementById('kp-sort') || {}).value || 'newest';
+  var filtered = keypadData.filter(function(k) {
+    var matchKw = !keyword || (k.code.indexOf(keyword) >= 0 || k.room.indexOf(keyword) >= 0 || (k.holder && k.holder.indexOf(keyword) >= 0) || k.type.indexOf(keyword) >= 0);
+    var matchType = typeFilter === 'all' || k.type.indexOf(typeFilter) >= 0;
+    var now = new Date();
+    var isExpired = new Date(k.valid) < now;
+    var isActive = k.status === 'active' && !isExpired;
+    var matchStatus = statusFilter === 'all' || (statusFilter === 'active' && isActive) || (statusFilter === 'expired' && isExpired) || (statusFilter === 'pending' && k.status === 'pending');
+    return matchKw && matchType && matchStatus;
+  });
+  // sort
+  filtered.sort(function(a, b) {
+    if (sortBy === 'newest') return 0;
+    if (sortBy === 'oldest') return 1;
+    if (sortBy === 'room-asc') return parseInt(a.room) - parseInt(b.room);
+    if (sortBy === 'room-desc') return parseInt(b.room) - parseInt(a.room);
+    if (sortBy === 'expires') return new Date(a.valid) - new Date(b.valid);
+    return 0;
+  });
+  var tbody = document.getElementById('keypad-table-body');
+  if (!tbody) return;
+  var html = '';
+  filtered.forEach(function(k, i) {
+    var statusCls = k.status === 'active' ? 'green' : 'gray';
+    var statusText = k.status === 'active' ? '生效中' : '已失效';
+    var isExpired = new Date(k.valid) < new Date();
+    html += '<tr>' +
+      '<td><span style="font-weight:700;font-size:15px;color:var(--blue);">' + k.code + '</span></td>' +
+      '<td><span style="font-weight:600;">' + k.room + '</span></td>' +
+      '<td><span class="tbadge blue">' + k.type + '</span></td>' +
+      '<td>' + k.holder + '</td>' +
+      '<td><span style="font-size:11px;color:' + (isExpired ? 'var(--red)' : 'var(--text-light)') + ';">' + k.valid + (isExpired ? ' ⚠️' : '') + '</span></td>' +
+      '<td><span class="tbadge ' + statusCls + '">' + statusText + '</span></td>' +
+      '<td>' + k.uses + '次</td>' +
+      '<td><button class="action-btn small" onclick="openEditKeypadModal(' + keypadData.indexOf(k) + ')">编辑</button> ' +
+      '<button class="action-btn small ' + (k.status==="active"?"red":"green") + '" onclick="deactivateKeypad(' + keypadData.indexOf(k) + ')">' + (k.status==="active"?"停用":"启用") + '</button> ' +
+      '<button class="action-btn small red" onclick="deleteKeypad(' + keypadData.indexOf(k) + ')">删除</button></td>' +
+      '</tr>';
+  });
+  tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-muted);">没有找到符合条件的密码记录</td></tr>';
+  var countEl = document.getElementById('kp-result-count');
+  if (countEl) countEl.textContent = '共 ' + filtered.length + ' 条';
+}
+
+function resetKeypadSearch() {
+  var el;
+  if (el = document.getElementById('kp-search-input')) el.value = '';
+  if (el = document.getElementById('kp-type-filter')) el.value = 'all';
+  if (el = document.getElementById('kp-status-filter')) el.value = 'all';
+  if (el = document.getElementById('kp-sort')) el.value = 'newest';
+  renderKeypadTable();
+  var countEl = document.getElementById('kp-result-count');
+  if (countEl) countEl.textContent = '共 ' + keypadData.length + ' 条';
 }
 
 // ======= 【改进D】结算中心：完整结账支付流程 =======
@@ -32091,10 +32479,55 @@ function acceptWorkorder(idx) {
 }
 
 function completeWorkorder(idx) {
-  workorderList[idx].status = 'done';
-  workorderList[idx].completeTime = '今天 ' + new Date().toTimeString().slice(0,5);
-  showToast('✅ 工单已完成', 'success');
+  // 【改进2】工单完成前弹出处理结果确认弹窗，填写处理备注+决定是否需要满意度回访
+  var w = workorderList[idx];
+  var old = document.getElementById('modal-wo-complete-confirm');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-wo-complete-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">' +
+    '<div class="modal" style="width:440px;">' +
+    '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:22px;">✅</div><div style="flex:1;"><div style="font-size:15px;font-weight:700;">工单完结确认</div><div style="font-size:11px;color:var(--text-muted);">' + w.id + ' · ' + (woTypeLabels[w.type] || w.type) + '</div></div>' +
+    '<button onclick="closeWoCompleteConfirm()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="background:var(--blue-bg);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--blue);">📋 <b>客户问题：</b>' + w.content + '</div>' +
+    '<div class="form-group"><label class="form-label">🔧 处理结果备注 <span class="required">*</span></label>' +
+    '<textarea class="form-textarea" id="wo-complete-note" placeholder="请简要说明处理结果，如：已更换门锁、已退款、已联系维修人员..." style="min-height:70px;font-size:13px;"></textarea></div>' +
+    '<div class="form-group"><label class="form-label">📞 客户回访 <span style="font-size:11px;color:var(--text-muted);">（选填）</span></label>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;cursor:pointer;font-size:12px;color:var(--green);">' +
+    '<input type="radio" name="wo-survey" value="yes" id="wo-survey-yes" style="accent-color:var(--green);"><label for="wo-survey-yes" style="cursor:pointer;margin:0;">发送满意度调查</label></label>' +
+    '<label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;color:var(--text);">' +
+    '<input type="radio" name="wo-survey" value="no" id="wo-survey-no" checked style="accent-color:var(--blue);"><label for="wo-survey-no" style="cursor:pointer;margin:0;">无需回访</label></label></div></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;font-size:11px;color:var(--orange);margin-bottom:4px;">⚠️ 提交后将直接完结工单，如需发送满意度调查请选择"发送满意度调查"</div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button onclick="closeWoCompleteConfirm()" class="modal-btn secondary">取消</button>' +
+    '<button onclick="confirmWoComplete(' + idx + ')" class="modal-btn primary" style="background:var(--green);border-color:var(--green);">✅ 确认完结</button></div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeWoCompleteConfirm() {
+  var m = document.getElementById('modal-wo-complete-confirm');
+  if (m) m.remove();
+}
+
+function confirmWoComplete(idx) {
+  var note = document.getElementById('wo-complete-note').value.trim();
+  if (!note) { showToast('请填写处理结果备注', 'error'); return; }
+  var sendSurvey = document.querySelector('input[name="wo-survey"]:checked').value === 'yes';
+  var w = workorderList[idx];
+  w.status = 'done';
+  w.completeTime = '今天 ' + new Date().toTimeString().slice(0,5);
+  w.handleNote = note;
+  closeWoCompleteConfirm();
   renderWorkorderTable();
+  if (sendSurvey) {
+    showToast('✅ 工单已完成，满意度调查已发送至客户手机...', 'info');
+    setTimeout(function() { openWorkorderSatisfactionSurveyModal(w.id, w.content); }, 1500);
+  } else {
+    showToast('✅ 工单已完成', 'success');
+  }
 }
 
 // 【改进v3-5】工单优先级数据（默认优先级映射）
