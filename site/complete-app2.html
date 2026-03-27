@@ -7630,9 +7630,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
       <div class="form-group">
         <label class="form-label">手机号码 <span class="required">*</span></label>
-        <input type="tel" class="form-input" id="checkin-phone" placeholder="请输入11位手机号码" maxlength="11" oninput="formatPhoneInput(this);validateCheckinForm()">
+        <input type="tel" class="form-input" id="checkin-phone" placeholder="请输入11位手机号码" maxlength="11" oninput="formatPhoneInput(this);validateCheckinForm();lookupGuestHistory(this.value)">
         <div class="form-hint" id="checkin-phone-hint" style="display:none;color:var(--red);font-size:11px;margin-top:3px;"></div>
       </div>
+      <div id="guest-history-panel"></div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">入住日期 <span class="required">*</span></label>
@@ -28373,6 +28374,234 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     renderMemberTableV2();
   }, 600);
+});
+
+}
+
+// =====================================================================
+// IMPROVEMENT A: 实时入住率热力图（首页未来7天x楼层维度）
+// =====================================================================
+window.initOccupancyHeatmap = function() {
+  var el = document.getElementById('heatmap-container');
+  if (!el) return;
+  var days = 7;
+  var floors = ['3层', '2层', '1层'];
+  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:500px;">';
+  html += '<thead><tr><th style="padding:6px 8px;text-align:left;color:var(--text-muted);font-weight:600;">楼层</th>';
+  for (var d = 0; d < days; d++) {
+    var dt = new Date(); dt.setDate(dt.getDate() + d);
+    var dayLabel = d === 0 ? '今天' : d === 1 ? '明天' : (dt.getMonth()+1) + '/' + String(dt.getDate()).padStart(2,'0');
+    html += '<th style="padding:6px 8px;text-align:center;color:var(--text-muted);font-weight:600;">' + dayLabel + '</th>';
+  }
+  html += '</tr></thead><tbody>';
+  var rates = [
+    [85,90,75,60,40,30,20],
+    [50,60,80,90,70,50,30],
+    [30,40,50,60,80,90,70]
+  ];
+  floors.forEach(function(floor, fi) {
+    html += '<tr><td style="padding:8px 8px;font-weight:600;color:var(--text);">' + floor + '</td>';
+    for (var d = 0; d < days; d++) {
+      var rate = rates[fi][d];
+      var color = rate >= 80 ? 'var(--red-bg)' : rate >= 50 ? 'var(--orange-bg)' : 'var(--green-bg)';
+      var textColor = rate >= 80 ? 'var(--red)' : rate >= 50 ? 'var(--orange)' : 'var(--green)';
+      var emoji = rate >= 80 ? '🔴' : rate >= 50 ? '🟡' : '🟢';
+      html += '<td style="padding:6px 8px;text-align:center;"><div style="background:' + color + ';border-radius:6px;padding:4px 6px;display:inline-block;min-width:48px;"><div style="font-size:14px;font-weight:700;color:' + textColor + ';">' + rate + '%</div><div style="font-size:10px;color:' + textColor + ';">' + emoji + '</div></div></td>';
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<div style="display:flex;gap:12px;margin-top:10px;font-size:11px;color:var(--text-muted);justify-content:center;">';
+  html += '<span>🔴 紧张(≥80%)</span><span>🟡 适中(50-79%)</span><span>🟢 充裕(&lt;50%)</span></div>';
+  el.innerHTML = html;
+};
+
+// =====================================================================
+// IMPROVEMENT B: 设备状态批量导出CSV
+// =====================================================================
+window.exportAllDevicesCSV = function() {
+  var rows = [['房间号','楼栋','房型','设备UUID','固件版本','电量','信号强度','最后在线','状态','备注']];
+  var demoData = [
+    ['301','主楼','亲子间','A84F1AF2-0001','v2.3.1','98%','满格(-65dBm)','2026-03-27 14:30','在线','正常'],
+    ['302','主楼','亲子间','A84F1AF2-0002','v2.3.1','88%','满格(-70dBm)','2026-03-27 14:28','在线','正常'],
+    ['303','主楼','亲子间','A84F1AF2-0003','v2.3.1','28%','弱(-92dBm)','2026-03-27 02:00','离线','低电量+离线'],
+    ['304','主楼','亲子间','A84F1AF2-0004','v2.3.1','15%','弱(-88dBm)','2026-03-27 10:15','低电量','需换电池'],
+    ['305','主楼','亲子间','A84F1AF2-0005','v2.3.0','52%','良好(-75dBm)','2026-03-27 14:25','在线','正常'],
+    ['201','主楼','大床房','A84F1AF2-0006','v2.3.1','95%','满格(-60dBm)','2026-03-27 14:29','在线','正常'],
+    ['202','主楼','大床房','A84F1AF2-0007','v2.3.1','42%','良好(-78dBm)','2026-03-27 14:20','在线','正常'],
+    ['401','东配楼','标准间','A84F1AF2-0008','v2.3.1','78%','满格(-68dBm)','2026-03-27 14:27','在线','正常'],
+  ];
+  rows = rows.concat(demoData);
+  var csv = rows.map(function(r) { return r.map(function(c) { return '"' + String(c).replace(/"/g,'""') + '"'; }).join(','); }).join('\n');
+  var bom = '\uFEFF';
+  var blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var now = new Date();
+  var dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  a.href = url; a.download = 'device-status-' + dateStr + '.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ 设备状态已导出（' + (rows.length - 1) + '台）', 'success');
+};
+
+// =====================================================================
+// IMPROVEMENT C: 入住办理时手机号历史记录查询
+// =====================================================================
+window.lookupGuestHistory = function(phone) {
+  var phoneStr = String(phone || '').trim();
+  if (phoneStr.length < 7) return;
+  var historyDiv = document.getElementById('guest-history-panel');
+  if (!historyDiv) return;
+  var records = typeof recordsList !== 'undefined' ? recordsList : [];
+  var matches = records.filter(function(r) { return r.phone && r.phone.replace(/\*/g,'').slice(-4) === phoneStr.slice(-4); });
+  if (matches.length > 0) {
+    var html = '<div style="margin-top:8px;padding:10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">';
+    html += '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:6px;">👤 历史入住记录</div>';
+    matches.slice(0, 3).forEach(function(m) {
+      html += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;"><span>' + (m.room||'') + '</span><span style="color:var(--text-muted);">' + (m.checkin||'') + ' ~ ' + (m.checkout||'') + '</span></div>';
+    });
+    html += '</div>';
+    historyDiv.innerHTML = html;
+  } else {
+    historyDiv.innerHTML = '<div style="margin-top:8px;padding:8px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--text-muted);">📭 未查询到历史入住记录（新客人）</div>';
+  }
+};
+
+// =====================================================================
+// IMPROVEMENT D: 房型价格日历（未来7天单价预览）
+// =====================================================================
+window.renderRoomTypePriceCalendar = function() {
+  var cards = document.querySelectorAll('#page-roomtypemgr .table tbody tr');
+  cards.forEach(function(card) {
+    var priceCell = card.querySelector('td:nth-child(5)');
+    if (!priceCell || priceCell.querySelector('.price-calendar')) return;
+    var basePrice = parseInt(priceCell.textContent.replace(/[^0-9]/g, '')) || 200;
+    var html = '<div class="price-calendar" style="margin-top:6px;">';
+    for (var d = 0; d < 7; d++) {
+      var dt = new Date(); dt.setDate(dt.getDate() + d);
+      var label = d === 0 ? '今' : d === 1 ? '明' : String(dt.getMonth()+1) + '/' + String(dt.getDate()).padStart(2,'0');
+      var variance = Math.floor(Math.random() * 40) - 20;
+      var price = Math.max(100, basePrice + variance);
+      var color = price > basePrice * 1.1 ? 'var(--red)' : price < basePrice * 0.9 ? 'var(--green)' : 'var(--text-muted)';
+      html += '<span style="display:inline-block;width:26px;text-align:center;font-size:10px;color:' + color + ';">' + label + '<br><b style="font-size:11px;">' + price + '</b></span>';
+    }
+    html += '</div>';
+    var origPrice = '<div style="font-weight:700;color:var(--orange);font-size:15px;">¥' + basePrice + '</div>';
+    priceCell.innerHTML = origPrice + html;
+  });
+};
+
+// =====================================================================
+// IMPROVEMENT E: 设备电量趋势预测（预测低电量告警日期）
+// =====================================================================
+window.showBatteryForecast = function(deviceId, currentBattery) {
+  var threshold = 20;
+  var history = [
+    {date:'03-21',level:98},{date:'03-22',level:95},{date:'03-23',level:85},
+    {date:'03-24',level:78},{date:'03-25',level:70},{date:'03-26',level:28},{date:'03-27',level:currentBattery||28}
+  ];
+  var n = history.length, sumX=0, sumY=0, sumXY=0, sumX2=0;
+  history.forEach(function(p, i) { sumX+=i; sumY+=p.level; sumXY+=i*p.level; sumX2+=i*i; });
+  var slope = (n*sumXY - sumX*sumY) / (n*sumX2 - sumX*sumX);
+  var daysUntilAlert = slope < 0 ? Math.ceil((threshold - currentBattery) / slope) : 999;
+  var forecastDate = new Date();
+  forecastDate.setDate(forecastDate.getDate() + Math.max(0, daysUntilAlert));
+  var forecastStr = daysUntilAlert >= 999 ? '电量稳定，短期内不会告警' :
+    daysUntilAlert <= 0 ? '⚠️ 电量已低于告警阈值！' :
+    '预计 ' + String(forecastDate.getMonth()+1) + '/' + String(forecastDate.getDate()) + ' 触达告警阈值（' + daysUntilAlert + '天后）';
+  return { forecastStr: forecastStr, daysUntilAlert: daysUntilAlert, history: history, slope: slope,
+    trend: slope < -5 ? 'down-fast' : slope < 0 ? 'down-slow' : 'stable' };
+};
+
+window.openBatteryForecastModal = function(deviceId, currentBattery) {
+  var result = showBatteryForecast(deviceId, currentBattery||28);
+  var trendIcon = result.trend === 'down-fast' ? '🔴' : result.trend === 'down-slow' ? '🟡' : '🟢';
+  var trendLabel = result.trend === 'down-fast' ? '下降较快' : result.trend === 'down-slow' ? '正常衰减' : '电量稳定';
+  var isUrgent = result.daysUntilAlert <= 3;
+  var html = '<div class="modal-overlay" id="modal-battery-forecast" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div style="width:100%;max-width:480px;background:white;border-radius:16px;overflow:hidden;">' +
+    '<div style="padding:20px 24px;background:var(--blue);color:white;">' +
+    '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">📊 电量趋势预测</div>' +
+    '<div style="font-size:12px;opacity:0.85;">设备 DLD-' + (deviceId||'301') + ' · 当前电量 ' + currentBattery + '%</div></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:flex;gap:12px;margin-bottom:16px;">' +
+    '<div style="flex:1;padding:12px;background:var(--bg);border-radius:8px;text-align:center;">' +
+    '<div style="font-size:22px;font-weight:700;color:var(--blue);">' + (result.daysUntilAlert >= 999 ? '∞' : result.daysUntilAlert) + '</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);">预测告警天数</div></div>' +
+    '<div style="flex:1;padding:12px;background:var(--bg);border-radius:8px;text-align:center;">' +
+    '<div style="font-size:22px;font-weight:700;">' + trendIcon + '</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);">' + trendLabel + '</div></div></div>' +
+    '<div style="padding:12px;background:' + (isUrgent ? 'var(--red-bg)' : 'var(--blue-bg)') + ';border-radius:8px;margin-bottom:16px;font-size:13px;color:' + (isUrgent ? 'var(--red)' : 'var(--blue)') + ';font-weight:600;">' + result.forecastStr + '</div>' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">📈 7日电量走势</div>' +
+    '<div style="display:flex;align-items:flex-end;gap:6px;height:80px;padding:8px;background:var(--bg);border-radius:8px;">';
+  result.history.forEach(function(p) {
+    var h = Math.round((p.level / 100) * 70);
+    var color = p.level < 30 ? 'var(--red)' : p.level < 50 ? 'var(--orange)' : 'var(--green)';
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">' +
+      '<div style="width:100%;background:' + color + ';border-radius:3px 3px 0 0;min-height:4px;height:' + h + 'px;"></div>' +
+      '<div style="font-size:8px;color:var(--text-muted);">' + p.date + '</div></div>';
+  });
+  html += '</div><div style="margin-top:16px;padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:6px;font-size:12px;color:var(--orange);">💡 建议：及时更换电池或检查设备是否存在异常耗电情况</div>' +
+    '</div><div style="padding:12px 24px 20px;text-align:center;"><button onclick="document.getElementById(\'modal-battery-forecast\').remove()" style="padding:10px 32px;background:var(--blue);color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">我知道了</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+};
+
+// Wire all improvements on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    // A: Init heatmap on homepage
+    initOccupancyHeatmap();
+    // B: Add device export button
+    var hwCard = document.querySelector('#page-hardware .card-header');
+    if (hwCard && !document.getElementById('btn-export-devices')) {
+      var exportBtn = document.createElement('button');
+      exportBtn.id = 'btn-export-devices';
+      exportBtn.className = 'action-btn';
+      exportBtn.style.cssText = 'background:var(--green-bg);color:var(--green);border-color:var(--green);padding:4px 12px;';
+      exportBtn.innerHTML = '📤 导出设备';
+      exportBtn.onclick = exportAllDevicesCSV;
+      hwCard.appendChild(exportBtn);
+    }
+    // C: Wire phone input to trigger history lookup
+    var phoneInput = document.getElementById('checkin-phone');
+    if (phoneInput) {
+      phoneInput.setAttribute('oninput', 'formatPhoneInput(this);validateCheckinForm();lookupGuestHistory(this.value)');
+    }
+    var ciPhoneInput = document.getElementById('ci-phone');
+    if (ciPhoneInput) {
+      ciPhoneInput.setAttribute('oninput', 'lookupGuestHistory(this.value)');
+    }
+    // D: Price calendar button on room type page
+    var rtHeader = document.querySelector('#page-roomtypemgr .card-header');
+    if (rtHeader && !document.getElementById('btn-price-calendar')) {
+      var calBtn = document.createElement('button');
+      calBtn.id = 'btn-price-calendar';
+      calBtn.className = 'action-btn';
+      calBtn.style.cssText = 'background:var(--purple-bg);color:var(--purple);border-color:var(--purple);padding:4px 12px;';
+      calBtn.innerHTML = '📅 价格日历';
+      calBtn.onclick = renderRoomTypePriceCalendar;
+      rtHeader.appendChild(calBtn);
+    }
+    renderRoomTypePriceCalendar();
+    // E: Wire battery forecast button on device detail
+    var batteryCards = document.querySelectorAll('#page-device .detail-card');
+    batteryCards.forEach(function(card) {
+      var title = card.querySelector('.detail-card-title');
+      if (title && title.textContent.includes('电池电量')) {
+        var btn = document.createElement('button');
+        btn.className = 'action-btn small';
+        btn.style.cssText = 'margin-top:8px;padding:3px 10px;font-size:11px;';
+        btn.innerHTML = '📈 趋势预测';
+        btn.onclick = function() {
+          var statNum = card.querySelector('.stat-num');
+          var batteryPct = statNum ? parseInt(statNum.textContent) || 28 : 28;
+          openBatteryForecastModal('301', batteryPct);
+        };
+        var cardBody = card.querySelector('.card-body') || card;
+        if (cardBody) cardBody.appendChild(btn);
+      }
+    });
+  }, 1000);
 });
 
 </script>
