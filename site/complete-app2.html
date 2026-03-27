@@ -1897,7 +1897,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <span style="font-size:13px;color:var(--text-muted);">应急卡</span><span class="tbadge gray" style="font-size:10px;">未配置</span>
               </div>
             </div>
-            <button class="action-btn" style="width:100%;text-align:center;" onclick="openCheckinModal()">办理入住</button>
+            <button class="action-btn" style="width:100%;text-align:center;" onclick="openCompleteCheckinModal()">办理入住</button>
           </div>
           <div class="detail-card">
             <button class="action-btn green" style="width:100%;margin-bottom:8px;" onclick="openUnlockModal()">🔓 远程开锁</button>
@@ -26602,6 +26602,455 @@ function openHomepageTodoModal() {
 function closeHomepageTodoModal() {
   var m = document.getElementById('modal-homepage-todo');
   if (m) m.remove();
+}
+
+// ======= 【改进v3-1】完整入住办理+收款+钥匙开通完整弹窗 =======
+var checkInRoomData = {
+  room: '', roomType: '', price: 0, deposit: 100
+};
+function openCompleteCheckinModal() {
+  var old = document.getElementById('modal-complete-checkin');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-complete-checkin" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div style="width:100%;max-width:680px;max-height:90vh;overflow-y:auto;background:white;border-radius:14px;display:flex;flex-direction:column;">';
+  // Header
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div><div style="font-size:17px;font-weight:700;">🏨 办理入住</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">完成信息填写 → 收款 → 开通门锁钥匙</div></div>';
+  html += '<button onclick="closeCompleteCheckinModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  // Step indicator
+  html += '<div style="padding:16px 24px 0;display:flex;align-items:center;gap:0;">';
+  html += '<div id="ck-step-1" style="flex:1;text-align:center;padding:8px 0;border-bottom:3px solid var(--blue);color:var(--blue);font-size:13px;font-weight:700;">① 信息填写</div>';
+  html += '<div id="ck-step-2" style="flex:1;text-align:center;padding:8px 0;border-bottom:3px solid var(--border);color:var(--text-muted);font-size:13px;font-weight:600;">② 收款结算</div>';
+  html += '<div id="ck-step-3" style="flex:1;text-align:center;padding:8px 0;border-bottom:3px solid var(--border);color:var(--text-muted);font-size:13px;font-weight:600;">③ 开通钥匙</div></div>';
+  // Step 1: Customer Info
+  html += '<div id="ck-content-1" style="padding:20px 24px;">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">';
+  html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">入住房间 <span class="required">*</span></label>';
+  html += '<select class="form-select" id="ck-room" onchange="onCheckinRoomChange()"><option value="">请选择房间</option><option value="301">301 - 亲子间（¥298）</option><option value="302">302 - 亲子间（¥298）</option><option value="305">305 - 大床房（¥238）</option><option value="201">201 - 大床房（¥238）</option></select></div>';
+  html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">入住日期</label>';
+  html += '<input type="date" class="form-input" id="ck-date-in" value="' + new Date().toISOString().slice(0,10) + '"></div></div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">';
+  html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">入住人姓名 <span class="required">*</span></label>';
+  html += '<input type="text" class="form-input" id="ck-customer" placeholder="请输入入住人姓名"></div>';
+  html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">联系电话 <span class="required">*</span></label>';
+  html += '<input type="tel" class="form-input" id="ck-phone" placeholder="请输入手机号"></div></div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">';
+  html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">身份证号</label>';
+  html += '<input type="text" class="form-input" id="ck-id" placeholder="请输入身份证号"></div>';
+  html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">入住天数</label>';
+  html += '<select class="form-select" id="ck-days" onchange="onCheckinDaysChange()"><option value="1">1天</option><option value="2">2天</option><option value="3">3天</option><option value="5">5天</option><option value="7">7天</option></select></div></div>';
+  html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">备注</label>';
+  html += '<input type="text" class="form-input" id="ck-remark" placeholder="特殊要求（选填）"></div>';
+  html += '</div>';
+  // Step 2: Payment
+  html += '<div id="ck-content-2" style="display:none;padding:20px 24px;">';
+  html += '<div id="ck-payment-summary" style="padding:16px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:10px;margin-bottom:16px;"></div>';
+  html += '<div class="form-group"><label class="form-label">支付方式</label>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px;">';
+  html += '<label id="ck-pay-wechat" onclick="selectCheckinPay(\'wechat\')" style="padding:14px 10px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;transition:all 0.2s;">💚 微信</label>';
+  html += '<label id="ck-pay-alipay" onclick="selectCheckinPay(\'alipay\')" style="padding:14px 10px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;transition:all 0.2s;">💙 支付宝</label>';
+  html += '<label id="ck-pay-cash" onclick="selectCheckinPay(\'cash\')" style="padding:14px 10px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;transition:all 0.2s;">💴 现金</label>';
+  html += '<label id="ck-pay-card" onclick="selectCheckinPay(\'card\')" style="padding:14px 10px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;transition:all 0.2s;">💳 银行卡</label></div></div>';
+  html += '<div class="form-group"><label class="form-label">实收金额（元）</label>';
+  html += '<input type="number" class="form-input" id="ck-amount-paid" placeholder="请输入实收金额" style="font-size:16px;padding:10px 14px;font-weight:700;" oninput="calcCheckinChange()"></div>';
+  html += '<div id="ck-change-display" style="display:none;padding:12px 16px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;font-size:14px;font-weight:700;color:var(--green);text-align:center;"></div>';
+  html += '</div>';
+  // Step 3: Key Creation
+  html += '<div id="ck-content-3" style="display:none;padding:20px 24px;">';
+  html += '<div id="ck-key-summary" style="padding:16px;background:var(--green-bg);border:1px solid var(--green);border-radius:10px;margin-bottom:16px;text-align:center;"><div style="font-size:16px;font-weight:700;color:var(--green);margin-bottom:4px;">✅ 收款成功！</div><div style="font-size:13px;color:var(--text);" id="ck-key-amount-text"></div></div>';
+  html += '<div style="margin-bottom:16px;"><div style="font-size:14px;font-weight:700;margin-bottom:12px;">🔑 门锁钥匙开通</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">';
+  html += '<div onclick="toggleCheckinKey(\'phone\')" id="ck-key-phone" style="padding:16px 12px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;"><div style="font-size:28px;margin-bottom:6px;">📱</div><div style="font-size:13px;font-weight:600;">手机开锁</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">蓝牙/NFC解锁</div></div>';
+  html += '<div onclick="toggleCheckinKey(\'card\')" id="ck-key-card" style="padding:16px 12px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;"><div style="font-size:28px;margin-bottom:6px;">💳</div><div style="font-size:13px;font-weight:600;">门卡</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">IC卡开门</div></div>';
+  html += '<div onclick="toggleCheckinKey(\'pwd\')" id="ck-key-pwd" style="padding:16px 12px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;"><div style="font-size:28px;margin-bottom:6px;">🔢</div><div style="font-size:13px;font-weight:600;">密码</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">数字密码开门</div></div></div></div>';
+  html += '<div id="ck-card-detail" style="display:none;margin-bottom:16px;padding:14px;background:var(--bg);border-radius:8px;">';
+  html += '<div class="form-group" style="margin-bottom:8px;"><label class="form-label" style="font-size:12px;">门卡数量</label>';
+  html += '<input type="number" class="form-input" id="ck-card-count" value="1" min="1" max="5" style="width:80px;padding:6px 10px;"></div>';
+  html += '<div style="font-size:12px;color:var(--text-muted);">门卡已初始化：<span id="ck-card-init-status" style="color:var(--green);font-weight:600;">准备就绪</span></div></div>';
+  html += '<div id="ck-pwd-detail" style="display:none;margin-bottom:16px;padding:14px;background:var(--bg);border-radius:8px;">';
+  html += '<div class="form-group" style="margin-bottom:8px;"><label class="form-label" style="font-size:12px;">开锁密码</label>';
+  html += '<input type="text" class="form-input" id="ck-pwd-value" placeholder="请输入6位数字密码" maxlength="6" style="width:120px;padding:6px 10px;"></div>';
+  html += '<div style="font-size:12px;color:var(--text-muted);">密码有效期：<span style="color:var(--blue);font-weight:600;">与入住日期一致</span></div></div>';
+  html += '</div>';
+  // Footer
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">';
+  html += '<button id="ck-btn-prev" onclick="checkinPrevStep()" class="modal-btn secondary" style="display:none;">← 上一步</button><div></div>';
+  html += '<button id="ck-btn-next" onclick="checkinNextStep()" class="modal-btn primary">下一步 →</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+var checkinStep = 1;
+var checkinSelectedRoom = '';
+var checkinDays = 1;
+var checkinPayMethod = 'wechat';
+var checkinKeys = {phone:false, card:false, pwd:false};
+function onCheckinRoomChange() {
+  checkinSelectedRoom = document.getElementById('ck-room').value;
+}
+function onCheckinDaysChange() {
+  checkinDays = parseInt(document.getElementById('ck-days').value) || 1;
+}
+function updateCheckinStepUI() {
+  for (var i = 1; i <= 3; i++) {
+    var step = document.getElementById('ck-step-' + i);
+    var content = document.getElementById('ck-content-' + i);
+    if (step) {
+      if (i === checkinStep) {
+        step.style.borderBottomColor = 'var(--blue)';
+        step.style.color = 'var(--blue)';
+      } else if (i < checkinStep) {
+        step.style.borderBottomColor = 'var(--green)';
+        step.style.color = 'var(--green)';
+      } else {
+        step.style.borderBottomColor = 'var(--border)';
+        step.style.color = 'var(--text-muted)';
+      }
+    }
+    if (content) content.style.display = i === checkinStep ? 'block' : 'none';
+  }
+  document.getElementById('ck-btn-prev').style.display = checkinStep > 1 ? 'inline-block' : 'none';
+  document.getElementById('ck-btn-next').textContent = checkinStep === 3 ? '✅ 完成办理' : '下一步 →';
+}
+function checkinNextStep() {
+  if (checkinStep === 1) {
+    var room = document.getElementById('ck-room').value;
+    var name = document.getElementById('ck-customer').value.trim();
+    var phone = document.getElementById('ck-phone').value.trim();
+    if (!room) { showToast('请选择入住房间', 'error'); return; }
+    if (!name) { showToast('请输入入住人姓名', 'error'); return; }
+    if (!phone) { showToast('请输入联系电话', 'error'); return; }
+    checkinDays = parseInt(document.getElementById('ck-days').value) || 1;
+    var roomText = document.getElementById('ck-room').options[document.getElementById('ck-room').selectedIndex].text;
+    var price = room.includes('298') ? 298 : 238;
+    var total = price * checkinDays;
+    var deposit = 100;
+    document.getElementById('ck-payment-summary').innerHTML = '<div style="font-size:14px;font-weight:700;margin-bottom:10px;">📋 入住结算单</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;"><div>房间：<strong>' + roomText.split('（')[0] + '</strong></div><div>入住：' + document.getElementById('ck-date-in').value + '</div><div>天数：<strong>' + checkinDays + '天</strong></div><div>房费：<strong style="color:var(--orange);">¥' + total + '</strong></div><div>押金：<strong>¥' + deposit + '</strong></div><div style="font-size:15px;font-weight:700;color:var(--blue);">合计：<strong>¥' + (total + deposit) + '</strong></div></div>';
+    document.getElementById('ck-amount-paid').value = total + deposit;
+    checkinStep = 2;
+    updateCheckinStepUI();
+    selectCheckinPay('wechat');
+  } else if (checkinStep === 2) {
+    var paid = parseFloat(document.getElementById('ck-amount-paid').value) || 0;
+    if (paid <= 0) { showToast('请输入实收金额', 'error'); return; }
+    var roomText = document.getElementById('ck-room').options[document.getElementById('ck-room').selectedIndex].text;
+    var price = roomText.includes('298') ? 298 : 238;
+    var total = price * checkinDays;
+    var deposit = 100;
+    document.getElementById('ck-key-amount-text').textContent = '实收 ¥' + paid + ' · 房费 ¥' + total + ' + 押金 ¥' + deposit;
+    checkinStep = 3;
+    updateCheckinStepUI();
+    toggleCheckinKey('phone');
+    toggleCheckinKey('card');
+  } else if (checkinStep === 3) {
+    closeCompleteCheckinModal();
+    showToast('✅ 入住办理完成！房间' + checkinSelectedRoom + '已开通，钥匙已配置', 'success');
+  }
+}
+function checkinPrevStep() {
+  if (checkinStep > 1) { checkinStep--; updateCheckinStepUI(); }
+}
+function selectCheckinPay(method) {
+  checkinPayMethod = method;
+  ['wechat','alipay','cash','card'].forEach(function(m) {
+    var el = document.getElementById('ck-pay-' + m);
+    if (el) el.style.borderColor = m === method ? 'var(--blue)' : 'var(--border)';
+  });
+}
+function calcCheckinChange() {
+  var paid = parseFloat(document.getElementById('ck-amount-paid').value) || 0;
+  var roomText = document.getElementById('ck-room').options[document.getElementById('ck-room').selectedIndex].text;
+  var price = roomText.includes('298') ? 298 : 238;
+  var total = price * checkinDays;
+  var deposit = 100;
+  var due = total + deposit;
+  var change = paid - due;
+  var display = document.getElementById('ck-change-display');
+  if (change > 0) {
+    display.style.display = 'block';
+    display.innerHTML = '找零：<strong style="font-size:18px;">¥' + change.toFixed(2) + '</strong>';
+    display.style.background = 'var(--green-bg)';
+    display.style.borderColor = 'var(--green)';
+    display.style.color = 'var(--green)';
+  } else if (change < 0) {
+    display.style.display = 'block';
+    display.innerHTML = '尚欠：<strong style="font-size:18px;">¥' + Math.abs(change).toFixed(2) + '</strong>';
+    display.style.background = 'var(--red-bg)';
+    display.style.borderColor = 'var(--red)';
+    display.style.color = 'var(--red)';
+  } else {
+    display.style.display = 'block';
+    display.innerHTML = '✅ 金额正好，无找零';
+    display.style.background = 'var(--green-bg)';
+    display.style.borderColor = 'var(--green)';
+    display.style.color = 'var(--green)';
+  }
+}
+function toggleCheckinKey(type) {
+  checkinKeys[type] = !checkinKeys[type];
+  var el = document.getElementById('ck-key-' + type);
+  if (el) el.style.borderColor = checkinKeys[type] ? 'var(--blue)' : 'var(--border)';
+  document.getElementById('ck-card-detail').style.display = checkinKeys.card ? 'block' : 'none';
+  document.getElementById('ck-pwd-detail').style.display = checkinKeys.pwd ? 'block' : 'none';
+}
+function closeCompleteCheckinModal() {
+  var m = document.getElementById('modal-complete-checkin');
+  if (m) m.remove();
+  checkinStep = 1;
+  checkinKeys = {phone:false, card:false, pwd:false};
+}
+
+// ======= 【改进v3-2】会员积分兑换商城完整弹窗 =======
+var pointsMallData = [
+  {id:'p1', name:'免费房晚1晚', points:5000, type:'room', stock:3, desc:'亲子间免费入住1晚（节假日除外）'},
+  {id:'p2', name:'免费房晚1晚', points:8000, type:'room', stock:2, desc:'大床房免费入住1晚（节假日除外）'},
+  {id:'p3', name:'100元代金券', points:2000, type:'voucher', stock:99, desc:'全场通用，无门槛'},
+  {id:'p4', name:'延迟退房2小时', points:500, type:'service', stock:99, desc:'可叠加使用，需提前预约'},
+  {id:'p5', name:'免费minibar', points:800, type:'service', stock:20, desc:'入住当日minibar免费'},
+  {id:'p6', name:'健身房使用权', points:300, type:'service', stock:99, desc:'入住期间免费使用'}
+];
+function openPointsMallModal(memberIdx) {
+  var old = document.getElementById('modal-points-mall');
+  if (old) old.remove();
+  var memberNames = ['王浩','李娜','张伟','赵敏','钱进'];
+  var memberPoints = [2350, 890, 4500, 1200, 0];
+  var name = memberNames[memberIdx] || '会员';
+  var points = memberPoints[memberIdx] || 0;
+  var html = '<div class="modal-overlay" id="modal-points-mall" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div style="width:100%;max-width:620px;max-height:88vh;overflow-y:auto;background:white;border-radius:14px;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div><div style="font-size:17px;font-weight:700;">🎯 积分兑换商城 - ' + name + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">当前积分：<strong style="color:var(--orange);font-size:14px;">' + points + '</strong> 分</div></div>';
+  html += '<button onclick="closePointsMallModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:14px 24px;background:var(--orange-bg);border-bottom:1px solid var(--border);">';
+  html += '<div style="font-size:12px;color:var(--orange);font-weight:600;">💡 兑换规则：积分不足时无法兑换；兑换后积分不可退还；请在有效期内使用</div></div>';
+  html += '<div style="padding:16px 24px;display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="points-mall-items">';
+  pointsMallData.forEach(function(item) {
+    var canRedeem = points >= item.points;
+    var stockColor = item.stock > 5 ? 'var(--green)' : item.stock > 0 ? 'var(--orange)' : 'var(--red)';
+    html += '<div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.2s;' + (canRedeem ? '' : 'opacity:0.6;') + '" onclick="' + (canRedeem ? 'redeemPointsItem(' + memberIdx + ',\'' + item.id + '\')' : '') + '">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">';
+    html += '<div style="font-size:12px;font-weight:700;">' + item.name + '</div>';
+    html += '<div style="font-size:11px;color:' + stockColor + ';font-weight:600;">剩' + item.stock + '份</div></div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.4;">' + item.desc + '</div>';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+    html += '<div style="font-size:14px;font-weight:700;color:var(--orange);">' + item.points + ' 积分</div>';
+    html += '<button class="action-btn small" style="padding:3px 10px;font-size:11px;' + (canRedeem ? 'background:var(--blue-bg);color:var(--blue);border-color:var(--blue);' : 'background:var(--gray-bg);color:var(--text-muted);cursor:not-allowed;') + '" ' + (canRedeem ? '' : 'disabled') + '>兑换</button></div></div>';
+  });
+  html += '</div>';
+  html += '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">';
+  html += '<div style="font-size:12px;color:var(--text-muted);">兑换记录可在会员详情中查看</div>';
+  html += '<button onclick="closePointsMallModal()" class="modal-btn secondary">关闭</button></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function redeemPointsItem(memberIdx, itemId) {
+  var item = pointsMallData.find(function(d){ return d.id === itemId; });
+  if (!item) return;
+  var memberNames = ['王浩','李娜','张伟','赵敏','钱进'];
+  var memberPoints = [2350, 890, 4500, 1200, 0];
+  var name = memberNames[memberIdx];
+  var points = memberPoints[memberIdx];
+  if (points < item.points) { showToast('积分不足，无法兑换', 'error'); return; }
+  if (item.stock <= 0) { showToast('该礼品已兑罄', 'error'); return; }
+  if (!confirm(name + ' 确认用 ' + item.points + ' 积分兑换「' + item.name + '」吗？')) return;
+  item.stock--;
+  memberPoints[memberIdx] -= item.points;
+  showToast('✅ 兑换成功！' + item.name + ' 已加入您的账户', 'success');
+  closePointsMallModal();
+  openPointsMallModal(memberIdx);
+}
+function closePointsMallModal() {
+  var m = document.getElementById('modal-points-mall');
+  if (m) m.remove();
+}
+
+// ======= 【改进v3-3】服务工单状态完整工作流：接受→处理中→完成/转交 =======
+var workOrderFullWorkflowData = [
+  {id:'WO-2026032701', type:'complaint', typeText:'🔴 客户投诉', room:'301', customer:'张三', urgent:'urgent', urgentText:'紧急', status:'pending', statusText:'待接受', assignee:'赵飞', createTime:'2026-03-27 09:15', desc:'房间空调不制热，已报修一次未解决'},
+  {id:'WO-2026032702', type:'repair', typeText:'🔧 设备报修', room:'303', customer:'李四', urgent:'normal', urgentText:'普通', status:'processing', statusText:'处理中', assignee:'王工', createTime:'2026-03-27 08:30', desc:'门锁指纹识别不灵敏'},
+  {id:'WO-2026032703', type:'delivery', typeText:'📦 送物服务', room:'305', customer:'王五', urgent:'normal', urgentText:'普通', status:'done', statusText:'已完成', assignee:'周敏', createTime:'2026-03-26 22:00', desc:'需要追加毛巾2条'}
+];
+function openWorkOrderWorkflowModal(woId) {
+  var old = document.getElementById('modal-wo-workflow');
+  if (old) old.remove();
+  var wo = workOrderFullWorkflowData.find(function(d){ return d.id === woId; }) || workOrderFullWorkflowData[0];
+  var isDone = wo.status === 'done';
+  var html = '<div class="modal-overlay" id="modal-wo-workflow" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div style="width:100%;max-width:560px;background:white;border-radius:14px;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div><div style="font-size:16px;font-weight:700;">📋 工单处理 - ' + wo.id + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + wo.typeText + ' · ' + wo.room + ' · ' + wo.urgentText + '</div></div>';
+  html += '<button onclick="closeWoWorkflowModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  // Status flow indicator
+  var steps = [{t:'待接受',s:wo.status==='pending'?'active':wo.status!=='pending'?'done':'none'}, {t:'处理中',s:wo.status==='processing'?'active':wo.status==='done'?'done':'none'}, {t:'已完成',s:wo.status==='done'?'active':'none'}];
+  html += '<div style="padding:20px 24px;display:flex;align-items:center;gap:0;">';
+  steps.forEach(function(step, idx) {
+    var dotColor = step.s === 'done' ? 'var(--green)' : step.s === 'active' ? 'var(--blue)' : 'var(--border)';
+    var textColor = step.s === 'done' ? 'var(--green)' : step.s === 'active' ? 'var(--blue)' : 'var(--text-muted)';
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;">';
+    html += '<div style="width:32px;height:32px;border-radius:50%;background:' + dotColor + ';display:flex;align-items:center;justify-content:center;font-size:14px;color:white;font-weight:700;">' + (step.s === 'done' ? '✓' : (idx + 1)) + '</div>';
+    html += '<div style="font-size:12px;font-weight:600;color:' + textColor + ';">' + step.t + '</div></div>';
+    if (idx < steps.length - 1) {
+      html += '<div style="flex:1;height:3px;background:' + (step.s === 'done' ? 'var(--green)' : 'var(--border)') + ';margin-bottom:20px;"></div>';
+    }
+  });
+  html += '</div>';
+  // Details
+  html += '<div style="padding:0 24px 16px;">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">';
+  html += '<div style="padding:10px 12px;background:var(--bg);border-radius:6px;font-size:12px;"><div style="color:var(--text-muted);margin-bottom:2px;">工单编号</div><div style="font-weight:600;">' + wo.id + '</div></div>';
+  html += '<div style="padding:10px 12px;background:var(--bg);border-radius:6px;font-size:12px;"><div style="color:var(--text-muted);margin-bottom:2px;">当前状态</div><div style="font-weight:600;color:var(--blue);">' + wo.statusText + '</div></div>';
+  html += '<div style="padding:10px 12px;background:var(--bg);border-radius:6px;font-size:12px;"><div style="color:var(--text-muted);margin-bottom:2px;">负责员工</div><div style="font-weight:600;">' + wo.assignee + '</div></div>';
+  html += '<div style="padding:10px 12px;background:var(--bg);border-radius:6px;font-size:12px;"><div style="color:var(--text-muted);margin-bottom:2px;">创建时间</div><div style="font-weight:600;">' + wo.createTime + '</div></div></div>';
+  html += '<div style="padding:10px 12px;background:var(--bg);border-radius:6px;font-size:12px;margin-bottom:16px;"><div style="color:var(--text-muted);margin-bottom:4px;">问题描述</div><div style="font-weight:500;">' + wo.desc + '</div></div>';
+  if (!isDone) {
+    html += '<div class="form-group"><label class="form-label">处理动作</label>';
+    html += '<select class="form-select" id="wo-action-select" onchange="onWoActionChange()" style="font-size:13px;">';
+    if (wo.status === 'pending') html += '<option value="accept">✅ 接受工单</option>';
+    html += '<option value="process">🔄 开始处理</option>';
+    html += '<option value="done">✅ 完成工单</option>';
+    html += '<option value="transfer">↪️ 转交他人</option>';
+    html += '<option value="cannot">❌ 无法解决</option>';
+    html += '</select></div>';
+    html += '<div class="form-group" id="wo-transfer-group" style="display:none;"><label class="form-label">转交给</label>';
+    html += '<select class="form-select" id="wo-transfer-to" style="font-size:13px;">';
+    html += '<option value="赵飞">赵飞（前厅经理）</option><option value="周敏">周敏（前厅接待）</option>';
+    html += '<option value="吴倩">吴倩（客房主管）</option><option value="王工">王工（工程师）</option>';
+    html += '</select></div>';
+    html += '<div class="form-group"><label class="form-label">处理备注</label>';
+    html += '<textarea class="form-textarea" id="wo-remark" placeholder="请输入处理说明..." style="min-height:70px;font-size:13px;"></textarea></div>';
+  } else {
+    html += '<div style="padding:12px 16px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;font-size:13px;color:var(--green);text-align:center;">✅ 此工单已完成处理</div>';
+  }
+  html += '</div>';
+  html += '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button onclick="closeWoWorkflowModal()" class="modal-btn secondary">关闭</button>';
+  if (!isDone) html += '<button onclick="submitWoWorkflow(\'' + wo.id + '\')" class="modal-btn primary">💾 确认处理</button>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function onWoActionChange() {
+  var action = document.getElementById('wo-action-select').value;
+  document.getElementById('wo-transfer-group').style.display = action === 'transfer' ? 'block' : 'none';
+}
+function submitWoWorkflow(woId) {
+  var action = document.getElementById('wo-action-select').value;
+  var remark = document.getElementById('wo-remark').value.trim();
+  var actionTexts = {accept:'接受',process:'开始处理',done:'完成',transfer:'转交',cannot:'标记无法解决'};
+  var wo = workOrderFullWorkflowData.find(function(d){ return d.id === woId; });
+  if (wo) {
+    if (action === 'transfer') wo.assignee = document.getElementById('wo-transfer-to').value;
+    if (action === 'done' || action === 'cannot') wo.status = 'done';
+    else if (action === 'process') wo.status = 'processing';
+    else if (action === 'accept') wo.status = 'processing';
+  }
+  showToast('✅ 工单已' + (actionTexts[action] || '处理') + (remark ? '：' + remark : ''), 'success');
+  closeWoWorkflowModal();
+}
+function closeWoWorkflowModal() {
+  var m = document.getElementById('modal-wo-workflow');
+  if (m) m.remove();
+}
+
+// ======= 【改进v3-4】员工重置密码二次确认弹窗（防止误操作） =======
+var pwdResetIdx = -1;
+function openPwdResetConfirmModal(idx) {
+  pwdResetIdx = idx;
+  var staffNames = ['赵飞','周敏','吴倩','郑强','王工','钱静','孙丽','刘洋'];
+  var name = staffNames[idx] || '该员工';
+  var old = document.getElementById('modal-pwd-reset-confirm');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-pwd-reset-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div style="width:100%;max-width:400px;background:white;border-radius:14px;">';
+  html += '<div style="padding:24px;text-align:center;">';
+  html += '<div style="width:56px;height:56px;background:var(--orange-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px;">🔑</div>';
+  html += '<div style="font-size:16px;font-weight:700;margin-bottom:8px;">重置员工登录密码？</div>';
+  html += '<div style="font-size:14px;color:var(--text-muted);margin-bottom:16px;">员工：<strong>' + name + '</strong></div>';
+  html += '<div style="padding:14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:10px;font-size:13px;color:var(--orange);text-align:left;margin-bottom:8px;">';
+  html += '⚠️ 重置后密码将恢复为默认密码：<br><strong style="font-size:18px;">123456</strong><br><span style="font-size:11px;">请提醒员工登录后立即修改密码</span></div></div>';
+  html += '<div style="padding:0 24px 24px;display:flex;gap:10px;">';
+  html += '<button onclick="closePwdResetConfirmModal()" class="modal-btn secondary" style="flex:1;">取消</button>';
+  html += '<button onclick="confirmPwdReset()" class="modal-btn primary" style="flex:1;background:var(--orange);border-color:var(--orange);">确认重置</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closePwdResetConfirmModal() {
+  var m = document.getElementById('modal-pwd-reset-confirm');
+  if (m) m.remove();
+  pwdResetIdx = -1;
+}
+function confirmPwdReset() {
+  closePwdResetConfirmModal();
+  showToast('🔑 员工密码已重置为默认密码（123456）', 'success');
+}
+
+// ======= 【改进v3-5】系统配置"应用到系统"功能：实时更新页面标题/Logo =======
+function applyConfigToSystem() {
+  var hotelName = document.getElementById('cfg-hotel-name') ? document.getElementById('cfg-hotel-name').value : '小度语音智慧房体验店';
+  var hotelPhone = document.getElementById('cfg-hotel-phone') ? document.getElementById('cfg-hotel-phone').value : '010-12345678';
+  var hotelAddr = document.getElementById('cfg-hotel-addr') ? document.getElementById('cfg-hotel-addr').value : '北京市朝阳区某街道1号';
+  // Update page title
+  document.title = hotelName + ' - 领锁物联后台';
+  // Update hotel name in sidebar
+  var sidebarBrand = document.querySelector('.sidebar .brand');
+  if (sidebarBrand) sidebarBrand.innerHTML = '<span class="brand-icon">🏨</span><span class="brand-text">' + hotelName + '</span>';
+  // Update footer
+  var footerBrand = document.querySelector('.footer .brand-name');
+  if (footerBrand) footerBrand.textContent = hotelName;
+  var footerPhone = document.querySelector('.footer .contact-info');
+  if (footerPhone) footerPhone.textContent = '📞 ' + hotelPhone + ' | 📍 ' + hotelAddr;
+  showToast('✅ 系统配置已应用到全站：' + hotelName, 'success');
+}
+function saveConfigTab(tab) {
+  showToast('💾 ' + tab + ' 配置已保存', 'success');
+}
+function resetConfigTab(tab) {
+  showToast('🔄 ' + tab + ' 配置已重置', 'info');
+}
+function exportSystemConfig() {
+  var config = {
+    hotelName: document.getElementById('cfg-hotel-name') ? document.getElementById('cfg-hotel-name').value : '',
+    hotelPhone: document.getElementById('cfg-hotel-phone') ? document.getElementById('cfg-hotel-phone').value : '',
+    hotelAddr: document.getElementById('cfg-hotel-addr') ? document.getElementById('cfg-hotel-addr').value : '',
+    checkinTime: document.getElementById('cfg-checkin-time') ? document.getElementById('cfg-checkin-time').value : '',
+    checkoutTime: document.getElementById('cfg-checkout-time') ? document.getElementById('cfg-checkout-time').value : '',
+    exportTime: new Date().toISOString()
+  };
+  var blob = new Blob([JSON.stringify(config, null, 2)], {type:'application/json'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'lockclub_config_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast('📤 系统配置已导出', 'success');
+}
+function importSystemConfig(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var cfg = JSON.parse(e.target.result);
+      if (document.getElementById('cfg-hotel-name')) document.getElementById('cfg-hotel-name').value = cfg.hotelName || '';
+      if (document.getElementById('cfg-hotel-phone')) document.getElementById('cfg-hotel-phone').value = cfg.hotelPhone || '';
+      if (document.getElementById('cfg-hotel-addr')) document.getElementById('cfg-hotel-addr').value = cfg.hotelAddr || '';
+      if (document.getElementById('cfg-checkin-time')) document.getElementById('cfg-checkin-time').value = cfg.checkinTime || '';
+      if (document.getElementById('cfg-checkout-time')) document.getElementById('cfg-checkout-time').value = cfg.checkoutTime || '';
+      showToast('📥 配置导入成功！点击"应用到系统"使配置生效', 'success');
+    } catch(err) {
+      showToast('❌ 配置文件格式错误', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+function switchConfigTab(tab, el) {
+  document.querySelectorAll('.config-tab').forEach(function(t){ t.style.background='var(--bg)'; t.style.color='var(--text)'; t.style.borderColor='var(--border)'; });
+  if (el) { el.style.background = 'var(--blue)'; el.style.color = 'white'; el.style.borderColor = 'var(--blue)'; }
+  ['basic','notify','device','security','oplog'].forEach(function(t) {
+    var content = document.getElementById('cfg-content-' + t);
+    if (content) content.style.display = t === tab ? 'block' : 'none';
+  });
+}
+function openResetConfigConfirmModal() {
+  if (!confirm('确定要恢复所有设置为默认值吗？当前修改将丢失！')) return;
+  if (document.getElementById('cfg-hotel-name')) document.getElementById('cfg-hotel-name').value = '小度语音智慧房体验店';
+  if (document.getElementById('cfg-hotel-phone')) document.getElementById('cfg-hotel-phone').value = '010-12345678';
+  if (document.getElementById('cfg-hotel-addr')) document.getElementById('cfg-hotel-addr').value = '北京市朝阳区某街道1号';
+  showToast('🔄 系统配置已恢复默认', 'info');
 }
 
 </script>
