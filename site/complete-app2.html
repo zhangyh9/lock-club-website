@@ -1930,6 +1930,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div class="page-title">🔧 设备管理</div>
         <div class="page-sub">硬件设备列表</div>
       </div>
+      <!-- 【改进B】设备快捷操作工具栏：开锁/重启/固件升级/电池检测批量操作 -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">
+        <span style="font-size:12px;font-weight:600;color:var(--blue);">⚡ 批量操作：</span>
+        <button class="action-btn small" onclick="openDeviceBatchActionModal('unlock')" style="padding:5px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🔓 批量开锁</button>
+        <button class="action-btn small" onclick="openDeviceBatchActionModal('restart')" style="padding:5px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔄 批量重启</button>
+        <button class="action-btn small" onclick="openBatchUpgradeModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📦 批量升级固件</button>
+        <button class="action-btn small" onclick="openDeviceBatchActionModal('battery')" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔋 电池检测</button>
+        <button class="action-btn small" onclick="openDeviceBatchActionModal('sync')" style="padding:5px 10px;background:var(--bg);color:var(--text);border-color:var(--border);">🔍 状态同步</button>
+        <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">💡 勾选左侧设备列表可精确选择设备</span>
+      </div>
       <!-- 【改进4】设备电量实时监控仪表盘 -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
         <div style="padding:12px 16px;background:linear-gradient(135deg,#52c41a,#73d13d);border-radius:8px;color:white;">
@@ -3046,6 +3056,141 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       el.innerHTML=html||'<div style="padding:30px;text-align:center;color:var(--text-muted);">暂无配置规则，请添加</div>';
     }
     function removeEscalationRule(idx){escalationRules.splice(idx,1);renderEscalationRulesList();showToast('规则已删除','info');}
+
+// 【改进A】工单升级规则可视化编辑器：条件→处理层级→通知方式全链路配置
+var escalationEditorData = [
+  {id:1, type:'complaint', urgent:['urgent','critical'], condition:'工单类型=客户投诉 && 紧急程度∈{紧急,十分紧急}', to:'manager', levelLabel:'前厅经理', notify:'短信+系统通知', timeoutMin:15, enabled:true},
+  {id:2, type:'complaint', urgent:[], condition:'工单类型=客户投诉（普通）', to:'supervisor', levelLabel:'客房主管', notify:'系统通知', timeoutMin:30, enabled:true},
+  {id:3, type:'repair', urgent:[], condition:'工单类型=设备报修', to:'engineer', levelLabel:'工程师', notify:'系统通知', timeoutMin:60, enabled:true},
+  {id:4, type:'delivery', urgent:[], condition:'工单类型=送物服务', to:'staff', levelLabel:'前厅员工', notify:'系统通知', timeoutMin:20, enabled:false}
+];
+function openEscalationVisualEditor() {
+  var html = '<div class="modal-overlay" id="modal-escalation-editor" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-escalation-editor\').remove()">';
+  html += '<div style="background:white;border-radius:12px;width:700px;max-height:85vh;display:flex;flex-direction:column;">';
+  html += '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">🔺 工单升级规则可视化编辑器</div>';
+  html += '<button onclick="document.getElementById(\'modal-escalation-editor\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:16px 20px;overflow-y:auto;flex:1;">';
+  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">';
+  html += '💡 配置触发条件 → 指定处理层级 → 选择通知方式，形成完整的工单超时升级链路。例如：客户投诉（紧急）超时15分钟 → 升级给前厅经理 → 短信+系统通知同时触达</div>';
+  // 流程图示意
+  html += '<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:20px;font-size:12px;font-weight:600;color:var(--text-muted);">';
+  html += '<span style="padding:6px 12px;background:var(--red-bg);color:var(--red);border-radius:6px;">🔴 触发条件</span>';
+  html += '<span style="color:var(--blue);">→</span>';
+  html += '<span style="padding:6px 12px;background:var(--purple-bg);color:var(--purple);border-radius:6px;">📍 处理层级</span>';
+  html += '<span style="color:var(--blue);">→</span>';
+  html += '<span style="padding:6px 12px;background:var(--orange-bg);color:var(--orange);border-radius:6px;">📢 通知方式</span></div>';
+  html += '<div style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">';
+  html += '<div style="font-size:13px;font-weight:700;">📋 升级规则列表（' + escalationEditorData.length + ' 条）</div>';
+  html += '<button class="action-btn small" onclick="addEscalationEditorRule()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">+ 添加规则</button></div>';
+  escalationEditorData.forEach(function(rule, idx) {
+    var typeColors = {complaint:'var(--red)',repair:'var(--orange)',delivery:'var(--blue)',invoice:'var(--purple)',praise:'var(--green)',other:'var(--text-muted)'};
+    var typeLabels = {complaint:'🔴 客户投诉',repair:'🔧 设备报修',delivery:'📦 送物服务',invoice:'📄 发票需求',praise:'⭐ 点评表扬',other:'📋 其他'};
+    var toLabels = {manager:'前厅经理',supervisor:'客房主管',engineer:'工程师',staff:'前厅员工',admin:'管理员'};
+    var urgentLabel = rule.urgent.length > 0 ? '🔴 ' + rule.urgent.join('/') : '全部';
+    var enabledColor = rule.enabled ? 'var(--green)' : 'var(--text-muted)';
+    var enabledBg = rule.enabled ? 'var(--green-bg)' : 'var(--bg)';
+    html += '<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;">';
+    html += '<div style="padding:12px 14px;display:flex;align-items:center;gap:12px;background:' + (rule.enabled ? 'var(--bg)' : 'var(--bg)') + ';border-bottom:1px solid var(--border);">';
+    html += '<div style="width:10px;height:10px;border-radius:50%;background:' + enabledColor + ';flex-shrink:0;"></div>';
+    html += '<div style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';
+    html += '<span style="font-size:12px;font-weight:700;color:' + (typeColors[rule.type] || 'var(--text)') + ';">' + (typeLabels[rule.type] || rule.type) + '</span>';
+    if (rule.urgent.length > 0) {
+      html += '<span style="font-size:11px;padding:2px 6px;background:var(--red-bg);color:var(--red);border-radius:4px;">紧急程度：' + urgentLabel + '</span>';
+    }
+    html += '<span style="font-size:11px;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;">⏱ 超时' + rule.timeoutMin + '分钟</span>';
+    html += '<span style="font-size:11px;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;">→ ' + rule.levelLabel + '</span>';
+    html += '<span style="font-size:11px;padding:2px 6px;background:var(--orange-bg);color:var(--orange);border-radius:4px;">📢 ' + rule.notify + '</span>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:6px;">';
+    html += '<button class="action-btn small" onclick="toggleEscalationRule(' + idx + ')" style="padding:3px 8px;font-size:11px;">' + (rule.enabled ? '⏸ 停用' : '▶ 启用') + '</button>';
+    html += '<button class="action-btn small red" onclick="deleteEscalationEditorRule(' + idx + ')" style="padding:3px 8px;font-size:11px;">删除</button>';
+    html += '</div></div>';
+    html += '<div style="padding:10px 14px;font-size:11px;color:var(--text-muted);background:white;">';
+    html += '<div style="margin-bottom:4px;"><strong>条件：</strong>' + rule.condition + '</div>';
+    html += '<div><strong>说明：</strong>工单超时后自动' + rule.timeoutMin + '分钟未处理，将从 <span style="color:var(--blue);">前厅员工</span> 升级至 <span style="color:var(--purple);">' + rule.levelLabel + '</span>，并通过 <span style="color:var(--orange);">' + rule.notify + '</span> 通知相关人员</div></div></div>';
+  });
+  html += '<div id="escalation-editor-add-form" style="display:none;border:2px dashed var(--blue);border-radius:10px;padding:16px;margin-top:12px;">';
+  html += '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">➕ 添加新升级规则</div>';
+  html += '<div class="form-row" style="margin-bottom:12px;">';
+  html += '<div class="form-group"><label class="form-label">工单类型 <span class="required">*</span></label>';
+  html += '<select class="form-select" id="ee-type" style="font-size:12px;padding:6px 8px;"><option value="">请选择</option>';
+  html += '<option value="complaint">🔴 客户投诉</option><option value="repair">🔧 设备报修</option>';
+  html += '<option value="delivery">📦 送物服务</option><option value="invoice">📄 发票需求</option>';
+  html += '<option value="praise">⭐ 点评表扬</option><option value="other">📋 其他</option></select></div>';
+  html += '<div class="form-group"><label class="form-label">紧急程度</label>';
+  html += '<select class="form-select" id="ee-urgent" style="font-size:12px;padding:6px 8px;"><option value="">不限</option><option value="urgent">紧急</option><option value="critical">十分紧急</option></select></div>';
+  html += '<div class="form-group"><label class="form-label">超时时间(分钟) <span class="required">*</span></label>';
+  html += '<input type="number" class="form-input" id="ee-timeout" value="30" min="5" max="480" style="font-size:12px;padding:6px 8px;"></div></div>';
+  html += '<div class="form-row" style="margin-bottom:12px;">';
+  html += '<div class="form-group"><label class="form-label">升级给 <span class="required">*</span></label>';
+  html += '<select class="form-select" id="ee-to" style="font-size:12px;padding:6px 8px;"><option value="">请选择</option>';
+  html += '<option value="manager">前厅经理</option><option value="supervisor">客房主管</option>';
+  html += '<option value="engineer">工程师</option><option value="staff">前厅员工</option><option value="admin">管理员</option></select></div>';
+  html += '<div class="form-group"><label class="form-label">通知方式 <span class="required">*</span></label>';
+  html += '<select class="form-select" id="ee-notify" style="font-size:12px;padding:6px 8px;">';
+  html += '<option value="短信+系统通知">短信+系统通知</option><option value="短信">仅短信</option>';
+  html += '<option value="系统通知">仅系统通知</option><option value="电话">电话通知</option></select></div></div>';
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<button class="action-btn small primary" onclick="confirmAddEscalationEditorRule()" style="padding:6px 14px;">✅ 确认添加</button>';
+  html += '<button class="action-btn small" onclick="cancelAddEscalationEditorRule()" style="padding:6px 14px;">取消</button></div></div>';
+  html += '</div>';
+  html += '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;">';
+  html += '<button class="action-btn" onclick="document.getElementById(\'modal-escalation-editor\').remove()" style="padding:8px 20px;">关闭</button>';
+  html += '<button class="action-btn primary" onclick="saveEscalationEditorRules()" style="padding:8px 20px;background:var(--blue);color:white;border-color:var(--blue);">💾 保存配置</button></div></div></div>';
+  var existing = document.getElementById('modal-escalation-editor');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function addEscalationEditorRule() {
+  var form = document.getElementById('escalation-editor-add-form');
+  if (form) form.style.display = 'block';
+}
+function cancelAddEscalationEditorRule() {
+  var form = document.getElementById('escalation-editor-add-form');
+  if (form) form.style.display = 'none';
+  document.getElementById('ee-type').value = '';
+  document.getElementById('ee-urgent').value = '';
+  document.getElementById('ee-timeout').value = '30';
+  document.getElementById('ee-to').value = '';
+  document.getElementById('ee-notify').value = '短信+系统通知';
+}
+function confirmAddEscalationEditorRule() {
+  var type = document.getElementById('ee-type').value;
+  var urgent = document.getElementById('ee-urgent').value;
+  var timeout = parseInt(document.getElementById('ee-timeout').value) || 30;
+  var to = document.getElementById('ee-to').value;
+  var notify = document.getElementById('ee-notify').value;
+  if (!type || !to) { showToast('请填写工单类型和升级目标', 'error'); return; }
+  var typeLabels = {complaint:'🔴 客户投诉',repair:'🔧 设备报修',delivery:'📦 送物服务',invoice:'📄 发票需求',praise:'⭐ 点评表扬',other:'📋 其他'};
+  var toLabels = {manager:'前厅经理',supervisor:'客房主管',engineer:'工程师',staff:'前厅员工',admin:'管理员'};
+  var condition = urgent ? '工单类型=' + typeLabels[type] + ' && 紧急程度=' + (urgent === 'urgent' ? '紧急' : '十分紧急') : '工单类型=' + typeLabels[type];
+  escalationEditorData.push({id:Date.now(),type:type,urgent:urgent?[urgent]:[],condition:condition,to:to,levelLabel:toLabels[to],notify:notify,timeoutMin:timeout,enabled:true});
+  cancelAddEscalationEditorRule();
+  openEscalationVisualEditor();
+  showToast('✅ 规则已添加', 'success');
+}
+function toggleEscalationRule(idx) {
+  escalationEditorData[idx].enabled = !escalationEditorData[idx].enabled;
+  openEscalationVisualEditor();
+}
+function deleteEscalationEditorRule(idx) {
+  escalationEditorData.splice(idx, 1);
+  openEscalationVisualEditor();
+  showToast('规则已删除', 'info');
+}
+function saveEscalationEditorRules() {
+  // 同步到现有的 escalationRules 数组
+  escalationRules = escalationEditorData.filter(function(r){return r.enabled;}).map(function(r){
+    var typeLabels = {complaint:'🔴 客户投诉',repair:'🔧 设备报修',delivery:'📦 送物服务',invoice:'📄 发票需求',praise:'⭐ 点评表扬',other:'📋 其他'};
+    var toLabels = {manager:'manager',supervisor:'supervisor',engineer:'supervisor',staff:'staff',admin:'admin'};
+    var timeLabels = {5:'5分钟',15:'15分钟',30:'30分钟',60:'1小时',120:'2小时',240:'4小时'};
+    return {type:r.type,typeLabel:typeLabels[r.type],time:r.timeoutMin,timeLabel:timeLabels[r.timeoutMin]||r.timeoutMin+'分钟',to:toLabels[r.to],toLabel:r.levelLabel,notify:r.notify};
+  });
+  document.getElementById('modal-escalation-editor').remove();
+  showToast('✅ 升级规则配置已保存（' + escalationRules.length + ' 条规则生效）', 'success');
+}
+
     function addEscalationRule(){
       var type=document.getElementById('escalation-new-type').value;
       var time=parseInt(document.getElementById('escalation-new-time').value);
@@ -6215,6 +6360,8 @@ setInterval(function() {
             <!-- 【改进v3-2】工单超时自动移交入口 -->
             <button class="action-btn" onclick="checkWorkorderTimeoutAndTransfer()" style="padding:4px 10px;font-size:11px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">⏰ 超时移交</button>
             <button class="action-btn" onclick="openWoTimeoutHistoryModal()" style="padding:4px 10px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📋 移交记录</button>
+            <!-- 【改进A】工单升级规则可视化编辑器（条件→层级→通知方式全链路配置） -->
+            <button class="action-btn" onclick="openEscalationVisualEditor()" style="padding:4px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">🔺 升级规则编辑器</button>
             <!-- 【新增改进】工单自动派发规则配置弹窗 -->
             <div class="modal-overlay hidden" id="modal-wo-auto-rule">
               <div class="modal" style="width:560px;">
@@ -7457,6 +7604,29 @@ setInterval(function() {
         </div>
         <!-- 【改进2】员工排班视图 -->
         <div id="staff-content-schedule" style="display:none;padding:16px 0;">
+          <!-- 【改进D】排班统计摘要 + 冲突检测工具栏 -->
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;">
+            <div style="text-align:center;padding:12px;background:var(--blue-bg);border-radius:8px;">
+              <div style="font-size:22px;font-weight:700;color:var(--blue);">4</div>
+              <div style="font-size:11px;color:var(--text-muted);">早班人次</div>
+            </div>
+            <div style="text-align:center;padding:12px;background:var(--orange-bg);border-radius:8px;">
+              <div style="font-size:22px;font-weight:700;color:var(--orange);">3</div>
+              <div style="font-size:11px;color:var(--text-muted);">中班人次</div>
+            </div>
+            <div style="text-align:center;padding:12px;background:var(--purple-bg);border-radius:8px;">
+              <div style="font-size:22px;font-weight:700;color:var(--purple);">2</div>
+              <div style="font-size:11px;color:var(--text-muted);">晚班人次</div>
+            </div>
+            <div style="text-align:center;padding:12px;background:var(--green-bg);border-radius:8px;">
+              <div style="font-size:22px;font-weight:700;color:var(--green);">3</div>
+              <div style="font-size:11px;color:var(--text-muted);">休息人次</div>
+            </div>
+            <div style="text-align:center;padding:12px;background:var(--red-bg);border-radius:8px;cursor:pointer;" onclick="checkScheduleConflicts()">
+              <div style="font-size:22px;font-weight:700;color:var(--red);">0</div>
+              <div style="font-size:11px;color:var(--text-muted);">⚠️ 冲突告警</div>
+            </div>
+          </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
             <div style="font-size:13px;font-weight:600;">📅 本周排班表（2026-03-23 ~ 2026-03-29）</div>
             <div style="display:flex;gap:8px;">
@@ -8207,6 +8377,36 @@ setInterval(function() {
       <div class="page-header">
         <div class="page-title">👑 会员管理</div>
         <div class="page-sub">会员等级权益 · 入住历史 · 消费记录</div>
+      </div>
+      <!-- 【改进C】会员等级权益说明面板 + 升级规则配置入口 -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
+        <div style="padding:14px 16px;background:var(--white);border:1px solid var(--border);border-radius:8px;cursor:pointer;" onclick="openMemberLevelBenefitModal('normal')">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">普通会员</div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px;">🌱 初始等级</div>
+          <div style="font-size:11px;color:var(--text-muted);">入住即成为普通会员</div>
+        </div>
+        <div style="padding:14px 16px;background:var(--white);border:1px solid var(--border);border-radius:8px;cursor:pointer;" onclick="openMemberLevelBenefitModal('silver')">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">🥈 银卡会员</div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px;color:var(--orange);">累计5晚或¥2000</div>
+          <div style="font-size:11px;color:var(--text-muted);">享9.5折 · 优先排房</div>
+        </div>
+        <div style="padding:14px 16px;background:var(--white);border:1px solid var(--border);border-radius:8px;cursor:pointer;" onclick="openMemberLevelBenefitModal('gold')">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">🥇 金卡会员</div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px;color:var(--purple);">累计15晚或¥8000</div>
+          <div style="font-size:11px;color:var(--text-muted);">享9折 · 免费升房 · 延迟退房</div>
+        </div>
+        <div style="padding:14px 16px;background:var(--white);border:1px solid var(--border);border-radius:8px;cursor:pointer;" onclick="openMemberLevelBenefitModal('vip')">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">⭐ VIP会员</div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px;color:var(--green);">累计30晚或¥20000</div>
+          <div style="font-size:11px;color:var(--text-muted);">享8折 · 套房升房 · 专属管家</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--purple-bg);border:1px solid var(--purple);border-radius:8px;">
+        <span style="font-size:12px;font-weight:600;color:var(--purple);">🎁 会员运营工具：</span>
+        <button class="action-btn small" onclick="openMemberLevelBenefitModal()" style="padding:4px 10px;background:var(--white);color:var(--purple);border-color:var(--purple);">📋 等级权益配置</button>
+        <button class="action-btn small" onclick="openMemberUpgradeRuleModal()" style="padding:4px 10px;background:var(--white);color:var(--purple);border-color:var(--purple);">⬆️ 升级规则配置</button>
+        <button class="action-btn small" onclick="openMemberPointsPolicyModal()" style="padding:4px 10px;background:var(--white);color:var(--purple);border-color:var(--purple);">🏆 积分政策配置</button>
+        <span style="margin-left:auto;font-size:11px;color:var(--purple);">💡 点击卡片可查看/编辑各等级权益详情</span>
       </div>
       <div class="stats-row" style="grid-template-columns:repeat(5,1fr);">
         <div class="stat-card">
@@ -9685,6 +9885,8 @@ setInterval(function() {
         </select>
         <button class="action-btn primary" onclick="generateReport()" style="background:var(--blue);color:white;border:none;padding:6px 16px;">📊 生成报表</button>
         <button class="action-btn" onclick="exportReport()" style="padding:6px 12px;">📤 导出报表</button>
+        <!-- 【改进E】报表订阅功能：定期自动推送报表到指定人员 -->
+        <button class="action-btn" onclick="openReportSubscribeModal()" style="padding:6px 12px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📬 报表订阅</button>
       </div>
       <!-- 核心KPI指标 -->
       <div class="report-kpi">
@@ -17885,6 +18087,120 @@ function openAddMemberModal() {
   openModal('add-member');
 }
 
+// 【改进C】会员等级权益和升级规则配置弹窗
+var memberLevelBenefits = {
+  normal: {name:'普通会员', threshold:'入住即成为', discount:'无折扣', benefits:['基础房价','普通开锁权限','入住欢迎短信'], upgradeNights:0, upgradeConsume:0},
+  silver: {name:'银卡会员', threshold:'累计5晚或¥2000', discount:'9.5折', benefits:['9.5折房价优惠','优先排房服务','生日当月9折','入住欢迎礼品'], upgradeNights:5, upgradeConsume:2000},
+  gold: {name:'金卡会员', threshold:'累计15晚或¥8000', discount:'9折', benefits:['9折房价优惠','免费升房机会','延迟退房至14:00','免费早餐','免费停车'], upgradeNights:15, upgradeConsume:8000},
+  vip: {name:'VIP会员', threshold:'累计30晚或¥20000', discount:'8折', benefits:['8折房价优惠','套房免费升房','专属管家服务','免费早餐+下午茶','机场接送服务','优先响应'], upgradeNights:30, upgradeConsume:20000}
+};
+var memberUpgradeRules = [
+  {from:'normal', to:'silver', condition:'累计入住5晚 或 累计消费满¥2000', action:'自动升级', status:'enabled'},
+  {from:'silver', to:'gold', condition:'累计入住15晚 或 累计消费满¥8000', action:'自动升级', status:'enabled'},
+  {from:'gold', to:'vip', condition:'累计入住30晚 或 累计消费满¥20000', action:'自动升级', status:'enabled'}
+];
+function openMemberLevelBenefitModal(level) {
+  var levelNames = {normal:'🌱 普通会员', silver:'🥈 银卡会员', gold:'🥇 金卡会员', vip:'⭐ VIP会员'};
+  var levelColors = {normal:'var(--text)', silver:'var(--orange)', gold:'var(--purple)', vip:'var(--green)'};
+  var target = level || 'silver';
+  var b = memberLevelBenefits[target];
+  var html = '<div class="modal-overlay" id="modal-member-benefit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-member-benefit\').remove()">';
+  html += '<div style="background:white;border-radius:12px;width:580px;max-height:85vh;display:flex;flex-direction:column;">';
+  html += '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;color:' + levelColors[target] + ';">' + levelNames[target] + ' 权益详情</div>';
+  html += '<button onclick="document.getElementById(\'modal-member-benefit\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px;overflow-y:auto;flex:1;">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
+  html += '<div style="padding:14px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">升级条件</div><div style="font-size:14px;font-weight:700;color:var(--blue);">' + b.threshold + '</div></div>';
+  html += '<div style="padding:14px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">房价折扣</div><div style="font-size:20px;font-weight:700;color:var(--green);">' + b.discount + '</div></div></div>';
+  html += '<div style="margin-bottom:12px;"><div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text);">🎁 会员权益</div>';
+  b.benefits.forEach(function(benefit) {
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:6px;margin-bottom:6px;font-size:12px;">' +
+      '<span style="color:var(--green);font-size:14px;">✅</span><span>' + benefit + '</span></div>';
+  });
+  html += '</div></div>';
+  html += '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;">';
+  html += '<button class="action-btn" onclick="document.getElementById(\'modal-member-benefit\').remove()" style="padding:8px 16px;">关闭</button>';
+  html += '<button class="action-btn primary" onclick="openMemberUpgradeRuleModal();document.getElementById(\'modal-member-benefit\').remove();" style="padding:8px 16px;background:var(--purple);color:white;border-color:var(--purple);">✏️ 编辑权益</button></div></div></div>';
+  var existing = document.getElementById('modal-member-benefit');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function openMemberUpgradeRuleModal() {
+  var html = '<div class="modal-overlay" id="modal-member-upgrade" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-member-upgrade\').remove()">';
+  html += '<div style="background:white;border-radius:12px;width:600px;max-height:85vh;display:flex;flex-direction:column;">';
+  html += '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">⬆️ 会员升级规则配置</div>';
+  html += '<button onclick="document.getElementById(\'modal-member-upgrade\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px;overflow-y:auto;flex:1;">';
+  html += '<div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">💡 当会员累计入住晚数或消费金额达到阈值时，系统自动升级会员等级，并发送短信通知客户</div>';
+  html += '<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px;">';
+  html += '<div style="padding:10px 20px;background:var(--text-muted);border-radius:8px;color:white;font-weight:600;font-size:12px;">🌱 普通</div>';
+  html += '<div style="color:var(--blue);font-size:16px;">→→→</div>';
+  html += '<div style="padding:10px 20px;background:var(--orange);border-radius:8px;color:white;font-weight:600;font-size:12px;">🥈 银卡</div>';
+  html += '<div style="color:var(--blue);font-size:16px;">→→→</div>';
+  html += '<div style="padding:10px 20px;background:var(--purple);border-radius:8px;color:white;font-weight:600;font-size:12px;">🥇 金卡</div>';
+  html += '<div style="color:var(--blue);font-size:16px;">→→→</div>';
+  html += '<div style="padding:10px 20px;background:var(--green);border-radius:8px;color:white;font-weight:600;font-size:12px;">⭐ VIP</div></div>';
+  var fromNames = {normal:'🌱 普通', silver:'🥈 银卡', gold:'🥇 金卡'};
+  var toNames = {silver:'🥈 银卡', gold:'🥇 金卡', vip:'⭐ VIP'};
+  var toColors = {silver:'var(--orange)', gold:'var(--purple)', vip:'var(--green)'};
+  memberUpgradeRules.forEach(function(rule, idx) {
+    html += '<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;">';
+    html += '<div style="padding:12px 14px;background:var(--bg);display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);">';
+    html += '<div style="flex:1;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
+    html += '<span style="font-size:13px;font-weight:700;">' + fromNames[rule.from] + '</span>';
+    html += '<span style="color:var(--blue);">→</span>';
+    html += '<span style="font-size:13px;font-weight:700;color:' + (toColors[rule.to] || 'var(--text)') + ';">' + toNames[rule.to] + '</span></div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);">' + rule.condition + '</div></div>';
+    html += '<div style="display:flex;align-items:center;gap:6px;">';
+    html += '<span style="font-size:11px;padding:3px 8px;background:' + (rule.status === 'enabled' ? 'var(--green-bg);color:var(--green)' : 'var(--bg);color:var(--text-muted)') + ';border-radius:4px;">' + (rule.status === 'enabled' ? '● 已启用' : '○ 已停用') + '</span>';
+    html += '<button class="action-btn small" onclick="toggleUpgradeRule(' + idx + ')" style="padding:3px 8px;font-size:11px;">' + (rule.status === 'enabled' ? '停用' : '启用') + '</button></div></div>';
+    html += '<div style="padding:10px 14px;background:white;font-size:11px;color:var(--text-muted);"><strong>触发动作：</strong>' + rule.action + ' · 通知方式：短信通知 + 系统消息</div></div>';
+  });
+  html += '</div>';
+  html += '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">';
+  html += '<button class="action-btn small" onclick="showToast(\'💡 可在会员运营后台添加自定义升级规则\',\'info\')" style="padding:6px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);">+ 添加规则</button>';
+  html += '<button class="action-btn primary" onclick="saveUpgradeRules();document.getElementById(\'modal-member-upgrade\').remove();" style="padding:8px 20px;background:var(--blue);color:white;border-color:var(--blue);">💾 保存配置</button></div></div></div>';
+  var existing = document.getElementById('modal-member-upgrade');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function toggleUpgradeRule(idx) {
+  memberUpgradeRules[idx].status = memberUpgradeRules[idx].status === 'enabled' ? 'disabled' : 'enabled';
+  openMemberUpgradeRuleModal();
+}
+function saveUpgradeRules() {
+  var enabled = memberUpgradeRules.filter(function(r){return r.status==='enabled';}).length;
+  showToast('✅ 会员升级规则已保存（' + enabled + ' 条规则生效）', 'success');
+}
+function openMemberPointsPolicyModal() {
+  var html = '<div class="modal-overlay" id="modal-member-points" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-member-points\').remove()">';
+  html += '<div style="background:white;border-radius:12px;width:480px;">';
+  html += '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">🏆 积分政策配置</div>';
+  html += '<button onclick="document.getElementById(\'modal-member-points\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px;">';
+  html += '<div style="margin-bottom:14px;"><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:6px;">每消费¥1获得积分</label>';
+  html += '<div style="display:flex;align-items:center;gap:8px;"><input type="number" class="form-input" id="points-per-yuan" value="1" min="0" max="10" step="0.1" style="width:100px;font-size:14px;padding:8px 12px;"><span style="font-size:12px;color:var(--text-muted);">积分 / ¥1</span></div></div>';
+  html += '<div style="margin-bottom:14px;"><label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:6px;">积分兑换比例（每100积分可抵扣）</label>';
+  html += '<div style="display:flex;align-items:center;gap:8px;"><input type="number" class="form-input" id="points-redeem" value="1" min="1" max="10" style="width:100px;font-size:14px;padding:8px 12px;"><span style="font-size:12px;color:var(--text-muted);">元</span></div></div>';
+  html += '<div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">💡 示例：消费¥300可获得300积分，300积分可抵扣¥3，相当于额外节省¥3</div>';
+  html += '</div>';
+  html += '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;">';
+  html += '<button class="action-btn" onclick="document.getElementById(\'modal-member-points\').remove()" style="padding:8px 16px;">取消</button>';
+  html += '<button class="action-btn primary" onclick="savePointsPolicy()" style="padding:8px 16px;background:var(--blue);color:white;border-color:var(--blue);">💾 保存</button></div></div></div>';
+  var existing = document.getElementById('modal-member-points');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function savePointsPolicy() {
+  var rate = parseFloat(document.getElementById('points-per-yuan').value) || 1;
+  var redeem = parseFloat(document.getElementById('points-redeem').value) || 1;
+  document.getElementById('modal-member-points').remove();
+  showToast('✅ 积分政策已更新：消费¥1获得' + rate + '积分，' + (rate*100) + '积分可抵扣¥' + redeem, 'success');
+}
+
 function openEditMemberModal(idx) {
   var d = memberData[idx];
   document.getElementById('mf-modal-title').textContent = '👑 编辑会员';
@@ -20715,6 +21031,80 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ============================
+// 【改进B】设备批量快捷操作弹窗：开锁/重启/电池检测/状态同步
+// ============================
+var batchActionSelected = [];
+function openDeviceBatchActionModal(action) {
+  var checks = document.querySelectorAll('.device-check:checked');
+  if (checks.length === 0) {
+    showToast('请先在设备列表中选择设备（可多选）', 'error');
+    return;
+  }
+  batchActionSelected = Array.from(checks).map(function(c) {
+    return c.closest('tr').querySelector('td:nth-child(2)').textContent.trim();
+  });
+  var actionConfig = {
+    unlock: {title:'🔓 批量开锁', icon:'🔓', color:'var(--green)', confirmText:'确认向以下 ' + batchActionSelected.length + ' 台设备发送开锁指令？', btnText:'执行开锁', successMsg:'开锁指令已下发'},
+    restart: {title:'🔄 批量重启设备', icon:'🔄', color:'var(--orange)', confirmText:'确认重启以下 ' + batchActionSelected.length + ' 台设备？重启过程中设备将短暂离线。', btnText:'确认重启', successMsg:'重启指令已下发'},
+    battery: {title:'🔋 批量电池检测', icon:'🔋', color:'var(--blue)', confirmText:'对以下 ' + batchActionSelected.length + ' 台设备执行电池状态检测。', btnText:'开始检测', successMsg:'电池检测完成'},
+    sync: {title:'🔍 批量状态同步', icon:'🔍', color:'var(--text)', confirmText:'从以下 ' + batchActionSelected.length + ' 台设备同步最新状态（电量/信号/固件版本）。', btnText:'开始同步', successMsg:'状态同步完成'}
+  };
+  var cfg = actionConfig[action] || actionConfig.sync;
+  var html = '<div class="modal-overlay" id="modal-device-batch-action" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:480px;">' +
+    '<div class="modal-header" style="border-bottom:1px solid var(--border);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:16px;font-weight:700;">' + cfg.title + '</div>' +
+    '<button onclick="document.getElementById(\'modal-device-batch-action\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div class="modal-body" style="padding:20px;">' +
+    '<div style="text-align:center;margin-bottom:16px;">' +
+    '<div style="width:56px;height:56px;background:' + cfg.color + ';opacity:0.15;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px;opacity:1;">' + cfg.icon + '</div>' +
+    '<div style="font-size:14px;font-weight:600;margin-bottom:4px;">' + cfg.confirmText + '</div></div>' +
+    '<div style="max-height:160px;overflow-y:auto;background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:16px;">';
+  batchActionSelected.forEach(function(room) {
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">' +
+      '<span style="color:var(--blue);font-weight:600;">' + room + '</span>' +
+      '<span style="color:var(--text-muted);font-size:11px;">领握LH-807智能锁</span></div>';
+  });
+  html += '</div>' +
+    '<div style="display:flex;gap:10px;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-batch-action\').remove()" style="flex:1;padding:10px;">取消</button>' +
+    '<button class="modal-btn primary" onclick="executeBatchDeviceAction(\'' + action + '\')" style="flex:1;padding:10px;background:' + cfg.color.replace('var(--','').replace(')','') + ';border-color:' + cfg.color.replace('var(--','').replace(')','') + ';color:white;">' + cfg.btnText + '</button></div></div></div></div>';
+  var existing = document.getElementById('modal-device-batch-action');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function executeBatchDeviceAction(action) {
+  document.getElementById('modal-device-batch-action').remove();
+  var results = [];
+  batchActionSelected.forEach(function(room) {
+    results.push({room: room, status: 'success', detail: action === 'unlock' ? '开锁成功' : action === 'restart' ? '重启指令已发送' : action === 'battery' ? '电量正常（78%）' : '同步完成'});
+  });
+  var actionLabels = {unlock:'开锁', restart:'重启', battery:'电池检测', sync:'状态同步'};
+  var successCount = results.filter(function(r){ return r.status === 'success'; }).length;
+  showToast('✅ ' + actionLabels[action] + '完成：成功 ' + successCount + ' / ' + batchActionSelected.length + ' 台设备', successCount === batchActionSelected.length ? 'success' : 'warning');
+  // 显示结果弹窗
+  setTimeout(function() {
+    var html = '<div class="modal-overlay" id="modal-device-batch-result" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+      '<div class="modal" style="width:460px;">' +
+      '<div class="modal-header" style="border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">' +
+      '<div style="font-size:15px;font-weight:700;">📋 ' + actionLabels[action] + '结果</div>' +
+      '<button onclick="document.getElementById(\'modal-device-batch-result\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+      '<div class="modal-body" style="padding:16px;max-height:300px;overflow-y:auto;">' +
+      '<div style="margin-bottom:12px;padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:var(--green);">✅ 成功：' + successCount + ' 台  |  失败：' + (batchActionSelected.length - successCount) + ' 台</div>';
+    results.forEach(function(r) {
+      var statusIcon = r.status === 'success' ? '✅' : '❌';
+      var statusColor = r.status === 'success' ? 'var(--green)' : 'var(--red)';
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:var(--bg);margin-bottom:6px;font-size:12px;">' +
+        '<span style="font-size:16px;">' + statusIcon + '</span>' +
+        '<span style="font-weight:600;color:var(--blue);">' + r.room + '</span>' +
+        '<span style="color:' + statusColor + ';margin-left:auto;">' + r.detail + '</span></div>';
+    });
+    html += '</div><div style="padding:12px 20px;border-top:1px solid var(--border);text-align:right;"><button class="action-btn primary" onclick="document.getElementById(\'modal-device-batch-result\').remove()" style="padding:7px 20px;">关闭</button></div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+  }, 300);
+}
+
+// ============================
 // 改进5: 设备批量固件升级
 // ============================
 var batchUpgradeSelected = [];
@@ -22403,6 +22793,92 @@ function changeReportPeriod() {
     startInput.value = lStart.toISOString().slice(0, 10);
     endInput.value = lEnd.toISOString().slice(0, 10);
   }
+}
+
+// 【改进E】报表订阅功能：定期自动推送报表到指定人员
+var reportSubscribers = [
+  {name:'Hugo', email:'hugo@lock.club', phone:'138****8888', period:'weekly', content:'运营报表', status:'active'},
+  {name:'赵飞', email:'zhaofei@lock.club', phone:'138****8888', period:'monthly', content:'月度汇总', status:'active'},
+  {name:'财务部', email:'finance@lock.club', phone:'', period:'monthly', content:'财务报表', status:'active'}
+];
+function openReportSubscribeModal() {
+  var html = '<div class="modal-overlay" id="modal-report-subscribe" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-report-subscribe\').remove()">';
+  html += '<div style="background:white;border-radius:12px;width:620px;max-height:85vh;display:flex;flex-direction:column;">';
+  html += '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">📬 报表订阅管理</div>';
+  html += '<button onclick="document.getElementById(\'modal-report-subscribe\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px;overflow-y:auto;flex:1;">';
+  html += '<div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">💡 配置报表订阅后，系统将在每个周期自动生成报表并通过邮件/短信推送给指定人员，无需手动操作</div>';
+  html += '<div style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">';
+  html += '<div style="font-size:13px;font-weight:700;">📋 当前订阅（' + reportSubscribers.length + ' 人）</div>';
+  html += '<button class="action-btn small" onclick="addReportSubscriber()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">+ 新增订阅</button></div>';
+  reportSubscribers.forEach(function(sub, idx) {
+    var periodLabels = {daily:'每日', weekly:'每周一', monthly:'每月1日', quarterly:'每季度'};
+    var statusBadge = sub.status === 'active' ? '<span style="font-size:11px;padding:2px 8px;background:var(--green-bg);color:var(--green);border-radius:4px;">● 生效中</span>' : '<span style="font-size:11px;padding:2px 8px;background:var(--bg);color:var(--text-muted);border-radius:4px;">○ 已暂停</span>';
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--bg);">';
+    html += '<div style="width:36px;height:36px;background:var(--blue-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;">' + (sub.name === '财务部' ? '💰' : '👤') + '</div>';
+    html += '<div style="flex:1;">';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
+    html += '<span style="font-weight:700;font-size:13px;">' + sub.name + '</span>';
+    html += statusBadge + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);">' + (sub.email || sub.phone) + ' · 推送周期：<strong style="color:var(--blue);">' + periodLabels[sub.period] + '</strong> · 内容：' + sub.content + '</div></div>';
+    html += '<div style="display:flex;gap:6px;">';
+    html += '<button class="action-btn small" onclick="toggleReportSubscriber(' + idx + ')" style="padding:3px 8px;font-size:11px;">' + (sub.status === 'active' ? '暂停' : '启用') + '</button>';
+    html += '<button class="action-btn small red" onclick="removeReportSubscriber(' + idx + ')" style="padding:3px 8px;font-size:11px;">删除</button></div></div>';
+  });
+  html += '<div id="rss-add-form" style="display:none;border:2px dashed var(--green);border-radius:10px;padding:16px;margin-top:12px;">';
+  html += '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">➕ 新增报表订阅</div>';
+  html += '<div class="form-row" style="margin-bottom:10px;">';
+  html += '<div class="form-group"><label class="form-label">订阅人姓名 <span class="required">*</span></label>';
+  html += '<input type="text" class="form-input" id="rss-name" placeholder="如：赵飞" style="font-size:12px;padding:6px 8px;"></div>';
+  html += '<div class="form-group"><label class="form-label">邮箱</label>';
+  html += '<input type="email" class="form-input" id="rss-email" placeholder="email@company.com" style="font-size:12px;padding:6px 8px;"></div></div>';
+  html += '<div class="form-row" style="margin-bottom:10px;">';
+  html += '<div class="form-group"><label class="form-label">推送周期 <span class="required">*</span></label>';
+  html += '<select class="form-select" id="rss-period" style="font-size:12px;padding:6px 8px;"><option value="daily">每日（每天早上9点）</option><option value="weekly">每周一</option><option value="monthly" selected>每月1日</option><option value="quarterly">每季度</option></select></div>';
+  html += '<div class="form-group"><label class="form-label">报表内容</label>';
+  html += '<select class="form-select" id="rss-content" style="font-size:12px;padding:6px 8px;"><option value="运营报表">运营报表</option><option value="财务报表">财务报表</option><option value="月度汇总">月度汇总</option><option value="全部报表">全部报表</option></select></div></div>';
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<button class="action-btn small primary" onclick="confirmAddReportSubscriber()" style="padding:6px 14px;background:var(--green);color:white;border-color:var(--green);">✅ 确认添加</button>';
+  html += '<button class="action-btn small" onclick="cancelAddReportSubscriber()" style="padding:6px 14px;">取消</button></div></div>';
+  html += '</div>';
+  html += '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">';
+  html += '<div style="font-size:11px;color:var(--text-muted);">支持邮件/短信/飞书推送</div>';
+  html += '<button class="action-btn primary" onclick="document.getElementById(\'modal-report-subscribe\').remove()" style="padding:8px 20px;background:var(--blue);color:white;border-color:var(--blue);">完成配置</button></div></div></div>';
+  var existing = document.getElementById('modal-report-subscribe');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function addReportSubscriber() {
+  var form = document.getElementById('rss-add-form');
+  if (form) form.style.display = 'block';
+}
+function cancelAddReportSubscriber() {
+  var form = document.getElementById('rss-add-form');
+  if (form) form.style.display = 'none';
+  document.getElementById('rss-name').value = '';
+  document.getElementById('rss-email').value = '';
+}
+function confirmAddReportSubscriber() {
+  var name = document.getElementById('rss-name').value.trim();
+  var email = document.getElementById('rss-email').value.trim();
+  var period = document.getElementById('rss-period').value;
+  var content = document.getElementById('rss-content').value;
+  if (!name) { showToast('请填写订阅人姓名', 'error'); return; }
+  reportSubscribers.push({name:name, email:email, phone:'', period:period, content:content, status:'active'});
+  cancelAddReportSubscriber();
+  openReportSubscribeModal();
+  showToast('✅ 新增订阅人 ' + name, 'success');
+}
+function toggleReportSubscriber(idx) {
+  reportSubscribers[idx].status = reportSubscribers[idx].status === 'active' ? 'paused' : 'active';
+  openReportSubscribeModal();
+}
+function removeReportSubscriber(idx) {
+  var name = reportSubscribers[idx].name;
+  reportSubscribers.splice(idx, 1);
+  openReportSubscribeModal();
+  showToast('已删除订阅人 ' + name, 'info');
 }
 
 function generateReport() {
@@ -28265,6 +28741,51 @@ function deleteScheduleCell() {
 // 【改进2】换班申请弹窗
 function openSwapShiftModal() {
   openModal('swap-shift');
+}
+
+// 【改进D】排班冲突检测功能
+function checkScheduleConflicts() {
+  var conflicts = [];
+  // 模拟检测逻辑：同一部门同一班次超过1人则冲突
+  var deptShiftCount = {};
+  var rows = document.querySelectorAll('#schedule-tbody tr');
+  rows.forEach(function(tr) {
+    var staff = tr.dataset.staff;
+    for (var i = 1; i < tr.cells.length; i++) {
+      var cell = tr.cells[i];
+      var shiftSpan = cell.querySelector('span');
+      if (!shiftSpan) return;
+      var shiftText = shiftSpan.textContent;
+      if (shiftText !== '休息' && shiftText !== '请假' && shiftText.indexOf('-') !== -1) {
+        var key = staff + '-day' + i;
+        var shiftKey = 'day' + i + '-' + shiftText;
+        if (deptShiftCount[shiftKey]) {
+          conflicts.push({staff: staff, day: i, shift: shiftText, issue: '同一班次人员过多'});
+        } else {
+          deptShiftCount[shiftKey] = true;
+        }
+      }
+    }
+  });
+  if (conflicts.length === 0) {
+    showToast('✅ 本周排班暂无冲突，各班次人员配置正常', 'success');
+  } else {
+    var html = '<div class="modal-overlay" id="modal-schedule-conflict" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+      '<div class="modal" style="width:440px;">' +
+      '<div class="modal-header" style="border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">' +
+      '<div style="font-size:15px;font-weight:700;color:var(--red);">⚠️ 排班冲突告警</div>' +
+      '<button onclick="document.getElementById(\'modal-schedule-conflict\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+      '<div class="modal-body" style="padding:16px;">' +
+      '<div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);margin-bottom:14px;">共发现 ' + conflicts.length + ' 项排班冲突，请检查并调整</div>';
+    conflicts.forEach(function(c) {
+      var dayNames = ['','周一','周二','周三','周四','周五','周六','周日'];
+      html += '<div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;font-size:12px;background:var(--bg);">' +
+        '<div style="font-weight:600;color:var(--red);margin-bottom:2px;">' + c.staff + ' · ' + dayNames[c.day] + '</div>' +
+        '<div style="color:var(--text-muted);">' + c.shift + ' — ' + c.issue + '</div></div>';
+    });
+    html += '</div><div style="padding:12px 20px;border-top:1px solid var(--border);text-align:right;"><button class="action-btn primary" onclick="document.getElementById(\'modal-schedule-conflict\').remove()" style="padding:8px 20px;">知道了</button></div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+  }
 }
 function submitSwapShift() {
   var a = document.getElementById('swap-from').value;
