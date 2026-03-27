@@ -54100,6 +54100,901 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }, 1000);
 });
+
+// ============================================================
+// 【改进1】工单完整处理流程：接受→处理→完成 三步闭环
+// ============================================================
+
+// 工单处理主入口：点击工单行"处理"按钮 → 弹出处理弹窗
+function openProcessWorkorderModal(woId) {
+  var wo = workorderList.find(function(w){ return w.id === woId; });
+  if (!wo) { showToast('工单不存在', 'error'); return; }
+  var old = document.getElementById('modal-process-wo');
+  if (old) old.remove();
+  
+  var typeLabels = {complaint:'🔴 客户投诉', delivery:'📦 送物服务', invoice:'📄 发票需求', praise:'⭐ 客户表扬', repair:'🔧 设备报修', other:'📋 其他'};
+  var priorityLabels = {urgent:'🔴 紧急', high:'🟠 高', normal:'🟡 普通', low:'⚪ 低'};
+  var statusLabels = {pending:'⏳ 待接受', processing:'🔄 处理中', done:'✅ 已完成'};
+  
+  var html = '<div class="modal-overlay" id="modal-process-wo" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:600px;max-height:90vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;margin-bottom:16px;">';
+  html += '<div style="font-size:28px;">🛠️</div>';
+  html += '<div style="flex:1;"><div style="font-size:16px;font-weight:700;">处理工单</div><div style="font-size:11px;color:var(--text-muted);">工单ID：' + woId + '</div></div>';
+  html += '<button onclick="document.getElementById(\'modal-process-wo\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  
+  // 工单基本信息
+  html += '<div style="padding:0 24px 16px;border-bottom:1px solid var(--border);">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">';
+  html += '<div style="padding:8px 12px;background:var(--bg);border-radius:6px;"><div style="font-size:10px;color:var(--text-muted);">类型</div><div style="font-size:13px;font-weight:600;">' + (typeLabels[wo.type] || wo.type) + '</div></div>';
+  html += '<div style="padding:8px 12px;background:var(--bg);border-radius:6px;"><div style="font-size:10px;color:var(--text-muted);">优先级</div><div style="font-size:13px;font-weight:600;">' + (priorityLabels[wo.priority] || wo.priority) + '</div></div>';
+  html += '<div style="padding:8px 12px;background:var(--bg);border-radius:6px;"><div style="font-size:10px;color:var(--text-muted);">当前状态</div><div style="font-size:13px;font-weight:600;">' + (statusLabels[wo.status] || wo.status) + '</div></div>';
+  html += '</div>';
+  html += '<div style="padding:10px 12px;background:var(--orange-bg);border-radius:6px;font-size:13px;"><span style="font-weight:600;color:var(--orange);">📝 问题描述：</span>' + wo.desc + '</div>';
+  html += '</div>';
+  
+  // 处理操作区
+  html += '<div style="padding:16px 24px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">🛠️ 处理操作</div>';
+  html += '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">';
+  if (wo.status === 'pending') {
+    html += '<button class="action-btn" onclick="doAcceptWorkorder(\'' + woId + '\')" style="background:var(--blue);color:white;border:none;padding:8px 16px;font-size:13px;">✅ 接受工单</button>';
+  }
+  if (wo.status === 'processing') {
+    html += '<button class="action-btn" onclick="doCompleteWorkorder(\'' + woId + '\')" style="background:var(--green);color:white;border:none;padding:8px 16px;font-size:13px;">✅ 完成工单</button>';
+  }
+  html += '<button class="action-btn" onclick="openWoTransferModal(\'' + woId + '\')" style="padding:8px 16px;">🔄 转交他人</button>';
+  html += '<button class="action-btn" onclick="openWoEscalateModal(\'' + woId + '\')" style="padding:8px 16px;">⬆️ 上报升级</button>';
+  html += '</div>';
+  
+  // 处理记录
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">📋 处理记录</div>';
+  html += '<div id="wo-process-log" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg);font-size:12px;">';
+  if (wo.logs && wo.logs.length > 0) {
+    wo.logs.forEach(function(log) {
+      html += '<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);">';
+      html += '<div style="display:flex;justify-content:space-between;"><span style="font-weight:600;color:var(--blue);">' + log.operator + '</span><span style="color:var(--text-muted);font-size:11px;">' + log.time + '</span></div>';
+      html += '<div style="color:var(--text);">' + log.action + '</div>';
+      html += '</div>';
+    });
+  } else {
+    html += '<div style="color:var(--text-muted);text-align:center;padding:20px;">暂无处理记录</div>';
+  }
+  html += '</div>';
+  
+  // 新增处理备注
+  html += '<div style="margin-top:16px;"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;">追加处理备注</label>';
+  html += '<textarea id="wo-process-note" placeholder="输入本次处理说明…" style="width:100%;height:60px;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:12px;resize:none;outline:none;"></textarea></div>';
+  html += '</div>';
+  
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-process-wo\').remove()">关闭</button>';
+  html += '<button class="modal-btn" onclick="saveWoProcessNote(\'' + woId + '\')" style="background:var(--blue);color:white;border:none;">💾 保存备注</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doAcceptWorkorder(woId) {
+  var wo = workorderList.find(function(w){ return w.id === woId; });
+  if (wo) {
+    wo.status = 'processing';
+    wo.assignee = '赵飞';
+    wo.acceptTime = new Date().toISOString();
+    wo.logs = wo.logs || [];
+    wo.logs.push({operator:'赵飞', action:'接受工单', time:new Date().toLocaleString()});
+    showToast('✅ 工单 ' + woId + ' 已接受', 'success');
+    addOpLog('workorder','赵飞','接受工单：'+woId,'');
+    document.getElementById('modal-process-wo').remove();
+    renderWorkorderList();
+  }
+}
+
+function doCompleteWorkorder(woId) {
+  var wo = workorderList.find(function(w){ return w.id === woId; });
+  if (wo) {
+    wo.status = 'done';
+    wo.completeTime = new Date().toISOString();
+    wo.logs = wo.logs || [];
+    wo.logs.push({operator:'赵飞', action:'完成工单', time:new Date().toLocaleString()});
+    showToast('✅ 工单 ' + woId + ' 已完成', 'success');
+    addOpLog('workorder','赵飞','完成工单：'+woId,'');
+    document.getElementById('modal-process-wo').remove();
+    renderWorkorderList();
+    // 触发满意度评价
+    setTimeout(function() { openWorkorderSatisfactionModal(woId, wo.guest || '客户'); }, 500);
+  }
+}
+
+function saveWoProcessNote(woId) {
+  var note = document.getElementById('wo-process-note').value.trim();
+  if (!note) { showToast('请输入处理备注', 'warning'); return; }
+  var wo = workorderList.find(function(w){ return w.id === woId; });
+  if (wo) {
+    wo.logs = wo.logs || [];
+    wo.logs.push({operator:'赵飞', action:'备注：' + note, time:new Date().toLocaleString()});
+    showToast('💾 备注已保存', 'success');
+    document.getElementById('wo-process-note').value = '';
+    openProcessWorkorderModal(woId); // 刷新弹窗
+  }
+}
+
+function openWoTransferModal(woId) {
+  var staffList = ['赵飞','周敏','王经理','李主管'];
+  var opts = staffList.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('');
+  var html = '<div class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999999;">';
+  html += '<div style="width:380px;background:white;border-radius:12px;overflow:hidden;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">🔄 转交工单</div>';
+  html += '<button onclick="this.closest(\'.modal-overlay\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div class="form-group"><label class="form-label">转交给</label><select id="transfer-target" class="form-select" style="height:38px;font-size:13px;">' + opts + '</select></div>';
+  html += '<div class="form-group"><label class="form-label">转交原因</label><input type="text" id="transfer-reason" class="form-input" placeholder="请输入转交原因" style="height:38px;font-size:13px;"></div>';
+  html += '<div style="display:flex;gap:10px;margin-top:16px;">';
+  html += '<button class="modal-btn primary" onclick="confirmTransferWo(\'' + woId + '\')" style="flex:1;background:var(--blue);color:white;border:none;">确认转交</button>';
+  html += '<button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()" style="flex:1;">取消</button>';
+  html += '</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function confirmTransferWo(woId) {
+  var target = document.getElementById('transfer-target').value;
+  var reason = document.getElementById('transfer-reason').value.trim();
+  var wo = workorderList.find(function(w){ return w.id === woId; });
+  if (wo) {
+    wo.assignee = target;
+    wo.logs = wo.logs || [];
+    wo.logs.push({operator:'赵飞', action:'工单转交给'+target+(reason?'，原因：'+reason:''), time:new Date().toLocaleString()});
+    showToast('🔄 工单已转交给 ' + target, 'success');
+    addOpLog('workorder','赵飞','工单转交：'+woId+' → '+target,'');
+    document.querySelector('.modal-overlay:last-child').remove();
+    document.getElementById('modal-process-wo').remove();
+    renderWorkorderList();
+  }
+}
+
+function openWoEscalateModal(woId) {
+  var levels = ['主管', '经理', '总经理'];
+  var opts = levels.map(function(l){ return '<option value="'+l+'">'+l+'</option>'; }).join('');
+  var html = '<div class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999999;">';
+  html += '<div style="width:380px;background:white;border-radius:12px;overflow:hidden;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">⬆️ 上报升级</div>';
+  html += '<button onclick="this.closest(\'.modal-overlay\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div class="form-group"><label class="form-label">升级至</label><select id="escalate-level" class="form-select" style="height:38px;font-size:13px;">' + opts + '</select></div>';
+  html += '<div class="form-group"><label class="form-label">升级原因</label><textarea id="escalate-reason" class="form-input" placeholder="请输入升级原因…" style="height:60px;font-size:13px;resize:none;"></textarea></div>';
+  html += '<div style="display:flex;gap:10px;margin-top:16px;">';
+  html += '<button class="modal-btn primary" onclick="confirmEscalateWo(\'' + woId + '\')" style="flex:1;background:var(--orange);color:white;border:none;">确认升级</button>';
+  html += '<button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()" style="flex:1;">取消</button>';
+  html += '</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function confirmEscalateWo(woId) {
+  var level = document.getElementById('escalate-level').value;
+  var reason = document.getElementById('escalate-reason').value.trim();
+  var wo = workorderList.find(function(w){ return w.id === woId; });
+  if (wo) {
+    wo.priority = 'urgent';
+    wo.logs = wo.logs || [];
+    wo.logs.push({operator:'赵飞', action:'工单升级至'+level+(reason?'，原因：'+reason:''), time:new Date().toLocaleString()});
+    showToast('⬆️ 工单已升级至 ' + level, 'success');
+    addOpLog('workorder','赵飞','工单升级：'+woId+' → '+level,'');
+    document.querySelector('.modal-overlay:last-child').remove();
+    openProcessWorkorderModal(woId);
+  }
+}
+
+// 绑定工单行"处理"按钮到处理弹窗
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    // 拦截工单表格中的"处理"按钮
+    var woActionBtns = document.querySelectorAll('#page-workorder .action-btn[onclick*="openWorkorderDetail"], #page-workorder .action-btn[onclick*="acceptWorkorder"]');
+    woActionBtns.forEach(function(btn) {
+      var onclick = btn.getAttribute('onclick');
+      if (onclick && onclick.match(/openWorkorderDetailModalV3|openWorkorderDetail|acceptWorkorder/)) {
+        btn.setAttribute('data-wo-action', 'true');
+      }
+    });
+  }, 1500);
+});
+
+// 改造工单渲染函数里的处理按钮 → 打开处理弹窗
+function getWoActionBtn(wo) {
+  if (wo.status === 'pending') {
+    return '<button class="action-btn small" onclick="openProcessWorkorderModal(\'' + wo.id + '\')" style="background:var(--blue);color:white;border:none;padding:2px 8px;font-size:11px;">🛠️ 处理</button>';
+  } else if (wo.status === 'processing') {
+    return '<button class="action-btn small" onclick="openProcessWorkorderModal(\'' + wo.id + '\')" style="background:var(--green);color:white;border:none;padding:2px 8px;font-size:11px;">🛠️ 处理</button>';
+  } else {
+    return '<button class="action-btn small" onclick="openWorkorderSatisfactionModal(\'' + wo.id + '\', \'' + (wo.guest||'客户') + '\')" style="padding:2px 8px;font-size:11px;">⭐ 评价</button>';
+  }
+}
+
+// ============================================================
+// 【改进2】员工排班日历：周视图+班次拖拽设置+考勤打卡
+// ============================================================
+
+var scheduleCalendarDB = [
+  {staff:'赵飞', dept:'前厅', shifts:[{day:1,shift:'morning',status:'present'},{day:2,shift:'morning',status:'present'},{day:3,shift:'morning',status:'late'},{day:4,shift:'morning',status:'present'},{day:5,shift:'afternoon',status:'present'},{day:6,shift:'afternoon',status:'absent'}]},
+  {staff:'周敏', dept:'客房', shifts:[{day:1,shift:'morning',status:'present'},{day:2,shift:'morning',status:'present'},{day:3,shift:'morning',status:'present'},{day:4,shift:'off',status:'leave'},{day:5,shift:'morning',status:'present'},{day:6,shift:'morning',status:'present'}]},
+  {staff:'王经理', dept:'管理', shifts:[{day:1,shift:'afternoon',status:'present'},{day:2,shift:'afternoon',status:'present'},{day:3,shift:'off',status:'leave'},{day:4,shift:'afternoon',status:'present'},{day:5,shift:'afternoon',status:'present'},{day:6,shift:'off',status:'off'}]},
+  {staff:'李主管', dept:'工程', shifts:[{day:1,shift:'morning',status:'present'},{day:2,shift:'morning',status:'late'},{day:3,shift:'morning',status:'present'},{day:4,shift:'morning',status:'present'},{day:5,shift:'morning',status:'present'},{day:6,shift:'morning',status:'present'}]}
+];
+var scheduleWeekStart = new Date('2026-03-23'); // 本周一开始
+
+function openStaffScheduleCalendarModal() {
+  var old = document.getElementById('modal-schedule-calendar');
+  if (old) old.remove();
+  
+  var dayNames = ['周一','周二','周三','周四','周五','周六','周日'];
+  var shiftTypes = [
+    {value:'morning', label:'🌅 早班', color:'var(--blue)'},
+    {value:'afternoon', label:'☀️ 中班', color:'var(--orange)'},
+    {value:'night', label:'🌙 晚班', color:'var(--purple)'},
+    {value:'off', label:'🚫 休息', color:'var(--text-muted)'}
+  ];
+  var statusColors = {present:'var(--green)', late:'var(--orange)', absent:'var(--red)', leave:'var(--blue)', off:'var(--text-muted)'};
+  
+  // 生成表头
+  var headerHtml = '<div style="display:grid;grid-template-columns:100px 1fr;gap:0;border-bottom:2px solid var(--border);">';
+  headerHtml += '<div style="padding:12px 10px;font-size:12px;font-weight:600;color:var(--text-muted);">员工</div>';
+  for (var d = 0; d < 7; d++) {
+    var date = new Date(scheduleWeekStart);
+    date.setDate(date.getDate() + d);
+    var isWeekend = d >= 5;
+    headerHtml += '<div style="padding:8px 4px;text-align:center;border-left:1px solid var(--border);' + (isWeekend ? 'background:var(--red-bg);' : '') + '">';
+    headerHtml += '<div style="font-size:12px;font-weight:600;color:' + (isWeekend ? 'var(--red)' : 'var(--text)') + ';">' + dayNames[d] + '</div>';
+    headerHtml += '<div style="font-size:10px;color:var(--text-muted);">' + (date.getMonth()+1) + '/' + date.getDate() + '</div></div>';
+  }
+  headerHtml += '</div>';
+  
+  // 生成员工行
+  var bodyHtml = '';
+  scheduleCalendarDB.forEach(function(staff, si) {
+    bodyHtml += '<div style="display:grid;grid-template-columns:100px 1fr;gap:0;border-bottom:1px solid var(--border);' + (si % 2 === 0 ? 'background:var(--bg);' : '') + '">';
+    bodyHtml += '<div style="padding:12px 10px;font-size:12px;font-weight:600;">' + staff.staff + '<div style="font-size:10px;color:var(--text-muted);">' + staff.dept + '</div></div>';
+    for (var d = 0; d < 7; d++) {
+      var sh = staff.shifts[d] || {shift:'off', status:'off'};
+      var shiftInfo = shiftTypes.find(function(s){ return s.value === sh.shift; }) || shiftTypes[3];
+      var statusColor = statusColors[sh.status] || 'var(--text-muted)';
+      var isWeekend = d >= 5;
+      bodyHtml += '<div style="padding:6px 4px;text-align:center;border-left:1px solid var(--border);cursor:pointer;' + (isWeekend ? 'background:rgba(255,0,0,0.03);' : '') + '" onclick="openShiftEditModal(' + si + ',' + d + ',\'' + sh.shift + '\',\'' + sh.status + '\')" title="点击修改班次">';
+      bodyHtml += '<div style="font-size:11px;font-weight:600;color:' + shiftInfo.color + ';margin-bottom:2px;">' + shiftInfo.label + '</div>';
+      bodyHtml += '<div style="width:8px;height:8px;border-radius:50%;background:' + statusColor + ';display:inline-block;"></div>';
+      bodyHtml += '</div>';
+    }
+    bodyHtml += '</div>';
+  });
+  
+  var html = '<div class="modal-overlay" id="modal-schedule-calendar" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:900px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">';
+  html += '<div style="font-size:24px;">📅</div><div style="flex:1;"><div style="font-size:15px;font-weight:700;">员工排班日历</div><div style="font-size:11px;color:var(--text-muted);">本周排班 · 点击单元格修改班次</div></div>';
+  html += '<button class="action-btn small" onclick="exportScheduleCalendar()">📤 导出排班</button>';
+  html += '<button class="action-btn small" onclick="openAddScheduleStaffModal()">+ 添加员工</button>';
+  html += '<button onclick="document.getElementById(\'modal-schedule-calendar\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  
+  // 统计栏
+  var totalPresent = scheduleCalendarDB.reduce(function(s,st){return s+st.shifts.filter(function(sh){return sh.status==='present'||sh.status==='late';}).length;},0);
+  var totalAbsent = scheduleCalendarDB.reduce(function(s,st){return s+st.shifts.filter(function(sh){return sh.status==='absent';}).length;},0);
+  html += '<div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:20px;flex-shrink:0;background:var(--bg);">';
+  html += '<div style="font-size:12px;">本周：<span style="color:var(--green);font-weight:600;">' + totalPresent + '</span> 人次出勤 · <span style="color:var(--red);font-weight:600;">' + totalAbsent + '</span> 人次缺勤</div>';
+  html += '<div style="display:flex;gap:8px;margin-left:auto;font-size:11px;">';
+  html += '<span style="color:var(--blue);">●</span><span>早班</span>';
+  html += '<span style="color:var(--orange);">●</span><span>中班</span>';
+  html += '<span style="color:var(--purple);">●</span><span>晚班</span>';
+  html += '<span style="color:var(--text-muted);">●</span><span>休息</span>';
+  html += '</div></div>';
+  
+  html += '<div style="flex:1;overflow-y:auto;padding:0;">' + headerHtml + bodyHtml + '</div>';
+  html += '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-schedule-calendar\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openShiftEditModal(si, dayIdx, currentShift, currentStatus) {
+  var shiftTypes = [
+    {value:'morning', label:'🌅 早班 07:00-15:00'},
+    {value:'afternoon', label:'☀️ 中班 15:00-23:00'},
+    {value:'night', label:'🌙 晚班 23:00-07:00'},
+    {value:'off', label:'🚫 休息/请假'}
+  ];
+  var statusTypes = [
+    {value:'present', label:'✅ 正常'},
+    {value:'late', label:'⏰ 迟到'},
+    {value:'absent', label:'❌ 缺勤'},
+    {value:'leave', label:'📋 请假'}
+  ];
+  var shiftOpts = shiftTypes.map(function(s){ return '<option value="'+s.value+'"' + (s.value===currentShift?' selected':'') + '>'+s.label+'</option>'; }).join('');
+  var statusOpts = statusTypes.map(function(s){ return '<option value="'+s.value+'"' + (s.value===currentStatus?' selected':'') + '>'+s.label+'</option>'; }).join('');
+  
+  var html = '<div class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999999;">';
+  html += '<div style="width:360px;background:white;border-radius:12px;overflow:hidden;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">🕐 修改班次</div>';
+  html += '<button onclick="this.closest(\'.modal-overlay\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="padding:10px 12px;background:var(--blue-bg);border-radius:6px;margin-bottom:16px;text-align:center;"><span style="font-weight:700;color:var(--blue);">' + scheduleCalendarDB[si].staff + '</span> · 周' + ['一','二','三','四','五','六','日'][dayIdx] + '</div>';
+  html += '<div class="form-group"><label class="form-label">班次类型</label><select id="sedit-shift" class="form-select" style="height:38px;font-size:13px;">' + shiftOpts + '</select></div>';
+  html += '<div class="form-group"><label class="form-label">考勤状态</label><select id="sedit-status" class="form-select" style="height:38px;font-size:13px;">' + statusOpts + '</select></div>';
+  html += '<div style="display:flex;gap:10px;margin-top:16px;">';
+  html += '<button class="modal-btn primary" onclick="saveShiftEdit(' + si + ',' + dayIdx + ')" style="flex:1;background:var(--blue);color:white;border:none;">保存</button>';
+  html += '<button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()" style="flex:1;">取消</button>';
+  html += '</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function saveShiftEdit(si, dayIdx) {
+  var newShift = document.getElementById('sedit-shift').value;
+  var newStatus = document.getElementById('sedit-status').value;
+  if (!scheduleCalendarDB[si].shifts[dayIdx]) scheduleCalendarDB[si].shifts[dayIdx] = {};
+  scheduleCalendarDB[si].shifts[dayIdx] = {day:dayIdx, shift:newShift, status:newStatus};
+  showToast('✅ 班次已更新', 'success');
+  document.querySelector('.modal-overlay:last-child').remove();
+  openStaffScheduleCalendarModal(); // 刷新
+}
+
+function openAddScheduleStaffModal() {
+  var depts = ['前厅','客房','工程','管理'];
+  var deptOpts = depts.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('');
+  var html = '<div class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999999;">';
+  html += '<div style="width:360px;background:white;border-radius:12px;overflow:hidden;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">+ 添加排班员工</div>';
+  html += '<button onclick="this.closest(\'.modal-overlay\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div class="form-group"><label class="form-label">员工姓名</label><input type="text" id="snew-name" class="form-input" placeholder="请输入姓名" style="height:38px;font-size:13px;"></div>';
+  html += '<div class="form-group"><label class="form-label">所属部门</label><select id="snew-dept" class="form-select" style="height:38px;font-size:13px;">' + deptOpts + '</select></div>';
+  html += '<div style="display:flex;gap:10px;margin-top:16px;">';
+  html += '<button class="modal-btn primary" onclick="confirmAddScheduleStaff()" style="flex:1;background:var(--blue);color:white;border:none;">确认添加</button>';
+  html += '<button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()" style="flex:1;">取消</button>';
+  html += '</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function confirmAddScheduleStaff() {
+  var name = document.getElementById('snew-name').value.trim();
+  var dept = document.getElementById('snew-dept').value;
+  if (!name) { showToast('请输入员工姓名', 'warning'); return; }
+  var emptyShifts = [];
+  for (var i = 0; i < 7; i++) emptyShifts.push({day:i, shift:'off', status:'off'});
+  scheduleCalendarDB.push({staff:name, dept:dept, shifts:emptyShifts});
+  showToast('✅ ' + name + ' 已加入排班表', 'success');
+  document.querySelector('.modal-overlay:last-child').remove();
+  openStaffScheduleCalendarModal();
+}
+
+function exportScheduleCalendar() {
+  showToast('📤 正在导出排班表…', 'info');
+  setTimeout(function(){ showToast('✅ 排班表已导出（CSV）', 'success'); }, 800);
+}
+
+// 给员工管理页面添加"排班日历"按钮
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var staffHeader = document.querySelector('#page-staff .page-header');
+    if (staffHeader && !document.getElementById('staff-schedule-btn')) {
+      var btn = document.createElement('button');
+      btn.id = 'staff-schedule-btn';
+      btn.className = 'action-btn';
+      btn.style.cssText = 'padding:6px 14px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);font-size:12px;';
+      btn.textContent = '📅 排班日历';
+      btn.onclick = function() { openStaffScheduleCalendarModal(); };
+      var existingBtns = staffHeader.querySelectorAll('.action-btn');
+      if (existingBtns.length > 0) staffHeader.appendChild(btn);
+    }
+  }, 1000);
+});
+
+// ============================================================
+// 【改进3】楼栋完整CRUD：楼栋增删改弹窗+楼层管理弹窗+设备绑定
+// ============================================================
+
+var buildingCRUDData = [
+  {id:'main', name:'主楼', code:'MAIN', floors:3, rooms:16, addr:'酒店主楼1-3层', status:'active', manager:'王经理'},
+  {id:'east', name:'东配楼', code:'EAST', floors:2, rooms:9, addr:'酒店东侧配楼1-2层', status:'active', manager:'李主管'},
+  {id:'vip', name:'贵宾楼', code:'VIP', floors:1, rooms:3, addr:'贵宾专区', status:'inactive', manager:'赵飞'}
+];
+
+function openBuildingCRUDForm(mode, bldId) {
+  var old = document.getElementById('modal-building-crud');
+  if (old) old.remove();
+  var existing = bldId ? buildingCRUDData.find(function(b){ return b.id === bldId; }) : null;
+  var isEdit = mode === 'edit' && existing;
+  var title = isEdit ? '✏️ 编辑楼栋' : '+ 新增楼栋';
+  var html = '<div class="modal-overlay" id="modal-building-crud" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:480px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">';
+  html += '<div style="font-size:16px;font-weight:700;">' + title + '</div>';
+  html += '<button onclick="document.getElementById(\'modal-building-crud\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:0 24px 20px;">';
+  html += '<div class="form-group"><label class="form-label">楼栋名称 <span class="required">*</span></label>';
+  html += '<input type="text" id="bld-crud-name" class="form-input" value="' + (isEdit ? existing.name : '') + '" placeholder="如：主楼、东配楼" style="height:38px;font-size:13px;"></div>';
+  html += '<div class="form-group"><label class="form-label">楼栋编号 <span class="required">*</span></label>';
+  html += '<input type="text" id="bld-crud-code" class="form-input" value="' + (isEdit ? existing.code : '') + '" placeholder="如：MAIN、EAST" maxlength="10" style="height:38px;font-size:13px;font-family:monospace;"></div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+  html += '<div class="form-group"><label class="form-label">楼层数</label>';
+  html += '<input type="number" id="bld-crud-floors" class="form-input" value="' + (isEdit ? existing.floors : '') + '" placeholder="楼层数" style="height:38px;font-size:13px;"></div>';
+  html += '<div class="form-group"><label class="form-label">房间数</label>';
+  html += '<input type="number" id="bld-crud-rooms" class="form-input" value="' + (isEdit ? existing.rooms : '') + '" placeholder="房间数" style="height:38px;font-size:13px;"></div>';
+  html += '</div>';
+  html += '<div class="form-group"><label class="form-label">地址</label>';
+  html += '<input type="text" id="bld-crud-addr" class="form-input" value="' + (isEdit ? existing.addr : '') + '" placeholder="楼栋地址" style="height:38px;font-size:13px;"></div>';
+  html += '<div class="form-group"><label class="form-label">负责人</label>';
+  html += '<input type="text" id="bld-crud-manager" class="form-input" value="' + (isEdit ? existing.manager : '') + '" placeholder="负责人姓名" style="height:38px;font-size:13px;"></div>';
+  html += '<div class="form-group"><label class="form-label">状态</label>';
+  html += '<select id="bld-crud-status" class="form-select" style="height:38px;font-size:13px;">';
+  html += '<option value="active"' + (isEdit && existing.status === 'active' ? ' selected' : '') + '>✅ 启用</option>';
+  html += '<option value="inactive"' + (isEdit && existing.status === 'inactive' ? ' selected' : '') + '>❌ 停用</option>';
+  html += '</select></div>';
+  html += '<div style="display:flex;gap:10px;margin-top:20px;">';
+  html += '<button class="modal-btn primary" onclick="saveBuildingCRUD(\'' + mode + '\',\'' + bldId + '\')" style="flex:1;background:var(--blue);color:white;border:none;">💾 保存</button>';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-building-crud\').remove()" style="flex:1;">取消</button>';
+  html += '</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function saveBuildingCRUD(mode, bldId) {
+  var name = document.getElementById('bld-crud-name').value.trim();
+  var code = document.getElementById('bld-crud-code').value.trim().toUpperCase();
+  var floors = parseInt(document.getElementById('bld-crud-floors').value) || 0;
+  var rooms = parseInt(document.getElementById('bld-crud-rooms').value) || 0;
+  var addr = document.getElementById('bld-crud-addr').value.trim();
+  var manager = document.getElementById('bld-crud-manager').value.trim();
+  var status = document.getElementById('bld-crud-status').value;
+  if (!name || !code) { showToast('请填写楼栋名称和编号', 'warning'); return; }
+  if (mode === 'add') {
+    var newId = 'bld-' + Date.now();
+    buildingCRUDData.push({id:newId, name:name, code:code, floors:floors, rooms:rooms, addr:addr, status:status, manager:manager});
+    showToast('✅ 楼栋 ' + name + ' 已添加', 'success');
+    addOpLog('building','赵飞','新增楼栋：'+name,'');
+  } else {
+    var idx = buildingCRUDData.findIndex(function(b){ return b.id === bldId; });
+    if (idx !== -1) {
+      buildingCRUDData[idx] = {id:bldId, name:name, code:code, floors:floors, rooms:rooms, addr:addr, status:status, manager:manager};
+      showToast('✅ 楼栋 ' + name + ' 已更新', 'success');
+      addOpLog('building','赵飞','编辑楼栋：'+name,'');
+    }
+  }
+  document.getElementById('modal-building-crud').remove();
+  // 触发楼栋页刷新（如果有楼栋页的话）
+  if (typeof renderBuildingTable === 'function') renderBuildingTable();
+}
+
+function deleteBuildingCRUD(bldId) {
+  var bld = buildingCRUDData.find(function(b){ return b.id === bldId; });
+  if (!bld) return;
+  if (!confirm('确定删除楼栋 ' + bld.name + ' 吗？此操作不可撤销。')) return;
+  buildingCRUDData = buildingCRUDData.filter(function(b){ return b.id !== bldId; });
+  showToast('🗑️ 楼栋 ' + bld.name + ' 已删除', 'success');
+  addOpLog('building','赵飞','删除楼栋：'+bld.name,'');
+  if (typeof renderBuildingTable === 'function') renderBuildingTable();
+}
+
+function openBuildingFloorManage(bldId) {
+  var bld = buildingCRUDData.find(function(b){ return b.id === bldId; });
+  if (!bld) return;
+  var old = document.getElementById('modal-bld-floor-manage');
+  if (old) old.remove();
+  
+  var floorHtml = '';
+  for (var f = bld.floors; f >= 1; f--) {
+    floorHtml += '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg);border-radius:8px;margin-bottom:8px;">';
+    floorHtml += '<div style="width:60px;text-align:center;"><div style="font-size:20px;">🏗️</div><div style="font-size:13px;font-weight:700;">' + f + '层</div></div>';
+    floorHtml += '<div style="flex:1;font-size:12px;color:var(--text-muted);">约 ' + Math.ceil(bld.rooms / bld.floors) + ' 间房</div>';
+    floorHtml += '<button class="action-btn small" onclick="openFloorDetailInBuilding(\'' + bldId + '\',' + f + ')" style="padding:4px 10px;font-size:11px;">📋 楼层详情</button>';
+    floorHtml += '<button class="action-btn small" onclick="openAddRoomInBuilding(\'' + bldId + '\',' + f + ')" style="padding:4px 10px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">+ 添房间</button>';
+    floorHtml += '</div>';
+  }
+  
+  var html = '<div class="modal-overlay" id="modal-bld-floor-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:500px;max-height:80vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;margin-bottom:16px;">';
+  html += '<div style="font-size:28px;">🏢</div><div style="flex:1;"><div style="font-size:16px;font-weight:700;">' + bld.name + ' - 楼层管理</div><div style="font-size:11px;color:var(--text-muted);">共 ' + bld.floors + ' 层 · ' + bld.rooms + ' 间房</div></div>';
+  html += '<button onclick="document.getElementById(\'modal-bld-floor-manage\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:0 24px 20px;">' + floorHtml + '</div>';
+  html += '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-bld-floor-manage\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openFloorDetailInBuilding(bldId, floor) {
+  showToast('🏗️ 正在加载 ' + floor + ' 层详情…', 'info');
+  setTimeout(function(){ showToast('📋 ' + floor + ' 层共有约 ' + Math.ceil(buildingCRUDData.find(function(b){return b.id===bldId;}).rooms / buildingCRUDData.find(function(b){return b.id===bldId;}).floors) + ' 间房', 'info'); }, 500);
+}
+
+function openAddRoomInBuilding(bldId, floor) {
+  var roomNo = prompt('请输入房间号（如 ' + floor + '01）：');
+  if (!roomNo) return;
+  var bld = buildingCRUDData.find(function(b){ return b.id === bldId; });
+  if (bld) {
+    bld.rooms = (bld.rooms || 0) + 1;
+    showToast('✅ 房间 ' + roomNo + ' 已添加到 ' + bld.name + ' ' + floor + '层', 'success');
+    addOpLog('building','赵飞','添加房间：'+roomNo,'');
+    openBuildingFloorManage(bldId); // 刷新
+  }
+}
+
+// ============================================================
+// 【改进4】会员积分兑换中心：积分余额+兑换历史+商品兑换
+// ============================================================
+
+var memberPointsDB = [
+  {member:'张三', phone:'138****1234', level:'gold', points:2850, totalEarned:5200, totalRedeemed:2350},
+  {member:'李四', phone:'139****5678', level:'silver', points:860, totalEarned:1200, totalRedeemed:340},
+  {member:'王五', phone:'137****9012', level:'vip', points:12000, totalEarned:25000, totalRedeemed:13000},
+  {member:'赵六', phone:'136****3456', level:'normal', points:120, totalEarned:200, totalRedeemed:80}
+];
+
+var pointsMallItems = [
+  {id:'PM-001', name:'免费房型升级券', points:500, stock:20, desc:'可免费升级至上一级房型', type:'room'},
+  {id:'PM-002', name:'延迟退房至14:00', points:200, stock:50, desc:'退房时间延长2小时', type:'service'},
+  {id:'PM-003', name:'免费迷你吧消费券', points:300, stock:30, desc:'价值50元迷你吧抵扣', type:'consumption'},
+  {id:'PM-004', name:'早餐券 ×2', points:400, stock:40, desc:'双人早餐体验券', type:'meal'},
+  {id:'PM-005', name:'延迟退房至16:00', points:350, stock:25, desc:'退房时间延长4小时（需提前申请）', type:'service'},
+  {id:'PM-006', name:'免费加床服务', points:600, stock:15, desc:'免加床费用（价值120元）', type:'service'}
+];
+
+var pointsRedeemHistory = [
+  {id:'PR-2026032501', member:'王五', item:'免费房型升级券', points:500, redeemTime:'2026-03-25 14:30', status:'unused'},
+  {id:'PR-2026032401', member:'张三', item:'延迟退房至14:00', points:200, redeemTime:'2026-03-24 10:00', status:'used'},
+  {id:'PR-2026032001', member:'李四', item:'早餐券 ×2', points:400, redeemTime:'2026-03-20 08:45', status:'used'}
+];
+
+function openPointsCenterModal() {
+  var old = document.getElementById('modal-points-center');
+  if (old) old.remove();
+  
+  var totalPoints = memberPointsDB.reduce(function(s,m){return s+m.points;},0);
+  var totalMembers = memberPointsDB.length;
+  var redeemable = pointsMallItems.filter(function(i){return i.stock > 0;}).length;
+  
+  var memberRows = memberPointsDB.map(function(m){
+    var levelColors = {normal:'var(--text-muted)', silver:'var(--orange)', gold:'var(--purple)', vip:'var(--green)'};
+    var levelLabels = {normal:'🌱 普通', silver:'🥈 银卡', gold:'🥇 金卡', vip:'⭐ VIP'};
+    return '<tr style="' + (m.points >= 1000 ? 'background:var(--green-bg);' : '') + '">' +
+      '<td><div style="font-weight:600;">' + m.member + '</div><div style="font-size:10px;color:var(--text-muted);">' + m.phone + '</div></td>' +
+      '<td><span style="font-size:12px;color:' + levelColors[m.level] + ';font-weight:600;">' + levelLabels[m.level] + '</span></td>' +
+      '<td><span style="font-weight:700;color:var(--orange);">' + m.points + '</span></td>' +
+      '<td><span style="font-size:11px;color:var(--text-muted);">' + m.totalEarned + '</span></td>' +
+      '<td><button class="action-btn small" onclick="openRedeemModal(\'' + m.member + '\',' + m.points + ')" style="padding:2px 8px;font-size:11px;">⚡ 兑换</button></td>' +
+      '</tr>';
+  }).join('');
+  
+  var html = '<div class="modal-overlay" id="modal-points-center" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:900px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">';
+  html += '<div style="font-size:24px;">🏆</div><div style="flex:1;"><div style="font-size:15px;font-weight:700;">会员积分兑换中心</div><div style="font-size:11px;color:var(--text-muted);">积分余额 · 兑换商品 · 兑换记录</div></div>';
+  html += '<button class="action-btn small" onclick="openPointsPolicyConfig()" style="padding:5px 10px;font-size:11px;">⚙️ 积分政策</button>';
+  html += '<button onclick="document.getElementById(\'modal-points-center\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  
+  // 统计行
+  html += '<div style="padding:16px 24px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);gap:12px;flex-shrink:0;">';
+  html += '<div style="text-align:center;padding:12px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:26px;font-weight:700;color:var(--orange);">' + totalPoints.toLocaleString() + '</div><div style="font-size:11px;color:var(--text-muted);">积分总余额</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:26px;font-weight:700;color:var(--blue);">' + totalMembers + '</div><div style="font-size:11px;color:var(--text-muted);">会员总数</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--green-bg);border-radius:8px;"><div style="font-size:26px;font-weight:700;color:var(--green);">' + redeemable + '</div><div style="font-size:11px;color:var(--text-muted);">可兑换商品</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--purple-bg);border-radius:8px;"><div style="font-size:26px;font-weight:700;color:var(--purple);">' + pointsRedeemHistory.length + '</div><div style="font-size:11px;color:var(--text-muted);">兑换记录</div></div>';
+  html += '</div>';
+  
+  // Tab切换
+  html += '<div style="padding:12px 24px 0;border-bottom:1px solid var(--border);display:flex;gap:0;flex-shrink:0;">';
+  html += '<button onclick="switchPointsTab(\'members\', this)" class="pts-tab active" style="padding:8px 16px;background:none;border:none;border-bottom:2px solid var(--blue);color:var(--blue);font-weight:600;font-size:13px;cursor:pointer;">👥 会员积分</button>';
+  html += '<button onclick="switchPointsTab(\'mall\', this)" class="pts-tab" style="padding:8px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-muted);font-weight:600;font-size:13px;cursor:pointer;">🎁 兑换商品</button>';
+  html += '<button onclick="switchPointsTab(\'history\', this)" class="pts-tab" style="padding:8px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-muted);font-weight:600;font-size:13px;cursor:pointer;">📋 兑换记录</button>';
+  html += '</div>';
+  
+  // 内容区
+  html += '<div id="pts-content" style="flex:1;overflow-y:auto;padding:16px 24px;">';
+  html += '<table class="table" style="font-size:12px;"><thead><tr><th>会员</th><th>等级</th><th>可用积分</th><th>累计积分</th><th>操作</th></tr></thead><tbody>' + memberRows + '</tbody></table>';
+  html += '</div>';
+  
+  html += '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-points-center\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function switchPointsTab(tab, btn) {
+  document.querySelectorAll('.pts-tab').forEach(function(t){ t.classList.remove('active'); t.style.borderBottomColor = 'transparent'; t.style.color = 'var(--text-muted)'; });
+  btn.classList.add('active');
+  btn.style.borderBottomColor = 'var(--blue)';
+  btn.style.color = 'var(--blue)';
+  
+  var content = document.getElementById('pts-content');
+  if (tab === 'members') {
+    var memberRows = memberPointsDB.map(function(m){
+      var levelColors = {normal:'var(--text-muted)', silver:'var(--orange)', gold:'var(--purple)', vip:'var(--green)'};
+      var levelLabels = {normal:'🌱 普通', silver:'🥈 银卡', gold:'🥇 金卡', vip:'⭐ VIP'};
+      return '<tr>' +
+        '<td><div style="font-weight:600;">' + m.member + '</div><div style="font-size:10px;color:var(--text-muted);">' + m.phone + '</div></td>' +
+        '<td><span style="font-size:12px;color:' + levelColors[m.level] + ';font-weight:600;">' + levelLabels[m.level] + '</span></td>' +
+        '<td><span style="font-weight:700;color:var(--orange);">' + m.points + '</span></td>' +
+        '<td><span style="font-size:11px;color:var(--text-muted);">' + m.totalEarned + '</span></td>' +
+        '<td><button class="action-btn small" onclick="openRedeemModal(\'' + m.member + '\',' + m.points + ')" style="padding:2px 8px;font-size:11px;">⚡ 兑换</button></td>' +
+        '</tr>';
+    }).join('');
+    content.innerHTML = '<table class="table" style="font-size:12px;"><thead><tr><th>会员</th><th>等级</th><th>可用积分</th><th>累计积分</th><th>操作</th></tr></thead><tbody>' + memberRows + '</tbody></table>';
+  } else if (tab === 'mall') {
+    var itemRows = pointsMallItems.map(function(item){
+      return '<tr>' +
+        '<td><div style="font-weight:600;">' + item.name + '</div><div style="font-size:10px;color:var(--text-muted);">' + item.desc + '</div></td>' +
+        '<td><span style="font-weight:700;color:var(--orange);">' + item.points + '</span></td>' +
+        '<td><span class="tbadge ' + (item.stock > 10 ? 'green' : item.stock > 0 ? 'orange' : 'gray') + '">' + item.stock + ' 份</span></td>' +
+        '<td><button class="action-btn small" onclick="openRedeemModal(null,null,\'' + item.id + '\')" ' + (item.stock <= 0 ? 'disabled style="opacity:0.4;"' : 'style="padding:2px 8px;font-size:11px;"') + '>⚡ 兑换</button></td>' +
+        '</tr>';
+    }).join('');
+    content.innerHTML = '<table class="table" style="font-size:12px;"><thead><tr><th>商品</th><th>所需积分</th><th>库存</th><th>操作</th></tr></thead><tbody>' + itemRows + '</tbody></table>';
+  } else if (tab === 'history') {
+    var histRows = pointsRedeemHistory.map(function(h){
+      var statusMap = {unused:{label:'未使用', bg:'var(--orange-bg)', color:'var(--orange)'}, used:{label:'已使用', bg:'var(--green-bg)', color:'var(--green)'}};
+      var st = statusMap[h.status] || statusMap.unused;
+      return '<tr>' +
+        '<td style="font-family:monospace;font-size:11px;">' + h.id + '</td>' +
+        '<td>' + h.member + '</td>' +
+        '<td><div style="font-weight:600;">' + h.item + '</div><div style="font-size:10px;color:var(--text-muted);">-' + h.points + '积分</div></td>' +
+        '<td style="font-size:11px;color:var(--text-muted);">' + h.redeemTime + '</td>' +
+        '<td><span style="padding:2px 8px;background:' + st.bg + ';color:' + st.color + ';border-radius:10px;font-size:11px;font-weight:600;">' + st.label + '</span></td>' +
+        '</tr>';
+    }).join('');
+    content.innerHTML = '<table class="table" style="font-size:12px;"><thead><tr><th>单号</th><th>会员</th><th>兑换内容</th><th>时间</th><th>状态</th></tr></thead><tbody>' + histRows + '</tbody></table>';
+  }
+}
+
+function openRedeemModal(memberName, memberPoints, itemId) {
+  var html = '<div class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999999;">';
+  html += '<div style="width:380px;background:white;border-radius:12px;overflow:hidden;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">⚡ 积分兑换</div>';
+  html += '<button onclick="this.closest(\'.modal-overlay\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div class="form-group"><label class="form-label">会员姓名</label><input type="text" id="redeem-member" class="form-input" value="' + (memberName || '') + '" placeholder="请输入会员姓名" style="height:38px;font-size:13px;"></div>';
+  html += '<div class="form-group"><label class="form-label">兑换商品</label><select id="redeem-item" class="form-select" style="height:38px;font-size:13px;">' + 
+    pointsMallItems.map(function(i){ return '<option value="'+i.id+'">' + i.name + '（' + i.points + '积分）</option>'; }).join('') + 
+    '</select></div>';
+  html += '<div style="padding:10px 12px;background:var(--orange-bg);border-radius:6px;font-size:12px;color:var(--orange);margin-bottom:16px;" id="redeem-hint">请选择会员和商品</div>';
+  html += '<div style="display:flex;gap:10px;margin-top:16px;">';
+  html += '<button class="modal-btn primary" onclick="confirmRedeem()" style="flex:1;background:var(--orange);color:white;border:none;">确认兑换</button>';
+  html += '<button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()" style="flex:1;">取消</button>';
+  html += '</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  if (itemId) document.getElementById('redeem-item').value = itemId;
+  document.getElementById('redeem-item').addEventListener('change', function() {
+    var item = pointsMallItems.find(function(i){return i.id === this.value;});
+    if (item) {
+      var hint = document.getElementById('redeem-hint');
+      if (hint) hint.innerHTML = '消耗 <strong>' + item.points + '</strong> 积分，剩余 <strong>' + (item.stock) + '</strong> 份库存';
+    }
+  });
+}
+
+function confirmRedeem() {
+  var memberName = document.getElementById('redeem-member').value.trim();
+  var itemId = document.getElementById('redeem-item').value;
+  if (!memberName) { showToast('请输入会员姓名', 'warning'); return; }
+  var member = memberPointsDB.find(function(m){ return m.member === memberName; });
+  var item = pointsMallItems.find(function(i){ return i.id === itemId; });
+  if (!member) { showToast('未找到会员 ' + memberName, 'error'); return; }
+  if (!item) { showToast('未找到兑换商品', 'error'); return; }
+  if (member.points < item.points) { showToast('积分不足！需要 ' + item.points + ' 积分，当前 ' + member.points + ' 积分', 'error'); return; }
+  if (item.stock <= 0) { showToast('该商品已兑完', 'warning'); return; }
+  member.points -= item.points;
+  member.totalRedeemed += item.points;
+  item.stock--;
+  var newId = 'PR-' + String(Date.now()).slice(-6);
+  pointsRedeemHistory.unshift({id:newId, member:memberName, item:item.name, points:item.points, redeemTime:new Date().toLocaleString(), status:'unused'});
+  showToast('🎉 兑换成功！' + memberName + ' 消耗 ' + item.points + ' 积分兑换了 "' + item.name + '"', 'success');
+  addOpLog('points','赵飞','积分兑换：'+memberName+' 兑 '+item.name,'');
+  document.querySelector('.modal-overlay:last-child').remove();
+}
+
+function openPointsPolicyConfig() {
+  var html = '<div class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999999;">';
+  html += '<div style="width:400px;background:white;border-radius:12px;overflow:hidden;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">⚙️ 积分政策配置</div>';
+  html += '<button onclick="this.closest(\'.modal-overlay\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div class="form-group"><label class="form-label">每消费1元获得积分</label><input type="number" class="form-input" value="1" style="height:38px;font-size:13px;"></div>';
+  html += '<div class="form-group"><label class="form-label">积分抵现比例</label><input type="text" class="form-input" value="100积分 = ¥1" style="height:38px;font-size:13px;"></div>';
+  html += '<div class="form-group"><label class="form-label">升级银卡所需积分</label><input type="number" class="form-input" value="2000" style="height:38px;font-size:13px;"></div>';
+  html += '<div style="display:flex;gap:10px;margin-top:16px;">';
+  html += '<button class="modal-btn primary" onclick="savePointsPolicy();this.closest(\'.modal-overlay\').remove()" style="flex:1;background:var(--blue);color:white;border:none;">💾 保存配置</button>';
+  html += '<button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()" style="flex:1;">取消</button>';
+  html += '</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function savePointsPolicy() { showToast('✅ 积分政策已保存', 'success'); }
+
+// 在会员管理页面添加积分中心入口
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var memberHeader = document.querySelector('#page-member .page-header');
+    if (memberHeader && !document.getElementById('member-points-btn')) {
+      var btn = document.createElement('button');
+      btn.id = 'member-points-btn';
+      btn.className = 'action-btn';
+      btn.style.cssText = 'padding:6px 14px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);font-size:12px;';
+      btn.textContent = '🏆 积分兑换';
+      btn.onclick = function() { openPointsCenterModal(); };
+      memberHeader.appendChild(btn);
+    }
+  }, 1000);
+});
+
+// ============================================================
+// 【改进5】发票管理高级功能：发票详情弹窗+开票历史+批量导出
+// ============================================================
+
+function openInvoiceDetailModal(invId) {
+  var inv = invoiceDB.find(function(x){ return x.id === invId; });
+  if (!inv) { showToast('发票不存在', 'error'); return; }
+  var old = document.getElementById('modal-invoice-detail');
+  if (old) old.remove();
+  
+  var statusMap = {pending:{label:'待审核', bg:'var(--orange-bg)', color:'var(--orange)'}, approved:{label:'已审核', bg:'var(--blue-bg)', color:'var(--blue)'}, rejected:{label:'已驳回', bg:'var(--red-bg)', color:'var(--red)'}, issued:{label:'已开票', bg:'var(--purple-bg)', color:'var(--purple)'}};
+  var st = statusMap[inv.status] || statusMap.pending;
+  
+  var html = '<div class="modal-overlay" id="modal-invoice-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:560px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;margin-bottom:20px;">';
+  html += '<div style="font-size:28px;">🧾</div><div style="flex:1;"><div style="font-size:16px;font-weight:700;">发票详情</div><div style="font-size:11px;color:var(--text-muted);font-family:monospace;">' + inv.id + '</div></div>';
+  html += '<span style="padding:4px 10px;background:' + st.bg + ';color:' + st.color + ';border-radius:12px;font-size:12px;font-weight:600;">' + st.label + '</span>';
+  html += '<button onclick="document.getElementById(\'modal-invoice-detail\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  
+  html += '<div style="padding:0 24px 20px;">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
+  html += '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">发票类型</div><div style="font-size:14px;font-weight:600;">' + inv.type + '</div></div>';
+  html += '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">发票金额</div><div style="font-size:20px;font-weight:700;color:var(--orange);">¥' + inv.amount + '</div></div>';
+  html += '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">客人</div><div style="font-size:14px;font-weight:600;">' + inv.guest + '</div></div>';
+  html += '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">房间</div><div style="font-size:14px;font-weight:600;">' + (inv.room || '-') + '</div></div>';
+  html += '</div>';
+  
+  html += '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;">';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">发票抬头</div>';
+  html += '<div style="font-size:14px;font-weight:600;margin-bottom:4px;">' + inv.title + '</div>';
+  if (inv.taxNo && inv.taxNo !== '-') html += '<div style="font-size:12px;color:var(--text-muted);">税号：' + inv.taxNo + '</div>';
+  html += '</div>';
+  
+  html += '<div style="display:flex;gap:8px;font-size:12px;color:var(--text-muted);margin-bottom:16px;">';
+  html += '<div>📅 申请：' + inv.applyDate + '</div>';
+  html += '<div>👤 操作员：' + inv.operator + '</div>';
+  html += '</div>';
+  
+  // 操作按钮
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">';
+  if (inv.status === 'pending') {
+    html += '<button class="action-btn" onclick="approveInvoice(\'' + inv.id + '\')" style="background:var(--blue);color:white;border:none;padding:6px 12px;font-size:12px;">✅ 审核通过</button>';
+    html += '<button class="action-btn" onclick="rejectInvoice(\'' + inv.id + '\')" style="background:var(--red);color:white;border:none;padding:6px 12px;font-size:12px;">❌ 驳回</button>';
+  }
+  if (inv.status === 'approved') {
+    html += '<button class="action-btn" onclick="issueInvoice(\'' + inv.id + '\')" style="background:var(--purple);color:white;border:none;padding:6px 12px;font-size:12px;">🧾 开具发票</button>';
+  }
+  if (inv.status === 'issued') {
+    html += '<button class="action-btn" onclick="shipInvoice(\'' + inv.id + '\')" style="background:var(--green);color:white;border:none;padding:6px 12px;font-size:12px;">📦 邮寄/自取</button>';
+  }
+  html += '<button class="action-btn" onclick="exportInvoicePDF(\'' + inv.id + '\')" style="padding:6px 12px;font-size:12px;">📄 导出PDF</button>';
+  html += '</div>';
+  
+  html += '<div style="padding:12px 16px;background:var(--blue-bg);border-radius:8px;font-size:12px;color:var(--blue);">💡 点击"开具发票"后，发票状态将变为"已开票"，等待邮寄给客户</div>';
+  html += '</div>';
+  
+  html += '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-detail\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function exportInvoicePDF(invId) {
+  showToast('📄 正在生成发票PDF…', 'info');
+  setTimeout(function(){ showToast('✅ 发票PDF已生成（模拟）', 'success'); }, 800);
+}
+
+function openInvoiceBatchExportModal() {
+  var html = '<div class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999999;">';
+  html += '<div style="width:380px;background:white;border-radius:12px;overflow:hidden;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">📤 批量导出发票</div>';
+  html += '<button onclick="this.closest(\'.modal-overlay\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div class="form-group"><label class="form-label">时间范围</label>';
+  html += '<input type="date" id="inv-export-from" class="form-input" value="2026-03-01" style="height:38px;font-size:13px;margin-bottom:8px;">';
+  html += '<input type="date" id="inv-export-to" class="form-input" value="2026-03-31" style="height:38px;font-size:13px;"></div>';
+  html += '<div class="form-group"><label class="form-label">发票状态</label>';
+  html += '<select id="inv-export-status" class="form-select" style="height:38px;font-size:13px;">';
+  html += '<option value="all">全部</option><option value="pending">待审核</option><option value="approved">已审核</option><option value="issued">已开票</option>';
+  html += '</select></div>';
+  html += '<div class="form-group"><label class="form-label">导出格式</label>';
+  html += '<select id="inv-export-format" class="form-select" style="height:38px;font-size:13px;">';
+  html += '<option value="pdf">PDF文档</option><option value="csv">Excel表格(CSV)</option><option value="xlsx">Excel表格(XLSX)</option>';
+  html += '</select></div>';
+  html += '<div style="display:flex;gap:10px;margin-top:16px;">';
+  html += '<button class="modal-btn primary" onclick="confirmInvoiceExport()" style="flex:1;background:var(--blue);color:white;border:none;">📤 确认导出</button>';
+  html += '<button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()" style="flex:1;">取消</button>';
+  html += '</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function confirmInvoiceExport() {
+  var from = document.getElementById('inv-export-from').value;
+  var to = document.getElementById('inv-export-to').value;
+  var status = document.getElementById('inv-export-status').value;
+  var format = document.getElementById('inv-export-format').value;
+  var count = invoiceDB.filter(function(inv) {
+    if (status !== 'all' && inv.status !== status) return false;
+    if (inv.applyDate >= from && inv.applyDate <= to) return true;
+    return false;
+  }).length;
+  showToast('📤 正在导出 ' + count + ' 条发票记录（' + format.toUpperCase() + '）…', 'info');
+  setTimeout(function(){ showToast('✅ ' + count + ' 条发票已导出', 'success'); }, 1000);
+  document.querySelector('.modal-overlay:last-child').remove();
+}
+
+function openInvoiceStatsModal() {
+  var old = document.getElementById('modal-invoice-stats');
+  if (old) old.remove();
+  var totalAmount = invoiceDB.reduce(function(s,inv){return s+inv.amount;},0);
+  var pendingCount = invoiceDB.filter(function(inv){return inv.status==='pending';}).length;
+  var approvedCount = invoiceDB.filter(function(inv){return inv.status==='approved';}).length;
+  var issuedCount = invoiceDB.filter(function(inv){return inv.status==='issued';}).length;
+  var avgAmount = invoiceDB.length > 0 ? Math.round(totalAmount / invoiceDB.length) : 0;
+  
+  var html = '<div class="modal-overlay" id="modal-invoice-stats" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:500px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;margin-bottom:20px;">';
+  html += '<div style="font-size:28px;">📊</div><div style="flex:1;"><div style="font-size:16px;font-weight:700;">发票统计报表</div><div style="font-size:11px;color:var(--text-muted);">发票申请、开票、金额统计</div></div>';
+  html += '<button onclick="document.getElementById(\'modal-invoice-stats\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:0 24px 20px;">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
+  html += '<div style="text-align:center;padding:16px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:28px;font-weight:700;color:var(--orange);">¥' + totalAmount.toLocaleString() + '</div><div style="font-size:11px;color:var(--text-muted);">累计开票金额</div></div>';
+  html += '<div style="text-align:center;padding:16px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:28px;font-weight:700;color:var(--blue);">¥' + avgAmount + '</div><div style="font-size:11px;color:var(--text-muted);">平均每张</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:20px;font-weight:700;color:var(--orange);">' + pendingCount + '</div><div style="font-size:11px;color:var(--text-muted);">待审核</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--purple-bg);border-radius:8px;"><div style="font-size:20px;font-weight:700;color:var(--purple);">' + issuedCount + '</div><div style="font-size:11px;color:var(--text-muted);">已开票</div></div>';
+  html += '</div>';
+  html += '<div style="padding:12px 16px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-muted);">';
+  html += '<div style="font-weight:600;color:var(--text);margin-bottom:6px;">📋 发票申请渠道分布</div>';
+  html += '<div>前台申请：' + Math.round(invoiceDB.length * 0.6) + ' 张</div>';
+  html += '<div>线上申请：' + Math.round(invoiceDB.length * 0.3) + ' 张</div>';
+  html += '<div>电话申请：' + Math.round(invoiceDB.length * 0.1) + ' 张</div>';
+  html += '</div>';
+  html += '</div>';
+  html += '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-stats\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// 改造发票列表行的查看按钮 → 打开详情弹窗
+function getInvoiceViewBtn(invId) {
+  return '<button class="action-btn small" onclick="openInvoiceDetailModal(\'' + invId + '\')" style="padding:2px 8px;font-size:11px;">🔍 详情</button>';
+}
+
+// 在发票管理页面添加入口
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var invoiceHeader = document.querySelector('#page-invoice .page-header');
+    if (invoiceHeader && !document.getElementById('invoice-stats-btn')) {
+      var btn1 = document.createElement('button');
+      btn1.id = 'invoice-stats-btn';
+      btn1.className = 'action-btn small';
+      btn1.style.cssText = 'padding:5px 10px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);';
+      btn1.textContent = '📊 统计报表';
+      btn1.onclick = function() { openInvoiceStatsModal(); };
+      var btn2 = document.createElement('button');
+      btn2.id = 'invoice-export-btn';
+      btn2.className = 'action-btn small';
+      btn2.style.cssText = 'padding:5px 10px;font-size:11px;background:var(--green-bg);color:var(--green);border-color:var(--green);';
+      btn2.textContent = '📤 批量导出';
+      btn2.onclick = function() { openInvoiceBatchExportModal(); };
+      invoiceHeader.appendChild(btn1);
+      invoiceHeader.appendChild(btn2);
+    }
+  }, 1000);
+});
+
+
 </script>
 </body>
 </html>
