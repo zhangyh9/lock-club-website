@@ -1693,6 +1693,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               <span>全选</span>
             </label>
             <button class="action-btn small" id="batch-action-btn" onclick="openBatchToolbar()" style="display:none;">📋 批量操作</button>
+            <button class="action-btn small" onclick="openFirmwareUpgradeModal()" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📦 固件升级</button>
+            <button class="action-btn small" onclick="openACControlModal()" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">❄️ 空调控制</button>
           </div>
           <table class="table">
             <thead><tr><th style="width:30px;"></th><th>房间号</th><th>房型</th><th>状态</th><th>电量</th><th>信号</th><th>最后同步</th><th>操作</th></tr></thead>
@@ -3698,6 +3700,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div class="card-header">
           <div class="card-title">🏢 楼栋列表</div>
           <button class="action-btn" onclick="openNewBuildingForm()" style="padding:4px 12px;">+ 新增楼栋</button>
+          <button class="action-btn" onclick="openQuickSetupWizard()" style="padding:4px 12px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🚀 快速初始化</button>
         </div>
         <div class="card-body">
           <table class="table">
@@ -14432,35 +14435,50 @@ function openSettlementModal(id, room, name, checkinTime, nights, amount, deposi
   openModal('settlement-checkout');
 }
 
-function openSettlementDetail(id) {
-  showToast('查看结算单详情: ' + id, 'info');
-}
-
+// openSettlementDetail moved to 【改进2】section
 function openBatchSettlementModal() {
   var checked = document.querySelectorAll('.stl-row-check:checked');
   if (checked.length === 0) { showToast('请先选择要结算的房间', 'error'); return; }
-  showToast('已选择 ' + checked.length + ' 个房间，正在准备批量结算...', 'info');
+  var total = 0;
+  var rooms = [];
+  checked.forEach(function(cb) {
+    var row = cb.closest('tr');
+    var cells = row.querySelectorAll('td');
+    var amtCell = cells[8];
+    if (amtCell) { total += parseInt(amtCell.textContent.replace(/[^0-9]/g, '') || '0'); }
+    rooms.push(cells[1] ? cells[1].textContent.trim() : '?');
+  });
+  document.getElementById('batch-stl-count').textContent = checked.length + ' 个';
+  document.getElementById('batch-stl-rooms').textContent = rooms.join('、') + '室';
+  document.getElementById('batch-stl-total').textContent = '¥' + total;
   openModal('batch-settlement');
 }
 
-function submitSettlement() {
-  var method = document.getElementById('stl-modal-pay-method').value;
-  var methodLabels = { wechat: '微信支付', alipay: '支付宝', cash: '现金', card: '银行卡' };
-  var room = document.getElementById('stl-modal-room').textContent;
-  var actual = document.getElementById('stl-modal-actual').textContent;
-  closeModal('settlement-checkout');
-  showToast('房间 ' + room + ' 结算成功！实收 ' + actual + '，方式：' + (methodLabels[method] || method), 'success');
-  // Remove row from table
-  var rows = document.querySelectorAll('#settlement-table-body tr');
-  rows.forEach(function(row) {
-    if (row.querySelector('span[style*="font-weight:700"]') && row.querySelector('span[style*="font-weight:700"]').textContent === room) {
-      row.style.display = 'none';
-    }
-  });
+function confirmBatchSettlement() {
+  var method = document.getElementById('batch-stl-method').value;
+  var count = document.getElementById('batch-stl-count').textContent;
+  var rooms = document.getElementById('batch-stl-rooms').textContent;
+  var checked = document.querySelectorAll('.stl-row-check:checked');
+  closeModal('batch-settlement');
+  showToast('批量结算成功！' + count + ' ' + rooms + ' 已完成结算，方式：' + (method === 'wechat' ? '微信' : method === 'alipay' ? '支付宝' : method === 'cash' ? '现金' : '混合'), 'success');
+  checked.forEach(function(cb) { cb.closest('tr').style.display = 'none'; });
+  var pendingCount = parseInt(document.getElementById('stl-pending-count').textContent) - checked.length;
+  document.getElementById('stl-pending-count').textContent = Math.max(0, pendingCount);
+  document.getElementById('stl-pending-amount').textContent = '¥' + Math.max(0, parseInt(document.getElementById('stl-pending-amount').textContent.replace('¥','')) - parseInt(document.getElementById('batch-stl-total').textContent.replace('¥','')));
 }
 
 function openSettlementHistoryModal() {
-  showToast('正在加载结算历史记录...', 'info');
+  var body = document.getElementById('settlement-history-body');
+  body.innerHTML = '<div style="padding:4px 0;">' +
+    '<div style="font-weight:700;font-size:14px;margin-bottom:12px;">📋 近30天结算记录</div>' +
+    '<div style="border-bottom:1px solid var(--border);padding:10px 0;display:flex;align-items:center;justify-content:space-between;"><div><div style="font-weight:600;">301室·张三</div><div style="font-size:12px;color:var(--text-muted);">03-25 14:30·微信支付</div></div><div style="text-align:right;"><div style="font-weight:700;color:var(--orange);">¥128</div><span class="tbadge green">已结算</span></div></div>' +
+    '<div style="border-bottom:1px solid var(--border);padding:10px 0;display:flex;align-items:center;justify-content:space-between;"><div><div style="font-weight:600;">202室·赵六</div><div style="font-size:12px;color:var(--text-muted);">03-24 11:00·支付宝</div></div><div style="text-align:right;"><div style="font-weight:700;color:var(--orange);">¥256</div><span class="tbadge green">已结算</span></div></div>' +
+    '<div style="border-bottom:1px solid var(--border);padding:10px 0;display:flex;align-items:center;justify-content:space-between;"><div><div style="font-weight:600;">205室·孙七</div><div style="font-size:12px;color:var(--text-muted);">03-22 10:15·现金</div></div><div style="text-align:right;"><div style="font-weight:700;color:var(--orange);">¥128</div><span class="tbadge green">已结算</span></div></div>' +
+    '<div style="border-bottom:1px solid var(--border);padding:10px 0;display:flex;align-items:center;justify-content:space-between;"><div><div style="font-weight:600;">102室·周八</div><div style="font-size:12px;color:var(--text-muted);">03-20 09:30·微信支付</div></div><div style="text-align:right;"><div style="font-weight:700;color:var(--orange);">¥384</div><span class="tbadge green">已结算</span></div></div>' +
+    '<div style="border-bottom:1px solid var(--border);padding:10px 0;display:flex;align-items:center;justify-content:space-between;"><div><div style="font-weight:600;">101室·吴九</div><div style="font-size:12px;color:var(--text-muted);">03-18 15:45·微信支付</div></div><div style="text-align:right;"><div style="font-weight:700;color:var(--orange);">¥128</div><span class="tbadge green">已结算</span></div></div>' +
+    '<div style="padding:10px 0;display:flex;align-items:center;justify-content:space-between;"><div><div style="font-weight:600;">103室·郑十</div><div style="font-size:12px;color:var(--text-muted);">03-16 14:00·银行卡</div></div><div style="text-align:right;"><div style="font-weight:700;color:var(--orange);">¥256</div><span class="tbadge green">已结算</span></div></div>' +
+    '</div>';
+  openModal('settlement-history');
 }
 
 // ========== v3改进: 数据报表功能 ==========
@@ -18278,6 +18296,63 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </div>
 
+<!-- 【改进6】批量结算确认弹窗 -->
+<div class="modal-overlay hidden" id="modal-batch-settlement">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">🔄 批量结算确认</div>
+      <button class="modal-close" onclick="closeModal('batch-settlement')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--blue-bg);border-radius:10px;padding:16px;margin-bottom:16px;text-align:center;">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px;">已选房间</div>
+        <div style="font-size:18px;font-weight:700;color:var(--blue);" id="batch-stl-rooms">—</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:12px;color:var(--text-muted);">房间数</div>
+          <div style="font-size:24px;font-weight:700;color:var(--blue);" id="batch-stl-count">0</div>
+        </div>
+        <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:12px;color:var(--text-muted);">应付总额</div>
+          <div style="font-size:24px;font-weight:700;color:var(--orange);" id="batch-stl-total">¥0</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">结算方式</label>
+        <select class="form-select" id="batch-stl-method">
+          <option value="wechat">微信支付</option>
+          <option value="alipay">支付宝</option>
+          <option value="cash">现金结算</option>
+          <option value="mixed">混合支付</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="batch-stl-remark" placeholder="选填备注，如统一退房原因" rows="2"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('batch-settlement')">取消</button>
+      <button class="modal-btn primary" onclick="confirmBatchSettlement()" style="background:var(--blue);color:white;border-color:var(--blue);">✅ 确认批量结算</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进6】结算历史弹窗 -->
+<div class="modal-overlay hidden" id="modal-settlement-history">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header">
+      <div class="modal-title">📋 结算历史</div>
+      <button class="modal-close" onclick="closeModal('settlement-history')">✕</button>
+    </div>
+    <div class="modal-body" id="settlement-history-body" style="max-height:500px;overflow-y:auto;"></div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('settlement-history')">关闭</button>
+    </div>
+  </div>
+</div>
+
 <!-- 【改进6】设备导入模态框（支持CSV文件上传+预览+确认导入） -->
 <div class="modal-overlay hidden" id="modal-device-import">
   <div class="modal" style="width:560px;">
@@ -19398,7 +19473,7 @@ var workorderData = [
   {id:'WO-2026032528',type:'delivery',typeLabel:'📦 送物服务',room:'304',guest:'钱七',content:'需要浴巾一套',status:'processing',handler:'周敏',createTime:'昨天 18:20'},
 ];
 
-function openWorkorderDetail(idx) {
+function openWorkorderDetailV2(idx) {
   currentWorkorderIdx = idx;
   var wo = workorderData[idx] || workorderData[0];
   document.getElementById('wd-wo-id').textContent = wo.id;
