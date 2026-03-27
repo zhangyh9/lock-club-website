@@ -14515,15 +14515,49 @@ function changeReportPeriod() {
 function generateReport() {
   var startDate = document.getElementById('rpt-date-start').value;
   var endDate = document.getElementById('rpt-date-end').value;
+  var period = document.getElementById('rpt-period').value;
+  var building = document.getElementById('rpt-building').value;
+  if (!startDate || !endDate) { showToast('请选择报表日期范围', 'error'); return; }
+  if (startDate > endDate) { showToast('开始日期不能晚于结束日期', 'error'); return; }
   showToast('正在生成 ' + startDate + ' 至 ' + endDate + ' 的报表...', 'info');
-  setTimeout(function() {
-    showToast('报表生成完成！数据已更新', 'success');
-  }, 1500);
+  // Calculate day count and generate plausible mock data
+  var days = Math.max(1, Math.round((new Date(endDate) - new Date(startDate)) / 86400000) + 1);
+  var baseOccupancy = 68 + Math.floor(Math.random() * 15); // 68-83%
+  var baseRevenue = Math.round(days * (2800 + Math.floor(Math.random() * 800))); // ~2800-3600/day
+  var baseOnline = 82 + Math.floor(Math.random() * 10); // 82-92%
+  var baseWoComplete = 88 + Math.floor(Math.random() * 8); // 88-96%
+  if (building !== 'all') { baseOccupancy -= 5; baseRevenue = Math.round(baseRevenue * 0.4); baseOnline -= 3; }
+  if (period === 'today') { baseOccupancy = Math.round(baseOccupancy * 0.5); baseRevenue = Math.round(baseRevenue * 0.04); }
+  else if (period === 'yesterday') { baseOccupancy = Math.round(baseOccupancy * 0.5); baseRevenue = Math.round(baseRevenue * 0.04); }
+  else if (period === 'thisweek') { baseOccupancy = Math.round(baseOccupancy * 0.85); baseRevenue = Math.round(baseRevenue * 0.7); }
+  else if (period === 'lastmonth') { baseOccupancy -= 3; baseRevenue = Math.round(baseRevenue * 0.95); }
+  baseOccupancy = Math.min(100, Math.max(20, baseOccupancy));
+  var revenueStr = '¥' + baseRevenue.toLocaleString();
+  var onlineStr = baseOnline.toFixed(1) + '%';
+  var woStr = baseWoComplete.toFixed(1) + '%';
+  // Update KPI values
+  var oldOcc = document.getElementById('rpt-occupy').textContent;
+  document.getElementById('rpt-occupy').textContent = baseOccupancy.toFixed(1) + '%';
+  var occChange = (baseOccupancy - parseFloat(oldOcc)).toFixed(1);
+  document.getElementById('rpt-occupy-trend').textContent = (occChange >= 0 ? '↑' : '↓') + ' 较上期' + Math.abs(occChange) + '%';
+  document.getElementById('rpt-occupy-trend').className = 'trend ' + (occChange >= 0 ? 'up' : 'down');
+  document.getElementById('rpt-revenue').textContent = revenueStr;
+  document.getElementById('rpt-online').textContent = onlineStr;
+  document.getElementById('rpt-wo-complete').textContent = woStr;
+  setTimeout(function() { showToast('报表生成完成！' + startDate + ' 至 ' + endDate + ' 数据已更新', 'success'); }, 800);
 }
 
 function exportReport() {
-  showToast('正在导出报表为Excel...', 'info');
-  setTimeout(function() { showToast('报表已导出至桌面！', 'success'); }, 2000);
+  var startDate = document.getElementById('rpt-date-start').value;
+  var endDate = document.getElementById('rpt-date-end').value;
+  var revenue = document.getElementById('rpt-revenue').textContent;
+  var occupy = document.getElementById('rpt-occupy').textContent;
+  var content = '领锁物联 - 数据报表\n报表周期：' + startDate + ' 至 ' + endDate + '\n\n核心指标：\n入住率：' + occupy + '\n总营收：' + revenue + '\n设备在线率：' + document.getElementById('rpt-online').textContent + '\n工单完成率：' + document.getElementById('rpt-wo-complete').textContent + '\n\n---\n生成时间：' + new Date().toLocaleString('zh-CN');
+  var blob = new Blob([content], { type: 'text/plain' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '领锁报表_' + startDate + '_' + endDate + '.txt';
+  a.click();
+  showToast('报表已导出！', 'success');
 }
 
 function switchRptChart(type, el) {
