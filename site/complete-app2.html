@@ -6404,7 +6404,84 @@ setInterval(function() {
       { level:'gold', name:'金卡会员', discount:90, cardDiscount:85, birthday:'cake_fruit', upgrade:'free', vip:'none', points:1.5, threshold:5000 },
       { level:'vip', name:'VIP会员', discount:85, cardDiscount:80, birthday:'suite_dinner', upgrade:'priority', vip:'full', points:2.0, threshold:10000 }
     ];
-    function openEditMemberLevelModalV2(idx) {
+    function openLeaveRequestModal() {
+  var old=document.getElementById('modal-leave-request');if(old)old.remove();
+  var html='<div class="modal-overlay" id="modal-leave-request" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html+='<div class="modal" style="width:480px;">';
+  html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div><div style="font-size:15px;font-weight:700;">📋 请假申请</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">提交请假申请，等待管理员审批</div></div>';
+  html+='<button onclick="document.getElementById('modal-leave-request').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html+='<div style="padding:20px 24px;">';
+  html+='<div class="form-group" style="margin-bottom:14px;"><label class="form-label">员工姓名 <span class="required">*</span></label><select class="form-select" id="lr-staff" style="padding:8px 12px;"><option value="">请选择员工</option><option value="钱七">钱七（前厅）</option><option value="孙华">孙华（客房）</option><option value="郑强">郑强（客房）</option><option value="吴倩">吴倩（客房）</option><option value="赵飞">赵飞（工程）</option></select></div>';
+  html+='<div class="form-group" style="margin-bottom:14px;"><label class="form-label">请假类型 <span class="required">*</span></label>';
+  html+='<select class="form-select" id="lr-type" style="padding:8px 12px;"><option value="">请选择类型</option><option value="年假">📅 年假</option><option value="病假">🏥 病假</option><option value="事假">📝 事假</option><option value="婚假">💒 婚假</option><option value="产假">👶 产假</option><option value="其他">📋 其他</option></select></div>';
+  html+='<div class="form-row" style="margin-bottom:14px;"><div class="form-group"><label class="form-label">开始日期 <span class="required">*</span></label><input type="date" class="form-input" id="lr-start" style="padding:8px 12px;"></div><div class="form-group"><label class="form-label">结束日期 <span class="required">*</span></label><input type="date" class="form-input" id="lr-end" style="padding:8px 12px;"></div></div>';
+  html+='<div class="form-group" style="margin-bottom:14px;"><label class="form-label">请假时长</label><div id="lr-duration" style="padding:8px 12px;background:var(--bg);border-radius:6px;font-size:13px;color:var(--text-muted);">请选择日期后自动计算</div></div>';
+  html+='<div class="form-group" style="margin-bottom:14px;"><label class="form-label">代理人员</label><select class="form-select" id="lr代理" style="padding:8px 12px;"><option value="">请选择代理人员（可选）</option><option value="钱七">钱七（前厅）</option><option value="孙华">孙华（客房）</option><option value="郑强">郑强（客房）</option></select></div>';
+  html+='<div class="form-group" style="margin-bottom:0;"><label class="form-label">请假原因</label><textarea class="form-textarea" id="lr-reason" placeholder="请输入请假原因…" style="min-height:70px;"></textarea></div>';
+  html+='</div>';
+  html+='<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html+='<button onclick="document.getElementById('modal-leave-request').remove()" class="modal-btn secondary">取消</button>';
+  html+='<button onclick="submitLeaveRequest()" class="modal-btn primary">📤 提交申请</button></div>';
+  html+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+  // Auto-calculate duration when dates change
+  document.getElementById('lr-start').addEventListener('change',calcLeaveDuration);
+  document.getElementById('lr-end').addEventListener('change',calcLeaveDuration);
+}
+function calcLeaveDuration(){
+  var start=document.getElementById('lr-start').value;
+  var end=document.getElementById('lr-end').value;
+  var el=document.getElementById('lr-duration');
+  if(!start||!end||!el)return;
+  var ms=new Date(end)-new Date(start);
+  var days=Math.ceil(ms/(1000*60*60*24))+1;
+  el.textContent=days>0?days+' 天':'日期选择无效';
+  el.style.color=days>0?'var(--blue)':'var(--red)';
+}
+function submitLeaveRequest(){
+  var staff=document.getElementById('lr-staff').value;
+  var type=document.getElementById('lr-type').value;
+  var start=document.getElementById('lr-start').value;
+  var end=document.getElementById('lr-end').value;
+  if(!staff||!type||!start||!end){showToast('请填写必填项','error');return;}
+  var m=document.getElementById('modal-leave-request');if(m)m.remove();
+  showToast('📋 请假申请已提交，等待管理员审批！','success');
+  // Refresh leave request list if it exists
+  if(typeof renderLeaveRequestList==='function')renderLeaveRequestList();
+}
+function openLeaveApprovalModal(lrId){
+  var old=document.getElementById('modal-leave-approval');if(old)old.remove();
+  var html='<div class="modal-overlay" id="modal-leave-approval" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html+='<div class="modal" style="width:440px;">';
+  html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div style="font-size:15px;font-weight:700;">✅ 审批请假申请</div>';
+  html+='<button onclick="document.getElementById('modal-leave-approval').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html+='<div style="padding:20px 24px;">';
+  html+='<div style="padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;font-size:13px;">';
+  html+='<div style="font-weight:700;margin-bottom:4px;">'+lrId+'</div>';
+  html+='<div style="color:var(--text-muted);font-size:12px;">请选择审批结果并填写意见</div></div>';
+  html+='<div class="form-group" style="margin-bottom:14px;"><label class="form-label">审批结果</label>';
+  html+='<div style="display:flex;gap:8px;"><div onclick="this.style.borderColor=\'var(--green)\' ;this.style.background=\'var(--green-bg)\' ;document.getElementById(\'lr-appr-deny\').style.borderColor=\'var(--border)\' ;document.getElementById(\'lr-appr-deny\').style.background=\'white\' ;window._lrApproveResult=\'approve\'" id="lr-appr-approve" style="flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;">✅ 批准</div>';
+  html+='<div onclick="this.style.borderColor=\'var(--red)\' ;this.style.background=\'var(--red-bg)\' ;document.getElementById(\'lr-appr-approve\').style.borderColor=\'var(--border)\' ;document.getElementById(\'lr-appr-approve\').style.background=\'white\' ;window._lrApproveResult=\'reject\'" id="lr-appr-deny" style="flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;">❌ 拒绝</div></div></div>';
+  html+='<div class="form-group" style="margin-bottom:0;"><label class="form-label">审批意见</label><textarea class="form-textarea" id="lr-appr-note" placeholder="选填，填写审批意见…" style="min-height:70px;"></textarea></div>';
+  html+='</div>';
+  html+='<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html+='<button onclick="document.getElementById('modal-leave-approval').remove()" class="modal-btn secondary">取消</button>';
+  html+='<button onclick="confirmLeaveApproval(\''+lrId+'\')" class="modal-btn primary" style="background:var(--green);border-color:var(--green);">✅ 确认审批</button></div>';
+  html+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+  window._lrApproveResult='approve';
+}
+function confirmLeaveApproval(lrId){
+  var result=window._lrApproveResult||'approve';
+  var note=document.getElementById('lr-appr-note')?document.getElementById('lr-appr-note').value:'';
+  var m=document.getElementById('modal-leave-approval');if(m)m.remove();
+  if(result==='approve'){showToast('✅ 请假申请已批准！','success');}
+  else{showToast('❌ 请假申请已拒绝','warning');}
+}
+
+function openEditMemberLevelModalV2(idx) {
       var d = memberLevelData[idx];
       document.getElementById('mle-level-name').textContent = d.name;
       document.getElementById('mle-checkin-discount').value = d.discount;
@@ -10382,6 +10459,7 @@ setInterval(function() {
             <button class="action-btn small" onclick="applyRecordFilter()" style="padding:6px 12px;">🔍 筛选</button>
             <button class="action-btn small" onclick="resetRecordFilter()" style="padding:6px 12px;">重置</button>
             <span style="margin-left:auto;font-size:12px;color:var(--text-muted);" id="record-filter-count">共 6 条记录</span>
+            <button class="action-btn small" onclick="openBatchCheckoutModal()" style="padding:4px 10px;font-size:11px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);" id="btn-batch-checkout">🚪 批量退房</button>
             <!-- 【改进4】批量操作工具栏：选中后显示计数+操作按钮 -->
             <div id="record-batch-toolbar" style="display:none;align-items:center;gap:8px;margin-left:8px;">
               <span style="font-size:12px;font-weight:600;color:var(--blue);background:var(--blue-bg);padding:3px 10px;border-radius:12px;border:1px solid var(--blue);" id="record-batch-count">已选 0 项</span>
@@ -19771,6 +19849,73 @@ function submitChangeRoom() {
   showToast('换房成功！301已换至' + target + '，新钥匙已开通', 'success');
 }
 function openEarlyCheckoutModal() { openModal('early-checkout'); }
+
+function openBatchCheckoutModal() {
+  var checked = document.querySelectorAll('#records-table-body input[type="checkbox"]:checked');
+  if (checked.length === 0) { showToast('请先选择要退房的记录', 'error'); return; }
+  var selected = [];
+  checked.forEach(function(cb) {
+    var row = cb.closest('tr');
+    if (row) {
+      var cells = row.querySelectorAll('td');
+      if (cells.length >= 5) {
+        var type = cells[1] ? cells[1].textContent.trim() : '';
+        if (type.indexOf('入住') !== -1 || type.indexOf('in') !== -1) {
+          selected.push({
+            name: cells[2] ? cells[2].textContent.trim() : '',
+            room: cells[3] ? cells[3].textContent.trim() : '',
+            type: cells[4] ? cells[4].textContent.trim() : '',
+            phone: cells[5] ? cells[5].textContent.trim() : ''
+          });
+        }
+      }
+    }
+  });
+  if (selected.length === 0) { showToast('没有可退房的入住记录', 'error'); return; }
+  var old = document.getElementById('modal-batch-checkout'); if (old) old.remove();
+  var totalDeposit = selected.length * 100;
+  var html = '<div class="modal-overlay" id="modal-batch-checkout" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:540px;max-height:88vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div><div style="font-size:15px;font-weight:700;">🚪 批量退房确认</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">共选择 <b style="color:var(--blue);">' + selected.length + '</b> 间房间退房</div></div>';
+  html += '<button onclick="document.getElementById('modal-batch-checkout').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:16px 24px;">';
+  html += '<div style="max-height:200px;overflow-y:auto;margin-bottom:16px;">';
+  selected.forEach(function(s, i) {
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--white);">';
+    html += '<div style="width:28px;height:28px;background:var(--blue);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">' + (i + 1) + '</div>';
+    html += '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">' + s.room + ' · ' + s.type + '</div><div style="font-size:11px;color:var(--text-muted);">' + s.name + ' · ' + s.phone + '</div></div>';
+    html += '<span class="tbadge blue" style="font-size:10px;">入住中</span></div>';
+  });
+  html += '</div>';
+  html += '<div style="padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:14px;">';
+  html += '<div style="font-size:12px;color:var(--orange);font-weight:600;margin-bottom:6px;">⚠️ 批量退房确认</div>';
+  html += '<div style="font-size:11px;color:var(--text);line-height:1.6;">批量退房将一次性完成 ' + selected.length + ' 间房间的退房手续，包括：结算房费、退还押金、收回门卡。请确保已与客人确认无误。</div></div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center;margin-bottom:14px;">';
+  html += '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);">退房间数</div><div style="font-size:22px;font-weight:700;color:var(--blue);">' + selected.length + '</div><div style="font-size:10px;color:var(--text-muted);">间</div></div>';
+  html += '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);">押金退还</div><div style="font-size:22px;font-weight:700;color:var(--green);">¥' + totalDeposit + '</div><div style="font-size:10px;color:var(--text-muted);">元</div></div>';
+  html += '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);">房费结算</div><div style="font-size:22px;font-weight:700;color:var(--orange);">实时</div><div style="font-size:10px;color:var(--text-muted);">结算</div></div></div>';
+  html += '<div class="form-group"><label class="form-label">退房备注</label><textarea class="form-textarea" id="bc-note" placeholder="批量退房备注（选填）…" style="min-height:60px;"></textarea></div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button onclick="document.getElementById('modal-batch-checkout').remove()" class="modal-btn secondary">取消</button>';
+  html += '<button onclick="confirmBatchCheckout()" class="modal-btn primary" style="background:var(--orange);border-color:var(--orange);">🚪 确认批量退房</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function confirmBatchCheckout() {
+  var checked = document.querySelectorAll('#records-table-body input[type="checkbox"]:checked');
+  var count = checked.length;
+  var m = document.getElementById('modal-batch-checkout'); if (m) m.remove();
+  showToast('🚪 批量退房完成！' + count + ' 间房间已全部退房，押金已退还', 'success');
+  // Uncheck all checkboxes
+  checked.forEach(function(cb) { cb.checked = false; });
+  if (typeof renderRecordsTable === 'function') renderRecordsTable();
+  if (typeof updateDashboardStats === 'function') updateDashboardStats();
+}
+
+
 function submitEarlyCheckout() {
   var refund = document.getElementById('eco-refund').checked;
   var clearKeys = document.getElementById('eco-clear-keys').checked;
@@ -21422,6 +21567,83 @@ var memberLevelData = [
   { name: 'VIP会员', discount: '8.5折', openDiscount: '8折', birthday: '套房+晚宴', upgrade: '优先升级', vipService: '✅' }
 ];
 var currentLevelIdx = 0;
+
+function openLeaveRequestModal() {
+  var old=document.getElementById('modal-leave-request');if(old)old.remove();
+  var html='<div class="modal-overlay" id="modal-leave-request" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html+='<div class="modal" style="width:480px;">';
+  html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div><div style="font-size:15px;font-weight:700;">📋 请假申请</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">提交请假申请，等待管理员审批</div></div>';
+  html+='<button onclick="document.getElementById('modal-leave-request').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html+='<div style="padding:20px 24px;">';
+  html+='<div class="form-group" style="margin-bottom:14px;"><label class="form-label">员工姓名 <span class="required">*</span></label><select class="form-select" id="lr-staff" style="padding:8px 12px;"><option value="">请选择员工</option><option value="钱七">钱七（前厅）</option><option value="孙华">孙华（客房）</option><option value="郑强">郑强（客房）</option><option value="吴倩">吴倩（客房）</option><option value="赵飞">赵飞（工程）</option></select></div>';
+  html+='<div class="form-group" style="margin-bottom:14px;"><label class="form-label">请假类型 <span class="required">*</span></label>';
+  html+='<select class="form-select" id="lr-type" style="padding:8px 12px;"><option value="">请选择类型</option><option value="年假">📅 年假</option><option value="病假">🏥 病假</option><option value="事假">📝 事假</option><option value="婚假">💒 婚假</option><option value="产假">👶 产假</option><option value="其他">📋 其他</option></select></div>';
+  html+='<div class="form-row" style="margin-bottom:14px;"><div class="form-group"><label class="form-label">开始日期 <span class="required">*</span></label><input type="date" class="form-input" id="lr-start" style="padding:8px 12px;"></div><div class="form-group"><label class="form-label">结束日期 <span class="required">*</span></label><input type="date" class="form-input" id="lr-end" style="padding:8px 12px;"></div></div>';
+  html+='<div class="form-group" style="margin-bottom:14px;"><label class="form-label">请假时长</label><div id="lr-duration" style="padding:8px 12px;background:var(--bg);border-radius:6px;font-size:13px;color:var(--text-muted);">请选择日期后自动计算</div></div>';
+  html+='<div class="form-group" style="margin-bottom:14px;"><label class="form-label">代理人员</label><select class="form-select" id="lr代理" style="padding:8px 12px;"><option value="">请选择代理人员（可选）</option><option value="钱七">钱七（前厅）</option><option value="孙华">孙华（客房）</option><option value="郑强">郑强（客房）</option></select></div>';
+  html+='<div class="form-group" style="margin-bottom:0;"><label class="form-label">请假原因</label><textarea class="form-textarea" id="lr-reason" placeholder="请输入请假原因…" style="min-height:70px;"></textarea></div>';
+  html+='</div>';
+  html+='<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html+='<button onclick="document.getElementById('modal-leave-request').remove()" class="modal-btn secondary">取消</button>';
+  html+='<button onclick="submitLeaveRequest()" class="modal-btn primary">📤 提交申请</button></div>';
+  html+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+  // Auto-calculate duration when dates change
+  document.getElementById('lr-start').addEventListener('change',calcLeaveDuration);
+  document.getElementById('lr-end').addEventListener('change',calcLeaveDuration);
+}
+function calcLeaveDuration(){
+  var start=document.getElementById('lr-start').value;
+  var end=document.getElementById('lr-end').value;
+  var el=document.getElementById('lr-duration');
+  if(!start||!end||!el)return;
+  var ms=new Date(end)-new Date(start);
+  var days=Math.ceil(ms/(1000*60*60*24))+1;
+  el.textContent=days>0?days+' 天':'日期选择无效';
+  el.style.color=days>0?'var(--blue)':'var(--red)';
+}
+function submitLeaveRequest(){
+  var staff=document.getElementById('lr-staff').value;
+  var type=document.getElementById('lr-type').value;
+  var start=document.getElementById('lr-start').value;
+  var end=document.getElementById('lr-end').value;
+  if(!staff||!type||!start||!end){showToast('请填写必填项','error');return;}
+  var m=document.getElementById('modal-leave-request');if(m)m.remove();
+  showToast('📋 请假申请已提交，等待管理员审批！','success');
+  // Refresh leave request list if it exists
+  if(typeof renderLeaveRequestList==='function')renderLeaveRequestList();
+}
+function openLeaveApprovalModal(lrId){
+  var old=document.getElementById('modal-leave-approval');if(old)old.remove();
+  var html='<div class="modal-overlay" id="modal-leave-approval" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html+='<div class="modal" style="width:440px;">';
+  html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div style="font-size:15px;font-weight:700;">✅ 审批请假申请</div>';
+  html+='<button onclick="document.getElementById('modal-leave-approval').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html+='<div style="padding:20px 24px;">';
+  html+='<div style="padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;font-size:13px;">';
+  html+='<div style="font-weight:700;margin-bottom:4px;">'+lrId+'</div>';
+  html+='<div style="color:var(--text-muted);font-size:12px;">请选择审批结果并填写意见</div></div>';
+  html+='<div class="form-group" style="margin-bottom:14px;"><label class="form-label">审批结果</label>';
+  html+='<div style="display:flex;gap:8px;"><div onclick="this.style.borderColor=\'var(--green)\' ;this.style.background=\'var(--green-bg)\' ;document.getElementById(\'lr-appr-deny\').style.borderColor=\'var(--border)\' ;document.getElementById(\'lr-appr-deny\').style.background=\'white\' ;window._lrApproveResult=\'approve\'" id="lr-appr-approve" style="flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;">✅ 批准</div>';
+  html+='<div onclick="this.style.borderColor=\'var(--red)\' ;this.style.background=\'var(--red-bg)\' ;document.getElementById(\'lr-appr-approve\').style.borderColor=\'var(--border)\' ;document.getElementById(\'lr-appr-approve\').style.background=\'white\' ;window._lrApproveResult=\'reject\'" id="lr-appr-deny" style="flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;">❌ 拒绝</div></div></div>';
+  html+='<div class="form-group" style="margin-bottom:0;"><label class="form-label">审批意见</label><textarea class="form-textarea" id="lr-appr-note" placeholder="选填，填写审批意见…" style="min-height:70px;"></textarea></div>';
+  html+='</div>';
+  html+='<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html+='<button onclick="document.getElementById('modal-leave-approval').remove()" class="modal-btn secondary">取消</button>';
+  html+='<button onclick="confirmLeaveApproval(\''+lrId+'\')" class="modal-btn primary" style="background:var(--green);border-color:var(--green);">✅ 确认审批</button></div>';
+  html+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+  window._lrApproveResult='approve';
+}
+function confirmLeaveApproval(lrId){
+  var result=window._lrApproveResult||'approve';
+  var note=document.getElementById('lr-appr-note')?document.getElementById('lr-appr-note').value:'';
+  var m=document.getElementById('modal-leave-approval');if(m)m.remove();
+  if(result==='approve'){showToast('✅ 请假申请已批准！','success');}
+  else{showToast('❌ 请假申请已拒绝','warning');}
+}
 
 function openEditMemberLevelModalV2(idx) {
   currentLevelIdx = idx;
@@ -41117,14 +41339,14 @@ function submitEnhancedCleaning() {
 
 <!-- 【改进v3-5】会员资料完善表单弹窗（新增身份证/地址/生日/备注字段） -->
 <div class="modal-overlay hidden" id="modal-member-profile">
-  <div class="modal" style="width:540px;">
+  <div class="modal" style="width:560px;max-height:90vh;overflow-y:auto;">
     <div class="modal-header">
       <div class="modal-title">👤 会员资料完善</div>
       <button class="modal-close" onclick="closeModal('member-profile')">✕</button>
     </div>
     <div class="modal-body">
       <!-- 会员基本信息卡片 -->
-      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:12px;">
         <div style="width:48px;height:48px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:22px;">👤</div>
         <div style="flex:1;">
           <div style="font-size:14px;font-weight:700;" id="mp-name">张三</div>
@@ -41132,7 +41354,13 @@ function submitEnhancedCleaning() {
           <div style="font-size:11px;margin-top:2px;"><span class="tbadge" style="background:var(--purple-bg);color:var(--purple);font-size:10px;padding:2px 6px;" id="mp-level">银卡会员</span></div>
         </div>
       </div>
-      <!-- 基本信息 -->
+      <!-- 标签切换：基本信息 / 入住历史 -->
+      <div style="display:flex;gap:0;margin-bottom:14px;border-bottom:2px solid var(--border);">
+        <div class="mp-tab active" id="mp-tab-info" onclick="switchMemberProfileTab('info',this)" style="padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--blue);border-bottom:2px solid var(--blue);margin-bottom:-2px;">📋 基本信息</div>
+        <div class="mp-tab" id="mp-tab-history" onclick="switchMemberProfileTab('history',this)" style="padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;">🏨 入住历史</div>
+      </div>
+      <!-- 基本信息Tab -->
+      <div id="mp-content-info">
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--blue);">📋 基本信息</div>
       <div class="form-row" style="margin-bottom:12px;">
         <div class="form-group">
@@ -41168,8 +41396,23 @@ function submitEnhancedCleaning() {
         <label class="form-label">备注</label>
         <textarea class="form-textarea" id="mp-input-note" placeholder="会员特殊偏好、过敏信息、VIP等级说明等…" style="min-height:60px;"></textarea>
       </div>
+      </div>
+      <!-- 入住历史Tab -->
+      <div id="mp-content-history" style="display:none;">
+        <div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:12px;color:var(--text-muted);">共 <span id="mp-history-count" style="font-weight:700;color:var(--blue);">0</span> 次入住记录</div>
+          <button class="action-btn small" onclick="exportMemberCheckinHistory()" style="padding:4px 10px;font-size:11px;">📤 导出</button>
+        </div>
+        <div id="mp-checkin-history-list" style="max-height:260px;overflow-y:auto;">
+          <!-- 动态渲染入住历史 -->
+        </div>
+        <div id="mp-checkin-history-empty" style="text-align:center;padding:32px 0;color:var(--text-muted);font-size:13px;display:none;">
+          <div style="font-size:32px;margin-bottom:8px;">📭</div>
+          暂无入住历史记录
+        </div>
+      </div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" id="mp-footer-info">
       <button class="modal-btn secondary" onclick="closeModal('member-profile')">取消</button>
       <button class="modal-btn primary" onclick="saveMemberProfile()">💾 保存资料</button>
     </div>
@@ -41179,6 +41422,68 @@ function submitEnhancedCleaning() {
 <script>
 // 【改进v3-5】会员资料完善函数
 var currentMemberProfileIdx = null;
+// 会员入住历史数据池（用于模拟历史记录）
+var memberCheckinHistoryDB = {
+  '张三': [
+    {room:'301',type:'亲子间',checkin:'2026-03-26',checkout:'2026-03-27',nights:1,amount:328,status:'已完成'},
+    {room:'201',type:'大床房',checkin:'2026-02-14',checkout:'2026-02-16',nights:2,amount:520,status:'已完成'},
+    {room:'102',type:'标准间',checkin:'2026-01-20',checkout:'2026-01-21',nights:1,amount:198,status:'已完成'}
+  ],
+  '李四': [
+    {room:'302',type:'亲子间',checkin:'2026-03-25',checkout:'2026-03-27',nights:2,amount:598,status:'已完成'},
+    {room:'203',type:'大床房',checkin:'2026-03-10',checkout:'2026-03-12',nights:2,amount:420,status:'已完成'}
+  ]
+};
+
+function switchMemberProfileTab(tab, el) {
+  document.querySelectorAll('.mp-tab').forEach(function(t) {
+    t.classList.remove('active');
+    t.style.color = 'var(--text-muted)';
+    t.style.borderBottomColor = 'transparent';
+  });
+  el.classList.add('active');
+  el.style.color = 'var(--blue)';
+  el.style.borderBottomColor = 'var(--blue)';
+  document.getElementById('mp-content-info').style.display = tab === 'info' ? 'block' : 'none';
+  document.getElementById('mp-content-history').style.display = tab === 'history' ? 'block' : 'none';
+  document.getElementById('mp-footer-info').style.display = tab === 'info' ? 'flex' : 'none';
+  if (tab === 'history') renderMemberCheckinHistory();
+}
+
+function renderMemberCheckinHistory() {
+  var member = memberListData[currentMemberProfileIdx] || {};
+  var name = member.name || '张三';
+  var history = memberCheckinHistoryDB[name] || [];
+  var countEl = document.getElementById('mp-history-count');
+  var listEl = document.getElementById('mp-checkin-history-list');
+  var emptyEl = document.getElementById('mp-checkin-history-empty');
+  if (countEl) countEl.textContent = history.length;
+  if (history.length === 0) {
+    listEl.style.display = 'none';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  listEl.style.display = 'flex';
+  emptyEl.style.display = 'none';
+  var html = '';
+  history.forEach(function(h) {
+    html += '<div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--white);">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
+    html += '<div style="font-size:13px;font-weight:700;">' + h.room + ' · ' + h.type + '</div>';
+    html += '<span class="tbadge green" style="font-size:10px;">' + h.status + '</span></div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px;color:var(--text-muted);">';
+    html += '<div>入住：' + h.checkin + '</div><div>退房：' + h.checkout + '</div><div>' + h.nights + '晚 ¥' + h.amount + '</div>';
+    html += '</div></div>';
+  });
+  listEl.innerHTML = html;
+}
+
+function exportMemberCheckinHistory() {
+  var member = memberListData[currentMemberProfileIdx] || {};
+  var name = member.name || '张三';
+  showToast('正在导出 ' + name + ' 的入住历史…', 'info');
+  setTimeout(function() { showToast('✅ 入住历史已导出为CSV', 'success'); }, 600);
+}
 
 function openMemberProfileModal(idx) {
   currentMemberProfileIdx = idx;
@@ -43751,6 +44056,52 @@ function generateKeypadCode(){var room=document.getElementById('kp-room').value;
 function saveKeypadProgramming(){var room=document.getElementById('kp-room').value;var preview=document.getElementById('kp-generated-preview');if(!room||!preview.textContent){showToast('请先选择房间并生成密码','error');return;}var typeMap={dynamic:'动态密码',offline:'离线密码',temp:'临时密码','one-time':'一次性'];var newK={id:'KP-'+Date.now(),pwd:preview.textContent,room:room,type:document.getElementById('kp-type').value,typeLabel:typeMap[document.getElementById('kp-type').value],validStart:document.getElementById('kp-start').value.replace('T',' '),validEnd:document.getElementById('kp-end').value.replace('T',' '),uses:0,maxUses:parseInt(document.getElementById('kp-max-uses').value),status:'active',createBy:'赵飞',purpose:document.getElementById('kp-purpose').value||'未说明'};keypadProgrammingData.unshift(newK);addOpLog('key','赵飞','生成门禁密码：'+newK.pwd+'（房间'+newK.room+'）：'+newK.purpose,'');preview.style.display='none';showToast('密码已保存到房间 '+room+'，累计使用 '+newK.maxUses+' 次','success');closeKeypadProgrammingModal();}
 function kpCopyPwd(pwd){navigator.clipboard&&navigator.clipboard.writeText(pwd).then(function(){showToast('密码 '+pwd+' 已复制','success');}).catch(function(){showToast('密码：'+pwd,'info');});}
 function kpDeletePwd(idx){if(confirm('确定删除该密码？')){keypadProgrammingData.splice(idx,1);showToast('密码已删除','success');closeKeypadProgrammingModal();openKeypadProgrammingModal();}}
+function kpSendToPhone(pwd,room){
+  var old=document.getElementById('modal-kp-send-phone');if(old)old.remove();
+  var html='<div class="modal-overlay" id="modal-kp-send-phone" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html+='<div class="modal" style="width:400px;">';
+  html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div style="font-size:15px;font-weight:700;">📱 发送密码到手机</div>';
+  html+='<button onclick="document.getElementById('modal-kp-send-phone').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html+='<div style="padding:20px 24px;">';
+  html+='<div style="margin-bottom:14px;padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;">';
+  html+='<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">密码</div>';
+  html+='<div style="font-family:monospace;font-size:18px;font-weight:700;color:var(--blue);letter-spacing:2px;">'+pwd+'</div>';
+  html+='<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">房间：'+room+'</div></div>';
+  html+='<div class="form-group" style="margin-bottom:14px;">';
+  html+='<label class="form-label">接收手机号 <span class="required">*</span></label>';
+  html+='<input type="tel" class="form-input" id="kp-send-phone-input" placeholder="请输入11位手机号" maxlength="11" value="" style="padding:10px 12px;font-size:14px;">';
+  html+='<div class="form-hint" style="font-size:11px;color:var(--text-muted);margin-top:4px;">密码将通过短信发送至该手机号</div></div>';
+  html+='<div class="form-group" style="margin-bottom:0;">';
+  html+='<label class="form-label">短信模板预览</label>';
+  html+='<div style="padding:10px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--text);line-height:1.6;">';
+  html+='【领锁智能酒店】您的临时开门密码：'+pwd+'，房间'+room+'，有效期至明早10:00，请妥善保管，切勿泄露。</div></div>';
+  html+='</div>';
+  html+='<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html+='<button onclick="document.getElementById('modal-kp-send-phone').remove()" class="modal-btn secondary">取消</button>';
+  html+='<button onclick="confirmKpSendToPhone(''+pwd+'',''+room+'')" class="modal-btn primary" style="background:var(--green);border-color:var(--green);">📤 发送短信</button></div>';
+  html+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+function confirmKpSendToPhone(pwd,room){
+  var phone=document.getElementById('kp-send-phone-input').value.trim();
+  if(!phone||phone.length!==11){showToast('请输入正确的11位手机号','error');return;}
+  if(!/^1[3-9]\d{9}$/.test(phone)){showToast('手机号格式不正确','error');return;}
+  var m=document.getElementById('modal-kp-send-phone');if(m)m.remove();
+  showToast('📱 密码已发送至 '+phone.slice(0,3)+'****'+phone.slice(7),'success');
+}
+function kpBatchExportAll(){
+  if(keypadProgrammingData.length===0){showToast('暂无密码可导出','error');return;}
+  var csv='密码,房间,类型,有效期开始,有效期结束,状态,用途\n';
+  keypadProgrammingData.forEach(function(k){
+    csv+=k.pwd+','+k.room+','+k.typeLabel+','+k.validStart+','+k.validEnd+','+k.status+','+k.purpose+'\n';
+  });
+  var blob=new Blob(['\xEF\xBB\xBF'+csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='门禁密码清单_'+new Date().toLocaleDateString('zh-CN')+'.csv';a.click();
+  URL.revokeObjectURL(url);
+  showToast('已导出 '+keypadProgrammingData.length+' 条密码记录','success');
+}
 function kpBatchExportAll(){var lines=['密码编号,密码,房间,类型,用途,生效时间,失效时间,状态'];keypadProgrammingData.forEach(function(k){lines.push(k.id+','+k.pwd+','+k.room+','+k.typeLabel+','+k.purpose+','+k.validStart+','+k.validEnd+','+k.status);});var csv=lines.join('\n');var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='keypad_passwords_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(url);showToast('已导出 '+keypadProgrammingData.length+' 条密码','success');}
 
 // ======= 【改进v3-2】能耗预算配置弹窗：按楼栋+房型+房间三级阈值配置 =======
