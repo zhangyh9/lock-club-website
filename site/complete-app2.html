@@ -449,20 +449,65 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .checkout-summary-row .value.red { color: var(--red); }
 .checkout-summary-row .value.green { color: var(--green); }
 </style>
+
+<style>
+.sidebar .menu-group-title {
+  padding: 8px 16px; font-size: 11px; font-weight: 700; color: #8c8c8c;
+  cursor: pointer; user-select: none; display: flex; align-items: center;
+  justify-content: space-between; transition: color 0.2s;
+}
+.sidebar .menu-group-title:hover { color: #fff; }
+.sidebar .menu-group-title .group-arrow { font-size: 9px; color: #555; }
+.sidebar .menu-item.active {
+  background: rgba(255,255,255,0.15) !important;
+  border-left: 3px solid #1890ff;
+}
+.sidebar .menu-item.active span { color: #fff !important; }
+</style>
+
 </head>
 <body>
 
 <div class="app">
   <!-- Sidebar -->
-  <div class="sidebar">
-    <div class="sidebar-logo">
-      <div class="icon">🔐</div>
-      <span>领锁物联</span>
-      <!-- 【改进4】通知铃铛（带未读计数红点Badge，点击展开通知面板） -->
-      <div style="margin-left:auto;position:relative;cursor:pointer;" onclick="toggleNotificationPanel()" id="notif-bell-btn" title="通知中心">
-        <span style="font-size:18px;">🔔</span>
-        <span id="notif-bell-badge" style="display:none;position:absolute;top:-4px;right:-6px;background:#ff4d4f;color:white;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1;">0</span>
-      </div>
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><span class="icon">🔐</span><span>领锁物联</span></div>
+    <div class="menu-item active" onclick="showPage('home')"><span class="icon">🏠</span><span>首页</span></div>
+    <div class="menu-group-title" onclick="toggleGroup(this)">📊 运营监控 <span class="group-arrow">▼</span></div>
+    <div class="menu-group">
+      <div class="menu-item" onclick="showPage('dashboard')"><span class="icon">📈</span><span>看板统计</span></div>
+      <div class="menu-item" onclick="showPage('alert')"><span class="icon">🔔</span><span>告警记录</span></div>
+      <div class="menu-item" onclick="showPage('log')"><span class="icon">📋</span><span>开锁记录</span></div>
+    </div>
+    <div class="menu-group-title" onclick="toggleGroup(this)">🚪 房间管理 <span class="group-arrow">▼</span></div>
+    <div class="menu-group">
+      <div class="menu-item" onclick="showPage('room-detail')"><span class="icon">🚪</span><span>房间详情</span></div>
+      <div class="menu-item" onclick="showPage('floor')"><span class="icon">🏗️</span><span>楼层管理</span></div>
+      <div class="menu-item" onclick="showPage('building')"><span class="icon">🏢</span><span>楼栋管理</span></div>
+      <div class="menu-item" onclick="showPage('records')"><span class="icon">📋</span><span>办理记录</span></div>
+    </div>
+    <div class="menu-group-title" onclick="toggleGroup(this)">🔧 设备管理 <span class="group-arrow">▼</span></div>
+    <div class="menu-group">
+      <div class="menu-item" onclick="showPage('device')"><span class="icon">📱</span><span>设备列表</span></div>
+      <div class="menu-item" onclick="showPage('device-detail')"><span class="icon">🔍</span><span>设备详情</span></div>
+      <div class="menu-item" onclick="showPage('energy')"><span class="icon">⚡</span><span>节能风控</span></div>
+    </div>
+    <div class="menu-group-title" onclick="toggleGroup(this)">📞 服务管理 <span class="group-arrow">▼</span></div>
+    <div class="menu-group">
+      <div class="menu-item" onclick="showPage('workorder')"><span class="icon">🛠️</span><span>服务工单</span></div>
+      <div class="menu-item" onclick="showPage('history')"><span class="icon">📜</span><span>历史记录</span></div>
+    </div>
+    <div class="menu-item" onclick="showPage('settlement')"><span class="icon">💰</span><span>结算中心</span></div>
+    <div class="menu-group-title" onclick="toggleGroup(this)">🛡️ 系统管理 <span class="group-arrow">▼</span></div>
+    <div class="menu-group">
+      <div class="menu-item" onclick="showPage('member')"><span class="icon">👑</span><span>会员管理</span></div>
+      <div class="menu-item" onclick="showPage('roles')"><span class="icon">🛡️</span><span>角色权限</span></div>
+      <div class="menu-item" onclick="showPage('config')"><span class="icon">⚙️</span><span>管理配置</span></div>
+      <div class="menu-item" onclick="showPage('keypad')"><span class="icon">🔑</span><span>密码管理</span></div>
+      <div class="menu-item" onclick="showPage('oplog')"><span class="icon">📝</span><span>操作日志</span></div>
+      <div class="menu-item" onclick="showPage('report')"><span class="icon">📊</span><span>数据报表</span></div>
+    </div>
+  </div>
     </div>
     <!-- 【改进4】通知面板（点击铃铛展开，可标记已读/全部清除） -->
     <div id="notif-panel" style="display:none;position:fixed;top:0;right:0;width:340px;height:100vh;background:white;border-left:1px solid var(--border);z-index:200;box-shadow:-4px 0 20px rgba(0,0,0,0.1);overflow-y:auto;">
@@ -5818,6 +5863,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     </div>
     <div class="modal-footer">
       <button class="modal-btn secondary" onclick="closeModal('workorder')">取消</button>
+      <button class="modal-btn" onclick="switchWorkorderToEdit()" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">✏️ 编辑</button>
       <button class="modal-btn primary" onclick="submitWorkorderProcess()">确认更新</button>
     </div>
   </div>
@@ -17477,6 +17523,42 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
   </div>
 </div>
+
+</script>
+
+<script>
+// ======= 全局导航控制器 =======
+(function() {
+  window.showPage = function(name) {
+    var pages = document.querySelectorAll('.page');
+    for (var i = 0; i < pages.length; i++) pages[i].classList.remove('active');
+    var target = document.getElementById('page-' + name);
+    if (target) target.classList.add('active');
+    var items = document.querySelectorAll('.sidebar .menu-item');
+    for (var j = 0; j < items.length; j++) {
+      items[j].classList.remove('active');
+      if ((items[j].getAttribute('onclick')||'').indexOf("'" + name + "'") !== -1)
+        items[j].classList.add('active');
+    }
+    window.scrollTo(0, 0);
+  };
+  window.toggleGroup = function(el) {
+    var g = el.nextElementSibling;
+    if (!g) return;
+    var open = g.style.display !== 'none';
+    g.style.display = open ? 'none' : '';
+    var arrow = el.querySelector('.group-arrow');
+    if (arrow) arrow.textContent = open ? '▶' : '▼';
+  };
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.menu-group').forEach(function(g){ g.style.display = ''; });
+    var home = document.querySelector('.menu-item[onclick*="home"]');
+    if (home) home.classList.add('active');
+    var hp = document.getElementById('page-home');
+    if (hp) hp.classList.add('active');
+  });
+})();
+</script>
 
 </body>
 </html>
