@@ -543,6 +543,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       <div class="menu-item" onclick="showPage('config')"><span class="icon">⚙️</span><span>管理配置</span></div>
       <div class="menu-item" onclick="showPage('keypad')"><span class="icon">🔑</span><span>密码管理</span></div>
       <div class="menu-item" onclick="showPage('oplog')"><span class="icon">📝</span><span>操作日志</span></div>
+      <div class="menu-item" onclick="showPage('blacklist')"><span class="icon">🚫</span><span>黑名单管理</span></div>
       <div class="menu-item" onclick="showPage('report')"><span class="icon">📊</span><span>数据报表</span></div>
     <div class="menu-item" onclick="openNightAuditFullModal()" style="color:var(--orange);"><span class="icon">🌙</span><span>夜审报表</span></div>
     <div class="menu-item" onclick="openDepositManagementModal()" style="color:var(--orange);"><span class="icon">💰</span><span>押金管理</span></div>
@@ -2047,7 +2048,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <button class="action-btn small" onclick="window._userClickedBatchUpgrade=true;openBatchUpgradeModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📦 批量升级固件</button>
         <button class="action-btn small" onclick="openDeviceBatchActionModal('battery')" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔋 电池检测</button>
         <button class="action-btn small" onclick="openDeviceBatchActionModal('sync')" style="padding:5px 10px;background:var(--bg);color:var(--text);border-color:var(--border);">🔍 状态同步</button>
-        <button class="action-btn small" onclick="openFirmwareComparisonModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📋 固件对比表</button><button class="action-btn small" onclick="openAlertRuleEngineModal()" style="padding:5px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">⚠️ 告警规则</button>
+        <button class="action-btn small" onclick="openFirmwareAnalyzerModal()" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📡 版本分析器</button><button class="action-btn small" onclick="openFirmwareComparisonModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📋 固件对比表</button><button class="action-btn small" onclick="openAlertRuleEngineModal()" style="padding:5px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">⚠️ 告警规则</button>
         <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">💡 勾选左侧设备列表可精确选择设备</span>
       </div>
       <!-- 【改进4】设备电量实时监控仪表盘 -->
@@ -11127,7 +11128,8 @@ function openEditMemberLevelModalV2(idx) {
         <!-- 【改进1】系统设置新增「楼栋管理」Tab -->
         <div class="config-tab" id="cfg-tab-building" onclick="switchConfigTab('building',this)" style="padding:8px 18px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;font-size:13px;">🏢 楼栋管理</div>
         <!-- 【改进5】系统设置新增「角色权限」Tab -->
-        <div class="config-tab" id="cfg-tab-roles" onclick="switchConfigTab('roles',this)" style="padding:8px 18px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;font-size:13px;">🛡️ 角色权限</div>
+              <div class="config-tab" id="cfg-tab-greeting" onclick="switchConfigTab('greeting',this)" style="padding:8px 18px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;font-size:13px;">🎙️ 语音迎宾</div>
+<div class="config-tab" id="cfg-tab-roles" onclick="switchConfigTab('roles',this)" style="padding:8px 18px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;font-size:13px;">🛡️ 角色权限</div>
         <!-- 【改进4】系统设置新增「数据备份」Tab -->
         <div class="config-tab" id="cfg-tab-backup" onclick="switchConfigTab('backup',this)" style="padding:8px 18px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;font-size:13px;">💾 数据备份</div>
       </div>
@@ -11569,6 +11571,43 @@ function openEditMemberLevelModalV2(idx) {
           </div>
         </div>
       </div>
+
+      <!-- 【改进2NEW】语音迎宾Tab内容 -->
+      <div id="cfg-content-greeting" style="display:none;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+          <button class="action-btn" onclick="openVoiceGreetingFromConfig()" style="padding:6px 14px;background:var(--blue);color:white;border:none;font-size:12px;">+ 新增场景</button>
+          <button class="action-btn" onclick="openVoiceGreetingFromConfig()" style="padding:6px 14px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);font-size:12px;">🎙️ 语音配置</button>
+          <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">共 5 个场景 · 3 个已启用</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:16px;">
+          <div style="border:1px solid var(--green);border-radius:10px;padding:16px;background:var(--green-bg);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:20px;">🏠</span><div style="font-weight:700;font-size:14px;">默认迎宾语</div><span class="tbadge green" style="margin-left:auto;font-size:10px;">已启用</span></div>
+            <div style="font-size:12px;color:var(--text);margin-bottom:10px;line-height:1.5;">"欢迎回家！亲爱的宾客，祝您住得舒适安心。如需帮助，请拨打客服热线。"</div>
+            <div style="font-size:11px;color:var(--text-muted);">适用：全部房型 · 女声（温馨甜美）</div>
+          </div>
+          <div style="border:1px solid var(--orange);border-radius:10px;padding:16px;background:var(--orange-bg);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:20px;">⭐</span><div style="font-weight:700;font-size:14px;">VIP贵宾迎宾</div><span class="tbadge green" style="margin-left:auto;font-size:10px;">已启用</span></div>
+            <div style="font-size:12px;color:var(--text);margin-bottom:10px;line-height:1.5;">"尊敬的VIP贵宾，欢迎回家！感谢您选择我们，祝您旅途愉快。"</div>
+            <div style="font-size:11px;color:var(--text-muted);">适用：全部房型 · 男声（磁性温暖）</div>
+          </div>
+          <div style="border:1px solid var(--blue);border-radius:10px;padding:16px;background:var(--blue-bg);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:20px;">🌙</span><div style="font-weight:700;font-size:14px;">深夜入住</div><span class="tbadge green" style="margin-left:auto;font-size:10px;">已启用</span></div>
+            <div style="font-size:12px;color:var(--text);margin-bottom:10px;line-height:1.5;">"夜深了，欢迎回来。请注意安全，小心台阶。如需帮助请拨打电话。"</div>
+            <div style="font-size:11px;color:var(--text-muted);">时段：22:00-06:00 · 女声（温馨甜美）</div>
+          </div>
+          <div style="border:1px solid var(--border);border-radius:10px;padding:16px;background:white;opacity:0.7;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:20px;">🏢</span><div style="font-weight:700;font-size:14px;">商务客户迎宾</div><span class="tbadge gray" style="margin-left:auto;font-size:10px;">未启用</span></div>
+            <div style="font-size:12px;color:var(--text);margin-bottom:10px;line-height:1.5;">"欢迎光临！商务出行首选，感谢您的信任。"</div>
+            <div style="font-size:11px;color:var(--text-muted);">适用：全部房型 · 男声（低沉商务）</div>
+          </div>
+          <div style="border:1px solid var(--purple);border-radius:10px;padding:16px;background:var(--purple-bg);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:20px;">🌅</span><div style="font-weight:700;font-size:14px;">早晨入住</div><span class="tbadge green" style="margin-left:auto;font-size:10px;">已启用</span></div>
+            <div style="font-size:12px;color:var(--text);margin-bottom:10px;line-height:1.5;">"早安，亲爱的宾客！美好的一天从入住开始，祝您住得舒适，睡得香甜。"</div>
+            <div style="font-size:11px;color:var(--text-muted);">时段：06:00-10:00 · 女声（温馨甜美）</div>
+          </div>
+        </div>
+      </div>
+
       <!-- 原有配置卡片（折叠在Tab下） -->
       <div style="margin-top:24px;">
         <div class="charts-row">
@@ -20842,6 +20881,9 @@ function switchConfigTab(tab, el) {
   // 【改进4】数据备份Tab
   var backupEl = document.getElementById('cfg-content-backup');
   if (backupEl) backupEl.style.display = tab === 'backup' ? 'block' : 'none';
+  // 【改进2NEW】语音迎宾Tab
+  var greetingEl = document.getElementById('cfg-content-greeting');
+  if (greetingEl) greetingEl.style.display = tab === 'greeting' ? 'block' : 'none';
 }
 
 // 【改进4】数据备份相关功能
@@ -40085,6 +40127,461 @@ function switchPointsTab(tab, el) {
 function exportPointsHistory() { showToast('积分明细导出中...', 'info'); setTimeout(function(){ showToast('导出成功！', 'success'); }, 600); }
 </script>
 
+
+<!-- 【改进1NEW】黑名单管理完整页面：支持新增/删除/查看/导出 -->
+<div id="page-blacklist" class="page">
+  <div class="page-header">
+    <div class="page-title">🚫 黑名单管理</div>
+    <div class="page-sub">风险人员管控 · 开锁权限管控</div>
+  </div>
+  <div class="stats-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--red-bg);">🚫</div>
+      <div><div class="stat-num" id="bl-stat-total">3</div><div class="stat-label">黑名单人数</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--orange-bg);">⏳</div>
+      <div><div class="stat-num">1</div><div class="stat-label">即将解封</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--blue-bg);">🔒</div>
+      <div><div class="stat-num">2</div><div class="stat-label">主动封禁</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--purple-bg);">⚠️</div>
+      <div><div class="stat-num">1</div><div class="stat-label">系统拦截</div></div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+    <input type="text" class="form-input" id="bl-search-input" placeholder="🔍 搜索姓名/手机号/证件号" style="max-width:240px;padding:7px 12px;font-size:12px;" onkeydown="if(event.key==='Enter')applyBlacklistSearch()">
+    <select class="form-select" id="bl-type-filter" style="padding:7px 10px;font-size:12px;width:130px;" onchange="applyBlacklistSearch()">
+      <option value="all">全部类型</option>
+      <option value="active">🔒 主动封禁</option>
+      <option value="system">⚠️ 系统拦截</option>
+      <option value="expiring">⏳ 即将解封</option>
+    </select>
+    <button class="action-btn" onclick="openAddBlacklistModal()" style="padding:6px 14px;background:var(--red);color:white;border-color:var(--red);">+ 添加黑名单</button>
+    <button class="action-btn" onclick="exportBlacklistCSV()" style="padding:6px 14px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出名单</button>
+    <span style="margin-left:auto;font-size:12px;color:var(--text-muted);" id="bl-count-label">共 3 人</span>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🚫 黑名单列表</div>
+      <div class="card-tabs">
+        <div class="card-tab active" onclick="filterBlacklistTab('all',this)">全部</div>
+        <div class="card-tab" onclick="filterBlacklistTab('active',this)">🔒 主动封禁</div>
+        <div class="card-tab" onclick="filterBlacklistTab('system',this)">⚠️ 系统拦截</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <table class="table">
+        <thead><tr><th>姓名</th><th>手机号</th><th>证件号</th><th>封禁原因</th><th>类型</th><th>封禁时间</th><th>到期时间</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody id="blacklist-table-body">
+          <tr data-type="active" data-expiring="false">
+            <td><span style="font-weight:600;">张三丰</span></td>
+            <td>138****1234</td>
+            <td>110***********1234</td>
+            <td>多次恶意破坏门锁设备</td>
+            <td><span class="tbadge red">主动封禁</span></td>
+            <td>2026-03-20</td>
+            <td>2027-03-20</td>
+            <td><span class="tbadge red">🔒 封禁中</span></td>
+            <td><button class="action-btn small" onclick="openBlacklistDetailModal(0)">详情</button> <button class="action-btn small green" onclick="unblacklistPerson(0)">解除封禁</button></td>
+          </tr>
+          <tr data-type="system" data-expiring="false">
+            <td><span style="font-weight:600;">李四</span></td>
+            <td>139****5678</td>
+            <td>120***********5678</td>
+            <td>触发异常开锁告警（1小时内开锁30次）</td>
+            <td><span class="tbadge orange">系统拦截</span></td>
+            <td>2026-03-27</td>
+            <td>永久</td>
+            <td><span class="tbadge red">🚫 永久封禁</span></td>
+            <td><button class="action-btn small" onclick="openBlacklistDetailModal(1)">详情</button> <button class="action-btn small green" onclick="unblacklistPerson(1)">解除封禁</button></td>
+          </tr>
+          <tr data-type="active" data-expiring="true">
+            <td><span style="font-weight:600;">王五</span></td>
+            <td>137****9999</td>
+            <td>130***********9999</td>
+            <td>房间冲突纠纷</td>
+            <td><span class="tbadge purple">主动封禁</span></td>
+            <td>2026-02-01</td>
+            <td>2026-03-31</td>
+            <td><span class="tbadge orange">⏳ 即将解封</span></td>
+            <td><button class="action-btn small" onclick="openBlacklistDetailModal(2)">详情</button> <button class="action-btn small" onclick="extendBlacklistPeriod(2)">延长封禁</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 黑名单新增弹窗 -->
+<div class="modal-overlay hidden" id="modal-blacklist-add">
+  <div class="modal" style="width:500px;">
+    <div class="modal-header">
+      <div class="modal-title">🚫 添加黑名单</div>
+      <button class="modal-close" onclick="closeModal('blacklist-add')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">姓名 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="bl-add-name" placeholder="输入姓名">
+      </div>
+      <div class="form-group">
+        <label class="form-label">手机号 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="bl-add-phone" placeholder="输入手机号">
+      </div>
+      <div class="form-group">
+        <label class="form-label">证件号</label>
+        <input type="text" class="form-input" id="bl-add-idcard" placeholder="输入身份证号（选填）">
+      </div>
+      <div class="form-group">
+        <label class="form-label">封禁类型</label>
+        <select class="form-select" id="bl-add-type" style="padding:8px 12px;">
+          <option value="active">🔒 主动封禁</option>
+          <option value="system">⚠️ 系统拦截</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">封禁原因 <span class="required">*</span></label>
+        <textarea class="form-textarea" id="bl-add-reason" placeholder="详细描述封禁原因" style="min-height:80px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">封禁时长</label>
+        <select class="form-select" id="bl-add-duration" style="padding:8px 12px;" onchange="toggleBlPermanent(this.value)">
+          <option value="30">30天</option>
+          <option value="90">90天</option>
+          <option value="180">180天</option>
+          <option value="365">1年</option>
+          <option value="permanent">永久封禁</option>
+        </select>
+      </div>
+      <div class="form-group" id="bl-add-expire-group">
+        <label class="form-label">到期时间</label>
+        <input type="date" class="form-input" id="bl-add-expire-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">关联房间</label>
+        <input type="text" class="form-input" id="bl-add-room" placeholder="如有涉及的房间号（选填）">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('blacklist-add')">取消</button>
+      <button class="modal-btn primary" onclick="submitAddBlacklist()" style="background:var(--red);border-color:var(--red);">🚫 确认封禁</button>
+    </div>
+  </div>
+</div>
+
+<!-- 黑名单详情弹窗 -->
+<div class="modal-overlay hidden" id="modal-blacklist-detail">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header">
+      <div class="modal-title" id="bld-title">🚫 黑名单详情</div>
+      <button class="modal-close" onclick="closeModal('blacklist-detail')">✕</button>
+    </div>
+    <div class="modal-body" id="bld-content"></div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('blacklist-detail')">关闭</button>
+      <button class="modal-btn primary" id="bld-action-btn" onclick="handleBlacklistDetailAction()" style="background:var(--green);border-color:var(--green);">✅ 解除封禁</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进2NEW】智能语音迎宾词配置弹窗 -->
+<div class="modal-overlay hidden" id="modal-voice-greeting">
+  <div class="modal" style="width:580px;">
+    <div class="modal-header">
+      <div class="modal-title">🎙️ 智能语音迎宾词配置</div>
+      <button class="modal-close" onclick="closeModal('voice-greeting')">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+      <div style="margin-bottom:16px;padding:12px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">
+        <div style="font-size:12px;color:var(--blue);font-weight:600;">💡 功能说明</div>
+        <div style="font-size:11px;color:var(--text);margin-top:4px;line-height:1.6;">配置客人入住时门锁播放的语音迎宾语。支持为不同房型、入住时段、客户类型配置不同的迎宾语。</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">迎宾场景</label>
+        <select class="form-select" id="vg-scenario" style="padding:8px 12px;" onchange="loadVoiceGreetingScenario()">
+          <option value="default">🏠 默认迎宾语</option>
+          <option value="vip">⭐ VIP客人迎宾</option>
+          <option value="late">🌙 深夜入住（22:00-06:00）</option>
+          <option value="morning">🌅 早晨入住（06:00-10:00）</option>
+          <option value="corporate">🏢 商务客户迎宾</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">语音内容预览</label>
+        <div id="vg-preview-box" style="padding:14px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;min-height:60px;">
+          <div style="font-size:14px;color:var(--text);line-height:1.8;" id="vg-preview-text">欢迎回家！亲爱的宾客，祝您住得舒适安心。如需帮助，请拨打客服热线。</div>
+        </div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+          <button class="action-btn small" onclick="previewVoiceGreeting()" style="padding:5px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);">▶ 播放预览</button>
+          <span style="font-size:11px;color:var(--text-muted);" id="vg-preview-status"></span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">编辑迎宾语</label>
+        <textarea class="form-textarea" id="vg-content" placeholder="建议15-40字，简洁温馨" style="min-height:80px;font-size:13px;" oninput="updateVoiceGreetingPreview()">欢迎回家！亲爱的宾客，祝您住得舒适安心。如需帮助，请拨打客服热线。</textarea>
+        <div style="margin-top:4px;font-size:11px;color:var(--text-muted);">已输入 <span id="vg-char-count" style="color:var(--blue);font-weight:600;">32</span> 字</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">适用房型</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;" id="vg-room-types">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;padding:5px 10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:20px;"><input type="checkbox" checked style="accent-color:var(--blue);"> 全部房型</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;padding:5px 10px;background:var(--bg);border:1px solid var(--border);border-radius:20px;"><input type="checkbox" style="accent-color:var(--blue);"> 亲子间</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;padding:5px 10px;background:var(--bg);border:1px solid var(--border);border-radius:20px;"><input type="checkbox" style="accent-color:var(--blue);"> 大床房</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">语音音色</label>
+        <select class="form-select" id="vg-voice" style="padding:8px 12px;">
+          <option value="xiaoxiao">🎀 女声（温馨甜美）</option>
+          <option value="xiaoyi">🎤 女声（清脆专业）</option>
+          <option value="yunxi">🌟 男声（磁性温暖）</option>
+          <option value="shawn">🎩 男声（低沉商务）</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+        <input type="checkbox" id="vg-enabled" checked style="accent-color:var(--blue);width:16px;height:16px;">
+        <label for="vg-enabled" style="cursor:pointer;font-size:13px;">启用语音迎宾词</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('voice-greeting')">取消</button>
+      <button class="modal-btn primary" onclick="saveVoiceGreetingConfig()" style="background:var(--blue);border-color:var(--blue);">💾 保存配置</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进3NEW】设备固件版本对比分析器 -->
+<div class="modal-overlay hidden" id="modal-firmware-analyzer">
+  <div class="modal" style="width:680px;">
+    <div class="modal-header">
+      <div class="modal-title">📡 设备固件版本对比分析器</div>
+      <button class="modal-close" onclick="closeModal('firmware-analyzer')">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;text-align:center;">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">当前版本</div>
+          <div style="font-size:22px;font-weight:700;color:var(--blue);" id="fwa-current">v2.3.0</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">2026-01-15发布</div>
+        </div>
+        <div style="padding:14px;background:var(--green-bg);border:1px solid var(--green);border-radius:10px;text-align:center;">
+          <div style="font-size:11px;color:var(--green);margin-bottom:6px;">最新版本</div>
+          <div style="font-size:22px;font-weight:700;color:var(--green);" id="fwa-latest">v2.3.1</div>
+          <div style="font-size:11px;color:var(--green);margin-top:4px;">2026-03-20发布</div>
+        </div>
+        <div style="padding:14px;background:var(--purple-bg);border:1px solid var(--purple);border-radius:10px;text-align:center;">
+          <div style="font-size:11px;color:var(--purple);margin-bottom:6px;">目标版本</div>
+          <div style="font-size:22px;font-weight:700;color:var(--purple);" id="fwa-target">v2.3.1</div>
+          <div style="font-size:11px;color:var(--purple);margin-top:4px;">稳定性推荐</div>
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:700;margin-bottom:8px;">📋 版本变更详情（v2.3.0 → v2.3.1）</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--green-bg);border-radius:6px;border-left:3px solid var(--green);">
+            <span style="font-size:14px;">✅</span>
+            <div><div style="font-size:12px;font-weight:600;color:var(--green);">修复：低概率假锁检测失败</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">传感器上报异常概率提升99%</div></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--blue-bg);border-radius:6px;border-left:3px solid var(--blue);">
+            <span style="font-size:14px;">⚡</span>
+            <div><div style="font-size:12px;font-weight:600;color:var(--blue);">优化：电池功耗降低12%</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">优化NB-IoT模块休眠策略</div></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--orange-bg);border-radius:6px;border-left:3px solid var(--orange);">
+            <span style="font-size:14px;">🆕</span>
+            <div><div style="font-size:12px;font-weight:600;color:var(--orange);">新增：开锁速度提升30ms</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">从指令到执行缩短至平均180ms</div></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:8px;">📊 各设备版本分布（可多选批量升级）</div>
+        <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+          <table class="table" style="font-size:12px;">
+            <thead><tr><th style="width:30px;"><input type="checkbox" id="fwa-select-all" onchange="toggleFwaSelectAll(this)" style="accent-color:var(--blue);"></th><th>房间</th><th>当前版本</th><th>目标版本</th><th>电池</th><th>状态</th></tr></thead>
+            <tbody id="fwa-device-list">
+              <tr><td><input type="checkbox" class="fwa-device-check" checked style="accent-color:var(--blue);"></td><td>301</td><td>v2.3.0</td><td>v2.3.1</td><td>88%</td><td><span class="tbadge green">在线</span></td></tr>
+              <tr><td><input type="checkbox" class="fwa-device-check" checked style="accent-color:var(--blue);"></td><td>302</td><td>v2.3.0</td><td>v2.3.1</td><td>75%</td><td><span class="tbadge green">在线</span></td></tr>
+              <tr><td><input type="checkbox" class="fwa-device-check" style="accent-color:var(--blue);"></td><td>303</td><td><span style="color:var(--green);">v2.3.1</span></td><td>v2.3.1</td><td>62%</td><td><span class="tbadge green">已是最新</span></td></tr>
+              <tr><td><input type="checkbox" class="fwa-device-check" checked style="accent-color:var(--blue);"></td><td>201</td><td><span style="color:var(--orange);">v2.2.9</span></td><td>v2.3.1</td><td>45%</td><td><span class="tbadge orange">⚠️ 低于目标</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">已选择 <span id="fwa-selected-count" style="color:var(--blue);font-weight:600;">3</span> 台设备待升级</div>
+      </div>
+      <div style="padding:12px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-top:14px;">
+        <div style="font-size:12px;color:var(--orange);font-weight:600;">⚠️ 升级前注意</div>
+        <div style="font-size:11px;color:var(--text);margin-top:4px;line-height:1.6;">• 建议设备电量>50%时升级 · 升级过程中请勿断电 · 建议逐台升级以便监控进度</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('firmware-analyzer')">取消</button>
+      <button class="modal-btn primary" onclick="executeFirmwareBatchUpgrade()" style="background:var(--purple);border-color:var(--purple);">📦 开始批量升级（<span id="fwa-upgrade-count">3</span>台）</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进4NEW】密码键盘乱序模式配置弹窗 -->
+<div class="modal-overlay hidden" id="modal-keypad-shuffle">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">🔢 密码键盘防窥模式</div>
+      <button class="modal-close" onclick="closeModal('keypad-shuffle')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:16px;padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:32px;">🛡️</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--blue);">防窥乱序密码键盘</div>
+            <div style="font-size:11px;color:var(--text);margin-top:4px;line-height:1.5;">开启后，每次输入密码时数字键排列顺序随机打乱，即使有人偷看也无法记住按键顺序。</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:12px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;">全局启用乱序模式</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">所有支持乱序的门锁统一应用此设置</div>
+        </div>
+        <label style="cursor:pointer;position:relative;display:inline-block;width:48px;height:26px;">
+          <input type="checkbox" id="ks-global-toggle" checked style="display:none;">
+          <span id="ks-toggle-track" style="position:absolute;top:0;left:0;right:0;bottom:0;border-radius:13px;background:var(--green);transition:all 0.3s;cursor:pointer;">
+            <span id="ks-toggle-thumb" style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:white;transition:all 0.3s;transform:translateX(22px);"></span>
+          </span>
+        </label>
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:600;margin-bottom:10px;">🔑 当前键盘布局预览</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:240px;margin:0 auto;" id="ks-keypad-preview">
+          <div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;text-align:center;font-size:18px;font-weight:700;">7</div>
+          <div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;text-align:center;font-size:18px;font-weight:700;">2</div>
+          <div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;text-align:center;font-size:18px;font-weight:700;">9</div>
+          <div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;text-align:center;font-size:18px;font-weight:700;">4</div>
+          <div style="padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;text-align:center;font-size:18px;font-weight:700;color:var(--blue);">5</div>
+          <div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;text-align:center;font-size:18px;font-weight:700;">1</div>
+          <div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;text-align:center;font-size:18px;font-weight:700;">8</div>
+          <div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;text-align:center;font-size:18px;font-weight:700;">3</div>
+          <div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;text-align:center;font-size:18px;font-weight:700;">6</div>
+        </div>
+        <div style="text-align:center;margin-top:8px;font-size:11px;color:var(--text-muted);">⚡ 每次密码输入时数字位置随机变化</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">适用设备范围</label>
+        <select class="form-select" id="ks-scope" style="padding:8px 12px;">
+          <option value="all">🏢 全部设备</option>
+          <option value="vip">⭐ VIP区域设备</option>
+          <option value="main">🏠 主楼全部设备</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">乱序策略</label>
+        <select class="form-select" id="ks-strategy" style="padding:8px 12px;">
+          <option value="random">🔀 完全随机（每次都不同）</option>
+          <option value="session">🔁 单次有效（本次开门有效）</option>
+          <option value="timed">⏱️ 每分钟变换</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+        <input type="checkbox" id="ks-audit-log" checked style="accent-color:var(--blue);width:16px;height:16px;">
+        <label for="ks-audit-log" style="cursor:pointer;font-size:12px;">记录乱序键盘使用日志</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('keypad-shuffle')">取消</button>
+      <button class="modal-btn primary" onclick="saveKeypadShuffleConfig()" style="background:var(--blue);border-color:var(--blue);">💾 保存配置</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进5NEW】会员充值套餐选择器 -->
+<div class="modal-overlay hidden" id="modal-member-recharge-packages">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">💰 选择充值套餐</div>
+      <button class="modal-close" onclick="closeModal('member-recharge-packages')">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+      <div style="margin-bottom:16px;padding:12px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:12px;color:var(--blue);font-weight:600;">当前账户：<span id="mrp-member-name">张三</span></div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">当前余额：<span style="color:var(--orange);font-weight:700;font-size:14px;">¥<span id="mrp-current-balance">500</span></span> · 积分：<span style="color:var(--purple);font-weight:700;" id="mrp-current-points">120</span></div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:var(--text-muted);">会员等级</div>
+            <div style="font-size:16px;font-weight:700;color:var(--orange);" id="mrp-member-level">🌟 金卡会员</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:600;margin-bottom:10px;">🎁 充值优惠套餐</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;" id="mrp-package-grid">
+          <div class="mrp-package-card" onclick="selectRechargePackage(0, this)" style="padding:14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;background:white;" data-package="0" data-amount="200">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-size:14px;font-weight:700;">¥200</span><span style="font-size:10px;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:8px;font-weight:600;">送20积分</span></div>
+            <div style="font-size:11px;color:var(--text-muted);">额外赠送 20 积分</div>
+          </div>
+          <div class="mrp-package-card" onclick="selectRechargePackage(1, this)" style="padding:14px;border:2px solid var(--blue);border-radius:10px;cursor:pointer;background:var(--blue-bg);" data-package="1" data-amount="500">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-size:14px;font-weight:700;">¥500</span><span style="font-size:10px;padding:2px 6px;background:var(--blue);color:white;border-radius:8px;font-weight:600;">🔥 推荐</span></div>
+            <div style="font-size:11px;color:var(--text-muted);">额外赠送 80 积分</div>
+            <div style="font-size:12px;color:var(--blue);font-weight:700;margin-top:4px;">¥500 → ¥525</div>
+          </div>
+          <div class="mrp-package-card" onclick="selectRechargePackage(2, this)" style="padding:14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;background:white;" data-package="2" data-amount="1000">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-size:14px;font-weight:700;">¥1000</span><span style="font-size:10px;padding:2px 6px;background:var(--orange-bg);color:var(--orange);border-radius:8px;font-weight:600;">送200积分</span></div>
+            <div style="font-size:11px;color:var(--text-muted);">额外赠送 200 积分</div>
+            <div style="font-size:12px;color:var(--orange);font-weight:700;margin-top:4px;">¥1000 → ¥1100</div>
+          </div>
+          <div class="mrp-package-card" onclick="selectRechargePackage(3, this)" style="padding:14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;background:white;" data-package="3" data-amount="2000">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-size:14px;font-weight:700;">¥2000</span><span style="font-size:10px;padding:2px 6px;background:var(--red-bg);color:var(--red);border-radius:8px;font-weight:600;">超值</span></div>
+            <div style="font-size:11px;color:var(--text-muted);">额外赠送 500 积分</div>
+            <div style="font-size:12px;color:var(--red);font-weight:700;margin-top:4px;">¥2000 → ¥2400</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="flex:1;height:1px;background:var(--border);"></div>
+          <span style="font-size:11px;color:var(--text-muted);">或自定义金额</span>
+          <div style="flex:1;height:1px;background:var(--border);"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="position:relative;flex:1;">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--text-muted);">¥</span>
+            <input type="number" id="mrp-custom-amount" class="form-input" placeholder="输入自定义金额" style="padding-left:28px;font-size:15px;height:40px;" oninput="onCustomAmountChange()">
+          </div>
+          <button class="action-btn" onclick="useCustomAmount()" style="padding:8px 16px;background:var(--blue);color:white;border:none;">使用此金额</button>
+        </div>
+      </div>
+      <div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-size:13px;font-weight:600;">📋 充值明细</span></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text-muted);">充值金额</span><span style="font-weight:600;" id="mrp-detail-amount">¥500</span></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text-muted);">赠送金额</span><span style="font-weight:600;color:var(--green);" id="mrp-detail-bonus">+¥25</span></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text-muted);">赠送积分</span><span style="font-weight:600;color:var(--purple);" id="mrp-detail-points">+80积分</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700;margin-top:4px;"><span>实际到账</span><span style="color:var(--blue);" id="mrp-detail-total">¥525 · 80积分</span></div>
+      </div>
+      <div style="margin-top:14px;">
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px;">💳 支付方式</div>
+        <div style="display:flex;gap:10px;">
+          <div class="mrp-pay-method selected" onclick="selectPayMethod('wechat', this)" style="flex:1;padding:12px;border:2px solid var(--green);border-radius:8px;cursor:pointer;text-align:center;background:var(--green-bg);">
+            <div style="font-size:20px;margin-bottom:4px;">💚</div><div style="font-size:11px;color:var(--green);font-weight:600;">微信支付</div>
+          </div>
+          <div class="mrp-pay-method" onclick="selectPayMethod('alipay', this)" style="flex:1;padding:12px;border:2px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;background:white;">
+            <div style="font-size:20px;margin-bottom:4px;">💙</div><div style="font-size:11px;color:var(--text-muted);">支付宝</div>
+          </div>
+          <div class="mrp-pay-method" onclick="selectPayMethod('card', this)" style="flex:1;padding:12px;border:2px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;background:white;">
+            <div style="font-size:20px;margin-bottom:4px;">💳</div><div style="font-size:11px;color:var(--text-muted);">银行卡</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('member-recharge-packages')">取消</button>
+      <button class="modal-btn primary" id="mrp-pay-btn" onclick="executeMemberRecharge()" style="background:var(--green);border-color:var(--green);font-size:15px;padding:10px 28px;">💳 立即支付 ¥525</button>
+    </div>
+  </div>
+</div>
+
 <!-- v3改进5: 服务工单满意度评价页面 -->
 <div id="page-worating" class="page">
   <div class="page-header">
@@ -47897,6 +48394,9 @@ function executeBatchRoomStatus() {
 }
 
 </script>
-<script src="v3-improvements.js?v=20260328e"></script>
+<script src="v3-improvements.js?v=20260328e">
+// Wrapper for voice greeting from config tab
+function openVoiceGreetingFromConfig() { openModal("voice-greeting"); loadVoiceGreetingScenario(); }
+</script>
 </body>
 </html>

@@ -2295,3 +2295,314 @@ window.doSingleFirmwareUpgrade = doSingleFirmwareUpgrade;
 window.renderHomeTodoPanel = renderHomeTodoPanel;
 window.dismissTodo = dismissTodo;
 window.exportHandoverReportCSV = exportHandoverReportCSV;
+
+// ==================== 改进1NEW: 黑名单管理完整功能 ====================
+
+// 黑名单Tab切换
+function filterBlacklistTab(type, el) {
+  document.querySelectorAll('#page-blacklist .card-tab').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  var rows = document.querySelectorAll('#blacklist-table-body tr');
+  rows.forEach(function(row) {
+    if (type === 'all' || row.dataset.type === type) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+
+// 黑名单搜索
+function applyBlacklistSearch() {
+  var q = document.getElementById('bl-search-input').value.trim().toLowerCase();
+  var type = document.getElementById('bl-type-filter').value;
+  var rows = document.querySelectorAll('#blacklist-table-body tr');
+  rows.forEach(function(row) {
+    var text = row.textContent.toLowerCase();
+    var matchType = type === 'all' || row.dataset.type === type || (type === 'expiring' && row.dataset.expiring === 'true');
+    var matchSearch = !q || text.indexOf(q) !== -1;
+    row.style.display = matchType && matchSearch ? '' : 'none';
+  });
+}
+
+// 打开新增黑名单弹窗
+function openAddBlacklistModal() { openModal('blacklist-add'); }
+
+// 切换永久封禁显示
+function toggleBlPermanent(val) {
+  var expGroup = document.getElementById('bl-add-expire-group');
+  if (expGroup) expGroup.style.display = val === 'permanent' ? 'none' : '';
+}
+
+// 提交新增黑名单
+function submitAddBlacklist() {
+  var name = document.getElementById('bl-add-name').value.trim();
+  var phone = document.getElementById('bl-add-phone').value.trim();
+  var reason = document.getElementById('bl-add-reason').value.trim();
+  if (!name || !phone || !reason) { showToast('请填写必填项', 'error'); return; }
+  var type = document.getElementById('bl-add-type').value;
+  var dur = document.getElementById('bl-add-duration').value;
+  var html = '<tr data-type="' + type + '" data-expiring="false"><td><span style="font-weight:600;">' + name + '</span></td><td>' + phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') + '</td><td>--</td><td>' + reason + '</td><td><span class="tbadge red">' + (type === 'active' ? '主动封禁' : '系统拦截') + '</span></td><td>' + new Date().toISOString().slice(0,10).replace(/-/g, '-') + '</td><td>' + (dur === 'permanent' ? '永久' : dur + '天后') + '</td><td><span class="tbadge red">🔒 封禁中</span></td><td><button class="action-btn small" onclick="openBlacklistDetailModal(-1)">详情</button> <button class="action-btn small green" onclick="unblacklistPerson(-1)">解除</button></td></tr>';
+  document.getElementById('blacklist-table-body').insertAdjacentHTML('afterbegin', html);
+  closeModal('blacklist-add');
+  showToast('🚫 ' + name + ' 已加入黑名单', 'success');
+}
+
+// 打开黑名单详情
+function openBlacklistDetailModal(idx) {
+  var rows = document.querySelectorAll('#blacklist-table-body tr');
+  var row = rows[idx] || rows[0];
+  if (!row) return;
+  var cells = row.querySelectorAll('td');
+  var name = cells[0].textContent.trim();
+  document.getElementById('bld-title').textContent = '🚫 黑名单详情 - ' + name;
+  document.getElementById('bld-content').innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+    '<div class="info-item"><div class="label">姓名</div><div class="value">' + name + '</div></div>' +
+    '<div class="info-item"><div class="label">手机号</div><div class="value">' + cells[1].textContent.trim() + '</div></div>' +
+    '<div class="info-item"><div class="label">证件号</div><div class="value">' + cells[2].textContent.trim() + '</div></div>' +
+    '<div class="info-item"><div class="label">类型</div><div class="value">' + cells[4].textContent.trim() + '</div></div>' +
+    '<div class="info-item"><div class="label">封禁时间</div><div class="value">' + cells[5].textContent.trim() + '</div></div>' +
+    '<div class="info-item"><div class="label">到期时间</div><div class="value">' + cells[6].textContent.trim() + '</div></div></div>' +
+    '<div style="margin-top:14px;"><div class="label" style="margin-bottom:6px;">封禁原因</div><div style="padding:12px;background:var(--bg);border-radius:8px;font-size:13px;line-height:1.6;">' + cells[3].textContent.trim() + '</div></div>';
+  openModal('blacklist-detail');
+}
+
+// 解除封禁
+function unblacklistPerson(idx) {
+  var rows = document.querySelectorAll('#blacklist-table-body tr');
+  if (rows[idx]) { rows[idx].remove(); showToast('✅ 已解除封禁', 'success'); }
+  closeModal('blacklist-detail');
+}
+
+// 延长封禁
+function extendBlacklistPeriod(idx) { showToast('⏰ 封禁期限已延长30天', 'success'); }
+
+// 导出黑名单CSV
+function exportBlacklistCSV() { showToast('📤 黑名单CSV导出中...', 'info'); setTimeout(function(){ showToast('导出成功！', 'success'); }, 600); }
+
+// 处理详情页操作按钮
+function handleBlacklistDetailAction() { unblacklistPerson(0); closeModal('blacklist-detail'); }
+
+// ==================== 改进2NEW: 智能语音迎宾词配置 ====================
+
+var voiceGreetingScenarios = {
+  default: '欢迎回家！亲爱的宾客，祝您住得舒适安心。如需帮助，请拨打客服热线。',
+  vip: '尊敬的VIP贵宾，欢迎回家！感谢您选择我们，祝您旅途愉快，享受尊贵体验。',
+  late: '夜深了，欢迎回来。请注意安全，小心台阶。如需帮助请拨打电话。',
+  morning: '早安，亲爱的宾客！美好的一天从入住开始，祝您住得舒适，睡得香甜。',
+  corporate: '欢迎光临！商务出行首选，感谢您的信任。如需会议室或商务服务，请随时联系。'
+};
+
+function loadVoiceGreetingScenario() {
+  var scenario = document.getElementById('vg-scenario').value;
+  var text = voiceGreetingScenarios[scenario] || voiceGreetingScenarios.default;
+  document.getElementById('vg-content').value = text;
+  document.getElementById('vg-preview-text').textContent = text;
+  document.getElementById('vg-char-count').textContent = text.length;
+}
+
+function updateVoiceGreetingPreview() {
+  var text = document.getElementById('vg-content').value;
+  document.getElementById('vg-preview-text').textContent = text;
+  var count = document.getElementById('vg-char-count');
+  if (count) count.textContent = text.length;
+}
+
+function previewVoiceGreeting() {
+  var status = document.getElementById('vg-preview-status');
+  if (status) { status.textContent = '🔊 正在播放...'; status.style.color = 'var(--green)'; }
+  showToast('🔊 语音迎宾预览：' + (document.getElementById('vg-content') || {value:''}).value.slice(0,20) + '...', 'info');
+  setTimeout(function(){ if (status) { status.textContent = '✅ 播放完成'; status.style.color = 'var(--text-muted)'; } }, 2000);
+}
+
+function saveVoiceGreetingConfig() {
+  var text = document.getElementById('vg-content').value;
+  if (text.length < 5) { showToast('迎宾语不能少于5个字', 'error'); return; }
+  var scenario = document.getElementById('vg-scenario').value;
+  voiceGreetingScenarios[scenario] = text;
+  closeModal('voice-greeting');
+  showToast('🎙️ 语音迎宾配置已保存', 'success');
+}
+
+// ==================== 改进3NEW: 固件版本对比分析器 ====================
+
+function openFirmwareAnalyzerModal() { openModal('firmware-analyzer'); }
+
+function toggleFwaSelectAll(cb) {
+  document.querySelectorAll('.fwa-device-check').forEach(function(c) { c.checked = cb.checked; });
+  updateFwaCount();
+}
+
+function updateFwaCount() {
+  var checked = document.querySelectorAll('.fwa-device-check:checked').length;
+  var countEl = document.getElementById('fwa-selected-count');
+  var upgEl = document.getElementById('fwa-upgrade-count');
+  if (countEl) countEl.textContent = checked;
+  if (upgEl) upgEl.textContent = checked;
+}
+
+function executeFirmwareBatchUpgrade() {
+  var checked = document.querySelectorAll('.fwa-device-check:checked').length;
+  if (checked === 0) { showToast('请先选择要升级的设备', 'error'); return; }
+  closeModal('firmware-analyzer');
+  showToast('📦 固件批量升级已启动，共 ' + checked + ' 台设备排队中...', 'info');
+  setTimeout(function(){ showToast('✅ 固件升级完成！3台成功，0台失败', 'success'); }, 3000);
+}
+
+// ==================== 改进4NEW: 密码键盘防窥乱序模式 ====================
+
+function openKeypadShuffleModal() { openModal('keypad-shuffle'); }
+
+function toggleKeypadShuffleGlobal(checked) {
+  var track = document.getElementById('ks-toggle-track');
+  var thumb = document.getElementById('ks-toggle-thumb');
+  if (track && thumb) {
+    if (checked) {
+      track.style.background = 'var(--green)';
+      thumb.style.transform = 'translateX(22px)';
+    } else {
+      track.style.background = 'var(--border)';
+      thumb.style.transform = 'translateX(0)';
+    }
+  }
+}
+
+function shuffleKeypadPreview() {
+  var nums = ['1','2','3','4','5','6','7','8','9'];
+  for (var i = nums.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = nums[i]; nums[i] = nums[j]; nums[j] = tmp;
+  }
+  var cells = document.querySelectorAll('#ks-keypad-preview > div');
+  if (cells.length === 9) {
+    for (var k = 0; k < 9; k++) {
+      cells[k].textContent = nums[k];
+      cells[k].style.background = nums[k] === '5' ? 'var(--blue-bg)' : 'var(--bg)';
+      cells[k].style.borderColor = nums[k] === '5' ? 'var(--blue)' : 'var(--border)';
+      cells[k].style.color = nums[k] === '5' ? 'var(--blue)' : '';
+    }
+  }
+}
+
+function saveKeypadShuffleConfig() {
+  var enabled = document.getElementById('ks-global-toggle').checked;
+  var scope = document.getElementById('ks-scope').value;
+  var strategy = document.getElementById('ks-strategy').value;
+  closeModal('keypad-shuffle');
+  showToast('🔢 密码键盘防窥配置已保存（' + (enabled ? '已启用' : '已禁用') + '）', 'success');
+}
+
+// ==================== 改进5NEW: 会员充值套餐选择器 ====================
+
+var selectedPackage = { amount: 500, bonus: 25, points: 80, payMethod: 'wechat' };
+
+var rechargePackages = [
+  { amount: 200, bonus: 0, points: 20 },
+  { amount: 500, bonus: 25, points: 80 },
+  { amount: 1000, bonus: 100, points: 200 },
+  { amount: 2000, bonus: 400, points: 500 }
+];
+
+function openMemberRechargePackagesModal(memberIdx) {
+  selectedPackage = { amount: 500, bonus: 25, points: 80, payMethod: 'wechat' };
+  openModal('member-recharge-packages');
+  updateRechargePackageUI();
+}
+
+function selectRechargePackage(idx, el) {
+  var pkg = rechargePackages[idx];
+  selectedPackage = { amount: pkg.amount, bonus: pkg.bonus, points: pkg.points, payMethod: selectedPackage.payMethod };
+  document.querySelectorAll('.mrp-package-card').forEach(function(c) {
+    c.style.borderColor = 'var(--border)';
+    c.style.background = 'white';
+  });
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'var(--blue-bg)';
+  document.getElementById('mrp-custom-amount').value = '';
+  updateRechargePackageUI();
+}
+
+function useCustomAmount() {
+  var amt = parseInt(document.getElementById('mrp-custom-amount').value) || 0;
+  if (amt <= 0) { showToast('请输入有效金额', 'error'); return; }
+  var bonus = 0;
+  var points = Math.floor(amt * 0.1);
+  selectedPackage = { amount: amt, bonus: bonus, points: points, payMethod: selectedPackage.payMethod };
+  document.querySelectorAll('.mrp-package-card').forEach(function(c) {
+    c.style.borderColor = 'var(--border)';
+    c.style.background = 'white';
+  });
+  updateRechargePackageUI();
+  showToast('已选择自定义金额 ¥' + amt, 'info');
+}
+
+function onCustomAmountChange() {
+  var amt = parseInt(document.getElementById('mrp-custom-amount').value) || 0;
+  if (amt > 0) {
+    document.querySelectorAll('.mrp-package-card').forEach(function(c) {
+      c.style.borderColor = 'var(--border)';
+      c.style.background = 'white';
+    });
+  }
+}
+
+function selectPayMethod(method, el) {
+  selectedPackage.payMethod = method;
+  document.querySelectorAll('.mrp-pay-method').forEach(function(m) {
+    m.style.borderColor = 'var(--border)';
+    m.style.background = 'white';
+  });
+  el.style.borderColor = method === 'wechat' ? 'var(--green)' : 'var(--blue)';
+  el.style.background = method === 'wechat' ? 'var(--green-bg)' : 'var(--blue-bg)';
+}
+
+function updateRechargePackageUI() {
+  var amt = selectedPackage.amount;
+  var bonus = selectedPackage.bonus;
+  var points = selectedPackage.points;
+  var total = amt + bonus;
+  document.getElementById('mrp-detail-amount').textContent = '¥' + amt;
+  document.getElementById('mrp-detail-bonus').textContent = bonus > 0 ? '+¥' + bonus : '¥0';
+  document.getElementById('mrp-detail-points').textContent = '+' + points + '积分';
+  document.getElementById('mrp-detail-total').textContent = '¥' + total + ' · ' + points + '积分';
+  var btn = document.getElementById('mrp-pay-btn');
+  if (btn) btn.textContent = '💳 立即支付 ¥' + total;
+}
+
+function executeMemberRecharge() {
+  var amt = selectedPackage.amount;
+  var total = amt + selectedPackage.bonus;
+  closeModal('member-recharge-packages');
+  showToast('💳 支付¥' + total + '成功！积分+' + selectedPackage.points, 'success');
+}
+
+// 挂载新增函数
+window.filterBlacklistTab = filterBlacklistTab;
+window.applyBlacklistSearch = applyBlacklistSearch;
+window.openAddBlacklistModal = openAddBlacklistModal;
+window.toggleBlPermanent = toggleBlPermanent;
+window.submitAddBlacklist = submitAddBlacklist;
+window.openBlacklistDetailModal = openBlacklistDetailModal;
+window.unblacklistPerson = unblacklistPerson;
+window.extendBlacklistPeriod = extendBlacklistPeriod;
+window.exportBlacklistCSV = exportBlacklistCSV;
+window.handleBlacklistDetailAction = handleBlacklistDetailAction;
+window.loadVoiceGreetingScenario = loadVoiceGreetingScenario;
+window.updateVoiceGreetingPreview = updateVoiceGreetingPreview;
+window.previewVoiceGreeting = previewVoiceGreeting;
+window.saveVoiceGreetingConfig = saveVoiceGreetingConfig;
+window.openFirmwareAnalyzerModal = openFirmwareAnalyzerModal;
+window.toggleFwaSelectAll = toggleFwaSelectAll;
+window.updateFwaCount = updateFwaCount;
+window.executeFirmwareBatchUpgrade = executeFirmwareBatchUpgrade;
+window.openKeypadShuffleModal = openKeypadShuffleModal;
+window.toggleKeypadShuffleGlobal = toggleKeypadShuffleGlobal;
+window.shuffleKeypadPreview = shuffleKeypadPreview;
+window.saveKeypadShuffleConfig = saveKeypadShuffleConfig;
+window.openMemberRechargePackagesModal = openMemberRechargePackagesModal;
+window.selectRechargePackage = selectRechargePackage;
+window.useCustomAmount = useCustomAmount;
+window.onCustomAmountChange = onCustomAmountChange;
+window.selectPayMethod = selectPayMethod;
+window.updateRechargePackageUI = updateRechargePackageUI;
+window.executeMemberRecharge = executeMemberRecharge;
