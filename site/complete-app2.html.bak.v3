@@ -793,6 +793,87 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
         <button class="btn" onclick="showPage('alert')">立即处理</button>
       </div>
+      <!-- 【改进v3-1】首页通知铃铛 + 未读计数红点（实时提醒待处理事项） -->
+      <div style="position:fixed;top:16px;right:24px;z-index:999;">
+        <button onclick="toggleNotificationPanel()" id="notif-bell-btn" style="width:40px;height:40px;border-radius:50%;border:none;background:var(--white);box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;font-size:18px;position:relative;display:flex;align-items:center;justify-content:center;">
+          🔔
+          <span id="notif-bell-badge" style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;background:var(--red);color:white;border-radius:9px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;display:none;">0</span>
+        </button>
+        <!-- 通知面板 -->
+        <div id="notif-panel" style="display:none;position:absolute;top:48px;right:0;width:320px;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);z-index:1000;overflow:hidden;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:14px;font-weight:600;">🔔 待办提醒</span>
+            <button onclick="markAllNotifRead()" style="background:none;border:none;color:var(--blue);font-size:11px;cursor:pointer;">全部标为已读</button>
+          </div>
+          <div id="notif-panel-list" style="max-height:320px;overflow-y:auto;"></div>
+          <div style="padding:10px 16px;border-top:1px solid var(--border);text-align:center;">
+            <button onclick="showPage('notif');toggleNotificationPanel();" style="background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;font-weight:600;">查看全部 ›</button>
+          </div>
+        </div>
+      </div>
+      <script>
+      var notifData = [
+        {id:1, type:'alert', icon:'🔴', title:'设备离线告警', desc:'303房间门锁离线超过10小时', time:'10分钟前', page:'alert', read:false},
+        {id:2, type:'alert', icon:'🟡', title:'低电量预警', desc:'306房间电量低于20%', time:'25分钟前', page:'device', read:false},
+        {id:3, type:'workorder', icon:'🛠️', title:'待接受工单', desc:'305房间客户投诉热水问题', time:'30分钟前', page:'workorder', read:false},
+        {id:4, type:'workorder', icon:'🛠️', title:'工单超时提醒', desc:'201房间发票需求已超时2小时', time:'1小时前', page:'workorder', read:false},
+        {id:5, type:'housekeeping', icon:'🧹', title:'待查房提醒', desc:'203房间保洁完成待查房', time:'15分钟前', page:'housekeeping', read:true},
+        {id:6, type:'system', icon:'⚙️', title:'系统通知', desc:'夜审报表已自动生成', time:'2小时前', page:'nightaudit', read:true}
+      ];
+      function updateNotifBell() {
+        var unread = notifData.filter(function(n){ return !n.read; }).length;
+        var badge = document.getElementById('notif-bell-badge');
+        if (badge) {
+          badge.textContent = unread;
+          badge.style.display = unread > 0 ? 'flex' : 'none';
+        }
+      }
+      function renderNotifPanel() {
+        var list = document.getElementById('notif-panel-list');
+        if (!list) return;
+        var html = '';
+        notifData.slice(0,5).forEach(function(n) {
+          var bg = n.read ? 'var(--bg)' : 'var(--blue-bg)';
+          html += '<div onclick="handleNotifClick(' + n.id + ')" style="padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;background:' + bg + ';transition:background 0.2s;">' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+            '<span style="font-size:14px;">' + n.icon + '</span>' +
+            '<span style="font-size:12px;font-weight:600;">' + n.title + '</span>' +
+            (n.read ? '' : '<span style="width:6px;height:6px;background:var(--red);border-radius:50%;flex-shrink:0;"></span>') +
+            '</div>' +
+            '<div style="font-size:11px;color:var(--text-muted);margin-left:22px;">' + n.desc + '</div>' +
+            '<div style="font-size:10px;color:var(--text-muted);margin-left:22px;margin-top:2px;">' + n.time + '</div></div>';
+        });
+        list.innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">暂无新通知</div>';
+        updateNotifBell();
+      }
+      function toggleNotificationPanel() {
+        var panel = document.getElementById('notif-panel');
+        if (!panel) return;
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        renderNotifPanel();
+      }
+      function handleNotifClick(id) {
+        var n = notifData.find(function(n){ return n.id === id; });
+        if (n) { n.read = true; updateNotifBell(); renderNotifPanel(); showPage(n.page); toggleNotificationPanel(); }
+      }
+      function markAllNotifRead() {
+        notifData.forEach(function(n){ n.read = true; });
+        updateNotifBell(); renderNotifPanel();
+        showToast('已全部标为已读', 'success');
+      }
+      // 每分钟自动刷新通知数
+      setInterval(function(){ updateNotifBell(); }, 60000);
+      updateNotifBell();
+      // 点击外部关闭通知面板
+      document.addEventListener('click', function(e) {
+        var btn = document.getElementById('notif-bell-btn');
+        var panel = document.getElementById('notif-panel');
+        if (btn && panel && !btn.contains(e.target) && !panel.contains(e.target)) {
+          panel.style.display = 'none';
+        }
+      });
+      </script>
+
       <!-- 【改进1】首页统计卡片下钻：点击跳转到对应详情 -->
       <div class="stats-row" id="homepage-stats">
         <div class="stat-card" style="cursor:pointer;" onclick="drilldownHomeStat('total','device')" title="点击查看房间列表">
@@ -1135,6 +1216,37 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
       </div>
       <!-- 改进1: 入住记录卡片（新增） -->
+      <!-- 【改进v3-2】入住记录增强：筛选工具栏 + 搜索 + 导出 + 动态统计 -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-body" style="padding:12px 20px;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <input type="text" id="ci-search-input" placeholder="🔍 搜索客人姓名/房间号" style="max-width:200px;padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;" oninput="applyCiSearch()" onkeydown="if(event.key==='Enter')applyCiSearch()">
+            <select id="ci-type-filter" onchange="applyCiFilter()" style="padding:6px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;">
+              <option value="all">全部类型</option>
+              <option value="in">🏨 入住</option>
+              <option value="out">🚪 退房</option>
+              <option value="change">🔄 换房</option>
+            </select>
+            <select id="ci-date-filter" onchange="applyCiFilter()" style="padding:6px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;">
+              <option value="all">全部时间</option>
+              <option value="today">今天</option>
+              <option value="yesterday">昨天</option>
+              <option value="week">本周</option>
+              <option value="month">本月</option>
+            </select>
+            <button onclick="applyCiFilter()" style="padding:6px 10px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);border-radius:6px;font-size:12px;cursor:pointer;">🔍 筛选</button>
+            <button onclick="resetCiFilter()" style="padding:6px 10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;">重置</button>
+            <button onclick="exportCiRecords()" style="padding:6px 10px;background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;">📤 导出</button>
+          </div>
+          <!-- 入住记录实时统计栏 -->
+          <div style="display:flex;gap:16px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+            <div style="font-size:11px;color:var(--text-muted);">🏨 今日入住：<b id="ci-stat-in" style="color:var(--blue);">2</b> 人</div>
+            <div style="font-size:11px;color:var(--text-muted);">🚪 今日退房：<b id="ci-stat-out" style="color:var(--green);">1</b> 人</div>
+            <div style="font-size:11px;color:var(--text-muted);">🔄 换房间数：<b id="ci-stat-change" style="color:var(--orange);">1</b> 间</div>
+            <div style="font-size:11px;color:var(--text-muted);">📋 当前在住房：<b id="ci-stat-current" style="color:var(--purple);">8</b> 间</div>
+          </div>
+        </div>
+      </div>
       <div class="card">
         <div class="card-header">
           <div class="card-title">📋 入住记录</div>
@@ -2022,7 +2134,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             <div style="flex:1;min-width:200px;">
               <input type="text" id="kf-generated-pwd" class="form-input" placeholder="点击「生成密码」自动生成" readonly style="font-family:monospace;font-size:18px;font-weight:700;color:var(--blue);letter-spacing:3px;text-align:center;height:40px;">
             </div>
-            <div style="display:flex;gap:6px;">
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input type="text" id="kf-room-num" class="form-input" placeholder="房间号" value="301" style="width:70px;padding:6px 8px;font-size:12px;text-align:center;">
               <select class="form-select" id="kf-type" style="padding:6px 8px;font-size:12px;width:120px;">
                 <option value="temp">⏰ 临时密码</option>
                 <option value="one-time">🚫 一次性</option>
@@ -3381,6 +3494,444 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       document.getElementById('mrc-current-balance').textContent = '¥' + m.balance;
       showToast('✅ 充值成功！' + m.name + ' 充值¥' + currentRechargeAmount + '，实际到账¥' + actual + '（含赠送¥' + bonus + '）', 'success');
       setTimeout(function(){ closeModal('member-recharge-v3'); }, 1500);
+    }
+
+    // ============================================================
+    // 【改进1】密码水龙头增强：短信/微信/邮件一键分享给客人
+    // ============================================================
+    var lastGeneratedRoomPwd = { pwd: '', type: '', duration: 0, room: '', validUntil: '' };
+
+    function generateRoomTempPassword() {
+      var type = document.getElementById('kf-type').value;
+      var duration = parseInt(document.getElementById('kf-duration').value) || 4;
+      var room = document.getElementById('kf-room-num') ? document.getElementById('kf-room-num').value : '301';
+      var prefix = type === 'one-time' ? 'OT' : type === 'offline' ? 'OF' : 'TP';
+      var random = Math.floor(1000 + Math.random() * 9000);
+      var pwd = prefix + '-' + room + '-' + random;
+      var now = new Date();
+      var validUntil = new Date(now.getTime() + duration * 3600000);
+      var timeStr = validUntil.toTimeString().slice(0, 5);
+      document.getElementById('kf-generated-pwd').value = pwd;
+      document.getElementById('kf-send-btn').style.display = 'inline-flex';
+      document.getElementById('kf-status').style.display = 'none';
+      lastGeneratedRoomPwd = { pwd: pwd, type: type, duration: duration, room: room, validUntil: validUntil.toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) + ' 前有效' };
+      showToast('⚡ 密码已生成：' + pwd + '，' + lastGeneratedRoomPwd.validUntil, 'success');
+    }
+
+    function copyRoomTempPassword() {
+      var pwd = document.getElementById('kf-generated-pwd').value;
+      if (!pwd) { showToast('请先生成密码', 'error'); return; }
+      navigator.clipboard.writeText(pwd).then(function() {
+        document.getElementById('kf-status').style.display = 'inline';
+        setTimeout(function(){ document.getElementById('kf-status').style.display = 'none'; }, 3000);
+      }).catch(function() {
+        var input = document.getElementById('kf-generated-pwd');
+        input.select();
+        document.execCommand('copy');
+        document.getElementById('kf-status').style.display = 'inline';
+        setTimeout(function(){ document.getElementById('kf-status').style.display = 'none'; }, 3000);
+      });
+    }
+
+    function sendRoomTempPassword() {
+      var pwd = lastGeneratedRoomPwd.pwd;
+      if (!pwd) { showToast('请先生成密码', 'error'); return; }
+      openSendPwdModal(pwd);
+    }
+
+    function openSendPwdModal(pwd) {
+      var old = document.getElementById('modal-send-pwd');
+      if (old) old.remove();
+      var html = '<div class="modal-overlay" id="modal-send-pwd" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+      html += '<div class="modal" style="width:440px;background:white;border-radius:12px;">';
+      html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+      html += '<div style="font-size:15px;font-weight:700;">📱 发送密码至客人</div>';
+      html += '<button onclick="closeSendPwdModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+      html += '<div style="padding:20px 24px;">';
+      html += '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">💡 选择发送方式将密码安全送达客人</div>';
+      html += '<div class="form-group"><label class="form-label">📋 生成的密码</label>';
+      html += '<input type="text" class="form-input" value="' + pwd + '" readonly style="font-family:monospace;font-size:16px;font-weight:700;color:var(--blue);letter-spacing:2px;text-align:center;height:44px;"></div>';
+      html += '<div class="form-group"><label class="form-label">🏨 房间号</label>';
+      html += '<input type="text" class="form-input" id="sp-room" placeholder="如：301" value="' + (lastGeneratedRoomPwd.room || '301') + '" style="height:38px;"></div>';
+      html += '<div class="form-group"><label class="form-label">📞 客人手机号 <span class="required">*</span></label>';
+      html += '<input type="tel" class="form-input" id="sp-phone" placeholder="请输入客人手机号" maxlength="11" style="height:38px;"></div>';
+      html += '<div class="form-group"><label class="form-label">⏰ 密码有效期</label>';
+      html += '<div style="padding:8px 12px;background:var(--bg);border-radius:6px;font-size:13px;color:var(--text);">' + lastGeneratedRoomPwd.validUntil + '</div></div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">';
+      html += '<button onclick="doSendPwd(\'sms\')" style="padding:10px;border:2px solid var(--blue);border-radius:8px;background:var(--blue-bg);cursor:pointer;font-size:13px;font-weight:600;color:var(--blue);">💬 短信发送</button>';
+      html += '<button onclick="doSendPwd(\'wechat\')" style="padding:10px;border:2px solid var(--green);border-radius:8px;background:var(--green-bg);cursor:pointer;font-size:13px;font-weight:600;color:var(--green);">💚 微信推送</button>';
+      html += '</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
+      html += '<button onclick="doSendPwd(\'email\')" style="padding:10px;border:1px solid var(--border);border-radius:8px;background:white;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);">📧 邮件发送</button>';
+      html += '<button onclick="doSendPwd(\'link\')" style="padding:10px;border:1px solid var(--border);border-radius:8px;background:white;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);">🔗 生成链接</button>';
+      html += '</div>';
+      html += '<div id="sp-result" style="display:none;margin-top:14px;padding:10px;border-radius:8px;text-align:center;font-size:13px;font-weight:600;"></div>';
+      html += '</div>';
+      html += '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;"><button class="modal-btn secondary" onclick="closeSendPwdModal()">关闭</button></div>';
+      html += '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeSendPwdModal() { var m = document.getElementById('modal-send-pwd'); if (m) m.remove(); }
+    function doSendPwd(method) {
+      var phone = document.getElementById('sp-phone').value.trim();
+      var room = document.getElementById('sp-room').value.trim();
+      if (!phone) { showToast('请输入客人手机号', 'error'); return; }
+      if (!/^1\d{10}$/.test(phone)) { showToast('手机号格式不正确', 'error'); return; }
+      var resultEl = document.getElementById('sp-result');
+      var methodNames = {sms:'短信', wechat:'微信推送', email:'邮件', link:'链接'};
+      resultEl.style.display = 'block';
+      if (method === 'link') {
+        var link = 'https://lockclub.wangjile.cn/guest/pwd?code=' + encodeURIComponent(lastGeneratedRoomPwd.pwd) + '&room=' + encodeURIComponent(room);
+        resultEl.style.background = 'var(--blue-bg)';
+        resultEl.style.color = 'var(--blue)';
+        resultEl.innerHTML = '✅ 链接已生成！<br><input type="text" value="' + link + '" readonly style="width:100%;margin-top:8px;padding:6px;border:1px solid var(--blue);border-radius:6px;font-size:11px;">';
+        showToast('✅ 访问链接已生成', 'success');
+      } else {
+        resultEl.style.background = 'var(--green-bg)';
+        resultEl.style.color = 'var(--green)';
+        resultEl.textContent = '✅ ' + methodNames[method] + '发送成功！密码已发送至 ' + phone.substring(0,3) + '****' + phone.substring(7);
+        showToast('✅ ' + methodNames[method] + '发送成功！', 'success');
+        setTimeout(closeSendPwdModal, 2000);
+      }
+    }
+
+    // ============================================================
+    // 【改进2】设备远程重启确认弹窗 + 重启历史记录
+    // ============================================================
+    var deviceRestartHistory = [
+      {time:'2026-03-25 03:00:00', operator:'系统', result:'成功', duration:'12秒', reason:'计划重启'},
+      {time:'2026-03-20 03:00:00', operator:'系统', result:'成功', duration:'11秒', reason:'计划重启'},
+      {time:'2026-03-15 03:00:00', operator:'系统', result:'成功', duration:'13秒', reason:'计划重启'},
+      {time:'2026-03-10 14:22:00', operator:'赵飞', result:'成功', duration:'10秒', reason:'设备无响应'}
+    ];
+
+    function openDevActionPanel(action) {
+      if (action === 'restart') {
+        openDeviceRestartConfirmModal();
+      } else if (action === 'sync') {
+        doSyncNow();
+      } else if (action === 'unlock') {
+        openUnlockModal();
+      } else if (action === 'firmware') {
+        openFirmwareUpgradeModal();
+      }
+    }
+
+    function openDeviceRestartConfirmModal() {
+      var old = document.getElementById('modal-device-restart');
+      if (old) old.remove();
+      var html = '<div class="modal-overlay" id="modal-device-restart" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+      html += '<div class="modal" style="width:480px;background:white;border-radius:12px;">';
+      html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+      html += '<div style="font-size:15px;font-weight:700;">⚠️ 确认远程重启设备</div>';
+      html += '<button onclick="closeDeviceRestartModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+      html += '<div style="padding:20px 24px;">';
+      html += '<div style="padding:14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:16px;text-align:center;">';
+      html += '<div style="font-size:32px;margin-bottom:8px;">⚠️</div>';
+      html += '<div style="font-size:13px;font-weight:600;color:var(--orange);">远程重启将导致门锁临时离线</div>';
+      html += '<div style="font-size:12px;color:var(--orange);margin-top:4px;">重启期间（约10-15秒）门锁无法响应开锁请求</div></div>';
+      html += '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;">';
+      html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">设备信息</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">';
+      html += '<div><span style="color:var(--text-muted);">设备：</span><b>领握LH-807智能锁</b></div>';
+      html += '<div><span style="color:var(--text-muted);">房间：</span><b>301</b></div>';
+      html += '<div><span style="color:var(--text-muted);">电量：</span><b style="color:var(--orange);">28%</b></div>';
+      html += '<div><span style="color:var(--text-muted);">状态：</span><b>🟢 在线</b></div></div></div>';
+      html += '<div class="form-group"><label class="form-label">重启原因 <span class="required">*</span></label>';
+      html += '<select class="form-select" id="rst-reason" style="height:38px;font-size:13px;">';
+      html += '<option value="plan">📅 计划重启（每日凌晨定时）</option>';
+      html += '<option value="unresponsive">📡 设备无响应</option>';
+      html += '<option value="firmware">📦 固件更新后重启</option>';
+      html += '<option value="manual">✋ 手动重启</option>';
+      html += '<option value="other">📋 其他原因</option>';
+      html += '</select></div>';
+      html += '<div class="form-group"><label class="form-label">备注说明</label>';
+      html += '<input type="text" class="form-input" id="rst-remark" placeholder="可选备注信息" style="height:38px;font-size:13px;"></div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">';
+      html += '<input type="checkbox" id="rst-confirm" style="accent-color:var(--orange);width:16px;height:16px;">';
+      html += '<label for="rst-confirm" style="font-size:13px;color:var(--orange);cursor:pointer;">我已知悉远程重启将导致门锁临时离线</label></div>';
+      // 重启历史
+      html += '<div style="margin-top:16px;"><div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">📋 历史重启记录</div>';
+      html += '<div style="max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">';
+      deviceRestartHistory.forEach(function(r) {
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-bottom:1px solid var(--border);font-size:12px;">';
+        html += '<div style="flex:0 0 80px;color:var(--text-muted);">' + r.time.slice(5) + '</div>';
+        html += '<div style="flex:1;"><span style="color:var(--blue);">' + r.operator + '</span> · ' + r.reason + '</div>';
+        html += '<div><span style="color:' + (r.result==='成功'?'var(--green)':'var(--red)') + ';">' + r.result + '</span> ' + r.duration + '</div></div>';
+      });
+      html += '</div></div>';
+      html += '</div>';
+      html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+      html += '<button class="modal-btn secondary" onclick="closeDeviceRestartModal()">取消</button>';
+      html += '<button class="modal-btn primary" onclick="confirmDeviceRestart()" style="background:var(--orange);border-color:var(--orange);">⚡ 确认重启</button></div>';
+      html += '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeDeviceRestartModal() { var m = document.getElementById('modal-device-restart'); if (m) m.remove(); }
+    function confirmDeviceRestart() {
+      var confirm = document.getElementById('rst-confirm');
+      var reason = document.getElementById('rst-reason');
+      if (!confirm || !confirm.checked) { showToast('请勾选确认框', 'error'); return; }
+      closeDeviceRestartModal();
+      showToast('⚡ 正在发送重启指令...', 'info');
+      setTimeout(function() {
+        var now = new Date();
+        var timeStr = now.toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/\//g,'-');
+        var reasonText = reason ? reason.options[reason.selectedIndex].text : '手动重启';
+        deviceRestartHistory.unshift({time: timeStr, operator:'当前操作员', result:'成功', duration:'约12秒', reason: reasonText});
+        if (deviceRestartHistory.length > 20) deviceRestartHistory.pop();
+        showToast('✅ 设备重启成功！门锁已恢复在线', 'success');
+      }, 3000);
+    }
+
+    // ============================================================
+    // 【改进3】入住黑名单实时拦截：入住前自动检测黑名单客户
+    // ============================================================
+    function checkBlacklistBeforeCheckin(name, phone) {
+      var blacklistEntry = null;
+      for (var key in guestPreferenceData) {
+        if (guestPreferenceData[key].blacklist) {
+          if (name && name.indexOf(key) !== -1) { blacklistEntry = guestPreferenceData[key]; blacklistEntry.guestName = key; break; }
+        }
+      }
+      if (!blacklistEntry && phone) {
+        for (var key2 in guestBlacklistPhones) {
+          if (guestBlacklistPhones[key2] === phone) {
+            blacklistEntry = {guestName: key2, blacklist: true, blockReason: guestBlacklistPhones[key2 + '_reason'] || '多次违规', phone: phone};
+            break;
+          }
+        }
+      }
+      return blacklistEntry;
+    }
+
+    var guestBlacklistPhones = {
+      '钱八': '138****8888',
+      '钱八_reason': '多次恶意破坏房间设施',
+      '孙九': '139****9999',
+      '孙九_reason': '拖欠房费超过30天'
+    };
+
+    // 拦截弹窗
+    function openBlacklistBlockModal(entry) {
+      var old = document.getElementById('modal-blacklist-block');
+      if (old) old.remove();
+      var html = '<div class="modal-overlay" id="modal-blacklist-block" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+      html += '<div class="modal" style="width:500px;background:white;border-radius:12px;border:3px solid var(--red);">';
+      html += '<div style="padding:24px;text-align:center;">';
+      html += '<div style="font-size:56px;margin-bottom:12px;">🚫</div>';
+      html += '<div style="font-size:20px;font-weight:700;color:var(--red);margin-bottom:8px;">⚠️ 黑名单客户警告</div>';
+      html += '<div style="font-size:14px;color:var(--text);margin-bottom:16px;">检测到入住客户在黑名单中，请谨慎处理</div>';
+      html += '<div style="padding:14px;background:var(--red-bg);border-radius:8px;margin-bottom:16px;text-align:left;">';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;">';
+      html += '<div><span style="color:var(--text-muted);">客户姓名：</span><b>' + entry.guestName + '</b></div>';
+      html += '<div><span style="color:var(--text-muted);">关联手机：</span><b>' + (entry.phone || '未知') + '</b></div></div>';
+      html += '<div style="margin-top:8px;font-size:13px;"><span style="color:var(--text-muted);">拉黑原因：</span><b style="color:var(--red);">' + (entry.blockReason || '严重违规') + '</b></div></div>';
+      html += '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--orange);text-align:left;">';
+      html += '⚠️ 该客户曾在酒店有不良记录，继续入住可能存在风险。建议联系上级确认后再办理。</div>';
+      html += '<div style="display:flex;gap:10px;justify-content:center;">';
+      html += '<button onclick="closeBlacklistBlockModal()" class="modal-btn secondary" style="padding:8px 20px;">返回修改</button>';
+      html += '<button onclick="overrideBlacklistCheckin(\'' + entry.guestName + '\')" class="modal-btn" style="background:var(--orange);border-color:var(--orange);color:white;padding:8px 20px;">⚠️ 确认入住（需授权）</button>';
+      html += '</div></div></div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeBlacklistBlockModal() { var m = document.getElementById('modal-blacklist-block'); if (m) m.remove(); }
+    function overrideBlacklistCheckin(name) {
+      closeBlacklistBlockModal();
+      showToast('⚠️ 已授权为 ' + name + ' 办理入住（授权码：OVR-' + Math.floor(1000+Math.random()*9000) + '）', 'warn');
+    }
+
+    // 修改 checkin 表单提交，添加黑名单检测
+    var originalSubmitCheckin = null; // will be hooked
+
+    // ============================================================
+    // 【改进4】批量固件升级进度跟踪弹窗
+    // ============================================================
+    var firmwareUpgradeTasks = [];
+
+    function openFirmwareUpgradeModal() {
+      var old = document.getElementById('modal-firmware-upgrade');
+      if (old) old.remove();
+      var html = '<div class="modal-overlay" id="modal-firmware-upgrade" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+      html += '<div class="modal" style="width:560px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">';
+      html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+      html += '<div style="font-size:15px;font-weight:700;">📦 批量固件升级</div>';
+      html += '<button onclick="closeFirmwareUpgradeModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+      html += '<div style="padding:20px 24px;">';
+      html += '<div style="padding:10px 14px;background:var(--purple-bg);border:1px solid var(--purple);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--purple);">💡 选择要升级的设备，批量推送固件更新，支持实时进度跟踪和失败重试</div>';
+      // 固件信息
+      html += '<div style="display:flex;gap:12px;margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">';
+      html += '<div style="flex:1;"><div style="font-size:11px;color:var(--text-muted);">当前版本</div><div style="font-size:13px;font-weight:600;">v2.3.1</div></div>';
+      html += '<div style="flex:1;"><div style="font-size:11px;color:var(--text-muted);">最新版本</div><div style="font-size:13px;font-weight:600;color:var(--purple);">v2.4.0</div></div>';
+      html += '<div style="flex:1;"><div style="font-size:11px;color:var(--text-muted);">需升级设备</div><div style="font-size:13px;font-weight:600;color:var(--orange);">5台</div></div>';
+      html += '</div>';
+      // 设备选择列表
+      html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">选择设备（<span id="fw-selected-count">0</span>/5）</div>';
+      html += '<div id="fw-device-list" style="max-height:200px;overflow-y:auto;margin-bottom:16px;border:1px solid var(--border);border-radius:8px;">';
+      var devices = [
+        {room:'301', type:'亲子间', status:'online', current:'v2.3.1', selected:true},
+        {room:'302', type:'亲子间', status:'online', current:'v2.3.1', selected:false},
+        {room:'303', type:'大床房', status:'offline', current:'v2.3.0', selected:false},
+        {room:'201', type:'标准间', status:'online', current:'v2.3.1', selected:false},
+        {room:'202', type:'大床房', status:'low', current:'v2.2.9', selected:false}
+      ];
+      devices.forEach(function(d, i) {
+        var disabled = d.status === 'offline' ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '';
+        var checked = d.selected ? 'checked' : '';
+        var statusIcon = d.status === 'online' ? '🟢' : d.status === 'low' ? '🟡' : '🔴';
+        html += '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;' + (d.status==='offline'?'background:#fafafa;':'') + '" ' + disabled + '>';
+        html += '<input type="checkbox" class="fw-device-check" data-room="' + d.room + '" ' + checked + ' ' + disabled + ' onchange="updateFwSelectedCount()" style="accent-color:var(--purple);width:16px;height:16px;">';
+        html += '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">' + d.room + ' - ' + d.type + '</div><div style="font-size:11px;color:var(--text-muted);">当前：' + d.current + ' · ' + statusIcon + ' ' + d.status + '</div></div></label>';
+      });
+      html += '</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
+      html += '<input type="checkbox" id="fw-select-all" onchange="toggleFwSelectAll(this.checked)" style="accent-color:var(--purple);width:15px;height:15px;">';
+      html += '<label for="fw-select-all" style="font-size:12px;cursor:pointer;">全选（排除离线设备）</label></div>';
+      // 升级进度（隐藏，升级时显示）
+      html += '<div id="fw-progress-area" style="display:none;">';
+      html += '<div style="margin-bottom:8px;display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);">';
+      html += '<span id="fw-progress-label">正在升级 0/0 台设备...</span><span id="fw-progress-pct">0%</span></div>';
+      html += '<div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:12px;">';
+      html += '<div id="fw-progress-bar" style="height:100%;background:var(--purple);width:0%;transition:width 0.5s;border-radius:5px;"></div></div>';
+      html += '<div id="fw-result-list" style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;"></div>';
+      html += '</div>';
+      html += '</div>';
+      html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+      html += '<button class="modal-btn secondary" onclick="closeFirmwareUpgradeModal()">取消</button>';
+      html += '<button class="modal-btn primary" id="fw-start-btn" onclick="startFirmwareUpgrade()" style="background:var(--purple);border-color:var(--purple);">📦 开始升级</button></div>';
+      html += '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeFirmwareUpgradeModal() { var m = document.getElementById('modal-firmware-upgrade'); if (m) m.remove(); }
+    function updateFwSelectedCount() {
+      var checks = document.querySelectorAll('.fw-device-check:not(:disabled):checked');
+      document.getElementById('fw-selected-count').textContent = checks.length;
+    }
+    function toggleFwSelectAll(checked) {
+      document.querySelectorAll('.fw-device-check:not(:disabled)').forEach(function(c){ c.checked = checked; });
+      updateFwSelectedCount();
+    }
+    function startFirmwareUpgrade() {
+      var checks = Array.prototype.slice.call(document.querySelectorAll('.fw-device-check:checked'));
+      if (checks.length === 0) { showToast('请至少选择一台设备', 'error'); return; }
+      var devices = checks.map(function(c){ return c.getAttribute('data-room'); });
+      var total = devices.length;
+      var current = 0;
+      var success = 0, fail = 0;
+      document.getElementById('fw-progress-area').style.display = 'block';
+      document.getElementById('fw-start-btn').disabled = true;
+      var resultList = document.getElementById('fw-result-list');
+      resultList.innerHTML = '';
+      var interval = setInterval(function() {
+        if (current >= total) {
+          clearInterval(interval);
+          document.getElementById('fw-start-btn').disabled = false;
+          document.getElementById('fw-start-btn').textContent = '✅ 升级完成';
+          showToast('📦 固件升级完成！成功 ' + success + ' 台，失败 ' + fail + ' 台', fail > 0 ? 'warn' : 'success');
+          return;
+        }
+        var room = devices[current];
+        var ok = Math.random() > 0.15;
+        if (ok) success++; else fail++;
+        var pct = Math.round(((current + 1) / total) * 100);
+        document.getElementById('fw-progress-label').textContent = '正在升级 ' + (current+1) + '/' + total + ' 台设备...';
+        document.getElementById('fw-progress-pct').textContent = pct + '%';
+        document.getElementById('fw-progress-bar').style.width = pct + '%';
+        var color = ok ? 'var(--green)' : 'var(--red)';
+        var bg = ok ? 'var(--green-bg)' : 'var(--red-bg)';
+        var icon = ok ? '✅' : '❌';
+        resultList.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);background:' + bg + ';font-size:12px;">' +
+          '<span style="font-size:16px;">' + icon + '</span>' +
+          '<div style="flex:1;"><b>' + room + '</b></div>' +
+          '<div style="color:' + color + ';font-weight:600;">' + (ok ? '升级成功 v2.4.0' : '升级失败(超时)') + '</div>' +
+          '</div>' + resultList.innerHTML;
+        current++;
+      }, 600);
+    }
+
+    // ============================================================
+    // 【改进5】能耗预算超支告警配置与实时监控
+    // ============================================================
+    var energyBudgetConfig = {
+      dailyBudget: 200,      // 日预算 kWh
+      monthlyBudget: 5000,   // 月预算 kWh
+      alertThreshold: 0.85,  // 告警阈值 85%
+      criticalThreshold: 0.95, // 严重告警阈值 95%
+      enabled: true
+    };
+    var energyBudgetAlerts = [
+      {time:'2026-03-25 20:30', type:'warn', room:'203', consume:185, budget:200, pct:92.5, message:'日能耗已达92.5%，接近预算'},
+      {time:'2026-03-20 19:00', type:'info', room:'201', consume:170, budget:200, pct:85, message:'日能耗已达85%，触发预警'}
+    ];
+
+    function openEnergyBudgetConfigModal() {
+      var old = document.getElementById('modal-energy-budget');
+      if (old) old.remove();
+      var cfg = energyBudgetConfig;
+      var html = '<div class="modal-overlay" id="modal-energy-budget" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+      html += '<div class="modal" style="width:520px;background:white;border-radius:12px;">';
+      html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+      html += '<div style="font-size:15px;font-weight:700;">⚡ 能耗预算配置与告警监控</div>';
+      html += '<button onclick="closeEnergyBudgetModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+      html += '<div style="padding:20px 24px;">';
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">';
+      html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;">';
+      html += '<input type="checkbox" id="eb-enabled" ' + (cfg.enabled ? 'checked' : '') + ' onchange="energyBudgetConfig.enabled=this.checked" style="accent-color:var(--blue);width:18px;height:18px;">启用预算告警</label></div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
+      html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label" style="font-size:11px;">日预算 (kWh)</label>';
+      html += '<input type="number" class="form-input" id="eb-daily" value="' + cfg.dailyBudget + '" min="1" style="height:38px;font-size:14px;"></div>';
+      html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label" style="font-size:11px;">月预算 (kWh)</label>';
+      html += '<input type="number" class="form-input" id="eb-monthly" value="' + cfg.monthlyBudget + '" min="1" style="height:38px;font-size:14px;"></div></div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
+      html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label" style="font-size:11px;">⚠️ 预警阈值</label>';
+      html += '<div style="display:flex;align-items:center;gap:6px;"><input type="range" id="eb-warn-slider" min="60" max="99" value="' + (cfg.alertThreshold*100) + '" oninput="document.getElementById(\'eb-warn-val\').textContent=this.value+\'%\'" style="flex:1;accent-color:var(--orange);"><span id="eb-warn-val" style="font-size:12px;font-weight:600;color:var(--orange);min-width:36px;text-align:right;">' + (cfg.alertThreshold*100) + '%</span></div></div>';
+      html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label" style="font-size:11px;">🔴 严重告警阈值</label>';
+      html += '<div style="display:flex;align-items:center;gap:6px;"><input type="range" id="eb-crit-slider" min="80" max="100" value="' + (cfg.criticalThreshold*100) + '" oninput="document.getElementById(\'eb-crit-val\').textContent=this.value+\'%\'" style="flex:1;accent-color:var(--red);"><span id="eb-crit-val" style="font-size:12px;font-weight:600;color:var(--red);min-width:36px;text-align:right;">' + (cfg.criticalThreshold*100) + '%</span></div></div></div>';
+      // 当前实时状态
+      var todayKwh = 152.3;
+      var dailyPct = todayKwh / cfg.dailyBudget;
+      var dailyColor = dailyPct >= cfg.criticalThreshold ? 'var(--red)' : dailyPct >= cfg.alertThreshold ? 'var(--orange)' : 'var(--green)';
+      html += '<div style="padding:14px;background:var(--bg);border-radius:8px;margin-bottom:16px;">';
+      html += '<div style="font-size:12px;font-weight:600;margin-bottom:10px;">📊 今日实时能耗</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+      html += '<div style="flex:1;height:12px;background:var(--border);border-radius:6px;overflow:hidden;">';
+      html += '<div style="height:100%;width:' + Math.min(dailyPct*100, 100) + '%;background:' + dailyColor + ';border-radius:6px;transition:width 0.5s;"></div></div>';
+      html += '<span style="font-size:12px;font-weight:700;color:' + dailyColor + ';min-width:50px;text-align:right;">' + todayKwh.toFixed(1) + '/' + cfg.dailyBudget + ' kWh</span></div>';
+      html += '<div style="font-size:11px;color:var(--text-muted);">已达预算的 <b style="color:' + dailyColor + ';">' + Math.round(dailyPct*100) + '%</b>，' + (dailyPct >= cfg.alertThreshold ? '<span style="color:var(--orange);">⚠️ 接近预算</span>' : '✅ 正常') + '</div></div>';
+      // 告警历史
+      html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📋 告警历史</div>';
+      html += '<div style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">';
+      if (energyBudgetAlerts.length === 0) {
+        html += '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">暂无告警记录</div>';
+      } else {
+        energyBudgetAlerts.forEach(function(a) {
+          var rowBg = a.type === 'warn' ? 'var(--orange-bg)' : 'var(--blue-bg)';
+          var rowBorder = a.type === 'warn' ? 'var(--orange)' : 'var(--blue)';
+          html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);background:' + rowBg + ';border-left:3px solid ' + rowBorder + ';">';
+          html += '<div style="font-size:14px;">' + (a.type === 'warn' ? '⚠️' : '💡') + '</div>';
+          html += '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + a.message + '</div>';
+          html += '<div style="font-size:11px;color:var(--text-muted);">' + a.time + ' · 房间' + a.room + ' · ' + a.consume + '/' + a.budget + 'kWh</div></div>';
+          html += '<div style="font-size:12px;font-weight:700;color:' + (a.pct >= 90 ? 'var(--red)' : 'var(--orange)') + ';">' + a.pct + '%</div></div>';
+        });
+      }
+      html += '</div>';
+      html += '</div>';
+      html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+      html += '<button class="modal-btn secondary" onclick="closeEnergyBudgetModal()">取消</button>';
+      html += '<button class="modal-btn primary" onclick="saveEnergyBudgetConfig()" style="background:var(--blue);border-color:var(--blue);">💾 保存配置</button></div>';
+      html += '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeEnergyBudgetModal() { var m = document.getElementById('modal-energy-budget'); if (m) m.remove(); }
+    function saveEnergyBudgetConfig() {
+      energyBudgetConfig.dailyBudget = parseInt(document.getElementById('eb-daily').value) || 200;
+      energyBudgetConfig.monthlyBudget = parseInt(document.getElementById('eb-monthly').value) || 5000;
+      var warnVal = parseInt(document.getElementById('eb-warn-val').textContent);
+      var critVal = parseInt(document.getElementById('eb-crit-val').textContent);
+      energyBudgetConfig.alertThreshold = warnVal / 100;
+      energyBudgetConfig.criticalThreshold = critVal / 100;
+      closeEnergyBudgetModal();
+      showToast('✅ 预算配置已保存，日预算' + energyBudgetConfig.dailyBudget + 'kWh，月预算' + energyBudgetConfig.monthlyBudget + 'kWh', 'success');
     }
     </script>
 
@@ -5603,6 +6154,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <button class="action-btn" onclick="exportEnergyData()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出能耗报表</button>
         <!-- 【改进5】分时电价配置入口 -->
         <button class="action-btn small" onclick="openEnergyTouConfigModal()" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⏰ 分时电价</button>
+        <!-- 【改进5】能耗预算配置入口 -->
+        <button class="action-btn small" onclick="openEnergyBudgetConfigModal()" style="padding:4px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">💰 预算配置</button>
         <div style="margin-left:auto;font-size:12px;color:var(--text-muted);">数据更新：<span id="energy-last-update" style="color:var(--blue);">--</span></div>
       </div>
       <div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
@@ -6592,9 +7145,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       <div class="card">
         <div class="card-header">
           <div class="card-title">👥 会员列表</div>
-          <button class="action-btn" onclick="openAddMemberModal()" style="padding:4px 12px;">+ 新增会员</button>
-          <!-- 【改进4】客户档案/偏好管理入口 -->
-          <button class="action-btn small" onclick="openGuestPreferenceModal('张三')" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">👤 客户档案</button>
+          <div style="display:flex;gap:6px;">
+            <button class="action-btn" onclick="openAddMemberModal()" style="padding:4px 12px;">+ 新增会员</button>
+            <!-- 【改进4】客户档案/偏好管理入口 -->
+            <button class="action-btn small" onclick="openGuestPreferenceModal('张三')" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">👤 客户档案</button>
+            <!-- 【改进v3-3】会员消费充值记录Tab切换 -->
+            <button class="action-btn small" onclick="openMemberTransactionHistory()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">💰 消费记录</button>
+          </div>
         </div>
         <div class="card-header" style="border-top:1px solid var(--border);padding-top:12px;">
           <div class="card-tabs">
@@ -12755,6 +13312,60 @@ function showPage(name) {
   }
 }
 
+// ======= 【改进v3-5】全局键盘快捷键（提升操作效率） =======
+document.addEventListener('keydown', function(e) {
+  // 跳过输入框/文本域中的按键
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  // Ctrl/Cmd + 数字键：快速切换页面
+  if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
+    var pageMap = { '1': 'home', '2': 'device', '3': 'workorder', '4': 'member', '5': 'staff', '6': 'floor', '7': 'keypad', '8': 'settlement', '9': 'config' };
+    var target = pageMap[e.key];
+    if (target) { showPage(target); showToast('已切换至：' + (pageMap[e.key] === 'home' ? '首页' : target), 'info'); }
+    e.preventDefault();
+  }
+  // ESC：关闭当前弹窗
+  if (e.key === 'Escape') {
+    var modals = document.querySelectorAll('.modal-overlay:not(.hidden)');
+    if (modals.length > 0) {
+      modals[modals.length - 1].querySelector('.modal-close, [onclick*="closeModal"]') && modals[modals.length - 1].querySelector('.modal-close, [onclick*="closeModal"]').click();
+    }
+  }
+  // G键：打开全局搜索（焦点到搜索框）
+  if (e.key === 'g' || e.key === 'G') {
+    var searchInput = document.getElementById('global-search-input');
+    if (searchInput) { searchInput.focus(); searchInput.select(); showToast('请输入搜索内容', 'info'); }
+    e.preventDefault();
+  }
+  // H键：回到首页
+  if (e.key === 'h' || e.key === 'H') {
+    showPage('home');
+    showToast('已切换至首页', 'info');
+    e.preventDefault();
+  }
+  // D键：快速新建服务工单
+  if (e.key === 'd' || e.key === 'D') {
+    showPage('workorder');
+    setTimeout(function() { openCreateWorkorderModal(); }, 100);
+    showToast('创建服务工单', 'info');
+    e.preventDefault();
+  }
+  // 快捷键提示浮层
+  if (e.key === '?' && e.shiftKey) {
+    var existing = document.getElementById('kbd-shortcut-panel');
+    if (existing) { existing.remove(); return; }
+    var html = '<div id="kbd-shortcut-panel" style="position:fixed;bottom:20px;right:20px;width:280px;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:99999;padding:16px;font-size:12px;">' +
+      '<div style="font-weight:600;margin-bottom:10px;font-size:13px;">⌨️ 键盘快捷键</div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">Ctrl+1~9</span><span>快速切换页面</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">G</span><span>全局搜索</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">H</span><span>回到首页</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">D</span><span>新建服务工单</span></div>' +
+      '<div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">ESC</span><span>关闭弹窗</span></div>' +
+      '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);text-align:center;"><button onclick="document.getElementById(\'kbd-shortcut-panel\').remove()" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:11px;">关闭</button></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+    e.preventDefault();
+  }
+});
+
 // ======= 改进3: 房型价格管理（钟点房/半天/全天多档计费） =======
 var currentRoomTypePrice = '';
 
@@ -13054,13 +13665,60 @@ function updateFilterRoomCounts(filter) {
 function filterCheckin(type, el) {
   el.parentElement.querySelectorAll('.card-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
+  var searchText = (document.getElementById('ci-search-input') || {}).value || '';
   document.querySelectorAll('#checkin-records .checkin-record').forEach(rec => {
-    if (type === 'all' || rec.dataset.type === type) {
-      rec.style.display = '';
-    } else {
-      rec.style.display = 'none';
+    var typeMatch = type === 'all' || rec.dataset.type === type;
+    var textMatch = !searchText || rec.textContent.toLowerCase().indexOf(searchText.toLowerCase()) !== -1;
+    rec.style.display = (typeMatch && textMatch) ? '' : 'none';
+  });
+}
+function applyCiSearch() {
+  var activeTab = document.querySelector('#checkin-records') && document.querySelector('#checkin-records').previousElementSibling.querySelector('.card-tab.active');
+  var type = activeTab ? (activeTab.textContent.includes('入住') ? 'in' : activeTab.textContent.includes('退房') ? 'out' : activeTab.textContent.includes('换房') ? 'change' : 'all') : 'all';
+  var searchText = (document.getElementById('ci-search-input') || {}).value || '';
+  document.querySelectorAll('#checkin-records .checkin-record').forEach(rec => {
+    var typeMatch = type === 'all' || rec.dataset.type === type;
+    var textMatch = !searchText || rec.textContent.toLowerCase().indexOf(searchText.toLowerCase()) !== -1;
+    rec.style.display = (typeMatch && textMatch) ? '' : 'none';
+  });
+}
+function applyCiFilter() {
+  var typeFilter = (document.getElementById('ci-type-filter') || {}).value || 'all';
+  applyCiSearch();
+}
+function resetCiFilter() {
+  var si = document.getElementById('ci-search-input');
+  if (si) si.value = '';
+  var tf = document.getElementById('ci-type-filter');
+  if (tf) tf.value = 'all';
+  var df = document.getElementById('ci-date-filter');
+  if (df) df.value = 'all';
+  document.querySelectorAll('#checkin-records .checkin-record').forEach(rec => rec.style.display = '');
+  showToast('筛选条件已重置', 'info');
+}
+function exportCiRecords() {
+  var rows = [['类型','时间','客人','房间','房型','方式']];
+  document.querySelectorAll('#checkin-records .checkin-record').forEach(rec => {
+    if (rec.style.display !== 'none') {
+      var badge = rec.querySelector('.record-badge');
+      var name = rec.querySelector('.name');
+      var meta = rec.querySelector('.meta');
+      rows.push([
+        badge ? badge.textContent.trim() : '',
+        rec.querySelector('.alert-time') ? rec.querySelector('.alert-time').textContent.trim() : '',
+        name ? name.textContent.trim() : '',
+        meta ? meta.textContent.split('·')[0].trim() : '',
+        meta ? (meta.textContent.split('·')[1] || '').trim() : '',
+        meta ? meta.textContent.split('·')[2] || '' : ''
+      ]);
     }
   });
+  var csv = rows.map(r => r.join(',')).join('\n');
+  var blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '入住记录_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('入住记录已导出（' + (rows.length - 1) + '条）', 'success');
 }
 
 // ======= 【改进1】通知中心功能（通知数据+展开/关闭+标记已读+一键清空） =======
@@ -13504,6 +14162,12 @@ function submitCheckin() {
   var phone = document.getElementById('checkin-phone').value;
   if (!name || !phone) {
     showToast('请填写必填项（姓名和手机号）', 'error');
+    return;
+  }
+  // 【改进3】入住前黑名单检测
+  var blocked = checkBlacklistBeforeCheckin(name, phone);
+  if (blocked) {
+    openBlacklistBlockModal(blocked);
     return;
   }
   closeModal('checkin');
@@ -15767,6 +16431,83 @@ function openMemberDetail(idx) {
   document.getElementById('md-level').textContent = levelNames[d.level] || d.level;
   document.getElementById('md-level').style.color = levelColors[d.level] || '';
   openModal('member-detail');
+}
+
+// 【改进v3-3】会员消费充值记录弹窗
+var memberTransactionData = [
+  {id:1, member:'王浩', phone:'138****8888', type:'consume', category:'住宿', amount:298, balance:2850, date:'2026-03-25', desc:'301房间住宿费'},
+  {id:2, member:'王浩', phone:'138****8888', type:'recharge', category:'充值', amount:1000, balance:3148, date:'2026-03-20', desc:'会员充值赠送100积分'},
+  {id:3, member:'王浩', phone:'138****8888', type:'consume', category:'早餐', amount:28, balance:2148, date:'2026-03-22', desc:'双人早餐×2份'},
+  {id:4, member:'王浩', phone:'138****8888', type:'recharge', category:'充值', amount:500, balance:2176, date:'2026-03-18', desc:'会员充值'},
+  {id:5, member:'王浩', phone:'138****8888', type:'consume', category:'加床', amount:80, balance:1676, date:'2026-03-15', desc:'加床费'},
+  {id:6, member:'李娜', phone:'139****6666', type:'recharge', category:'充值', amount:2000, balance:4520, date:'2026-03-15', desc:'金卡升级充值'},
+  {id:7, member:'李娜', phone:'139****6666', type:'consume', category:'住宿', amount:298, balance:2520, date:'2026-03-20', desc:'202房间住宿'},
+  {id:8, member:'张伟', phone:'137****5555', type:'recharge', category:'充值', amount:500, balance:680, date:'2026-03-10', desc:'新会员注册充值'},
+];
+var currentMemberTransFilter = 'all';
+function openMemberTransactionHistory() {
+  var html = '<div class="modal-overlay" id="modal-mth" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:700px;max-height:80vh;display:flex;flex-direction:column;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">💰 会员消费充值记录</div>' +
+    '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">✕</button></div>' +
+    '<div class="modal-body" style="flex:1;overflow-y:auto;padding:12px 16px;">' +
+    '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">' +
+    '<input type="text" id="mth-search" placeholder="🔍 搜索会员姓名" style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;width:180px;" oninput="renderMthList()">' +
+    '<select id="mth-type-filter" onchange="renderMthList()" style="padding:6px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;">' +
+    '<option value="all">全部类型</option><option value="recharge">💰 充值</option><option value="consume">💸 消费</option></select>' +
+    '<select id="mth-member-filter" onchange="renderMthList()" style="padding:6px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;">' +
+    '<option value="all">全部会员</option><option value="王浩">王浩</option><option value="李娜">李娜</option><option value="张伟">张伟</option></select>' +
+    '<button onclick="exportMemberTransactions()" style="padding:6px 12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;">📤 导出</button></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);" id="mth-stat-total">¥14,286</div><div style="font-size:11px;color:var(--text-muted);">累计充值</div></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);" id="mth-stat-consume">¥704</div><div style="font-size:11px;color:var(--text-muted);">累计消费</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);" id="mth-stat-balance">¥13,582</div><div style="font-size:11px;color:var(--text-muted);">账户余额</div></div></div>' +
+    '<table class="table"><thead><tr><th>日期</th><th>会员</th><th>类型</th><th>类别</th><th>金额</th><th>余额</th><th>备注</th></tr></thead>' +
+    '<tbody id="mth-table-body"></tbody></table></div></div></div>';
+  var existing = document.getElementById('modal-mth');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+  renderMthList();
+}
+function renderMthList() {
+  var search = (document.getElementById('mth-search') || {}).value || '';
+  var typeFilter = (document.getElementById('mth-type-filter') || {}).value || 'all';
+  var memberFilter = (document.getElementById('mth-member-filter') || {}).value || 'all';
+  var filtered = memberTransactionData.filter(function(r) {
+    return (search === '' || r.member.indexOf(search) !== -1) &&
+      (typeFilter === 'all' || r.type === typeFilter) &&
+      (memberFilter === 'all' || r.member === memberFilter);
+  });
+  var tbody = document.getElementById('mth-table-body');
+  if (!tbody) return;
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px;">暂无记录</td></tr>';
+    return;
+  }
+  var html = '';
+  filtered.forEach(function(r) {
+    var amountColor = r.type === 'recharge' ? 'var(--green)' : 'var(--orange)';
+    var amountPrefix = r.type === 'recharge' ? '+' : '-';
+    var typeLabel = r.type === 'recharge' ? '<span class="tbadge green">充值</span>' : '<span class="tbadge orange">消费</span>';
+    html += '<tr style="' + (r.type === 'recharge' ? 'background:var(--green-bg);' : '') + '">' +
+      '<td>' + r.date + '</td><td><b>' + r.member + '</b></td><td>' + typeLabel + '</td>' +
+      '<td>' + r.category + '</td><td style="color:' + amountColor + ';font-weight:700;">' + amountPrefix + '¥' + r.amount + '</td>' +
+      '<td>¥' + r.balance + '</td><td style="color:var(--text-muted);font-size:12px;">' + r.desc + '</td></tr>';
+  });
+  tbody.innerHTML = html;
+}
+function exportMemberTransactions() {
+  var rows = [['日期','会员','类型','类别','金额','余额','备注']];
+  memberTransactionData.forEach(function(r) {
+    rows.push([r.date, r.member, r.type === 'recharge' ? '充值' : '消费', r.category, (r.type === 'recharge' ? '+' : '-') + '¥' + r.amount, '¥' + r.balance, r.desc]);
+  });
+  var csv = rows.map(function(r){ return r.join(','); }).join('\n');
+  var blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '会员消费充值记录_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('已导出 ' + rows.length + ' 条记录', 'success');
 }
 
 // ======= 【改进1】会员新增完善化：会员数据+动态添加到列表 =======
@@ -21241,6 +21982,7 @@ function submitBatchAssignWorkorder() {
   showToast('✅ 已成功分配 ' + currentBatchWoIds.length + ' 个工单给 ' + assignee, 'success');
 }
 
+// 【改进v3-4】服务工单批量完成确认弹窗（替代原生confirm，UX更友好）
 function batchCompleteWorkorder() {
   var ids = getSelectedWorkorderIds();
   if (ids.length === 0) { showToast('请先选择要完成的工单', 'error'); return; }
@@ -21249,21 +21991,82 @@ function batchCompleteWorkorder() {
     return row && row.closest('tr').dataset.status !== 'done';
   });
   if (notDone.length === 0) { showToast('所选工单均已完成', 'info'); return; }
-  if (!confirm('确定要完成选中的 ' + notDone.length + ' 个工单吗？')) return;
+  // 构建批量完成确认弹窗
+  var woNames = notDone.slice(0, 3).map(function(id) {
+    var row = document.querySelector('[data-wo-id="' + id + '"]');
+    return row ? row.closest('tr').querySelector('td:nth-child(3)') ? row.closest('tr').querySelector('td:nth-child(3)').textContent.trim() : id : id;
+  }).join('、');
+  if (notDone.length > 3) woNames += ' 等';
+  var html = '<div class="modal-overlay" id="modal-batch-complete-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:440px;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">✅ 批量完成工单确认</div>' +
+    '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="text-align:center;margin-bottom:16px;">' +
+    '<div style="width:60px;height:60px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:30px;">✅</div>' +
+    '<div style="font-size:15px;font-weight:600;margin-bottom:6px;">确认完成以下 <b style="color:var(--green);">' + notDone.length + '</b> 个工单？</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);max-height:80px;overflow-y:auto;text-align:left;background:var(--bg);border-radius:8px;padding:8px 12px;margin-top:8px;">' + woNames + '</div></div>' +
+    '<div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);margin-bottom:12px;">' +
+    '💡 工单完成后将自动计算处理时长，并可对客户发送满意度评价邀请</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+    '<input type="checkbox" id="bcc-send-survey" checked style="accent-color:var(--blue);width:16px;height:16px;">' +
+    '<label for="bcc-send-survey" style="font-size:12px;cursor:pointer;">发送满意度评价邀请短信</label></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;">' +
+    '<input type="checkbox" id="bcc-add-record" checked style="accent-color:var(--blue);width:16px;height:16px;">' +
+    '<label for="bcc-add-record" style="font-size:12px;cursor:pointer;">记录完成备注</label></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmBatchCompleteWorkorder(' + notDone.length + ')" style="background:var(--green);border-color:var(--green);">✅ 确认完成</button></div></div></div>';
+  var existing = document.getElementById('modal-batch-complete-confirm');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function confirmBatchCompleteWorkorder(count) {
+  var sendSurvey = document.getElementById('bcc-send-survey') && document.getElementById('bcc-send-survey').checked;
+  var addRecord = document.getElementById('bcc-add-record') && document.getElementById('bcc-add-record').checked;
+  document.getElementById('modal-batch-complete-confirm').remove();
+  var ids = getSelectedWorkorderIds();
   var now = new Date();
   var timeStr = String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-  notDone.forEach(function(woId) {
+  ids.forEach(function(woId) {
     var row = document.querySelector('[data-wo-id="' + woId + '"]');
     if (row) {
       var tr = row.closest('tr');
-      tr.cells[6].innerHTML = '<span class="tbadge green">已完成</span>';
-      tr.dataset.status = 'done';
-      var completeTimeCell = tr.cells[9];
-      if (completeTimeCell) completeTimeCell.innerHTML = '<span style="font-size:11px;color:var(--green);">' + timeStr + '</span>';
+      var statusCell = tr.cells[6];
+      if (statusCell) { statusCell.innerHTML = '<span class="tbadge green">✅ 已完成</span>'; tr.dataset.status = 'done'; }
     }
   });
+  if (sendSurvey) showToast('已将满意度评价链接发送至客户手机', 'info');
+  if (addRecord) showToast('已记录完成备注（处理时长已自动计算）', 'success');
+  showToast('✅ 批量完成 ' + count + ' 个工单成功！', 'success');
   clearWorkorderSelection();
-  showToast('✅ 已批量完成 ' + notDone.length + ' 个工单', 'success');
+}
+
+// 【改进v3-4】工单超时自动升级功能（超时后自动标红+通知上级）
+var woEscalationRules = { urgent: 30, high: 60, normal: 120, low: 240 }; // minutes
+function checkWoEscalation() {
+  var now = new Date();
+  var escalated = 0;
+  document.querySelectorAll('#wo-table-body tr[data-status="pending"],#wo-table-body tr[data-status="processing"]').forEach(function(tr) {
+    var timeCell = tr.querySelector('td:nth-child(8)');
+    if (!timeCell) return;
+    var created = new Date(tr.dataset.created || now);
+    var mins = (now - created) / 60000;
+    var priority = tr.dataset.priority || 'normal';
+    var threshold = woEscalationRules[priority] || 120;
+    if (mins > threshold) {
+      tr.style.background = 'var(--red-bg)';
+      var badge = tr.querySelector('.tbadge');
+      if (badge && !badge.textContent.includes('⏰')) badge.textContent = '⏰ ' + badge.textContent;
+      escalated++;
+    }
+  });
+  var overdueBadge = document.getElementById('wo-stat-overdue');
+  if (overdueBadge) overdueBadge.textContent = escalated;
+}
+setInterval(checkWoEscalation, 30000); // 每30秒检查一次超时
+checkWoEscalation();
 }
 
 function clearWorkorderSelection() {
@@ -34649,6 +35452,682 @@ function submitHandoverSign() {
   addOpLog('config', '赵飞', '交接班完成，当班小结已归档', '');
 }
 function viewHandoverDetail(date) { alert('查看 ' + date + ' 交接班详细记录'); }
+
+
+<!-- ===== v3 ITERATION 5 FUNCTIONAL IMPROVEMENTS ===== -->
+
+<!-- 【改进v3-1】退房结算收据打印预览弹窗（完整打印收据预览+直接打印） -->
+<div class="modal-overlay hidden" id="modal-receipt-print-preview">
+  <div class="modal" style="width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">🖨️ 收据打印预览</div>
+      <button class="modal-close" onclick="closeModal('receipt-print-preview')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <!-- 打印预览区（模拟80mm热敏小票） -->
+      <div id="receipt-print-area" style="width:280px;margin:16px auto;padding:16px 12px;background:white;border:1px solid var(--border);font-family:monospace;font-size:11px;color:#333;line-height:1.6;">
+        <div style="text-align:center;border-bottom:1px dashed #999;padding-bottom:8px;margin-bottom:8px;">
+          <div style="font-size:14px;font-weight:700;">领锁物联 · 智慧酒店</div>
+          <div style="font-size:10px;color:#666;margin-top:2px;">LINGSUO SMART HOTEL</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px;">
+          <span>单号：</span><span id="rpp-id">--</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px;">
+          <span>日期：</span><span id="rpp-date">--</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px;">
+          <span>房间：</span><span id="rpp-room">--</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px;">
+          <span>姓名：</span><span id="rpp-name">--</span>
+        </div>
+        <div style="border-top:1px dashed #999;border-bottom:1px dashed #999;padding:6px 0;margin:6px 0;">
+          <div style="display:flex;justify-content:space-between;font-size:10px;"><span>入住：</span><span id="rpp-checkin">--</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;"><span>退房：</span><span id="rpp-checkout">--</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;"><span>晚数：</span><span id="rpp-nights">--</span></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px;">
+          <span>房费：</span><span id="rpp-roomfee">¥0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px;">
+          <span>附加消费：</span><span id="rpp-extras">¥0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;border-top:1px solid #333;padding-top:4px;margin-top:4px;">
+          <span>合计：</span><span id="rpp-total">¥0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:green;margin-bottom:2px;">
+          <span>押金抵扣：</span><span id="rpp-deposit">-¥0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;border-top:1px dashed #333;padding-top:6px;margin-top:4px;">
+          <span>实收：</span><span id="rpp-paid" style="color:red;">¥0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px;">
+          <span>支付方式：</span><span id="rpp-paymethod">--</span>
+        </div>
+        <div style="text-align:center;padding-top:8px;margin-top:6px;border-top:1px dashed #999;font-size:9px;color:#666;">
+          <div>感谢入住，欢迎再次光临！</div>
+          <div>服务热线：<span id="rpp-phone">010-88889999</span></div>
+        </div>
+      </div>
+      <!-- 打印设置 -->
+      <div style="padding:0 16px 16px;">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+          <label style="font-size:12px;white-space:nowrap;">纸张宽度：</label>
+          <select class="form-select" id="rpp-paper-width" style="padding:5px 8px;font-size:12px;">
+            <option value="58">58mm（热敏小票）</option>
+            <option value="80" selected>80mm（宽幅）</option>
+            <option value="a4">A4 纸</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="action-btn" onclick="printReceiptDirect()" style="flex:1;background:var(--blue);color:white;border:none;padding:8px;">🖨️ 直接打印</button>
+          <button class="action-btn" onclick="downloadReceiptPDF()" style="flex:1;background:var(--green-bg);color:var(--green);border-color:var(--green);padding:8px;">📄 下载PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 【改进v3-1】退房收据打印预览相关函数
+function openReceiptPrintPreview(idx) {
+  var s = settlementData[idx];
+  if (!s) return;
+  var payMethodLabels = {wechat:'微信支付',alipay:'支付宝',cash:'现金',card:'银行卡'};
+  document.getElementById('rpp-id').textContent = s.id || 'CK-' + Date.now();
+  document.getElementById('rpp-date').textContent = new Date().toLocaleString('zh-CN');
+  document.getElementById('rpp-room').textContent = s.room;
+  document.getElementById('rpp-name').textContent = s.name;
+  document.getElementById('rpp-checkin').textContent = s.checkin || '--';
+  document.getElementById('rpp-checkout').textContent = s.checkout || new Date().toLocaleDateString('zh-CN');
+  document.getElementById('rpp-nights').textContent = (s.nights || 1) + '晚';
+  document.getElementById('rpp-roomfee').textContent = '¥' + (s.roomfee || 0);
+  document.getElementById('rpp-extras').textContent = '¥' + (s.extras || 0);
+  var total = (s.roomfee || 0) + (s.extras || 0);
+  document.getElementById('rpp-total').textContent = '¥' + total;
+  document.getElementById('rpp-deposit').textContent = '-¥' + (s.deposit || 0);
+  document.getElementById('rpp-paid').textContent = '¥' + Math.max(0, total - (s.deposit || 0));
+  document.getElementById('rpp-paymethod').textContent = payMethodLabels[s.payMethod] || s.payMethod || '--';
+  document.getElementById('rpp-phone').textContent = '010-88889999';
+  openModal('receipt-print-preview');
+}
+
+function printReceiptDirect() {
+  var printArea = document.getElementById('receipt-print-area');
+  var newWin = window.open('', '_blank', 'width=350,height=600');
+  newWin.document.write('<html><head><title>收据打印</title><style>body{margin:0;padding:20px;font-family:monospace;font-size:12px;}@media print{body{margin:0;padding:0;}</style></head><body>');
+  newWin.document.write(printArea.innerHTML);
+  newWin.document.write('</body></html>');
+  newWin.document.close();
+  newWin.print();
+  showToast('打印指令已发送！', 'success');
+}
+
+function downloadReceiptPDF() {
+  showToast('PDF导出功能需要后端支持，当前已复制收据内容到剪贴板', 'info');
+  var text = '领锁物联 · 智慧酒店
+单号：' + document.getElementById('rpp-id').textContent + 
+    '
+房间：' + document.getElementById('rpp-room').textContent +
+    '
+姓名：' + document.getElementById('rpp-name').textContent +
+    '
+实收：' + document.getElementById('rpp-paid').textContent;
+  try { navigator.clipboard.writeText(text); } catch(e) {}
+}
+</script>
+
+<!-- 【改进v3-2】设备固件批量升级弹窗（选择设备+选择固件版本+升级进度+结果报告） -->
+<div class="modal-overlay hidden" id="modal-firmware-upgrade">
+  <div class="modal" style="width:600px;max-height:90vh;overflow-y:auto;">
+    <div class="modal-header">
+      <div class="modal-title">🔧 设备固件批量升级</div>
+      <button class="modal-close" onclick="closeModal('firmware-upgrade')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Step 1: 选择设备 -->
+      <div id="fu-step1">
+        <div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--orange);">
+          ⚠️ 固件升级将导致设备短暂离线，请在业务低峰期操作。升级过程中请勿断开设备电源！
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:13px;font-weight:600;">📋 选择要升级的设备（<span id="fu-selected-count">0</span> 台）</div>
+          <div style="display:flex;gap:8px;">
+            <button class="action-btn small" onclick="selectAllFirmwareDevices()" style="padding:3px 10px;font-size:11px;">全选</button>
+            <button class="action-btn small" onclick="clearFirmwareSelection()" style="padding:3px 10px;font-size:11px;">清空</button>
+          </div>
+        </div>
+        <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;" id="fu-device-list">
+          <!-- 动态填充 -->
+        </div>
+        <div style="margin-top:12px;">
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px;">🏭 选择固件版本</div>
+          <select class="form-select" id="fu-firmware-version" style="padding:8px 12px;font-size:13px;width:100%;">
+            <option value="v2.3.1">v2.3.1（最新稳定版）⭐ 推荐</option>
+            <option value="v2.3.0">v2.3.0（上一稳定版）</option>
+            <option value="v2.2.8">v2.2.8（历史版本）</option>
+            <option value="v2.2.5">v2.2.5（历史版本）</option>
+          </select>
+          <div style="margin-top:8px;padding:8px 12px;background:var(--blue-bg);border-radius:6px;font-size:11px;color:var(--blue);line-height:1.6;">
+            📌 当前设备版本：v2.2.8 → 升级至：v2.3.1 | 固件大小：2.4MB | 预计升级时间：3-5分钟/台
+          </div>
+        </div>
+      </div>
+      <!-- Step 2: 升级进度 -->
+      <div id="fu-step2" style="display:none;">
+        <div style="text-align:center;padding:20px 0;">
+          <div style="font-size:48px;margin-bottom:12px;">⚙️</div>
+          <div style="font-size:16px;font-weight:600;margin-bottom:8px;">正在升级设备…</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">当前：<span id="fu-current-device">--</span></div>
+          <div style="max-width:300px;margin:0 auto;height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+            <div id="fu-progress-bar" style="height:100%;background:var(--blue);width:0%;transition:width 0.3s;"></div>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:8px;"><span id="fu-progress-pct">0</span>% — <span id="fu-progress-detail">0/0</span> 台已完成</div>
+        </div>
+        <div style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:11px;" id="fu-log">
+          <!-- 动态填充日志 -->
+        </div>
+      </div>
+      <!-- Step 3: 升级结果 -->
+      <div id="fu-step3" style="display:none;">
+        <div style="text-align:center;padding:20px 0;">
+          <div style="font-size:56px;margin-bottom:12px;">✅</div>
+          <div style="font-size:16px;font-weight:600;margin-bottom:8px;">升级完成！</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;max-width:320px;margin:0 auto;">
+            <div style="text-align:center;padding:10px;background:var(--green-bg);border-radius:8px;">
+              <div style="font-size:24px;font-weight:700;color:var(--green);" id="fu-success-count">0</div>
+              <div style="font-size:11px;color:var(--text-muted);">成功</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:var(--red-bg);border-radius:8px;">
+              <div style="font-size:24px;font-weight:700;color:var(--red);" id="fu-fail-count">0</div>
+              <div style="font-size:11px;color:var(--text-muted);">失败</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:var(--orange-bg);border-radius:8px;">
+              <div style="font-size:24px;font-weight:700;color:var(--orange);" id="fu-skip-count">0</div>
+              <div style="font-size:11px;color:var(--text-muted);">跳过</div>
+            </div>
+          </div>
+        </div>
+        <div style="max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:11px;" id="fu-result-list">
+          <!-- 动态填充失败设备列表 -->
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" id="fu-btn-cancel" onclick="closeModal('firmware-upgrade')">取消</button>
+      <button class="modal-btn primary" id="fu-btn-start" onclick="startFirmwareUpgrade()">🚀 开始升级</button>
+      <button class="modal-btn secondary" id="fu-btn-close" onclick="closeModal('firmware-upgrade')" style="display:none;">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 【改进v3-2】设备固件批量升级相关函数
+var firmwareSelectedDevices = [];
+var firmwareUpgradeCount = 0;
+var firmwareUpgradeTotal = 0;
+
+function openFirmwareUpgradeModal() {
+  firmwareSelectedDevices = [];
+  document.getElementById('fu-selected-count').textContent = '0';
+  document.getElementById('fu-step1').style.display = '';
+  document.getElementById('fu-step2').style.display = 'none';
+  document.getElementById('fu-step3').style.display = 'none';
+  document.getElementById('fu-btn-start').style.display = '';
+  document.getElementById('fu-btn-cancel').style.display = '';
+  document.getElementById('fu-btn-close').style.display = 'none';
+  
+  // Render device list
+  var deviceNames = ['301-亲子间','302-亲子间','303-亲子间','304-亲子间','305-亲子间','201-大床房','202-大床房','203-大床房','101-标准间','102-标准间','103-标准间','104-标准间'];
+  var versions = ['v2.2.8','v2.3.0','v2.2.8','v2.2.5','v2.3.0','v2.2.8','v2.2.8','v2.3.0','v2.2.5','v2.2.8','v2.2.8','v2.3.0'];
+  var listHtml = '';
+  for (var i = 0; i < deviceNames.length; i++) {
+    var needsUpgrade = versions[i] !== 'v2.3.1';
+    listHtml += '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;' + (needsUpgrade ? '' : 'opacity:0.5;') + '">' +
+      '<input type="checkbox" class="fu-device-check" value="' + i + '" ' + (needsUpgrade ? '' : 'disabled') + ' onchange="updateFirmwareCount()" style="accent-color:var(--blue);">' +
+      '<span style="font-weight:600;min-width:70px;">' + deviceNames[i] + '</span>' +
+      '<span style="color:var(--text-muted);font-size:11px;">当前：' + versions[i] + (needsUpgrade ? ' → v2.3.1' : '（已是最新）') + '</span>' +
+      '</label>';
+  }
+  document.getElementById('fu-device-list').innerHTML = listHtml;
+  openModal('firmware-upgrade');
+}
+
+function updateFirmwareCount() {
+  var checks = document.querySelectorAll('.fu-device-check:checked');
+  firmwareSelectedDevices = [];
+  checks.forEach(function(c) { firmwareSelectedDevices.push(c.value); });
+  document.getElementById('fu-selected-count').textContent = firmwareSelectedDevices.length;
+}
+
+function selectAllFirmwareDevices() {
+  document.querySelectorAll('.fu-device-check:not(:disabled)').forEach(function(c) { c.checked = true; });
+  updateFirmwareCount();
+}
+
+function clearFirmwareSelection() {
+  document.querySelectorAll('.fu-device-check').forEach(function(c) { c.checked = false; });
+  updateFirmwareCount();
+}
+
+function startFirmwareUpgrade() {
+  if (firmwareSelectedDevices.length === 0) {
+    showToast('请先选择要升级的设备', 'error');
+    return;
+  }
+  document.getElementById('fu-step1').style.display = 'none';
+  document.getElementById('fu-step2').style.display = '';
+  document.getElementById('fu-btn-start').style.display = 'none';
+  document.getElementById('fu-btn-cancel').style.display = 'none';
+  
+  firmwareUpgradeCount = 0;
+  firmwareUpgradeTotal = firmwareSelectedDevices.length;
+  document.getElementById('fu-progress-pct').textContent = '0';
+  document.getElementById('fu-progress-detail').textContent = '0/' + firmwareUpgradeTotal;
+  document.getElementById('fu-progress-bar').style.width = '0%';
+  document.getElementById('fu-log').innerHTML = '';
+  
+  var deviceNames = ['301-亲子间','302-亲子间','303-亲子间','304-亲子间','305-亲子间','201-大床房','202-大床房','203-大床房','101-标准间','102-标准间','103-标准间','104-标准间'];
+  
+  function upgradeNext() {
+    if (firmwareUpgradeCount >= firmwareUpgradeTotal) {
+      // Done
+      setTimeout(function() {
+        document.getElementById('fu-step2').style.display = 'none';
+        document.getElementById('fu-step3').style.display = '';
+        document.getElementById('fu-btn-close').style.display = '';
+        var success = Math.floor(firmwareUpgradeTotal * 0.9);
+        var fail = firmwareUpgradeTotal - success;
+        document.getElementById('fu-success-count').textContent = success;
+        document.getElementById('fu-fail-count').textContent = fail;
+        document.getElementById('fu-skip-count').textContent = '0';
+        document.getElementById('fu-result-list').innerHTML = fail > 0 ? '<div style="color:var(--red);padding:6px 0;">⚠️ ' + fail + ' 台设备升级失败，请检查网络后重试</div>' : '<div style="color:var(--green);padding:6px 0;">✅ 所有设备升级成功！</div>';
+      }, 500);
+      return;
+    }
+    var idx = firmwareSelectedDevices[firmwareUpgradeCount];
+    document.getElementById('fu-current-device').textContent = deviceNames[idx];
+    document.getElementById('fu-log').innerHTML += '<div style="color:var(--blue);padding:2px 0;">⏳ 正在升级：' + deviceNames[idx] + '…</div>';
+    
+    var pct = Math.round((firmwareUpgradeCount / firmwareUpgradeTotal) * 100);
+    document.getElementById('fu-progress-pct').textContent = pct;
+    document.getElementById('fu-progress-detail').textContent = firmwareUpgradeCount + '/' + firmwareUpgradeTotal;
+    document.getElementById('fu-progress-bar').style.width = pct + '%';
+    
+    firmwareUpgradeCount++;
+    setTimeout(upgradeNext, 1200);
+  }
+  setTimeout(upgradeNext, 500);
+}
+</script>
+
+<!-- 【改进v3-3】夜审报表数据导出弹窗（支持Excel/CSV/PDF多格式导出） -->
+<div class="modal-overlay hidden" id="modal-night-audit-export">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">📤 导出夜审报表</div>
+      <button class="modal-close" onclick="closeModal('night-audit-export')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:12px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">
+        💡 选择导出格式和日期范围，系统将生成完整的夜审经营报告
+      </div>
+      <div class="form-group">
+        <label class="form-label">报表日期</label>
+        <input type="date" class="form-input" id="nae-date" value="2026-03-27" style="padding:8px 12px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">导出格式</label>
+        <select class="form-select" id="nae-format" style="padding:8px 12px;font-size:13px;">
+          <option value="csv">📄 CSV（适合Excel打开）</option>
+          <option value="json">📋 JSON（程序接口用）</option>
+          <option value="txt">📝 文本文件（TXT格式）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">包含内容</label>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--bg);border-radius:8px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="nae-inc-revenue" checked style="accent-color:var(--blue);"> 营收统计
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="nae-inc-room" checked style="accent-color:var(--blue);"> 房态汇总
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="nae-inc-device" checked style="accent-color:var(--blue);"> 设备状态
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="nae-inc-workorder" checked style="accent-color:var(--blue);"> 工单汇总
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="nae-inc-energy" style="accent-color:var(--blue);"> 能耗数据（选勾）
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('night-audit-export')">取消</button>
+      <button class="modal-btn primary" onclick="doNightAuditExport()">📤 导出报表</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 【改进v3-3】夜审报表导出函数
+function openNightAuditExportModal() {
+  openModal('night-audit-export');
+}
+
+function doNightAuditExport() {
+  var date = document.getElementById('nae-date').value;
+  var format = document.getElementById('nae-format').value;
+  var incRevenue = document.getElementById('nae-inc-revenue').checked;
+  var incRoom = document.getElementById('nae-inc-room').checked;
+  var incDevice = document.getElementById('nae-inc-device').checked;
+  var incWorkorder = document.getElementById('nae-inc-workorder').checked;
+  var incEnergy = document.getElementById('nae-inc-energy').checked;
+  
+  var rows = [];
+  if (format === 'csv' || format === 'txt') {
+    rows.push('﻿===== 领锁物联 夜审报表 =====');
+    rows.push('报表日期：' + date);
+    rows.push('生成时间：' + new Date().toLocaleString('zh-CN'));
+    rows.push('');
+    if (incRevenue) {
+      rows.push('【营收统计】');
+      rows.push('项目,金额');
+      rows.push('房费收入,¥1,180');
+      rows.push('其他收入,¥140');
+      rows.push('押金退还,-¥300');
+      rows.push('本班实收,¥1,020');
+      rows.push('');
+    }
+    if (incRoom) {
+      rows.push('【房态汇总】');
+      rows.push('状态,数量');
+      rows.push('入住中,12间');
+      rows.push('空房,8间');
+      rows.push('脏房,3间');
+      rows.push('告警,2间');
+      rows.push('');
+    }
+    if (incDevice) {
+      rows.push('【设备状态】');
+      rows.push('状态,数量');
+      rows.push('在线,11台');
+      rows.push('离线,2台');
+      rows.push('低电量,1台');
+      rows.push('');
+    }
+    if (incWorkorder) {
+      rows.push('【工单汇总】');
+      rows.push('状态,数量');
+      rows.push('待接受,3条');
+      rows.push('处理中,5条');
+      rows.push('已完成,8条');
+      rows.push('');
+    }
+    if (incEnergy) {
+      rows.push('【能耗数据】');
+      rows.push('今日用电,48.2kWh');
+      rows.push('较昨日,+12%');
+    }
+    
+    var content = rows.join('
+');
+    var blob = new Blob([content], {type: format === 'csv' ? 'text/csv;charset=utf-8' : 'text/plain;charset=utf-8'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '夜审报表_' + date + '.' + format;
+    a.click();
+    showToast('夜审报表已导出（' + format.toUpperCase() + '）', 'success');
+  } else {
+    var data = { date: date, generated: new Date().toISOString(), revenue: incRevenue ? { roomFee: 1180, other: 140, deposit: -300, actual: 1020 } : null,
+      roomStatus: incRoom ? { checkedIn: 12, empty: 8, dirty: 3, alert: 2 } : null,
+      devices: incDevice ? { online: 11, offline: 2, lowBattery: 1 } : null,
+      workorders: incWorkorder ? { pending: 3, processing: 5, done: 8 } : null,
+      energy: incEnergy ? { todayKwh: 48.2, changePercent: 12 } : null };
+    var json = JSON.stringify(data, null, 2);
+    var blob = new Blob([json], {type:'application/json'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '夜审报表_' + date + '.json';
+    a.click();
+    showToast('夜审报表已导出（JSON）', 'success');
+  }
+  closeModal('night-audit-export');
+}
+</script>
+
+<!-- 【改进v3-4】清洁任务派发增强弹窗（支持清洁类型+紧急程度+员工指定+备注） -->
+<div class="modal-overlay hidden" id="modal-cleaning-enhanced">
+  <div class="modal" style="width:500px;">
+    <div class="modal-header">
+      <div class="modal-title">🧹 派发清洁任务（增强版）</div>
+      <button class="modal-close" onclick="closeModal('cleaning-enhanced')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">选择房间 <span class="required">*</span></label>
+        <select class="form-select" id="ce-room" style="padding:8px 12px;">
+          <option value="">请选择房间</option>
+          <option value="302">302 - 亲子间（退房清洁）</option>
+          <option value="205">205 - 大床房（退房清洁）</option>
+          <option value="301">301 - 亲子间（例行清洁）</option>
+          <option value="304">304 - 亲子间（深层清洁）</option>
+          <option value="201">201 - 大床房（紧急清洁）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">清洁类型 <span class="required">*</span></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <label class="clean-type-card selected" onclick="selectCleanType(this,'checkout')" style="padding:10px 12px;border:2px solid var(--blue);border-radius:8px;cursor:pointer;text-align:center;background:var(--blue-bg);">
+            <div style="font-size:20px;margin-bottom:4px;">🏠</div>
+            <div style="font-size:12px;font-weight:600;">退房清洁</div>
+            <div style="font-size:10px;color:var(--text-muted);">约25分钟</div>
+          </label>
+          <label class="clean-type-card" onclick="selectCleanType(this,'routine')" style="padding:10px 12px;border:2px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;">
+            <div style="font-size:20px;margin-bottom:4px;">🧼</div>
+            <div style="font-size:12px;font-weight:600;">例行清洁</div>
+            <div style="font-size:10px;color:var(--text-muted);">约15分钟</div>
+          </label>
+          <label class="clean-type-card" onclick="selectCleanType(this,'deep')" style="padding:10px 12px;border:2px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;">
+            <div style="font-size:20px;margin-bottom:4px;">✨</div>
+            <div style="font-size:12px;font-weight:600;">深层清洁</div>
+            <div style="font-size:10px;color:var(--text-muted);">约45分钟</div>
+          </label>
+          <label class="clean-type-card" onclick="selectCleanType(this,'emergency')" style="padding:10px 12px;border:2px solid var(--red);border-radius:8px;cursor:pointer;text-align:center;background:var(--red-bg);">
+            <div style="font-size:20px;margin-bottom:4px;">🚨</div>
+            <div style="font-size:12px;font-weight:600;color:var(--red);">紧急清洁</div>
+            <div style="font-size:10px;color:var(--text-muted);">立即处理</div>
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">紧急程度</label>
+        <select class="form-select" id="ce-priority" style="padding:8px 12px;">
+          <option value="normal">🟡 普通（30分钟内）</option>
+          <option value="high">🟠 高优先级（15分钟内）</option>
+          <option value="urgent">🔴 紧急（立即处理）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">派给员工</label>
+        <select class="form-select" id="ce-staff" style="padding:8px 12px;">
+          <option value="">系统自动分配</option>
+          <option value="郑强">郑强（清洁人员）</option>
+          <option value="吴倩">吴倩（客房主管）</option>
+          <option value="王丽">王丽（清洁人员）</option>
+          <option value="李敏">李敏（清洁人员）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">特殊要求</label>
+        <textarea class="form-textarea" id="ce-note" placeholder="如有特殊清洁要求请在此说明…" style="min-height:60px;"></textarea>
+      </div>
+      <div style="padding:10px 12px;background:var(--orange-bg);border-radius:8px;font-size:12px;color:var(--orange);">
+        ⚠️ 紧急清洁将在员工端APP实时推送，请确认房间是否需要优先处理
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('cleaning-enhanced')">取消</button>
+      <button class="modal-btn primary" onclick="submitEnhancedCleaning()">🧹 确认派发</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 【改进v3-4】清洁任务增强派发函数
+var selectedCleanType = 'checkout';
+
+function openCleaningEnhancedModal(room) {
+  if (room) document.getElementById('ce-room').value = room;
+  document.getElementById('ce-priority').selectedIndex = 0;
+  document.getElementById('ce-staff').selectedIndex = 0;
+  document.getElementById('ce-note').value = '';
+  selectedCleanType = 'checkout';
+  document.querySelectorAll('.clean-type-card').forEach(function(c) {
+    c.style.borderColor = 'var(--border)';
+    c.style.background = 'white';
+  });
+  document.querySelector('.clean-type-card').style.borderColor = 'var(--blue)';
+  document.querySelector('.clean-type-card').style.background = 'var(--blue-bg)';
+  openModal('cleaning-enhanced');
+}
+
+function selectCleanType(el, type) {
+  selectedCleanType = type;
+  document.querySelectorAll('.clean-type-card').forEach(function(c) {
+    c.style.borderColor = 'var(--border)';
+    c.style.background = 'white';
+  });
+  el.style.borderColor = type === 'emergency' ? 'var(--red)' : 'var(--blue)';
+  el.style.background = type === 'emergency' ? 'var(--red-bg)' : 'var(--blue-bg)';
+}
+
+function submitEnhancedCleaning() {
+  var room = document.getElementById('ce-room').value;
+  if (!room) {
+    showToast('请选择房间', 'error');
+    return;
+  }
+  var typeLabels = {checkout:'退房清洁', routine:'例行清洁', deep:'深层清洁', emergency:'紧急清洁'};
+  var priority = document.getElementById('ce-priority').value;
+  var staff = document.getElementById('ce-staff').value;
+  var note = document.getElementById('ce-note').value;
+  var msg = '房间 ' + room + ' - ' + typeLabels[selectedCleanType];
+  if (staff) msg += '，派给：' + staff;
+  if (priority !== 'normal') msg += '，优先级：' + (priority === 'high' ? '高' : '紧急');
+  showToast('🧹 清洁任务已派发：' + msg, 'success');
+  closeModal('cleaning-enhanced');
+}
+</script>
+
+<!-- 【改进v3-5】会员资料完善表单弹窗（新增身份证/地址/生日/备注字段） -->
+<div class="modal-overlay hidden" id="modal-member-profile">
+  <div class="modal" style="width:540px;">
+    <div class="modal-header">
+      <div class="modal-title">👤 会员资料完善</div>
+      <button class="modal-close" onclick="closeModal('member-profile')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- 会员基本信息卡片 -->
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;">
+        <div style="width:48px;height:48px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:22px;">👤</div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;" id="mp-name">张三</div>
+          <div style="font-size:12px;color:var(--text-muted);">手机：<span id="mp-phone">138****8888</span> · 卡号：<span id="mp-card">VIP-20260301</span></div>
+          <div style="font-size:11px;margin-top:2px;"><span class="tbadge" style="background:var(--purple-bg);color:var(--purple);font-size:10px;padding:2px 6px;" id="mp-level">银卡会员</span></div>
+        </div>
+      </div>
+      <!-- 基本信息 -->
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--blue);">📋 基本信息</div>
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="form-group">
+          <label class="form-label">姓名</label>
+          <input type="text" class="form-input" id="mp-input-name" placeholder="请输入姓名" style="padding:8px 12px;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">手机号</label>
+          <input type="tel" class="form-input" id="mp-input-phone" placeholder="请输入手机号" style="padding:8px 12px;">
+        </div>
+      </div>
+      <!-- 详细信息 -->
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;margin-top:16px;color:var(--purple);">📝 详细信息（选填）</div>
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="form-group">
+          <label class="form-label">身份证号</label>
+          <input type="text" class="form-input" id="mp-input-idcard" placeholder="选填，18位身份证号" maxlength="18" style="padding:8px 12px;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">生日</label>
+          <input type="date" class="form-input" id="mp-input-birthday" style="padding:8px 12px;">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label class="form-label">地址</label>
+        <input type="text" class="form-input" id="mp-input-address" placeholder="选填，详细收货/联系地址" style="padding:8px 12px;">
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label class="form-label">邮箱</label>
+        <input type="email" class="form-input" id="mp-input-email" placeholder="选填，电子邮箱" style="padding:8px 12px;">
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="mp-input-note" placeholder="会员特殊偏好、过敏信息、VIP等级说明等…" style="min-height:60px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('member-profile')">取消</button>
+      <button class="modal-btn primary" onclick="saveMemberProfile()">💾 保存资料</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 【改进v3-5】会员资料完善函数
+var currentMemberProfileIdx = null;
+
+function openMemberProfileModal(idx) {
+  currentMemberProfileIdx = idx;
+  var member = memberListData[idx] || {};
+  document.getElementById('mp-name').textContent = member.name || '--';
+  document.getElementById('mp-phone').textContent = member.phone || '--';
+  document.getElementById('mp-card').textContent = member.card || 'VIP-' + Date.now();
+  document.getElementById('mp-level').textContent = member.level || '普通会员';
+  document.getElementById('mp-input-name').value = member.name || '';
+  document.getElementById('mp-input-phone').value = member.phone || '';
+  document.getElementById('mp-input-idcard').value = member.idcard || '';
+  document.getElementById('mp-input-birthday').value = member.birthday || '';
+  document.getElementById('mp-input-address').value = member.address || '';
+  document.getElementById('mp-input-email').value = member.email || '';
+  document.getElementById('mp-input-note').value = member.note || '';
+  openModal('member-profile');
+}
+
+function saveMemberProfile() {
+  var name = document.getElementById('mp-input-name').value.trim();
+  var phone = document.getElementById('mp-input-phone').value.trim();
+  if (!name) {
+    showToast('姓名不能为空', 'error');
+    return;
+  }
+  if (currentMemberProfileIdx !== null) {
+    memberListData[currentMemberProfileIdx].name = name;
+    memberListData[currentMemberProfileIdx].phone = phone;
+    memberListData[currentMemberProfileIdx].idcard = document.getElementById('mp-input-idcard').value;
+    memberListData[currentMemberProfileIdx].birthday = document.getElementById('mp-input-birthday').value;
+    memberListData[currentMemberProfileIdx].address = document.getElementById('mp-input-address').value;
+    memberListData[currentMemberProfileIdx].email = document.getElementById('mp-input-email').value;
+    memberListData[currentMemberProfileIdx].note = document.getElementById('mp-input-note').value;
+    renderMemberTable();
+  }
+  showToast('会员资料已保存！', 'success');
+  closeModal('member-profile');
+}
+</script>
+
 </script>
 </body>
 </html>
