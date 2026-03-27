@@ -3851,9 +3851,12 @@ function saveEscalationEditorRules() {
           <button class="modal-close" onclick="closeModal('door-unlock-history')">✕</button>
         </div>
         <div class="modal-body" style="padding:0;">
-          <div style="padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span style="font-size:12px;color:var(--text-light);">筛选：</span>
-            <select class="form-select" id="duh-method-filter" style="width:130px;padding:5px 8px;font-size:12px;" onchange="filterDoorUnlockHistory()">
+            <input type="date" id="duh-date-from" class="form-input" style="width:110px;padding:4px 6px;font-size:11px;" onchange="renderDoorUnlockHistory()" title="开始日期">
+            <span style="font-size:11px;color:var(--text-muted);">至</span>
+            <input type="date" id="duh-date-to" class="form-input" style="width:110px;padding:4px 6px;font-size:11px;" onchange="renderDoorUnlockHistory()" title="结束日期">
+            <select class="form-select" id="duh-method-filter" style="width:120px;padding:4px 6px;font-size:11px;" onchange="renderDoorUnlockHistory()">
               <option value="all">全部方式</option>
               <option value="手机开锁">📱 手机开锁</option>
               <option value="客户卡">💳 客户卡</option>
@@ -3861,12 +3864,12 @@ function saveEscalationEditorRules() {
               <option value="身份证">🪪 身份证</option>
               <option value="应急卡">🔑 应急卡</option>
             </select>
-            <select class="form-select" id="duh-result-filter" style="width:110px;padding:5px 8px;font-size:12px;" onchange="filterDoorUnlockHistory()">
+            <select class="form-select" id="duh-result-filter" style="width:100px;padding:4px 6px;font-size:11px;" onchange="renderDoorUnlockHistory()">
               <option value="all">全部结果</option>
               <option value="success">✅ 成功</option>
               <option value="fail">❌ 失败</option>
             </select>
-            <span style="margin-left:auto;font-size:11px;color:var(--text-muted);" id="duh-count-label">共 5 条记录</span>
+            <span style="margin-left:auto;font-size:11px;color:var(--text-muted);" id="duh-count-label">共 0 条记录</span>
           </div>
           <div style="max-height:400px;overflow-y:auto;" id="duh-records-list">
             <!-- 动态填充 -->
@@ -4049,11 +4052,17 @@ function saveEscalationEditorRules() {
       var floorsHtml = '';
       for (var i = 1; i <= b.floors; i++) {
         var roomCount = i === 3 ? 6 : i === 2 ? 5 : 5;
-        floorsHtml += '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">' +
+        var floorOnline = roomCount - 1;
+        var floorOffline = 0;
+        // 【改进-F4】楼层列表增加快速设备操作按钮
+        floorsHtml += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">' +
           '<div style="width:36px;height:36px;background:var(--blue-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">' + i + '层</div>' +
           '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">' + i + '层</div><div style="font-size:11px;color:var(--text-muted);">' + roomCount + '间房间</div></div>' +
-          '<div style="display:flex;gap:6px;"><span style="font-size:11px;color:var(--green);background:var(--green-bg);padding:2px 8px;border-radius:4px;">🟢 ' + (roomCount-1) + '</span><span style="font-size:11px;color:var(--red);background:var(--red-bg);padding:2px 8px;border-radius:4px;">🔴 0</span></div>' +
-          '</div>';
+          '<div style="display:flex;gap:4px;"><span style="font-size:11px;color:var(--green);background:var(--green-bg);padding:2px 8px;border-radius:4px;">🟢 ' + floorOnline + '</span><span style="font-size:11px;color:var(--red);background:var(--red-bg);padding:2px 8px;border-radius:4px;">🔴 ' + floorOffline + '</span></div>' +
+          '<div style="display:flex;gap:4px;">' +
+          '<button class="action-btn small" onclick="openFloorDevicePanel(' + i + ')" style="padding:3px 7px;font-size:10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📶 设备</button>' +
+          '<button class="action-btn small" onclick="openFloorQuickAction(' + i + ')" style="padding:3px 7px;font-size:10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">⚡ 批量</button>' +
+          '</div></div>';
       }
       floorList.innerHTML = floorsHtml;
       // 设备列表
@@ -4084,6 +4093,88 @@ function saveEscalationEditorRules() {
     function editBuildingFromDetail() {
       closeModal('building-detail');
       openEditBuildingModal(currentBldDetailIdx);
+    }
+
+    // 【改进-F4】楼层设备快速操作面板
+    function openFloorDevicePanel(floor) {
+      var bldIdx = currentBldDetailIdx || 0;
+      var bld = buildingDetailData[bldIdx];
+      var bldName = bld ? bld.name : '主楼';
+      var rooms = [];
+      for (var i = 301; i <= 308; i++) { rooms.push({room: String(i), status: Math.random() > 0.2 ? 'online' : 'offline', battery: Math.floor(30 + Math.random() * 60)}); }
+      var html = '<div class="modal-overlay" id="modal-floor-device-panel" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+      html += '<div class="modal" style="width:580px;background:white;border-radius:12px;">';
+      html += '<div style="padding:18px 22px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+      html += '<div><div style="font-size:15px;font-weight:700;">📶 ' + bldName + ' ' + floor + '层 设备状态</div><div style="font-size:11px;color:var(--text-muted);">设备实时监控 · 在线/离线状态</div></div>';
+      html += '<button onclick="closeFloorDevicePanel()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+      html += '<div style="padding:16px 22px;max-height:420px;overflow-y:auto;">';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">';
+      var onlineCount = rooms.filter(function(r){ return r.status === 'online'; }).length;
+      var offlineCount = rooms.filter(function(r){ return r.status === 'offline'; }).length;
+      var lowCount = rooms.filter(function(r){ return r.battery < 30; }).length;
+      html += '<div style="text-align:center;padding:10px;background:var(--green-bg);border-radius:8px;"><div style="font-size:20px;font-weight:700;color:var(--green);">' + onlineCount + '</div><div style="font-size:11px;color:var(--text-muted);">🟢 在线</div></div>';
+      html += '<div style="text-align:center;padding:10px;background:var(--red-bg);border-radius:8px;"><div style="font-size:20px;font-weight:700;color:var(--red);">' + offlineCount + '</div><div style="font-size:11px;color:var(--text-muted);">🔴 离线</div></div>';
+      html += '<div style="text-align:center;padding:10px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:20px;font-weight:700;color:var(--orange);">' + lowCount + '</div><div style="font-size:11px;color:var(--text-muted);">🟡 低电量</div></div></div>';
+      html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">设备列表（' + rooms.length + '台）</div>';
+      html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+      rooms.forEach(function(r) {
+        var bg = r.status === 'online' ? (r.battery < 30 ? 'var(--orange-bg)' : 'var(--green-bg)') : 'var(--red-bg)';
+        var border = r.status === 'online' ? (r.battery < 30 ? 'var(--orange)' : 'var(--green)') : 'var(--red)';
+        var statusLabel = r.status === 'online' ? (r.battery < 30 ? '🟡 ' + r.battery + '%' : '🟢 在线') : '🔴 离线';
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:' + bg + ';border-radius:8px;border:1px solid ' + border + ';">' +
+          '<div style="font-size:13px;font-weight:700;flex:0 0 44px;">' + r.room + '</div>' +
+          '<div style="flex:1;font-size:11px;color:var(--text-muted);">领握LH-807</div>' +
+          '<div style="font-size:12px;font-weight:600;color:' + border + ';">' + statusLabel + '</div>' +
+          '<button class="action-btn small" onclick="openDeviceDiagnosticModal(\'' + r.room + '\',\'领握LH-807\',\'LHW-2024-807-' + r.room + '\')" style="padding:2px 8px;font-size:11px;">诊断</button>' +
+          '<button class="action-btn small" onclick="openDeviceRestartConfirmModal()" style="padding:2px 8px;font-size:11px;">重启</button></div>';
+      });
+      html += '</div></div>';
+      html += '<div style="padding:12px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">';
+      html += '<button class="modal-btn secondary" onclick="closeFloorDevicePanel()">关闭</button>';
+      html += '<button class="modal-btn primary" onclick="showToast(\'📶 ' + floor + '层设备巡检完成，所有设备状态已同步\',\'success\')" style="background:var(--blue);border-color:var(--blue);">🔄 刷新状态</button></div>';
+      html += '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeFloorDevicePanel() { var m = document.getElementById('modal-floor-device-panel'); if (m) m.remove(); }
+
+    // 【改进-F4】楼层批量快速操作弹窗
+    function openFloorQuickAction(floor) {
+      var html = '<div class="modal-overlay" id="modal-floor-quick-action" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+      html += '<div class="modal" style="width:480px;background:white;border-radius:12px;">';
+      html += '<div style="padding:18px 22px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+      html += '<div><div style="font-size:15px;font-weight:700;">⚡ ' + floor + '层 批量操作</div><div style="font-size:11px;color:var(--text-muted);">批量设备控制 · 一次操作全层生效</div></div>';
+      html += '<button onclick="closeFloorQuickAction()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+      html += '<div style="padding:18px 22px;">';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">';
+      html += '<button onclick="doFloorQuickAction(\'restart\',' + floor + ')" style="padding:14px;border:2px solid var(--orange);border-radius:10px;background:var(--orange-bg);cursor:pointer;text-align:center;">';
+      html += '<div style="font-size:24px;margin-bottom:6px;">🔄</div><div style="font-size:13px;font-weight:600;color:var(--orange);">批量重启</div><div style="font-size:11px;color:var(--text-muted);">全层设备计划重启</div></button>';
+      html += '<button onclick="doFloorQuickAction(\'sync\',' + floor + ')" style="padding:14px;border:2px solid var(--blue);border-radius:10px;background:var(--blue-bg);cursor:pointer;text-align:center;">';
+      html += '<div style="font-size:24px;margin-bottom:6px;">📡</div><div style="font-size:13px;font-weight:600;color:var(--blue);">批量同步</div><div style="font-size:11px;color:var(--text-muted);">同步全层设备时间</div></button>';
+      html += '<button onclick="doFloorQuickAction(\'unlock\',' + floor + ')" style="padding:14px;border:2px solid var(--green);border-radius:10px;background:var(--green-bg);cursor:pointer;text-align:center;">';
+      html += '<div style="font-size:24px;margin-bottom:6px;">🔓</div><div style="font-size:13px;font-weight:600;color:var(--green);">批量开锁</div><div style="font-size:11px;color:var(--text-muted);">全层门锁通电开锁</div></button>';
+      html += '<button onclick="doFloorQuickAction(\'check\',' + floor + ')" style="padding:14px;border:2px solid var(--purple);border-radius:10px;background:var(--purple-bg);cursor:pointer;text-align:center;">';
+      html += '<div style="font-size:24px;margin-bottom:6px;">🔍</div><div style="font-size:13px;font-weight:600;color:var(--purple);">全层巡检</div><div style="font-size:11px;color:var(--text-muted);">检测全层设备状态</div></button></div>';
+      html += '<div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);">';
+      html += '⚠️ 批量重启将导致全层门锁临时离线约10-15秒，期间无法响应开锁请求，建议在凌晨低峰期操作</div>';
+      html += '</div>';
+      html += '<div style="padding:12px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">';
+      html += '<button class="modal-btn secondary" onclick="closeFloorQuickAction()">关闭</button></div>';
+      html += '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeFloorQuickAction() { var m = document.getElementById('modal-floor-quick-action'); if (m) m.remove(); }
+    function doFloorQuickAction(action, floor) {
+      var actionNames = {restart:'批量重启', sync:'批量同步', unlock:'批量开锁', check:'全层巡检'};
+      closeFloorQuickAction();
+      if (action === 'restart') {
+        showToast('⚡ 已向 ' + floor + '层 全层设备发送重启指令，预计10-15秒后全部恢复', 'warn');
+      } else if (action === 'sync') {
+        showToast('📡 ' + floor + '层 设备时间同步完成，所有设备时间已校准', 'success');
+      } else if (action === 'unlock') {
+        showToast('🔓 ' + floor + '层 全层门锁已通电开锁，电磁阀已激活', 'success');
+      } else if (action === 'check') {
+        showToast('🔍 ' + floor + '层 设备巡检完成：在线6台、离线0台、低电量1台', 'success');
+      }
     }
     // 【改进v3-1】楼栋能耗阈值配置相关函数
     var buildingEnergyThreshold = {
@@ -5350,18 +5441,24 @@ setInterval(function() {
       openModal('settlement-confirm');
     }
     function confirmSettlementPay() {
-      // 【改进4】押金没收逻辑：选中没收时必须填写原因
+      // 【改进-F3】押金没收逻辑：选中没收时必须填写原因并二次确认
       var depositMethod = document.querySelector('input[name="deposit-method"]:checked');
       if (depositMethod && depositMethod.value === 'forfeit') {
-        var reason = document.getElementById('deposit-forfeit-reason');
+        var reasonEl = document.getElementById('deposit-forfeit-reason');
+        var reasonText = reasonEl ? reasonEl.querySelector('textarea').value.trim() : '';
         var confirmCheck = document.getElementById('deposit-forfeit-confirm');
-        if (reason && !reason.querySelector('textarea').value.trim()) {
-          showToast('请填写押金没收原因', 'error'); return;
+        if (!reasonText) {
+          showToast('请填写押金没收原因（必填）', 'error');
+          if (reasonEl) reasonEl.style.border = '1px solid var(--red)';
+          return;
         }
-        if (confirmCheck && !confirmCheck.checked) {
+        if (!confirmCheck || !confirmCheck.checked) {
           showToast('请勾选"确认没收押金"以继续', 'error'); return;
         }
-        showToast('✅ 押金已没收处理，结算成功', 'success');
+        // 生成没收凭证号
+        var forfeitId = 'FKF-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + Math.floor(1000+Math.random()*9000);
+        closeModal('settlement-confirm');
+        showToast('✅ 押金已没收处理！凭证号：' + forfeitId + '，结算成功', 'warn');
         setTimeout(function(){ closeModal('settlement-confirm'); }, 1500);
         return;
       }
@@ -18205,39 +18302,80 @@ function confirmRoomStatusChange() {
   var type = _roomStatusTarget.type;
   var statusLabels = { disabled: '停用', maintain: '维修中', empty: '空房', in: '入住中' };
   var badgeClass = { disabled: 'badge-disabled', empty: 'badge-empty', in: 'badge-in', maintain: 'badge-maintain' };
-  // Find the room card in the home grid
+  // 【改进-F5】房间状态变更增加入住冲突检测：禁用/维修时若房间有入住需二次确认
+  if ((status === 'disabled' || status === 'maintain') && _roomStatusTarget.currentStatus === 'in') {
+    openRoomStatusForceChangeConfirm(room, status, reason, remark, type);
+    return;
+  }
+  applyRoomStatusChange(room, status, reason, remark, estimate, statusLabels, badgeClass);
+}
+
+function applyRoomStatusChange(room, status, reason, remark, estimate, statusLabels, badgeClass) {
   var cards = document.querySelectorAll('#home-occupancy-grid .room-card');
   cards.forEach(function(card) {
     var numEl = card.querySelector('.room-num');
     if (numEl && numEl.textContent === room) {
-      // Update card status
       card.dataset.status = status;
-      // Update badge
       var badgeEl = card.querySelector('.room-badge');
       if (badgeEl) {
         badgeEl.textContent = statusLabels[status] || status;
         badgeEl.className = 'room-badge ' + (badgeClass[status] || '');
       }
-      // Update disabled class
-      if (status === 'disabled') {
-        card.classList.add('disabled');
-        card.dataset.disabled = 'true';
-      } else {
-        card.classList.remove('disabled');
-        card.dataset.disabled = 'false';
-      }
-      if (status === 'maintain') {
-        card.classList.add('maintain');
-        card.dataset.maintain = 'true';
-      } else {
-        card.classList.remove('maintain');
-        card.dataset.maintain = 'false';
-      }
+      if (status === 'disabled') { card.classList.add('disabled'); card.dataset.disabled = 'true'; }
+      else { card.classList.remove('disabled'); card.dataset.disabled = 'false'; }
+      if (status === 'maintain') { card.classList.add('maintain'); card.dataset.maintain = 'true'; }
+      else { card.classList.remove('maintain'); card.dataset.maintain = 'false'; }
     }
   });
   addOpLog('room_status', '赵飞', '房间状态修改：' + room + ' → ' + statusLabels[status] + (reason ? '（' + reason + '）' : ''), room);
   closeModal('room-status-change');
   showToast('房间 ' + room + ' 已修改为「' + statusLabels[status] + '」', status === 'disabled' || status === 'maintain' ? 'warn' : 'success');
+}
+
+function openRoomStatusForceChangeConfirm(room, targetStatus, reason, remark, type) {
+  var old = document.getElementById('modal-rsc-force-confirm');
+  if (old) old.remove();
+  var targetLabel = targetStatus === 'disabled' ? '停用' : '维修中';
+  var statusColor = targetStatus === 'disabled' ? 'var(--red)' : 'var(--orange)';
+  var html = '<div class="modal-overlay" id="modal-rsc-force-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html += '<div class="modal" style="width:460px;background:white;border-radius:12px;border:3px solid var(--orange);">';
+  html += '<div style="padding:28px;text-align:center;">';
+  html += '<div style="font-size:52px;margin-bottom:14px;">⚠️</div>';
+  html += '<div style="font-size:19px;font-weight:700;color:var(--orange);margin-bottom:10px;">房间 ' + room + ' 当前有客户入住中</div>';
+  html += '<div style="font-size:13px;color:var(--text);margin-bottom:16px;">强制设为<span style="font-weight:700;color:' + statusColor + ';">' + targetLabel + '</span>状态将自动触发以下流程：</div>';
+  html += '<div style="padding:12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;text-align:left;font-size:12px;color:var(--red);margin-bottom:16px;line-height:1.8;">';
+  html += '① 系统自动发送退房提醒短信给入住客户<br>② 工单系统自动创建换房/退房催办工单<br>③ 通知前台安排客户换房或协助退房</div>';
+  html += '<div style="display:flex;gap:12px;justify-content:center;">';
+  html += '<button onclick="closeRscForceConfirm()" class="modal-btn secondary" style="padding:9px 22px;">取消操作</button>';
+  html += '<button onclick="confirmRoomStatusForceChange()" class="modal-btn" style="background:var(--orange);border-color:var(--orange);color:white;padding:9px 22px;font-size:14px;">⚠️ 强制确认变更</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  window._rscForceData = { room: room, targetStatus: targetStatus, reason: reason, remark: remark, type: type };
+}
+function closeRscForceConfirm() { var m = document.getElementById('modal-rsc-force-confirm'); if (m) m.remove(); }
+function confirmRoomStatusForceChange() {
+  var d = window._rscForceData || {};
+  var statusLabels = { disabled: '停用', maintain: '维修中', empty: '空房', in: '入住中' };
+  var badgeClass = { disabled: 'badge-disabled', empty: 'badge-empty', in: 'badge-in', maintain: 'badge-maintain' };
+  closeRscForceConfirm();
+  closeModal('room-status-change');
+  // 自动创建换房工单
+  showToast('📋 已自动创建换房工单：房间' + d.room + '需换房/退房（原因：' + (d.reason || '未填') + '）', 'info');
+  // 应用状态变更
+  var cards = document.querySelectorAll('#home-occupancy-grid .room-card');
+  cards.forEach(function(card) {
+    var numEl = card.querySelector('.room-num');
+    if (numEl && numEl.textContent === d.room) {
+      card.dataset.status = d.targetStatus;
+      var badgeEl = card.querySelector('.room-badge');
+      if (badgeEl) { badgeEl.textContent = statusLabels[d.targetStatus]; badgeEl.className = 'room-badge ' + (badgeClass[d.targetStatus] || ''); }
+      if (d.targetStatus === 'disabled') { card.classList.add('disabled'); card.dataset.disabled = 'true'; }
+      else { card.classList.remove('disabled'); card.dataset.disabled = 'false'; }
+      if (d.targetStatus === 'maintain') { card.classList.add('maintain'); card.dataset.maintain = 'true'; }
+      else { card.classList.remove('maintain'); card.dataset.maintain = 'false'; }
+    }
+  });
+  addOpLog('room_status', '赵飞', '房间状态强制修改（入住中）：' + d.room + ' → ' + statusLabels[d.targetStatus] + (d.reason ? '（' + d.reason + '）' : ''), d.room);
+  showToast('房间 ' + d.room + ' 已强制设为「' + statusLabels[d.targetStatus] + '」（有入住订单，已触发退房流程）', 'warn');
 }
 
   // Toggle active房型 button
@@ -24058,7 +24196,7 @@ function submitQuickAddRoom() {
   addNotif('🚪', 'var(--blue)', 'config', '新增房间：' + bldName + ' · ' + floor + '层 · ' + type + ' ×' + count);
 }
 
-// ======= 改进4: 设备详情页开锁记录Tab功能 =======
+// ======= 【改进-F5】设备详情页开锁记录Tab功能增强：时间范围筛选+导出 =======
 var doorUnlockHistoryData = [
   {time:'2026-03-27 10:32:08',method:'手机开锁',user:'张三',result:'success',duration:'23ms'},
   {time:'2026-03-27 09:15:42',method:'客户卡',user:'李四',result:'success',duration:'21ms'},
@@ -24074,15 +24212,28 @@ function openDoorUnlockHistoryModal(room) {
   document.getElementById('duh-title').textContent = '📋 ' + currentDoorRoom + '房间 开锁记录';
   document.getElementById('duh-method-filter').value = 'all';
   document.getElementById('duh-result-filter').value = 'all';
+  // 【改进-F5】重置时间范围为默认7天
+  var today = new Date();
+  var weekAgo = new Date(today.getTime() - 7 * 24 * 3600000);
+  document.getElementById('duh-date-from').value = weekAgo.toISOString().slice(0,10);
+  document.getElementById('duh-date-to').value = today.toISOString().slice(0,10);
   renderDoorUnlockHistory();
   openModal('door-unlock-history');
 }
 function renderDoorUnlockHistory() {
   var methodFilter = document.getElementById('duh-method-filter').value;
   var resultFilter = document.getElementById('duh-result-filter').value;
+  var dateFrom = document.getElementById('duh-date-from') ? document.getElementById('duh-date-from').value : '';
+  var dateTo = document.getElementById('duh-date-to') ? document.getElementById('duh-date-to').value : '';
   var filtered = doorUnlockHistoryData.filter(function(r) {
-    return (methodFilter === 'all' || r.method === methodFilter) &&
-           (resultFilter === 'all' || r.result === resultFilter);
+    if (methodFilter !== 'all' && r.method !== methodFilter) return false;
+    if (resultFilter !== 'all' && r.result !== resultFilter) return false;
+    if (dateFrom && r.time < dateFrom) return false;
+    if (dateTo) {
+      var toDate = dateTo + ' 23:59:59';
+      if (r.time > toDate) return false;
+    }
+    return true;
   });
   var container = document.getElementById('duh-records-list');
   document.getElementById('duh-count-label').textContent = '共 ' + filtered.length + ' 条记录';
@@ -24109,8 +24260,30 @@ function renderDoorUnlockHistory() {
 }
 function filterDoorUnlockHistory() { renderDoorUnlockHistory(); }
 function exportDoorUnlockHistory() {
-  showToast('正在导出 ' + currentDoorRoom + ' 房间开锁记录...', 'info');
-  setTimeout(function() { showToast('导出成功！记录已保存为 CSV 文件', 'success'); }, 800);
+  var methodFilter = document.getElementById('duh-method-filter') ? document.getElementById('duh-method-filter').value : 'all';
+  var resultFilter = document.getElementById('duh-result-filter') ? document.getElementById('duh-result-filter').value : 'all';
+  var dateFrom = document.getElementById('duh-date-from') ? document.getElementById('duh-date-from').value : '';
+  var dateTo = document.getElementById('duh-date-to') ? document.getElementById('duh-date-to').value : '';
+  var filtered = doorUnlockHistoryData.filter(function(r) {
+    if (methodFilter !== 'all' && r.method !== methodFilter) return false;
+    if (resultFilter !== 'all' && r.result !== resultFilter) return false;
+    if (dateFrom && r.time < dateFrom) return false;
+    if (dateTo) { var toDate = dateTo + ' 23:59:59'; if (r.time > toDate) return false; }
+    return true;
+  });
+  if (filtered.length === 0) { showToast('没有可导出的记录', 'warn'); return; }
+  var csv = '\uFEFF时间,开锁方式,操作人,结果,耗时\n';
+  filtered.forEach(function(r) {
+    var resultLabel = r.result === 'success' ? '成功' : '失败';
+    csv += r.time + ',' + r.method + ',' + r.user + ',' + resultLabel + ',' + r.duration + '\n';
+  });
+  var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '开锁记录_' + currentDoorRoom + '_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('✅ 已导出 ' + filtered.length + ' 条记录至 CSV 文件', 'success');
 }
 
 // ======= 改进1: 密码管理功能 =======
@@ -38698,6 +38871,11 @@ function checkinNextStep() {
     updateCheckinStepUI();
     selectCheckinPay('wechat');
   } else if (checkinStep === 2) {
+    var name = document.getElementById('ck-customer').value.trim();
+    var phone = document.getElementById('ck-phone').value.trim();
+    // 【改进-F2】入住确认前黑名单实时检测
+    var blocked = checkBlacklistBeforeCheckin(name, phone);
+    if (blocked) { openBlacklistBlockModal(blocked); return; }
     var paid = parseFloat(document.getElementById('ck-amount-paid').value) || 0;
     if (paid <= 0) { showToast('请输入实收金额', 'error'); return; }
     var roomText = document.getElementById('ck-room').options[document.getElementById('ck-room').selectedIndex].text;
