@@ -24566,10 +24566,85 @@ function openDeviceDetailModal(roomNum) {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 function closeDeviceDetailModal() { var m = document.getElementById('modal-device-detail'); if (m) m.remove(); }
-function doDeviceUnlock(room) { showToast('🔓 已向' + room + '下发开锁指令，门锁已开启', 'success'); closeDeviceDetailModal(); }
-function doDeviceSync(room) { showToast('🔄 正在同步' + room + '设备状态...', 'info'); setTimeout(function(){ showToast('✅ ' + room + '设备状态已同步', 'success'); }, 1200); }
-function doDeviceRestart(room) { showToast('🔁 已向' + room + '下发重启指令，设备将在10秒后重启', 'warning'); closeDeviceDetailModal(); }
-function doDeviceUpgrade(room) { showToast('📦 ' + room + '已是最新固件版本（v2.3.1），无需升级', 'info'); }
+function doDeviceUnlock(room) {
+  var d = deviceDetailModalData[room] || deviceDetailModalData['301'];
+  openDeviceActionConfirmModal(room, 'unlock', d);
+}
+function doDeviceSync(room) {
+  var d = deviceDetailModalData[room] || deviceDetailModalData['301'];
+  openDeviceActionConfirmModal(room, 'sync', d);
+}
+function doDeviceRestart(room) {
+  var d = deviceDetailModalData[room] || deviceDetailModalData['301'];
+  openDeviceActionConfirmModal(room, 'restart', d);
+}
+function doDeviceUpgrade(room) {
+  openDeviceActionConfirmModal(room, 'upgrade', deviceDetailModalData[room] || deviceDetailModalData['301']);
+}
+
+// 【改进1】设备远程操作二次确认弹窗：操作前显示设备信息+UUID+安全警告，操作后写入日志
+var deviceActionConfirmCallback = null;
+function openDeviceActionConfirmModal(roomNum, action, deviceData) {
+  var d = deviceData || {};
+  var actionConfig = {
+    unlock:  { icon: '🔓', title: '确认远程开锁', color: 'var(--green)', bg: 'var(--green-bg)', warning: '⚠️ 远程开锁将直接打开门锁，请确认是否为当前在住客人或工作人员操作！', confirmText: '确认开锁', successMsg: '远程开锁成功！' + roomNum + '房间门锁已开启' },
+    sync:    { icon: '🔄', title: '确认立即同步', color: 'var(--blue)', bg: 'var(--blue-bg)', warning: '💡 同步操作将强制更新设备固件版本、信号强度、电池电量等数据，约需10-30秒。', confirmText: '确认同步', successMsg: '设备状态已同步成功！' },
+    restart: { icon: '🔁', title: '确认远程重启', color: 'var(--orange)', bg: 'var(--orange-bg)', warning: '⚠️ 远程重启将导致门锁临时离线（约10秒），重启期间无法开锁，请确认房间内无人！', confirmText: '确认重启', successMsg: '重启指令已下发，设备将在10秒后重启' },
+    upgrade: { icon: '📦', title: '确认固件升级', color: 'var(--purple)', bg: 'var(--purple-bg)', warning: '💡 固件升级约需3-5分钟，期间设备将重启，请确保房间无人入住或长时间离开！', confirmText: '确认升级', successMsg: '固件升级任务已创建，预计3-5分钟完成' }
+  };
+  var cfg = actionConfig[action] || actionConfig.unlock;
+  var old = document.getElementById('modal-device-action-confirm');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-device-action-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999;padding:20px;">';
+  html += '<div class="modal" style="width:440px;background:white;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">';
+  html += '<div style="padding:24px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">';
+  html += '<div style="width:48px;height:48px;background:' + cfg.bg + ';border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;">' + cfg.icon + '</div>';
+  html += '<div><div style="font-size:16px;font-weight:700;">' + cfg.title + '</div><div style="font-size:11px;color:var(--text-muted);">设备详情确认</div></div>';
+  html += '<button onclick="closeDeviceActionConfirmModal()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  // 设备信息摘要
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">';
+  html += '<div style="padding:10px 12px;background:var(--bg);border-radius:6px;"><div style="font-size:10px;color:var(--text-muted);">设备型号</div><div style="font-size:12px;font-weight:600;margin-top:2px;">' + (d.model || '领握LH-807智能锁') + '</div></div>';
+  html += '<div style="padding:10px 12px;background:var(--bg);border-radius:6px;"><div style="font-size:10px;color:var(--text-muted);">设备房间</div><div style="font-size:12px;font-weight:600;margin-top:2px;">' + roomNum + '</div></div>';
+  html += '<div style="padding:10px 12px;background:var(--bg);border-radius:6px;grid-column:1/-1;"><div style="font-size:10px;color:var(--text-muted);">设备UUID</div><div style="font-size:11px;font-weight:600;margin-top:2px;font-family:monospace;letter-spacing:1px;">' + (d.uuid || 'LH-807-2024-001-' + roomNum) + '</div></div>';
+  html += '</div>';
+  // 安全警告
+  html += '<div style="padding:12px 14px;background:rgba(250,140,22,0.1);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);margin-bottom:16px;line-height:1.6;">' + cfg.warning + '</div>';
+  // 操作账号确认
+  html += '<div class="form-group" style="margin-bottom:16px;">';
+  html += '<label class="form-label">操作账号 <span class="required">*</span></label>';
+  html += '<select class="form-select" id="dac-operator" style="font-size:13px;">';
+  html += '<option value="赵飞">赵飞（前台经理）</option><option value="周敏">周敏（前厅接待）</option><option value="王工">王工（工程部）</option><option value="系统">系统（自动）</option></select></div>';
+  html += '<div class="form-group" style="margin-bottom:0;">';
+  html += '<label class="form-label">操作备注</label>';
+  html += '<input type="text" class="form-input" id="dac-note" placeholder="可选，如：客人忘记带卡" style="font-size:13px;"></input></div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button onclick="closeDeviceActionConfirmModal()" class="modal-btn secondary">取消</button>';
+  html += '<button onclick="submitDeviceAction(\'' + roomNum + '\',\'' + action + '\')" style="padding:10px 20px;background:' + cfg.color + ';color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">' + cfg.confirmText + '</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeDeviceActionConfirmModal() {
+  var m = document.getElementById('modal-device-action-confirm');
+  if (m) m.remove();
+  deviceActionConfirmCallback = null;
+}
+function submitDeviceAction(roomNum, action) {
+  var operator = document.getElementById('dac-operator').value;
+  var note = document.getElementById('dac-note').value.trim();
+  var actionLabels = {unlock:'远程开锁', sync:'立即同步', restart:'远程重启', upgrade:'固件升级'};
+  closeDeviceActionConfirmModal();
+  closeDeviceDetailModal();
+  var msgMap = {unlock:'🔓 已向' + roomNum + '下发开锁指令，门锁已开启', sync:'🔄 正在同步' + roomNum + '设备状态...', restart:'🔁 已向' + roomNum + '下发重启指令，设备将在10秒后重启', upgrade:'📦 正在为' + roomNum + '升级固件...'};
+  showToast(msgMap[action] || '操作已提交', action === 'restart' ? 'warning' : 'info');
+  // 模拟异步执行结果
+  setTimeout(function() {
+    var successMap = {unlock:'✅ 远程开锁成功！' + roomNum + '房间门锁已开启', sync:'✅ ' + roomNum + '设备状态已同步', restart:'✅ ' + roomNum + '设备重启完成，已恢复在线', upgrade:'✅ ' + roomNum + '固件升级成功，已更新至v2.3.1'};
+    showToast(successMap[action] || '操作完成', 'success');
+    addOpLog('device', operator, actionLabels[action] + '：' + roomNum + '房间' + (note ? ' - ' + note : ''), '192.168.1.101');
+  }, action === 'unlock' ? 1500 : action === 'sync' ? 2000 : action === 'restart' ? 3000 : 5000);
+}
 function doDeviceManage(room) { closeDeviceDetailModal(); showPage('device-detail'); }
 
 // ======= 【改进2】会员充值弹窗（积分充值+余额充值，增删改查闭环） =======
@@ -27866,6 +27941,475 @@ setTimeout(function() {
   });
 }, 1200);
 
+
+// ======= 【改进2】服务工单处理弹窗增强：增加完整时间线视图+内部处理备注 =======
+// 拦截 workorder-detail 弹窗，在"处理"按钮区域注入时间线视图切换
+var originalOpenWorkorderDetail = null;
+function initWorkorderDetailEnhancement() {
+  // 监听工单详情弹窗打开，在处理区域上方注入时间线Tab
+  var observer = new MutationObserver(function() {
+    var detailModal = document.getElementById('modal-workorder-detail');
+    if (detailModal && !detailModal.classList.contains('hidden') && !detailModal.dataset.timelineInjected) {
+      detailModal.dataset.timelineInjected = 'true';
+      injectWorkorderTimelineTab(detailModal);
+    }
+  });
+  var container = document.getElementById('modal-workorder-detail');
+  if (container) observer.observe(container, { attributes: true, attributeFilter: ['class'] });
+  // 同时直接注入HTML（如果弹窗已存在）
+  setTimeout(function() {
+    var detailModal = document.getElementById('modal-workorder-detail');
+    if (detailModal && !detailModal.classList.contains('hidden') && !detailModal.dataset.timelineInjected) {
+      detailModal.dataset.timelineInjected = 'true';
+      injectWorkorderTimelineTab(detailModal);
+    }
+  }, 500);
+}
+
+function injectWorkorderTimelineTab(modal) {
+  var body = modal.querySelector('.modal-body');
+  if (!body) return;
+  // 检查是否已有时间线tab
+  if (document.getElementById('wd-timeline-tab-bar')) return;
+  // 在处理区域前插入时间线Tab
+  var processSection = body.querySelector('#wo-process-group') || body.querySelector('.card');
+  if (!processSection) return;
+  var tabBar = document.createElement('div');
+  tabBar.id = 'wd-timeline-tab-bar';
+  tabBar.style.cssText = 'display:flex;gap:4px;margin-bottom:12px;padding:4px;background:var(--bg);border-radius:8px;';
+  tabBar.innerHTML = '' +
+    '<div id="wd-tab-info" onclick="switchWdTab(\'info\')" style="flex:1;padding:8px 12px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;border-radius:6px;background:white;">📋 工单详情</div>' +
+    '<div id="wd-tab-timeline" onclick="switchWdTab(\'timeline\')" style="flex:1;padding:8px 12px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;border-radius:6px;color:var(--text-muted);">📊 处理历史</div>';
+  processSection.parentNode.insertBefore(tabBar, processSection);
+  // 时间线内容区域
+  var timelineDiv = document.createElement('div');
+  timelineDiv.id = 'wd-timeline-content';
+  timelineDiv.style.cssText = 'display:none;margin-bottom:12px;';
+  timelineDiv.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px;">⏳ 加载中...</div>';
+  tabBar.parentNode.insertBefore(timelineDiv, processSection);
+  // Tab样式初始化
+  switchWdTab('info');
+}
+
+function switchWdTab(tab) {
+  var tabInfo = document.getElementById('wd-tab-info');
+  var tabTimeline = document.getElementById('wd-tab-timeline');
+  var processSection = document.querySelector('#modal-workorder-detail #wo-process-group');
+  var timelineContent = document.getElementById('wd-timeline-content');
+  if (!tabInfo || !tabTimeline) return;
+  if (tab === 'info') {
+    tabInfo.style.background = 'white';
+    tabInfo.style.color = 'var(--blue)';
+    tabTimeline.style.background = 'transparent';
+    tabTimeline.style.color = 'var(--text-muted)';
+    if (processSection) processSection.style.display = '';
+    if (timelineContent) timelineContent.style.display = 'none';
+  } else {
+    tabInfo.style.background = 'transparent';
+    tabInfo.style.color = 'var(--text-muted)';
+    tabTimeline.style.background = 'white';
+    tabTimeline.style.color = 'var(--blue)';
+    if (processSection) processSection.style.display = 'none';
+    if (timelineContent) timelineContent.style.display = '';
+    loadWorkorderTimelineData();
+  }
+}
+
+function loadWorkorderTimelineData() {
+  var el = document.getElementById('wd-timeline-content');
+  if (!el) return;
+  // 从当前工单数据构建时间线
+  var woId = window.currentWorkorderDetailId || 'WO-2026032701';
+  var tl = window.workorderTimelineCache || {};
+  var events = tl[woId] || [
+    {time: '2026-03-27 09:15', actor: '系统', action: '创建工单', detail: '客户通过前台提交服务请求', type: 'create'},
+    {time: '2026-03-27 09:18', actor: '赵飞', action: '接受工单', detail: '前台经理赵飞已接单', type: 'assign'},
+    {time: '2026-03-27 10:30', actor: '王工', action: '上门处理', detail: '工程人员已上门，正在检查设备', type: 'process'},
+    {time: '2026-03-27 11:45', actor: '赵飞', action: '进度更新', detail: '设备需要更换配件，已联系供应商', type: 'update'},
+  ];
+  var typeConfig = {
+    create: {icon: '📝', color: 'var(--blue)', label: '创建'},
+    assign: {icon: '👤', color: 'var(--purple)', label: '接单'},
+    process: {icon: '🔧', color: 'var(--orange)', label: '处理中'},
+    update: {icon: '🔄', color: 'var(--blue)', label: '进度更新'},
+    internal: {icon: '📎', color: 'var(--text-muted)', label: '内部备注'},
+    done: {icon: '✅', color: 'var(--green)', label: '完成'}
+  };
+  var html = '<div style="position:relative;padding-left:24px;">';
+  html += '<div style="position:absolute;left:9px;top:0;bottom:0;width:2px;background:var(--border);"></div>';
+  events.forEach(function(item, idx) {
+    var cfg = typeConfig[item.type] || typeConfig.update;
+    html += '<div style="position:relative;margin-bottom:16px;">';
+    html += '<div style="position:absolute;left:-19px;top:3px;width:20px;height:20px;border-radius:50%;background:' + cfg.color + ';display:flex;align-items:center;justify-content:center;font-size:10px;color:white;z-index:1;">' + (idx + 1) + '</div>';
+    html += '<div style="background:white;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-left:6px;">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
+    html += '<span style="font-size:12px;font-weight:700;color:' + cfg.color + ';">' + cfg.icon + ' ' + item.action + '</span>';
+    html += '<span style="font-size:10px;color:var(--text-muted);">' + item.time + '</span>';
+    html += '</div>';
+    html += '<div style="font-size:11px;color:var(--text);margin-bottom:2px;">👤 <strong>' + item.actor + '</strong></div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);line-height:1.5;">' + item.detail + '</div>';
+    if (item.internalNote) {
+      html += '<div style="margin-top:6px;padding:6px 10px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--text-muted);border-left:3px solid var(--orange);">' + item.internalNote + '</div>';
+    }
+    html += '</div></div>';
+  });
+  html += '</div>';
+  html += '<div style="margin-top:12px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--blue);">';
+  html += '💡 内部备注仅对员工可见，不对客户展示</div>';
+  el.innerHTML = html;
+}
+
+// 在工单处理弹窗中增加"添加内部备注"功能
+var originalWopComplete = null;
+function addInternalNoteToWorkorder() {
+  var note = prompt('请输入内部备注（仅对员工可见）：');
+  if (!note || !note.trim()) return;
+  var woId = window.currentWorkorderDetailId || 'WO-001';
+  if (!window.workorderTimelineCache) window.workorderTimelineCache = {};
+  if (!window.workorderTimelineCache[woId]) window.workorderTimelineCache[woId] = [];
+  var now = new Date();
+  var timeStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  window.workorderTimelineCache[woId].push({
+    time: timeStr,
+    actor: '当前员工',
+    action: '内部备注',
+    detail: note.trim(),
+    type: 'internal'
+  });
+  showToast('✅ 内部备注已添加', 'success');
+  // 如果当前在时间线Tab，刷新显示
+  if (document.getElementById('wd-timeline-content') && document.getElementById('wd-timeline-content').style.display !== 'none') {
+    loadWorkorderTimelineData();
+  }
+}
+
+// 初始化增强
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(initWorkorderDetailEnhancement, 1500);
+});
+// 如果页面已加载，直接初始化
+setTimeout(initWorkorderDetailEnhancement, 1500);
+
+// ======= 【改进3】员工密码重置完整表单弹窗（通知渠道选择+密码生成预览） =======
+var employeePasswordResetData = {
+  // 存储重置记录
+};
+
+function openEmployeePasswordResetModal(idx) {
+  var rows = document.querySelectorAll('#employee-table-body tr');
+  if (idx >= rows.length) return;
+  var cells = rows[idx].querySelectorAll('td');
+  var name = cells[0] ? cells[0].textContent.trim() : '未知';
+  var phone = cells[2] ? cells[2].textContent.trim() : '';
+  var role = cells[3] ? cells[3].textContent.trim() : '员工';
+  var old = document.getElementById('modal-employee-password-reset');
+  if (old) old.remove();
+  // 生成临时密码预览
+  var tempPwd = Math.random().toString(36).substring(2, 10).toUpperCase();
+  var html = '<div class="modal-overlay" id="modal-employee-password-reset" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:500px;background:white;border-radius:12px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🔑</div><div><div style="font-size:16px;font-weight:700;">密码重置</div><div style="font-size:11px;color:var(--text-muted);">' + name + ' · ' + role + '</div></div></div>';
+  html += '<button onclick="closeEmployeePasswordResetModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  // 重置方式选择
+  html += '<div class="form-group"><label class="form-label">重置方式 <span class="required">*</span></label>';
+  html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+  html += '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:2px solid var(--blue);border-radius:8px;cursor:pointer;background:var(--blue-bg);" id="rpt-method-sms-label">';
+  html += '<input type="radio" name="reset-method" value="sms" id="rpt-method-sms" checked onchange="onResetMethodChange()" style="accent-color:var(--blue);width:16px;height:16px;">';
+  html += '<div><div style="font-size:13px;font-weight:600;">📱 短信重置</div><div style="font-size:11px;color:var(--text-muted);">发送重置链接到手机 ' + (phone || '138****8888') + '</div></div></label>';
+  html += '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;cursor:pointer;" id="rpt-method-email-label">';
+  html += '<input type="radio" name="reset-method" value="email" id="rpt-method-email" onchange="onResetMethodChange()" style="accent-color:var(--blue);width:16px;height:16px;">';
+  html += '<div><div style="font-size:13px;font-weight:600;">📧 邮件重置</div><div style="font-size:11px;color:var(--text-muted);">发送重置链接到注册邮箱</div></div></label>';
+  html += '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;cursor:pointer;" id="rpt-method-feishu-label">';
+  html += '<input type="radio" name="reset-method" value="feishu" id="rpt-method-feishu" onchange="onResetMethodChange()" style="accent-color:var(--blue);width:16px;height:16px;">';
+  html += '<div><div style="font-size:13px;font-weight:600;">💬 飞书重置</div><div style="font-size:11px;color:var(--text-muted);">通过飞书机器人发送重置通知</div></div></label>';
+  html += '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;cursor:pointer;" id="rpt-method-manual-label">';
+  html += '<input type="radio" name="reset-method" value="manual" id="rpt-method-manual" onchange="onResetMethodChange()" style="accent-color:var(--blue);width:16px;height:16px;">';
+  html += '<div><div style="font-size:13px;font-weight:600;">👤 手动设置</div><div style="font-size:11px;color:var(--text-muted);">管理员直接设置新密码（高风险操作）</div></div></label>';
+  html += '</div></div>';
+  // 密码预览区（SMS/邮件/飞书不显示）
+  html += '<div id="rpt-pwd-preview" style="display:none;margin-bottom:16px;">';
+  html += '<div class="form-group"><label class="form-label">新密码预览</label>';
+  html += '<div style="display:flex;gap:8px;align-items:center;">';
+  html += '<input type="text" class="form-input" id="rpt-new-pwd" value="' + tempPwd + '" readonly style="font-family:monospace;letter-spacing:2px;font-weight:700;font-size:16px;background:var(--bg);">';
+  html += '<button class="action-btn small" onclick="regenerateTempPwd()" style="padding:6px 10px;">🔄</button>';
+  html += '<button class="action-btn small" onclick="copyTempPwd()" style="padding:6px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📋</button></div>';
+  html += '<div style="font-size:11px;color:var(--orange);margin-top:6px;">⚠️ 请在员工当面确认后告知密码，或选择其他安全方式发送</div></div></div>';
+  // 通知设置
+  html += '<div id="rpt-notify-settings">';
+  html += '<div class="form-group"><label class="form-label">通知选项</label>';
+  html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+  html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;">';
+  html += '<input type="checkbox" id="rpt-notify-employee" checked style="accent-color:var(--blue);width:14px;height:14px;">';
+  html += '<span>通知员工本人</span></label>';
+  html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;">';
+  html += '<input type="checkbox" id="rpt-notify-admin" checked style="accent-color:var(--blue);width:14px;height:14px;">';
+  html += '<span>抄送管理员</span></label>';
+  html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;">';
+  html += '<input type="checkbox" id="rpt-log-audit" checked style="accent-color:var(--blue);width:14px;height:14px;">';
+  html += '<span>记录到操作日志</span></label>';
+  html += '</div></div></div>';
+  // 备注
+  html += '<div class="form-group"><label class="form-label">重置原因 <span class="required">*</span></label>';
+  html += '<select class="form-select" id="rpt-reason" style="font-size:13px;">';
+  html += '<option value="forgot">员工忘记密码</option>';
+  html += '<option value="security">安全策略要求（定期轮换）</option>';
+  html += '<option value="leaving">员工离职</option>';
+  html += '<option value="new">新员工入职</option>';
+  html += '<option value="other">其他原因</option>';
+  html += '</select></div>';
+  html += '<div class="form-group"><label class="form-label">备注</label>';
+  html += '<textarea class="form-textarea" id="rpt-note" placeholder="可选备注..." style="min-height:50px;font-size:13px;"></textarea></div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button onclick="closeEmployeePasswordResetModal()" class="modal-btn secondary">取消</button>';
+  html += '<button onclick="submitPasswordReset(' + idx + ',\'' + name + '\')" class="modal-btn primary">🔑 确认重置</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  // 初始化样式
+  onResetMethodChange();
+}
+
+function onResetMethodChange() {
+  var method = document.querySelector('input[name="reset-method"]:checked').value;
+  var labels = {
+    sms: document.getElementById('rpt-method-sms-label'),
+    email: document.getElementById('rpt-method-email-label'),
+    feishu: document.getElementById('rpt-method-feishu-label'),
+    manual: document.getElementById('rpt-method-manual-label')
+  };
+  var colors = {
+    sms: {border: 'var(--blue)', bg: 'var(--blue-bg)', text: 'var(--blue)'},
+    email: {border: 'var(--blue)', bg: 'var(--blue-bg)', text: 'var(--blue)'},
+    feishu: {border: 'var(--blue)', bg: 'var(--blue-bg)', text: 'var(--blue)'},
+    manual: {border: 'var(--red)', bg: 'var(--red-bg)', text: 'var(--red)'}
+  };
+  Object.keys(labels).forEach(function(m) {
+    if (labels[m]) {
+      if (m === method) {
+        labels[m].style.borderColor = colors[m].border;
+        labels[m].style.background = colors[m].bg;
+      } else {
+        labels[m].style.borderColor = 'var(--border)';
+        labels[m].style.background = 'white';
+      }
+    }
+  });
+  // 显示/隐藏密码预览
+  var pwdPreview = document.getElementById('rpt-pwd-preview');
+  var notifySettings = document.getElementById('rpt-notify-settings');
+  if (method === 'manual') {
+    if (pwdPreview) pwdPreview.style.display = 'block';
+    if (notifySettings) notifySettings.style.display = 'none';
+  } else {
+    if (pwdPreview) pwdPreview.style.display = 'none';
+    if (notifySettings) notifySettings.style.display = 'block';
+  }
+}
+
+function regenerateTempPwd() {
+  var newPwd = Math.random().toString(36).substring(2, 10).toUpperCase();
+  var input = document.getElementById('rpt-new-pwd');
+  if (input) input.value = newPwd;
+}
+
+function copyTempPwd() {
+  var pwd = document.getElementById('rpt-new-pwd').value;
+  navigator.clipboard.writeText(pwd).then(function() {
+    showToast('密码已复制到剪贴板', 'success');
+  }).catch(function() {
+    showToast('复制失败，请手动复制', 'error');
+  });
+}
+
+function closeEmployeePasswordResetModal() {
+  var m = document.getElementById('modal-employee-password-reset');
+  if (m) m.remove();
+}
+
+function submitPasswordReset(idx, name) {
+  var method = document.querySelector('input[name="reset-method"]:checked').value;
+  var reason = document.getElementById('rpt-reason').value;
+  var note = document.getElementById('rpt-note').value.trim();
+  var logAudit = document.getElementById('rpt-log-audit') && document.getElementById('rpt-log-audit').checked;
+  if (logAudit) {
+    var operator = document.getElementById('dac-operator') ? document.getElementById('dac-operator').value : '赵飞';
+    addOpLog('system', operator, '重置员工 ' + name + ' 的密码（方式：' + method + '，原因：' + reason + '）', '127.0.0.1');
+  }
+  closeEmployeePasswordResetModal();
+  var methodNames = {sms: '短信', email: '邮件', feishu: '飞书', manual: '手动'};
+  showToast('✅ ' + name + ' 的密码已通过' + methodNames[method] + '方式重置', 'success');
+}
+
+// ======= 【改进4】夜审报表增强：增加账单结算明细预览+一键执行闭环 =======
+var nightAuditSettlementCache = null;
+
+function openNightAuditWithSettlementPreview() {
+  var date = document.getElementById('nar-date') ? document.getElementById('nar-date').textContent : '2026-03-27';
+  var old = document.getElementById('modal-night-audit-settlement');
+  if (old) old.remove();
+  // 模拟结算数据
+  var settlementData = [
+    {room:'301', guest:'张三', checkin:'03-25', checkout:'03-27', nights:2, roomRate:228, extra:0, deposit:300, net:156},
+    {room:'302', guest:'李四', checkin:'03-26', checkout:'03-27', nights:1, roomRate:168, extra:38, deposit:200, net:-6},
+    {room:'303', guest:'王五', checkin:'03-27', checkout:'03-28', nights:1, roomRate:228, extra:0, deposit:200, net:-28},
+    {room:'305', guest:'赵六', checkin:'03-26', checkout:'03-27', nights:1, roomRate:168, extra:55, deposit:300, net:77},
+  ];
+  nightAuditSettlementCache = settlementData;
+  var totalNet = settlementData.reduce(function(s,r){ return s + r.net; }, 0);
+  var totalRooms = settlementData.length;
+  var html = '<div class="modal-overlay" id="modal-night-audit-settlement" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:680px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">';
+  html += '<div style="font-size:24px;">🌙</div><div><div style="font-size:16px;font-weight:700;">夜审结算明细预览 - ' + date + '</div><div style="font-size:11px;color:var(--text-muted);">夜审前请核对以下账单数据</div></div>';
+  html += '<button onclick="closeNightAuditSettlementModal()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:16px 24px;">';
+  // 汇总卡片
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">';
+  html += '<div style="text-align:center;padding:12px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:20px;font-weight:700;color:var(--blue);">' + totalRooms + '</div><div style="font-size:11px;color:var(--text-muted);">涉及房间</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--green-bg);border-radius:8px;"><div style="font-size:20px;font-weight:700;color:var(--green);">¥' + settlementData.reduce(function(s,r){ return s + r.roomRate + r.extra; }, 0) + '</div><div style="font-size:11px;color:var(--text-muted);">应收总额</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:20px;font-weight:700;color:var(--orange);">¥' + settlementData.reduce(function(s,r){ return s + r.deposit; }, 0) + '</div><div style="font-size:11px;color:var(--text-muted);">押金总额</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:' + (totalNet >= 0 ? 'var(--green-bg)' : 'var(--red-bg)') + ';border-radius:8px;"><div style="font-size:20px;font-weight:700;color:' + (totalNet >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (totalNet >= 0 ? '+' : '') + '¥' + totalNet + '</div><div style="font-size:11px;color:var(--text-muted);">净结余</div></div>';
+  html += '</div>';
+  // 明细表格
+  html += '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  html += '<thead><tr style="background:var(--bg);">';
+  html += '<th style="padding:8px 12px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);">房号</th>';
+  html += '<th style="padding:8px 12px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);">客人</th>';
+  html += '<th style="padding:8px 12px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);">入住</th>';
+  html += '<th style="padding:8px 12px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);">退房</th>';
+  html += '<th style="padding:8px 12px;text-align:right;font-weight:600;border-bottom:1px solid var(--border);">房费</th>';
+  html += '<th style="padding:8px 12px;text-align:right;font-weight:600;border-bottom:1px solid var(--border);">加收</th>';
+  html += '<th style="padding:8px 12px;text-align:right;font-weight:600;border-bottom:1px solid var(--border);">押金</th>';
+  html += '<th style="padding:8px 12px;text-align:right;font-weight:600;border-bottom:1px solid var(--border);">结余</th>';
+  html += '</tr></thead><tbody>';
+  settlementData.forEach(function(r) {
+    var rowColor = r.net >= 0 ? 'var(--green)' : 'var(--red)';
+    html += '<tr>';
+    html += '<td style="padding:8px 12px;border-top:1px solid var(--border);font-weight:600;">' + r.room + '</td>';
+    html += '<td style="padding:8px 12px;border-top:1px solid var(--border);">' + r.guest + '</td>';
+    html += '<td style="padding:8px 12px;border-top:1px solid var(--border);color:var(--text-muted);">' + r.checkin + '</td>';
+    html += '<td style="padding:8px 12px;border-top:1px solid var(--border);color:var(--text-muted);">' + r.checkout + '</td>';
+    html += '<td style="padding:8px 12px;border-top:1px solid var(--border);text-align:right;">¥' + r.roomRate + '</td>';
+    html += '<td style="padding:8px 12px;border-top:1px solid var(--border);text-align:right;color:' + (r.extra > 0 ? 'var(--orange)' : 'var(--text-muted)') + ';">' + (r.extra > 0 ? '+¥' + r.extra : '-') + '</td>';
+    html += '<td style="padding:8px 12px;border-top:1px solid var(--border);text-align:right;">¥' + r.deposit + '</td>';
+    html += '<td style="padding:8px 12px;border-top:1px solid var(--border);text-align:right;font-weight:700;color:' + rowColor + ';">' + (r.net >= 0 ? '+' : '') + '¥' + r.net + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  // 提示信息
+  html += '<div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);margin-bottom:14px;">';
+  html += '⚠️ 夜审将自动执行：①脏房结转 ②PMS账单归档 ③设备状态同步 ④生成日报数据</div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button onclick="closeNightAuditSettlementModal()" class="modal-btn secondary">取消</button>';
+  html += '<button onclick="confirmNightAuditWithSettlement()" class="modal-btn primary">✅ 确认执行夜审</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeNightAuditSettlementModal() {
+  var m = document.getElementById('modal-night-audit-settlement');
+  if (m) m.remove();
+}
+
+function confirmNightAuditWithSettlement() {
+  closeNightAuditSettlementModal();
+  showToast('🌙 夜审执行中，请稍候...', 'info', 3000);
+  setTimeout(function() {
+    showToast('✅ 夜审完成！数据已归档至PMS系统，共处理 ' + (nightAuditSettlementCache ? nightAuditSettlementCache.length : 0) + ' 间房', 'success');
+    addOpLog('system', '系统', '自动执行夜审：结转 ' + (nightAuditSettlementCache ? nightAuditSettlementCache.length : 3) + ' 间脏房', '127.0.0.1');
+  }, 2500);
+}
+
+// ======= 【改进5】房间生命周期操作中心（入住/退房/换房/续住统一入口） =======
+var roomLifecycleData = {};
+
+function openRoomLifecycleModal(roomNum) {
+  roomLifecycleData.room = roomNum || '301';
+  var roomStatuses = {'301':'入住中','302':'空房','303':'空房','305':'入住中'};
+  var status = roomStatuses[roomLifecycleData.room] || '空房';
+  var guestNames = {'301':'张三','302':'','303':'','305':'李四'};
+  var checkinDates = {'301':'03-25','302':'','303':'','305':'03-26'};
+  var checkoutDates = {'301':'03-28','302':'','303':'','305':'03-27'};
+  var guest = guestNames[roomLifecycleData.room] || '';
+  var old = document.getElementById('modal-room-lifecycle');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-room-lifecycle" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:560px;background:white;border-radius:12px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🏠</div><div><div style="font-size:16px;font-weight:700;">房间操作中心 - ' + roomLifecycleData.room + '</div><div style="font-size:11px;color:var(--text-muted);">' + (guest ? guest + ' · ' : '') + '当前状态：' + status + '</div></div></div>';
+  html += '<button onclick="closeRoomLifecycleModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  // 当前在住信息（如果有客人）
+  if (guest) {
+    html += '<div style="padding:12px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;">';
+    html += '<div style="display:flex;gap:16px;font-size:12px;color:var(--blue);">';
+    html += '<span>👤 ' + guest + '</span><span>📅 入住：' + checkinDates[roomLifecycleData.room] + '</span><span>🚪 退房：' + checkoutDates[roomLifecycleData.room] + '</span>';
+    html += '</div></div>';
+  }
+  // 操作选项
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
+  // 入住按钮（空房时显示）
+  if (!guest) {
+    html += '<div onclick="rlcCheckin()" style="padding:20px 16px;border:2px solid var(--blue);border-radius:12px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--blue-bg);" onmouseover="this.style.borderColor=\'var(--blue)\';this.style.boxShadow=\'0 4px 16px rgba(24,144,255,0.2)\'" onmouseout="this.style.borderColor=\'var(--blue)\';this.style.boxShadow=\'\'">';
+    html += '<div style="font-size:32px;margin-bottom:8px;">🏨</div><div style="font-size:14px;font-weight:700;color:var(--blue);margin-bottom:4px;">快捷入住</div><div style="font-size:11px;color:var(--text-muted);">为空房办理入住</div></div>';
+    html += '<div onclick="rlcViewRoom()" style="padding:20px 16px;border:1px solid var(--border);border-radius:12px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor=\'var(--blue)\';this.style.boxShadow=\'0 4px 16px rgba(24,144,255,0.1)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.boxShadow=\'\'">';
+    html += '<div style="font-size:32px;margin-bottom:8px;">🔍</div><div style="font-size:14px;font-weight:700;margin-bottom:4px;">查看详情</div><div style="font-size:11px;color:var(--text-muted);">查看房间和设备信息</div></div>';
+  } else {
+    // 有客人时显示退房/换房/续住
+    html += '<div onclick="rlcCheckout()" style="padding:20px 16px;border:2px solid var(--green);border-radius:12px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--green-bg);" onmouseover="this.style.borderColor=\'var(--green)\';this.style.boxShadow=\'0 4px 16px rgba(34,197,94,0.2)\'" onmouseout="this.style.borderColor=\'var(--green)\';this.style.boxShadow=\'\'">';
+    html += '<div style="font-size:32px;margin-bottom:8px;">🚪</div><div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:4px;">办理退房</div><div style="font-size:11px;color:var(--text-muted);">结算费用+退押金</div></div>';
+    html += '<div onclick="rlcChangeRoom()" style="padding:20px 16px;border:2px solid var(--orange);border-radius:12px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--orange-bg);" onmouseover="this.style.borderColor=\'var(--orange)\';this.style.boxShadow=\'0 4px 16px rgba(250,140,22,0.2)\'" onmouseout="this.style.borderColor=\'var(--orange)\';this.style.boxShadow=\'\'">';
+    html += '<div style="font-size:32px;margin-bottom:8px;">🔄</div><div style="font-size:14px;font-weight:700;color:var(--orange);margin-bottom:4px;">换房</div><div style="font-size:11px;color:var(--text-muted);">更换到其他房间</div></div>';
+    html += '<div onclick="rlcExtendStay()" style="padding:20px 16px;border:1px solid var(--border);border-radius:12px;text-align:center;cursor:pointer;transition:all 0.2s;grid-column:1/-1;" onmouseover="this.style.borderColor=\'var(--blue)\';this.style.boxShadow=\'0 4px 16px rgba(24,144,255,0.1)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.boxShadow=\'\'">';
+    html += '<div style="font-size:28px;margin-bottom:8px;">📅</div><div style="font-size:14px;font-weight:700;margin-bottom:4px;">续住</div><div style="font-size:11px;color:var(--text-muted);">延长住宿时间（默认续1天）</div></div>';
+    html += '<div onclick="rlcViewGuest()" style="padding:20px 16px;border:1px solid var(--border);border-radius:12px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor=\'var(--blue)\';this.style.boxShadow=\'0 4px 16px rgba(24,144,255,0.1)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.boxShadow=\'\'">';
+    html += '<div style="font-size:28px;margin-bottom:8px;">👤</div><div style="font-size:14px;font-weight:700;margin-bottom:4px;">客户档案</div><div style="font-size:11px;color:var(--text-muted);">查看历史入住记录</div></div>';
+    html += '<div onclick="rlcRoomDevice()" style="padding:20px 16px;border:1px solid var(--border);border-radius:12px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor=\'var(--blue)\';this.style.boxShadow=\'0 4px 16px rgba(24,144,255,0.1)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.boxShadow=\'\'">';
+    html += '<div style="font-size:28px;margin-bottom:8px;">📱</div><div style="font-size:14px;font-weight:700;margin-bottom:4px;">设备管理</div><div style="font-size:11px;color:var(--text-muted);">远程开锁/同步/诊断</div></div>';
+  }
+  html += '</div></div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">';
+  html += '<button onclick="closeRoomLifecycleModal()" class="modal-btn secondary">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeRoomLifecycleModal() {
+  var m = document.getElementById('modal-room-lifecycle');
+  if (m) m.remove();
+}
+
+function rlcCheckin() { closeRoomLifecycleModal(); openModal('quick-checkin-full'); showToast('正在为 ' + roomLifecycleData.room + ' 办理入住...', 'info'); }
+function rlcCheckout() { closeRoomLifecycleModal(); openModal('checkout-full'); showToast('正在为 ' + roomLifecycleData.room + ' 办理退房...', 'info'); }
+function rlcChangeRoom() { closeRoomLifecycleModal(); showToast('🔄 换房功能：选择目标房间后完成换房', 'info'); }
+function rlcExtendStay() { closeRoomLifecycleModal(); showToast('📅 续住已为 ' + roomLifecycleData.room + ' 续1天（原退房日+24小时）', 'success'); }
+function rlcViewRoom() { closeRoomLifecycleModal(); openDeviceDetailModal(roomLifecycleData.room); }
+function rlcViewGuest() { closeRoomLifecycleModal(); showToast('👤 客户档案：' + roomLifecycleData.room + ' 的历史入住记录已加载', 'info'); }
+function rlcRoomDevice() { closeRoomLifecycleModal(); openDeviceDetailModal(roomLifecycleData.room); }
+
+// 将房间操作中心绑定到首页客房卡片点击
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var roomCards = document.querySelectorAll('#page-home .room-card');
+    roomCards.forEach(function(card) {
+      var onclick = card.getAttribute('onclick') || '';
+      // 如果卡片已有onclick（打开详情），包裹它
+      var existingOnclick = card.getAttribute('onclick');
+      card.style.cursor = 'pointer';
+      card.setAttribute('data-room-num', card.querySelector('.room-title') ? card.querySelector('.room-title').textContent.replace(/[^\d]/g, '').substring(0, 3) : '301');
+      card.onclick = function(e) {
+        // 忽略按钮点击
+        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+        var roomNum = card.getAttribute('data-room-num') || '301';
+        openRoomLifecycleModal(roomNum);
+      };
+    });
+  }, 2000);
+});
 
 // ======= 物联后台迭代v3 - 5项功能性改进 =======
 
