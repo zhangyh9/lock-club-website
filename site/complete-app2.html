@@ -2389,6 +2389,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             <button class="action-btn" style="width:100%;margin-bottom:8px;" onclick="openSyncModal()">🔄 立即同步</button>
             <button class="action-btn" style="width:100%;margin-bottom:8px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);" onclick="openDeviceDiagnosticModal()">🔧 设备诊断</button>
             <button class="action-btn" style="width:100%;margin-bottom:8px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);" onclick="openDeviceHealthReportModal('301')">🏥 健康度报告</button>
+            <!-- 【改进v3-新1】设备参数配置入口 -->
+            <button class="action-btn" style="width:100%;margin-bottom:8px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);" onclick="openDeviceConfigModal()">⚙️ 参数配置</button>
             <button class="action-btn" style="width:100%;background:var(--red-bg);color:var(--red);border-color:var(--red);" onclick="openAlertModal(0)">⚠️ 设备告警</button>
           </div>
         </div>
@@ -10232,13 +10234,49 @@ setInterval(function() {
       showToast('✅ 查房记录已保存（房间 ' + room + '：' + (result === 'pass' ? '合格' : '异常') + '）', 'success');
     }
     function viewInspectDetail(id) {
+      // 【改进v3-新4】查房详情弹窗（含照片附件、检查项评分、可疑区域标注）
+      var photos = [
+        {label:'卧室整体',thumb:'https://picsum.photos/seed/room301a/200/150'},
+        {label:'卫生间',thumb:'https://picsum.photos/seed/room301b/200/150'},
+        {label:'床品检查',thumb:'https://picsum.photos/seed/room301c/200/150'},
+      ];
+      var checkItems = [
+        {name:'卧室整洁',score:5,icon:'🛏️'},
+        {name:'卫生间清洁',score:4,icon:'🚿'},
+        {name:'地面干净',score:5,icon:'🧹'},
+        {name:'家电完好',score:3,icon:'📺'},
+        {name:'床上用品',score:4,icon:'🛌'},
+        {name:'门窗检查',score:5,icon:'🚪'},
+      ];
+      var avgScore = (checkItems.reduce(function(s,i){return s+i.score;},0) / checkItems.length).toFixed(1);
+      var scoreColor = avgScore >= 4.5 ? 'var(--green)' : avgScore >= 3.5 ? 'var(--orange)' : 'var(--red)';
       var html = '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:12px;"><div style="font-size:13px;font-weight:600;margin-bottom:6px;">📋 查房信息</div>';
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">';
       html += '<div><span style="color:var(--text-muted);">查房ID：</span>' + id + '</div>';
       html += '<div><span style="color:var(--text-muted);">查房人：</span>吴倩</div>';
       html += '<div><span style="color:var(--text-muted);">保洁员：</span>郑强</div>';
-      html += '<div><span style="color:var(--text-muted);">检查项：</span>卧室/卫生间/地面/家电</div></div></div>';
-      html += '<div style="padding:10px 14px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;font-size:12px;color:var(--green);">✅ 全部检查项合格，房间已达到入住标准</div>';
+      html += '<div><span style="color:var(--text-muted);">检查项：</span>6项 · 已完成</div></div></div>';
+      // 检查项评分
+      html += '<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;">📊 检查项评分（平均 <strong style="color:' + scoreColor + ';">' + avgScore + '</strong> / 5）</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">';
+      checkItems.forEach(function(item){
+        var itemColor = item.score >= 5 ? 'var(--green)' : item.score >= 3 ? 'var(--orange)' : 'var(--red)';
+        var scoreWidth = (item.score / 5 * 100) + '%';
+        html += '<div style="padding:6px 8px;background:white;border:1px solid var(--border);border-radius:6px;">' +
+          '<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;"><span style="font-size:12px;">' + item.icon + '</span><span style="font-size:11px;">' + item.name + '</span><span style="margin-left:auto;font-size:11px;font-weight:700;color:' + itemColor + ';">' + item.score + '</span></div>' +
+          '<div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;"><div style="height:100%;width:' + scoreWidth + ';background:' + itemColor + ';border-radius:2px;"></div></div></div>';
+      });
+      html += '</div></div>';
+      // 照片附件
+      html += '<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;">📷 现场照片（' + photos.length + '张）</div>';
+      html += '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">';
+      photos.forEach(function(p){
+        html += '<div style="flex-shrink:0;text-align:center;"><img src="' + p.thumb + '" style="width:80px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer;" onclick="this.style.maxWidth=this.style.maxWidth===\'320px\'?\'80px\':\'320px\';this.style.maxHeight=this.style.maxHeight===\'240px\'?\'60px\':\'240px\';this.style.transition=\'all 0.2s\';">' +
+          '<div style="font-size:9px;color:var(--text-muted);margin-top:2px;">' + p.label + '</div></div>';
+      });
+      html += '</div></div>';
+      // 备注
+      html += '<div style="padding:10px 14px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;font-size:12px;color:var(--green);">✅ 全部检查项合格（平均分 ' + avgScore + '），房间已达到入住标准，无需跟进</div>';
       document.getElementById('hkid-body').innerHTML = html;
       openModal('hk-inspect-detail');
     }
@@ -16507,6 +16545,84 @@ function confirmSync() {
   showToast('同步请求已发送，设备正在上报最新状态...', 'info');
   setTimeout(() => showToast('设备同步成功！数据已更新', 'success'), 3000);
 }
+
+// ======= 【改进v3-新1】设备参数远程配置（音量/灵敏度/自动落锁时间） =======
+var deviceConfig = {
+  volume: 3,
+  sensitivity: 2,
+  autoLockSeconds: 30,
+  tamperAlert: true,
+  lowBatteryAlert: true,
+  wrongPwdLock: true
+};
+var deviceConfigLabels = {
+  volume: {1:'静音', 2:'低', 3:'中', 4:'高', 5:'最大'},
+  sensitivity: {1:'低', 2:'中', 3:'高'}
+};
+
+function openDeviceConfigModal() {
+  var html = '<div class="modal-overlay" id="modal-device-config" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:480px;">' +
+    '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">⚙️ 设备参数配置 - 301门锁</div>' +
+    '<button onclick="this.closest(\'.modal-overlay\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--orange);">⚠️ 修改参数将实时下发至设备，请确认参数正确后再保存</div>' +
+    '<div class="form-group"><label class="form-label">🔊 提示音量（1-5档）</label>' +
+    '<div style="display:flex;gap:8px;align-items:center;">' +
+    '<input type="range" id="cfg-volume" min="1" max="5" value="' + deviceConfig.volume + '" style="flex:1;accent-color:var(--blue);" oninput="document.getElementById(\'cfg-volume-label\').textContent=deviceConfigLabels.volume[this.value] + \' (\' + this.value + \'档)\'">' +
+    '<span id="cfg-volume-label" style="font-size:13px;font-weight:700;color:var(--blue);min-width:60px;">' + (deviceConfigLabels.volume[deviceConfig.volume] || '中') + ' (' + deviceConfig.volume + '档)</span></div></div>' +
+    '<div class="form-group"><label class="form-label">👆 触摸灵敏度（1-3档）</label>' +
+    '<div style="display:flex;gap:8px;align-items:center;">' +
+    '<input type="range" id="cfg-sensitivity" min="1" max="3" value="' + deviceConfig.sensitivity + '" style="flex:1;accent-color:var(--blue);" oninput="document.getElementById(\'cfg-sens-label\').textContent=deviceConfigLabels.sensitivity[this.value] + \' (\' + this.value + \'档)\'">' +
+    '<span id="cfg-sens-label" style="font-size:13px;font-weight:700;color:var(--blue);min-width:60px;">' + (deviceConfigLabels.sensitivity[deviceConfig.sensitivity] || '中') + ' (' + deviceConfig.sensitivity + '档)</span></div></div>' +
+    '<div class="form-group"><label class="form-label">⏱️ 自动落锁时间（秒）</label>' +
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">' +
+    '<div class="cfg-auto-lock-btn ' + (deviceConfig.autoLockSeconds === 15 ? 'active' : '') + '" onclick="selectAutoLock(15,this)" style="padding:8px 4px;text-align:center;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:' + (deviceConfig.autoLockSeconds === 15 ? 'var(--blue-bg)' : 'white') + ';color:' + (deviceConfig.autoLockSeconds === 15 ? 'var(--blue)' : 'var(--text)') + ';">15秒</div>' +
+    '<div class="cfg-auto-lock-btn ' + (deviceConfig.autoLockSeconds === 30 ? 'active' : '') + '" onclick="selectAutoLock(30,this)" style="padding:8px 4px;text-align:center;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:' + (deviceConfig.autoLockSeconds === 30 ? 'var(--blue-bg)' : 'white') + ';color:' + (deviceConfig.autoLockSeconds === 30 ? 'var(--blue)' : 'var(--text)') + ';">30秒</div>' +
+    '<div class="cfg-auto-lock-btn ' + (deviceConfig.autoLockSeconds === 60 ? 'active' : '') + '" onclick="selectAutoLock(60,this)" style="padding:8px 4px;text-align:center;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:' + (deviceConfig.autoLockSeconds === 60 ? 'var(--blue-bg)' : 'white') + ';color:' + (deviceConfig.autoLockSeconds === 60 ? 'var(--blue)' : 'var(--text)') + ';">60秒</div>' +
+    '<div class="cfg-auto-lock-btn ' + (deviceConfig.autoLockSeconds === 120 ? 'active' : '') + '" onclick="selectAutoLock(120,this)" style="padding:8px 4px;text-align:center;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:' + (deviceConfig.autoLockSeconds === 120 ? 'var(--blue-bg)' : 'white') + ';color:' + (deviceConfig.autoLockSeconds === 120 ? 'var(--blue)' : 'var(--text)') + ';">2分钟</div>' +
+    '<div class="cfg-auto-lock-btn ' + (deviceConfig.autoLockSeconds === 0 ? 'active' : '') + '" onclick="selectAutoLock(0,this)" style="padding:8px 4px;text-align:center;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:' + (deviceConfig.autoLockSeconds === 0 ? 'var(--red-bg)' : 'white') + ';color:' + (deviceConfig.autoLockSeconds === 0 ? 'var(--red)' : 'var(--text)') + ';">关闭</div></div></div>' +
+    '<div class="form-group"><label class="form-label">🔔 告警开关</label>' +
+    '<div style="display:flex;flex-direction:column;gap:8px;">' +
+    '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;"><input type="checkbox" id="cfg-tamper" ' + (deviceConfig.tamperAlert ? 'checked' : '') + ' style="accent-color:var(--blue);width:18px;height:18px;">防撬告警（设备被非法拆卸时推送通知）</label>' +
+    '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;"><input type="checkbox" id="cfg-lowbat" ' + (deviceConfig.lowBatteryAlert ? 'checked' : '') + ' style="accent-color:var(--blue);width:18px;height:18px;">低电量告警（电量低于20%时提醒）</label>' +
+    '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;"><input type="checkbox" id="cfg-wrongpwd" ' + (deviceConfig.wrongPwdLock ? 'checked' : '') + ' style="accent-color:var(--blue);width:18px;height:18px;">密码连续错误锁定（连续5次输错后锁定5分钟）</label></div></div>' +
+    '<div style="display:flex;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">' +
+    '<button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()" style="flex:1;padding:10px;">取消</button>' +
+    '<button class="modal-btn primary" onclick="saveDeviceConfig()" style="flex:2;padding:10px;background:var(--blue);color:white;border:none;font-weight:700;">📤 保存并下发配置</button></div></div></div></div>';
+  var existing = document.getElementById('modal-device-config');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function selectAutoLock(seconds, el) {
+  deviceConfig.autoLockSeconds = seconds;
+  document.querySelectorAll('.cfg-auto-lock-btn').forEach(function(b) {
+    b.style.borderColor = 'var(--border)';
+    b.style.background = 'white';
+    b.style.color = 'var(--text)';
+  });
+  el.style.borderColor = seconds === 0 ? 'var(--red)' : 'var(--blue)';
+  el.style.background = seconds === 0 ? 'var(--red-bg)' : 'var(--blue-bg)';
+  el.style.color = seconds === 0 ? 'var(--red)' : 'var(--blue)';
+}
+
+function saveDeviceConfig() {
+  deviceConfig.volume = parseInt(document.getElementById('cfg-volume').value);
+  deviceConfig.sensitivity = parseInt(document.getElementById('cfg-sensitivity').value);
+  deviceConfig.tamperAlert = document.getElementById('cfg-tamper').checked;
+  deviceConfig.lowBatteryAlert = document.getElementById('cfg-lowbat').checked;
+  deviceConfig.wrongPwdLock = document.getElementById('cfg-wrongpwd').checked;
+  var m = document.getElementById('modal-device-config');
+  if (m) m.remove();
+  showToast('⚙️ 配置已保存，正在下发至设备…', 'info');
+  setTimeout(function() {
+    showToast('✅ 设备配置更新成功！参数已生效', 'success');
+    addOpLog('device', '赵飞', '修改设备301参数：音量' + deviceConfig.volume + '档/自动落锁' + deviceConfig.autoLockSeconds + '秒', '');
+  }, 2000);
+}
+
 // ======= 改进2: 设备操作二次确认（倒计时防误操作） =======
 var deviceConfirmTimer = null;
 var deviceConfirmCallback = null;
@@ -31081,7 +31197,7 @@ window.kpgGenerateAndSend = function() {
   kpgCurrentPassword = finalPwd;
   document.getElementById('kpg-password-preview').textContent = finalPwd;
   var typeLabels = { dynamic: '动态', offline: '离线', temp: '临时', oneTime: '一次性' };
-  // 【改进5】密码生成后增加发送方式选择弹窗
+  // 【改进2v3】密码生成后增加发送方式选择弹窗（含二维码/链接）
   openKeypadSendMethodModal(finalPwd, kpgSelectedRoom);
 };
 
@@ -31090,32 +31206,108 @@ function openKeypadSendMethodModal(password, roomNum) {
   if (existing) existing.remove();
   var roomInfo = { '301': {guest:'张三', phone:'138****8888'}, '302': {guest:'李四', phone:'139****6666'}, '303': {guest:'王五', phone:'137****5555'}, '304': {guest:'赵六', phone:'136****4444'} };
   var info = roomInfo[roomNum] || {guest:'未知', phone:'--'};
+  var now = new Date();
+  var expiry = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  var expiryStr = expiry.toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\//g,'-');
+  var linkId = 'KP' + Date.now();
+  var shareLink = 'https://lock.me/kp/' + linkId + '?p=' + encodeURIComponent(password) + '&r=' + roomNum;
   var html = '<div class="modal-overlay" id="modal-keypad-send" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);z-index:2000;display:flex;align-items:center;justify-content:center;">' +
-    '<div class="modal" style="width:440px;border-radius:12px;">' +
+    '<div class="modal" style="width:500px;border-radius:12px;">' +
     '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:15px;font-weight:700;">📤 密码发送方式</div>' +
     '<button onclick="closeKeypadSendModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
     '<div style="padding:20px 24px;">' +
-    '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;text-align:center;">' +
-    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">生成的密码（房间 ' + roomNum + '）</div>' +
-    '<div style="font-size:24px;font-weight:700;font-family:monospace;letter-spacing:3px;color:var(--blue);">' + password + '</div></div>' +
-    '<div style="margin-bottom:14px;">' +
-    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">发送到</div>' +
-    '<div style="padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">' +
-    '<div><div style="font-size:13px;font-weight:600;">' + info.guest + '</div><div style="font-size:11px;color:var(--text-muted);">' + info.phone + '</div></div>' +
-    '<button onclick="sendKeypadViaSMS(\'' + password + '\',\'' + roomNum + '\')" style="padding:6px 14px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📱 短信发送</button></div>' +
-    '<div style="padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">' +
-    '<div><div style="font-size:13px;font-weight:600;">微信 / 企业微信</div><div style="font-size:11px;color:var(--text-muted);">发送到客人微信</div></div>' +
-    '<button onclick="sendKeypadViaWechat(\'' + password + '\',\'' + roomNum + '\')" style="padding:6px 14px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">💬 微信发送</button></div>' +
-    '<div style="padding:10px 14px;background:var(--bg);border-radius:8px;display:flex;justify-content:space-between;align-items:center;">' +
-    '<div><div style="font-size:13px;font-weight:600;">飞书通知</div><div style="font-size:11px;color:var(--text-muted);">发送至酒店飞书群</div></div>' +
-    '<button onclick="sendKeypadViaFeishu(\'' + password + '\',\'' + roomNum + '\')" style="padding:6px 14px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">🔔 飞书发送</button></div></div>' +
-    '<div style="font-size:12px;color:var(--text-muted);margin-top:12px;text-align:center;">提示：短信实际发送需要短信通道支持，当前为模拟演示</div>' +
+    '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:14px;text-align:center;">' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">生成的密码（房间 <b>' + roomNum + '</b>） · 有效期至 ' + expiryStr + '</div>' +
+    '<div style="font-size:22px;font-weight:700;font-family:monospace;letter-spacing:3px;color:var(--blue);">' + password + '</div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">' +
+    // QR Code
+    '<div style="text-align:center;padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">📱 扫码获取密码</div>' +
+    '<canvas id="kp-qr-canvas" width="120" height="120" style="border-radius:6px;background:white;"></canvas>' +
+    '<div style="font-size:10px;color:var(--text-muted);margin-top:4px;">有效期 24小时</div></div>' +
+    // Share Link
+    '<div style="padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">🔗 分享链接</div>' +
+    '<div style="padding:8px 10px;background:white;border:1px solid var(--border);border-radius:6px;font-size:10px;font-family:monospace;word-break:break-all;min-height:40px;color:var(--text);margin-bottom:8px;">' + shareLink + '</div>' +
+    '<button onclick="copyKeypadShareLink(\'' + shareLink.replace(/'/g,"\\'") + '\')" style="width:100%;padding:7px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📋 复制链接</button></div></div>' +
+    // Send options
+    '<div style="margin-bottom:10px;">' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;font-weight:600;">发送给：' + info.guest + '（' + info.phone + '）</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">' +
+    '<button onclick="sendKeypadViaSMS(\'' + password + '\',\'' + roomNum + '\')" style="padding:8px 6px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">📱 短信</button>' +
+    '<button onclick="sendKeypadViaWechat(\'' + password + '\',\'' + roomNum + '\')" style="padding:8px 6px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">💬 微信</button>' +
+    '<button onclick="sendKeypadViaFeishu(\'' + password + '\',\'' + roomNum + '\')" style="padding:8px 6px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">🔔 飞书</button></div></div>' +
     '</div>' +
     '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:center;">' +
     '<button class="modal-btn secondary" onclick="closeKeypadSendModal()" style="padding:8px 24px;">关闭</button></div>' +
     '</div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
+  // Draw QR code using canvas
+  setTimeout(function() {
+    drawSimpleQR('kp-qr-canvas', shareLink);
+  }, 50);
+}
+
+function copyKeypadShareLink(link) {
+  try {
+    navigator.clipboard.writeText(link).then(function() {
+      showToast('🔗 分享链接已复制！', 'success');
+    }).catch(function() {
+      var ta = document.createElement('textarea');
+      ta.value = link;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('🔗 分享链接已复制！', 'success');
+    });
+  } catch(e) {
+    showToast('复制失败', 'error');
+  }
+}
+
+// 简单二维码生成（用字符方块模拟QR码，兼容无外部库）
+function drawSimpleQR(canvasId, text) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var size = 120;
+  var moduleCount = 25;
+  var moduleSize = Math.floor(size / moduleCount);
+  // 生成伪随机二维码矩阵
+  var hash = 0;
+  for (var i = 0; i < text.length; i++) {
+    hash = ((hash << 5) - hash) + text.charCodeAt(i);
+    hash = hash & hash;
+  }
+  var seed = Math.abs(hash);
+  var matrix = [];
+  for (var r = 0; r < moduleCount; r++) {
+    matrix[r] = [];
+    for (var c = 0; c < moduleCount; c++) {
+      // 定位图案区域
+      var isFinder = (r < 7 && c < 7) || (r < 7 && c >= moduleCount - 7) || (r >= moduleCount - 7 && c < 7);
+      if (isFinder) {
+        var isOuter = r === 0 || r === 6 || c === 0 || c === 6 || (r === 3 && c === 3);
+        matrix[r][c] = isOuter ? 1 : 0;
+      } else {
+        // 伪随机填充
+        var pseudoRandom = ((seed * (r + 1) * (c + 1) * 31) + (r * 7 + c * 3)) % 3;
+        matrix[r][c] = pseudoRandom < 2 ? 1 : 0;
+      }
+    }
+  }
+  ctx.fillStyle = 'white';
+  ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = '#1a1a2e';
+  for (var r = 0; r < moduleCount; r++) {
+    for (var c = 0; c < moduleCount; c++) {
+      if (matrix[r][c]) {
+        ctx.fillRect(c * moduleSize, r * moduleSize, moduleSize, moduleSize);
+      }
+    }
+  }
 }
 function closeKeypadSendModal() {
   var m = document.getElementById('modal-keypad-send');
@@ -34864,8 +35056,16 @@ function downloadCSV(content, filename) {
       <div><div class="stat-num" id="eed-stat-alert">--</div><div class="stat-label">异常房间</div></div>
     </div>
   </div>
+  <!-- 【改进v3-新5】能耗柱状图（各房间今日用电排行+月度对比） -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-header"><div class="card-title">📊 各房间今日用电对比</div><div style="font-size:11px;color:var(--text-muted);">柱高代表今日用电量（度）</div></div>
+    <div class="card-body" id="eed-bar-chart-area" style="padding:16px 12px;">
+      <div id="eed-bar-chart" style="display:flex;align-items:flex-end;gap:8px;height:120px;padding-bottom:24px;position:relative;border-bottom:1px solid var(--border);"></div>
+      <div id="eed-bar-labels" style="display:flex;gap:8px;margin-top:4px;"></div>
+    </div>
+  </div>
   <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
-    <select class="form-select" id="eed-type-filter" onchange="renderEnergyDetailTable()" style="padding:6px 10px;font-size:12px;width:130px;">
+    <select class="form-select" id="eed-type-filter" onchange="renderEnergyDetailTable();renderEnergyBarChart();" style="padding:6px 10px;font-size:12px;width:130px;">
       <option value="all">全部房型</option>
       <option value="亲子间">🏠 亲子间</option>
       <option value="大床房">🛏️ 大床房</option>
@@ -35184,7 +35384,41 @@ function submitScheduleRule() {
   closeModal('add-schedule-rule');
 }
 function exportSchedule() { showToast('排班表导出中...', 'info'); setTimeout(function(){ showToast('导出成功！', 'success'); }, 600); }
-function exportEnergyDetail() { showToast('能耗明细导出中...', 'info'); setTimeout(function(){ showToast('导出成功！', 'success'); }, 600); }
+function exportEnergyDetail() {
+  var rows = energyDetailData.map(function(r){
+    return [r.room, r.type, r.todayKwh+'度', r.yesterdayKwh+'度', r.weekAvg+'度', '¥'+(r.todayKwh*0.6).toFixed(1), r.monthKwh+'度', r.alert?'异常':'正常'].join(',');
+  }).join('\n');
+  var csv = '\uFEFF房间,房型,今日用电,昨日用电,周均,今日成本,本月累计,状态\n' + rows;
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '能耗明细_' + new Date().toISOString().slice(0,10) + '.csv'; a.click();
+  showToast('能耗明细已导出为CSV！', 'success');
+}
+function renderEnergyBarChart() {
+  var filterType = document.getElementById('eed-type-filter') ? document.getElementById('eed-type-filter').value : 'all';
+  var data = energyDetailData.filter(function(r){ return filterType === 'all' || r.type === filterType; });
+  data.sort(function(a,b){ return b.todayKwh - a.todayKwh; });
+  data = data.slice(0, 8); // Top 8 rooms
+  var maxKwh = Math.max.apply(null, data.map(function(r){ return r.todayKwh; })) || 1;
+  var barHtml = '';
+  var labelHtml = '';
+  data.forEach(function(r){
+    var heightPct = (r.todayKwh / maxKwh * 100).toFixed(1);
+    var barColor = r.alert ? 'var(--red)' : r.todayKwh > maxKwh * 0.7 ? 'var(--orange)' : 'var(--blue)';
+    barHtml += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:0;cursor:pointer;" onclick="openEnergyRoomDetail(\'' + r.room + '\')" title="' + r.room + '：' + r.todayKwh.toFixed(1) + '度">';
+    barHtml += '<div style="font-size:10px;font-weight:700;color:' + barColor + ';margin-bottom:2px;">' + r.todayKwh.toFixed(1) + '</div>';
+    barHtml += '<div style="width:100%;background:' + barColor + ';border-radius:4px 4px 0 0;min-height:4px;height:' + heightPct + '%;max-width:40px;" title="今日：' + r.todayKwh + '度\n昨日：' + r.yesterdayKwh + '度"></div>';
+    barHtml += '</div>';
+    labelHtml += '<div style="flex:1;text-align:center;font-size:10px;font-weight:600;color:var(--text);min-width:20px;">' + r.room + '</div>';
+  });
+  var barArea = document.getElementById('eed-bar-chart');
+  var labelArea = document.getElementById('eed-bar-labels');
+  if (barArea) barArea.innerHTML = barHtml;
+  if (labelArea) labelArea.innerHTML = labelHtml;
+}
+setTimeout(function(){
+  if (document.getElementById('eed-bar-chart')) renderEnergyBarChart();
+}, 300);
 function exportWorkorderRatings() { showToast('评价记录导出中...', 'info'); setTimeout(function(){ showToast('导出成功！', 'success'); }, 600); }
 </script>
 
@@ -35247,17 +35481,118 @@ function renderNightAuditSummary() {
 function renderAuditHistory() {
   var html = '';
   auditHistory.forEach(function(r) {
-    html += '<tr>';
+    var hasIssue = r.issues && r.issues !== '无' && r.issues.indexOf('无') === -1;
+    html += '<tr style="' + (hasIssue ? 'background:var(--red-bg);' : '') + '">';
     html += '<td>' + r.date + '</td>';
     html += '<td>' + r.auditor + '</td>';
     html += '<td style="font-weight:700;color:var(--orange);">' + r.revenue + '</td>';
     html += '<td>' + r.rooms + '</td>';
-    html += '<td><span class="tbadge green">' + r.status + '</span></td>';
+    html += '<td><span class="tbadge ' + (hasIssue ? 'red' : 'green') + '">' + r.status + '</span></td>';
     html += '<td style="font-size:12px;color:var(--text-muted);">' + r.issues + '</td>';
     html += '</tr>';
   });
   document.getElementById('naf-history-body').innerHTML = html;
 }
+
+// ======= v3改进1: 夜审自动生成 + 财务核对差异报警 =======
+var nightAuditExpectedRevenue = 0;
+var nightAuditActualRevenue = 0;
+var nightAuditFinanceAlert = false;
+
+function autoGenerateNightAudit() {
+  // 模拟从系统自动获取今日营收数据
+  var checkinRevenue = parseInt(document.getElementById('naf-checkin-count').textContent || '0') * 380;
+  var consumptionRevenue = parseInt(document.getElementById('naf-consumption').textContent.replace(/[^0-9]/g,'') || '0');
+  nightAuditExpectedRevenue = checkinRevenue + 680; // 系统预期营收
+  nightAuditActualRevenue = parseInt(document.getElementById('naf-revenue').textContent.replace(/[^0-9]/g,'') || '0');
+  var diff = nightAuditActualRevenue - nightAuditExpectedRevenue;
+  var diffAbs = Math.abs(diff);
+  nightAuditFinanceAlert = diffAbs > 500; // 差异超过500元触发报警
+  var alertHtml = '';
+  if (nightAuditFinanceAlert) {
+    alertHtml = '<div style="margin-top:12px;padding:12px 16px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;display:flex;align-items:center;gap:10px;">' +
+      '<div style="font-size:20px;">🚨</div>' +
+      '<div style="flex:1;">' +
+      '<div style="font-size:13px;font-weight:700;color:var(--red);">⚠️ 营收差异报警</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">预期 ¥' + nightAuditExpectedRevenue.toLocaleString() + '，实际 ¥' + nightAuditActualRevenue.toLocaleString() + '，差异 <span style="color:var(--red);font-weight:700;">' + (diff > 0 ? '+' : '-') + '¥' + diffAbs.toLocaleString() + '</span></div>' +
+      '</div>' +
+      '<button class="action-btn small" onclick="openNightAuditDiscrepancyModal()" style="padding:4px 10px;background:var(--red);color:white;border:none;font-size:11px;">处理差异</button></div>';
+  } else {
+    alertHtml = '<div style="margin-top:12px;padding:12px 16px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;display:flex;align-items:center;gap:10px;">' +
+      '<div style="font-size:20px;">✅</div>' +
+      '<div style="flex:1;">' +
+      '<div style="font-size:13px;font-weight:700;color:var(--green);">财务核对正常</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">预期 ¥' + nightAuditExpectedRevenue.toLocaleString() + '，实际 ¥' + nightAuditActualRevenue.toLocaleString() + '，差异 ¥' + diffAbs.toLocaleString() + '（正常范围内）</div>' +
+      '</div></div>';
+  }
+  return alertHtml;
+}
+
+function openNightAuditDiscrepancyModal() {
+  var diff = nightAuditActualRevenue - nightAuditExpectedRevenue;
+  var html = '<div class="modal-overlay" id="modal-naf-discrepancy" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:480px;">' +
+    '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🚨 营收差异处理</div>' +
+    '<button onclick="this.closest(\'.modal-overlay\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;text-align:center;margin-bottom:16px;">' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">实际营收与预期差异</div>' +
+    '<div style="font-size:32px;font-weight:700;color:var(--red);">' + (diff > 0 ? '+' : '-') + '¥' + Math.abs(diff).toLocaleString() + '</div></div>' +
+    '<div class="form-group"><label class="form-label">差异原因</label>' +
+    '<select class="form-select" id="naf-diff-reason" style="padding:8px 12px;">' +
+    '<option value="">请选择原因</option>' +
+    '<option value="checkin-cash">现金入住未入账（补录）</option>' +
+    '<option value="consumption-miss">消费漏记</option>' +
+    '<option value="deposit-confirm">押金误确认</option>' +
+    '<option value="system-error">系统数据错误</option>' +
+    '<option value="refund">已退款冲正</option>' +
+    '<option value="other">其他原因</option></select></div>' +
+    '<div class="form-group"><label class="form-label">补充说明</label>' +
+    '<textarea class="form-input" id="naf-diff-note" rows="3" placeholder="请输入详细说明…" style="padding:8px 12px;resize:vertical;"></textarea></div>' +
+    '<div class="form-group"><label class="form-label">责任人</label>' +
+    '<select class="form-select" id="naf-diff-respon" style="padding:8px 12px;">' +
+    '<option value="">请选择</option><option value="赵飞">赵飞（前厅经理）</option>' +
+    '<option value="周敏">周敏（前厅接待）</option>' +
+    '<option value="吴倩">吴倩（客房主管）</option>' +
+    '<option value="郑强">郑强（清洁人员）</option></select></div>' +
+    '<div style="display:flex;gap:8px;margin-top:16px;">' +
+    '<button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()" style="flex:1;padding:10px;">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitNightAuditDiscrepancy()" style="flex:1;padding:10px;background:var(--red);color:white;border:none;">确认差异并提交</button></div></div></div></div>';
+  var existing = document.getElementById('modal-naf-discrepancy');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitNightAuditDiscrepancy() {
+  var reason = document.getElementById('naf-diff-reason').value;
+  var note = document.getElementById('naf-diff-note').value.trim();
+  var respon = document.getElementById('naf-diff-respon').value;
+  if (!reason) { showToast('请选择差异原因', 'error'); return; }
+  var diff = nightAuditActualRevenue - nightAuditExpectedRevenue;
+  // 记录差异日志
+  var diffLog = {
+    date: new Date().toISOString().slice(0,10),
+    diff: (diff > 0 ? '+' : '-') + '¥' + Math.abs(diff).toLocaleString(),
+    reason: reason,
+    note: note,
+    respon: respon,
+    status: '已确认'
+  };
+  nightAuditDiffLogs = nightAuditDiffLogs || [];
+  nightAuditDiffLogs.unshift(diffLog);
+  var m = document.getElementById('modal-naf-discrepancy');
+  if (m) m.remove();
+  showToast('✅ 差异已确认并记录，差异金额已调整入账', 'success');
+  nightAuditFinanceAlert = false;
+  // 更新历史记录最后一条的issues
+  if (auditHistory.length > 0) {
+    auditHistory[0].issues = '营收差异¥' + Math.abs(diff).toLocaleString() + '，原因:' + reason;
+  }
+  renderAuditHistory();
+}
+
+var nightAuditDiffLogs = [];
 function confirmNightAuditFull() {
   var undone = nightAuditChecklist.filter(function(i){ return !i.done; });
   if (undone.length > 0) {
@@ -36917,7 +37252,57 @@ function submitHandoverSign() {
   showToast('交接班完成，已通知接班人周敏', 'success');
   addOpLog('config', '赵飞', '交接班完成，当班小结已归档', '');
 }
-function viewHandoverDetail(date) { alert('查看 ' + date + ' 交接班详细记录'); }
+function viewHandoverDetail(date) {
+  // 【改进v3-新3】交接班历史详情弹窗（完整交接班数据+签名+异常记录）
+  var records = [
+    {date:'2026-03-27 早班',operator:'赵飞',incoming:'-',status:'已完成',stats:{checkin:5,checkout:3,wo_pending:2,wo_completed:6,alert:1,revenue:'¥1,420'},cash:'¥420',wechat:'¥380',alipay:'¥220',notes:'VIP王总入住，301房间投诉空调噪音已转移至工程部，303设备离线已上报',issues:'1项设备离线',signer:'赵飞'},
+    {date:'2026-03-26 晚班',operator:'周敏',incoming:'赵飞',status:'已完成',stats:{checkin:3,checkout:5,wo_pending:1,wo_completed:4,alert:2,revenue:'¥2,860'},cash:'¥860',wechat:'¥980',alipay:'¥1,020',notes:'305设备低电量已放置新电池，201房间退房清洁已完成',issues:'无',signer:'周敏'},
+    {date:'2026-03-26 早班',operator:'赵飞',incoming:'吴倩',status:'已完成',stats:{checkin:6,checkout:2,wo_pending:0,wo_completed:8,alert:0,revenue:'¥3,120'},cash:'¥920',wechat:'¥1,200',alipay:'¥1,000',notes:'全天运营正常，无特殊事项',issues:'无',signer:'赵飞'},
+    {date:'2026-03-25 晚班',operator:'吴倩',incoming:'赵飞',status:'已完成',stats:{checkin:2,checkout:4,wo_pending:1,wo_completed:3,alert:1,revenue:'¥1,980'},cash:'¥580',wechat:'¥800',alipay:'¥600',notes:'夜班客流较少，凌晨2点设备误报已处理',issues:'1项低电量已换电池',signer:'吴倩'},
+  ];
+  var rec = records.find(function(r){ return r.date === date; }) || records[0];
+  var old = document.getElementById('modal-ho-detail');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-ho-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:640px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+    '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:24px;">📋</div><div><div style="font-size:15px;font-weight:700;">交接班详情 - ' + rec.date + '</div><div style="font-size:11px;color:var(--text-muted);">交班人：' + rec.operator + ' → 接班人：' + rec.incoming + '</div></div></div>' +
+    '<button onclick="this.closest(\'.modal-overlay\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);">' + rec.stats.checkin + '</div><div style="font-size:11px;color:var(--text-muted);">入住</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + rec.stats.checkout + '</div><div style="font-size:11px;color:var(--text-muted);">退房</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">' + rec.stats.wo_pending + '</div><div style="font-size:11px;color:var(--text-muted);">待处理工单</div></div>' +
+    '<div style="padding:12px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--purple);">' + rec.stats.alert + '</div><div style="font-size:11px;color:var(--text-muted);">设备告警</div></div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">💰 收款明细</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">' +
+    '<div>现金：<strong style="color:var(--green);">¥' + rec.cash.replace('¥','') + '</strong></div>' +
+    '<div>微信：<strong>¥' + rec.wechat.replace('¥','') + '</strong></div>' +
+    '<div>支付宝：<strong>¥' + rec.alipay.replace('¥','') + '</strong></div>' +
+    '<div style="grid-column:1/-1;font-weight:700;color:var(--blue);">合计：¥' + rec.stats.revenue.replace('¥','') + '</div></div></div>' +
+    '<div style="padding:12px;background:' + (rec.issues && rec.issues !== '无' ? 'var(--red-bg)' : 'var(--green-bg)') + ';border-radius:8px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:6px;">' + (rec.issues && rec.issues !== '无' ? '⚠️ 异常事项' : '✅ 运营状态') + '</div>' +
+    '<div style="font-size:12px;color:var(--text);">' + rec.issues + '</div></div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:14px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📝 交班记事</div>' +
+    '<div style="font-size:12px;line-height:1.7;color:var(--text);">' + rec.notes.split('<br>').join('；') + '</div></div>' +
+    '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--blue);">✍️ 签字确认</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;">' +
+    '<div><div style="color:var(--text-muted);margin-bottom:4px;">交班人签字</div><div style="font-size:14px;font-weight:700;">' + rec.signer + '</div><div style="font-size:11px;color:var(--text-muted);">已签字确认</div></div>' +
+    '<div><div style="color:var(--text-muted);margin-bottom:4px;">接班人签字</div><div style="font-size:14px;font-weight:700;">' + rec.incoming + '</div><div style="font-size:11px;color:var(--text-muted);">' + (rec.incoming !== '-' ? '已签字确认' : '无接班人') + '</div></div></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="action-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()" style="padding:8px 20px;">关闭</button>' +
+    '<button class="action-btn" onclick="printHandoverDetail(\'' + rec.date + '\')" style="padding:8px 16px;">🖨️ 打印此记录</button>' +
+    '<button class="action-btn primary" onclick="this.closest(\'.modal-overlay\').remove()" style="background:var(--blue);color:white;border:none;padding:8px 20px;">确定</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function printHandoverDetail(date) {
+  showToast('正在生成打印版本…', 'info');
+  setTimeout(function(){ showToast('打印指令已发送！', 'success'); }, 800);
+}
 
 
 <!-- ===== v3 ITERATION 5 FUNCTIONAL IMPROVEMENTS ===== -->
