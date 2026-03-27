@@ -4673,6 +4673,20 @@ setInterval(function() {
         });
       }
       html += '</div>';
+      // 【改进5】能耗告警通知渠道配置
+      html += '<div style="margin-top:12px;padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;">';
+      html += '<div style="font-size:12px;font-weight:600;color:var(--orange);margin-bottom:8px;">📲 告警通知渠道</div>';
+      html += '<div style="display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap;">';
+      html += '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="eb-notif-feishu" checked style="accent-color:var(--blue);">飞书推送</label>';
+      html += '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="eb-notif-sms" checked style="accent-color:var(--blue);">短信通知</label>';
+      html += '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="eb-notif-email" style="accent-color:var(--blue);">邮件通知</label>';
+      html += '</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-muted);">';
+      html += '<span>触发阈值：</span>';
+      html += '<input type="number" id="eb-notif-threshold" value="80" min="50" max="100" style="width:55px;padding:3px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;text-align:center;">';
+      html += '<span>% 以上时发送通知</span>';
+      html += '</div>';
+      html += '</div>';
       html += '</div>';
       html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
       html += '<button class="modal-btn secondary" onclick="closeEnergyBudgetModal()">取消</button>';
@@ -4688,8 +4702,19 @@ setInterval(function() {
       var critVal = parseInt(document.getElementById('eb-crit-val').textContent);
       energyBudgetConfig.alertThreshold = warnVal / 100;
       energyBudgetConfig.criticalThreshold = critVal / 100;
+      // 【改进5】保存告警通知渠道配置
+      var feishuNotif = document.getElementById('eb-notif-feishu') && document.getElementById('eb-notif-feishu').checked;
+      var smsNotif = document.getElementById('eb-notif-sms') && document.getElementById('eb-notif-sms').checked;
+      var emailNotif = document.getElementById('eb-notif-email') && document.getElementById('eb-notif-email').checked;
+      var threshold = parseInt(document.getElementById('eb-notif-threshold') ? document.getElementById('eb-notif-threshold').value : 80);
+      energyBudgetConfig.notificationChannels = { feishu: feishuNotif, sms: smsNotif, email: emailNotif };
+      energyBudgetConfig.notificationThreshold = threshold;
       closeEnergyBudgetModal();
-      showToast('✅ 预算配置已保存，日预算' + energyBudgetConfig.dailyBudget + 'kWh，月预算' + energyBudgetConfig.monthlyBudget + 'kWh', 'success');
+      var channels = [];
+      if (feishuNotif) channels.push('飞书');
+      if (smsNotif) channels.push('短信');
+      if (emailNotif) channels.push('邮件');
+      showToast('✅ 预算配置已保存，告警通知：' + (channels.length ? channels.join('/') : '未开启') + '，阈值' + threshold + '%', 'success');
     }
     </script>
 
@@ -4951,8 +4976,30 @@ setInterval(function() {
     }
     function exportHandoverReport() {
       var shift = document.getElementById('handover-shift-select') ? document.getElementById('handover-shift-select').value : 'morning';
-      var date = document.getElementById('handover-date') ? document.getElementById('handover-date').value : '';
-      showToast('📤 交接班报表已导出（' + date + ' ' + shift + '）', 'success');
+      var date = document.getElementById('handover-date') ? document.getElementById('handover-date').value : new Date().toISOString().slice(0,10);
+      var revenue = document.getElementById('ho-revenue') ? document.getElementById('ho-revenue').textContent.replace('¥','').replace(',','') : '0';
+      var checkin = document.getElementById('ho-checkin') ? document.getElementById('ho-checkin').textContent : '0';
+      var settlement = document.getElementById('ho-settlement') ? document.getElementById('ho-settlement').textContent : '0';
+      var alerts = document.getElementById('ho-alerts') ? document.getElementById('ho-alerts').textContent : '0';
+      var wo = document.getElementById('ho-wo') ? document.getElementById('ho-wo').textContent : '0';
+      var shiftLabels = {morning:'早班',afternoon:'中班',night:'晚班'};
+      var csv = '\uFEFF班次交接报表,' + date + ',' + shiftLabels[shift] + '\n';
+      csv += '项目,数值\n';
+      csv += '本班营收,' + revenue + '\n';
+      csv += '入住/退房,' + checkin + '\n';
+      csv += '结算笔数,' + settlement + '\n';
+      csv += '待处理告警,' + alerts + '\n';
+      csv += '待办工单,' + wo + '\n';
+      csv += '\n';
+      csv += '交班人,赵飞\n';
+      csv += '接班人,周敏\n';
+      csv += '交班时间,' + new Date().toLocaleString('zh-CN') + '\n';
+      var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = '交接报表_' + date + '_' + shiftLabels[shift] + '.csv';
+      link.click();
+      showToast('📤 交接班报表已导出！', 'success');
     }
     function renderHandoverReport() {
       var now = new Date();
@@ -15812,7 +15859,7 @@ function renderBuilding3DFloor(bldId, floorNum, btn) {
   canvas.innerHTML = floor.rooms.map(function(room) {
     var color = statusColorMap[room.status] || 'var(--text-muted)';
     var bg = statusBgMap[room.status] || 'var(--bg)';
-    return '<div style="background:' + bg + ';border:2px solid ' + color + ';border-radius:8px;padding:10px 6px;text-align:center;cursor:pointer;transition:all 0.2s;" onclick="showPage(\'room-detail\')" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
+    return '<div data-room="' + room.num + '" class="bld3d-room-cell" style="background:' + bg + ';border:2px solid ' + color + ';border-radius:8px;padding:10px 6px;text-align:center;cursor:pointer;transition:all 0.2s;" onclick="openBldRoomPanel(\'' + room.num + '\',\'' + room.type + '\',\'' + room.status + '\')" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
       '<div style="font-size:14px;font-weight:700;color:' + color + ';">' + room.num + '</div>' +
       '<div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">' + room.type + '</div>' +
       '<div style="font-size:10px;font-weight:600;color:' + color + ';">' + room.device + ' ' + (room.status === 'in' ? room.guest || '入住' : room.status === 'empty' ? '空房' : '告警') + '</div>' +
@@ -15836,6 +15883,13 @@ function initBuilding3D() {
   if (document.getElementById('bld-3d-view-section')) {
     renderBuilding3DView();
   }
+}
+// 【改进1】楼栋3D视图点击房间弹出操作面板
+function openBldRoomPanel(roomNum, roomType, status) {
+  var lockStatus = status === 'in' ? '已反锁' : '已反锁';
+  var lockStatusColor = 'var(--text)';
+  var powerStatus = status === 'in' ? '空调开启' : '未取电';
+  openRoomQuickPanel(roomNum, roomType, status, lockStatus, powerStatus, '');
 }
 
 // ======= 改进1: 房间卡片Tab筛选 =======
@@ -22059,13 +22113,33 @@ function openBatchUpgradeModal() {
 }
 function startBatchUpgrade() {
   document.getElementById('bup-start-btn').style.display = 'none';
+  var stageInfo = document.getElementById('bup-stage-info');
+  if (stageInfo) stageInfo.style.display = '';
+  var stageLabels = ['📥 正在下载固件包...', '🔍 正在验证固件完整性...', '📡 正在推送固件到设备...', '⚡ 正在激活新版本...'];
+  var stageBars = ['bup-stage1-bar', 'bup-stage2-bar', 'bup-stage3-bar', 'bup-stage4-bar'];
   var total = batchUpgradeSelected.length;
   var done = 0;
   var success = 0;
   var failed = 0;
   var results = [];
+  var currentStage = 0;
+  function setStageProgress(stageIdx, progress) {
+    var bar = document.getElementById(stageBars[stageIdx]);
+    if (bar) bar.style.width = progress + '%';
+    var label = document.getElementById('bup-stage-label');
+    if (label) label.textContent = stageLabels[stageIdx] || '';
+  }
+  function resetStageBars() {
+    for (var i = 0; i < 4; i++) {
+      var bar = document.getElementById(stageBars[i]);
+      if (bar) bar.style.width = '0%';
+    }
+  }
   function upgradeNext() {
     if (done >= total) {
+      resetStageBars();
+      setStageProgress(3, 100);
+      document.getElementById('bup-stage-label').textContent = '✅ 升级完成！';
       document.getElementById('bup-status').textContent = '🎉 批量升级完成！';
       document.getElementById('bup-status').style.color = 'var(--green)';
       var pct = 100;
@@ -22081,12 +22155,22 @@ function startBatchUpgrade() {
     if (isSuccess) success++; else failed++;
     results.push({ device: device, success: isSuccess });
     done++;
+    // Determine current stage based on progress
     var pct = Math.round((done / total) * 100);
+    var newStage = pct < 25 ? 0 : pct < 50 ? 1 : pct < 75 ? 2 : 3;
+    if (newStage !== currentStage) {
+      // Stage transition - fill previous stage completely
+      for (var i = 0; i < newStage; i++) setStageProgress(i, 100);
+      currentStage = newStage;
+    }
+    setStageProgress(currentStage, pct % 25 === 0 ? 100 : (pct % 25));
     document.getElementById('bup-progress-bar').style.width = pct + '%';
     document.getElementById('bup-progress-text').textContent = done + ' / ' + total;
     document.getElementById('bup-status').textContent = '正在升级: ' + device + ' ... ' + (isSuccess ? '✅ 成功' : '❌ 失败');
     setTimeout(upgradeNext, 600);
   }
+  resetStageBars();
+  setStageProgress(0, 0);
   upgradeNext();
 }
 }, 60000);
@@ -22678,6 +22762,21 @@ function proceedToCheckout() {
         </div>
       </div>
       <div id="bup-status" style="padding:10px 12px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--text-muted);text-align:center;">准备就绪，等待开始...</div>
+      <div id="bup-stage-info" style="margin-top:8px;display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:11px;color:var(--text-muted);">当前阶段</span>
+          <span style="font-size:11px;color:var(--blue);font-weight:600;" id="bup-stage-label">--</span>
+        </div>
+        <div style="display:flex;gap:4px;">
+          <div id="bup-stage-1" style="flex:1;height:4px;background:var(--border);border-radius:2px;"><div style="height:100%;background:var(--blue);border-radius:2px;width:0%;transition:width 0.3s;" id="bup-stage1-bar"></div></div>
+          <div id="bup-stage-2" style="flex:1;height:4px;background:var(--border);border-radius:2px;"><div style="height:100%;background:var(--blue);border-radius:2px;width:0%;transition:width 0.3s;" id="bup-stage2-bar"></div></div>
+          <div id="bup-stage-3" style="flex:1;height:4px;background:var(--border);border-radius:2px;"><div style="height:100%;background:var(--blue);border-radius:2px;width:0%;transition:width 0.3s;" id="bup-stage3-bar"></div></div>
+          <div id="bup-stage-4" style="flex:1;height:4px;background:var(--border);border-radius:2px;"><div style="height:100%;background:var(--blue);border-radius:2px;width:0%;transition:width 0.3s;" id="bup-stage4-bar"></div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:3px;font-size:9px;color:var(--text-muted);">
+          <span>下载</span><span>验证</span><span>推送</span><span>激活</span>
+        </div>
+      </div>
       <div id="bup-result" style="margin-top:10px;"></div>
     </div>
     <div class="modal-footer">
