@@ -614,7 +614,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <span style="font-size:20px;">🚪</span>
           <span>退房办理</span>
         </button>
-        <button class="quick-btn" onclick="showToast('清洁任务已下达，请清洁人员接单！','success')" style="flex:1;padding:16px;background:linear-gradient(135deg,#52c41a,#95de64);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(82,196,26,0.3);transition:all 0.2s;">
+        <button class="quick-btn" onclick="dispatchHousekeepingTask()" style="flex:1;padding:16px;background:linear-gradient(135deg,#52c41a,#95de64);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(82,196,26,0.3);transition:all 0.2s;">
           <span style="font-size:20px;">🧹</span>
           <span>清洁任务</span>
         </button>
@@ -14390,15 +14390,66 @@ function submitPowerControl() {
     closeModal('power-control');
     showToast('⏰ 定时断电已设置：' + room + ' 将于 ' + date + ' ' + time + ' 执行' + (target === 'off' ? '断电' : '通电') + '操作', 'success');
   } else {
+    // 【改进1：真实更新房间电源状态】
+    if (!window.roomPowerMap) window.roomPowerMap = {};
+    window.roomPowerMap[room] = target; // 'on'=通电 'off'=断电
+    // 更新房间电源状态到本地存储（模拟设备状态持久化）
+    try { localStorage.setItem('room_power_' + room, target); } catch(e) {}
     closeModal('power-control');
     if (target === 'off') {
       showToast('正在向 ' + room + ' 下发断电指令...', 'info');
-      setTimeout(function() { showToast(room + ' 已断电，空调等设备已关闭', 'success'); }, 2500);
+      setTimeout(function() {
+        showToast(room + ' 已断电，空调等设备已关闭', 'success');
+        // 【改进1】更新能源页面卡片状态
+        refreshEnergyCardState(room, 'off');
+      }, 2500);
     } else {
       showToast('正在向 ' + room + ' 下发通电指令...', 'info');
-      setTimeout(function() { showToast(room + ' 已通电，设备恢复正常', 'success'); }, 2500);
+      setTimeout(function() {
+        showToast(room + ' 已通电，设备恢复正常', 'success');
+        // 【改进1】更新能源页面卡片状态
+        refreshEnergyCardState(room, 'on');
+      }, 2500);
     }
   }
+}
+
+// 【改进1】刷新能源页面单个房间卡片状态（电源控制后同步UI）
+function refreshEnergyCardState(room, newPowerStatus) {
+  // 找到能源页面中对应房间的卡片并更新
+  var energyCards = document.querySelectorAll('#page-energy .energy-card');
+  energyCards.forEach(function(card) {
+    var titleEl = card.querySelector('h4');
+    if (!titleEl || !titleEl.textContent.includes(room)) return;
+    var btn = card.querySelector('.action-btn.small');
+    var iconEl = card.querySelector('.energy-card-icon');
+    var infoEl = card.querySelector('.energy-card-info');
+    if (newPowerStatus === 'off') {
+      // 断电状态：按钮变"通电"，图标灰色，提示断电
+      if (btn) {
+        btn.textContent = '⚡ 通电';
+        btn.className = 'action-btn small green';
+        btn.onclick = function() { openPowerControlModal(room, 'off'); };
+      }
+      if (iconEl) { iconEl.style.background = 'var(--gray-bg)'; }
+      if (infoEl) {
+        var p = infoEl.querySelector('p');
+        if (p) p.textContent = '⚠️ 电源已断开，等待重新通电';
+      }
+    } else {
+      // 通电状态：按钮变"断电"，图标蓝色，提示正常运行
+      if (btn) {
+        btn.textContent = '⚡ 断电';
+        btn.className = 'action-btn small';
+        btn.onclick = function() { openPowerControlModal(room, 'on'); };
+      }
+      if (iconEl) { iconEl.style.background = 'var(--blue-bg)'; }
+      if (infoEl) {
+        var p = infoEl.querySelector('p');
+        if (p) p.textContent = '空调正常运行，已恢复供电';
+      }
+    }
+  });
 }
 function togglePcScheduleMode() {
   var mode = document.querySelector('input[name="pc-mode"]:checked').value;
@@ -28604,6 +28655,162 @@ document.addEventListener('DOMContentLoaded', function() {
   }, 1000);
 });
 
+
+// 【改进4：清洁任务真实派发系统】
+// 清洁任务数据存储（模拟数据库）
+if (!window.housekeepingTasks) {
+  window.housekeepingTasks = [
+    { id: 'HK-2026032701', room: '302', type: '退房清洁', priority: 'normal', status: 'pending', assignee: '郑强', createdAt: '2026-03-27 08:30', notes: '' },
+    { id: 'HK-2026032702', room: '305', type: '退房清洁', priority: 'urgent', status: 'assigned', assignee: '郑强', createdAt: '2026-03-27 09:15', notes: '有小孩，注意卫生' },
+    { id: 'HK-2026032703', room: '201', type: '日常清洁', priority: 'low', status: 'done', assignee: '郑强', createdAt: '2026-03-27 07:00', notes: '' }
+  ];
+}
+
+function dispatchHousekeepingTask() {
+  // 打开清洁任务派发弹窗
+  var hkHtml = '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">' +
+    '<div style="background:white;border-radius:12px;width:460px;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">' +
+    '<div style="font-size:15px;font-weight:700;">🧹 派发清洁任务</div>' +
+    '<button onclick="this.closest(\'div[style*=\"position:fixed\"]\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:16px 20px;">' +
+    // 今日清洁任务统计
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);" id="hk-stat-pending">' + window.housekeepingTasks.filter(function(t){return t.status==='pending'||t.status==='assigned';}).length + '</div><div style="font-size:10px;color:var(--text-muted);">待处理</div></div>' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);" id="hk-stat-assigned">' + window.housekeepingTasks.filter(function(t){return t.status==='assigned';}).length + '</div><div style="font-size:10px;color:var(--text-muted);">执行中</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);" id="hk-stat-done">' + window.housekeepingTasks.filter(function(t){return t.status==='done';}).length + '</div><div style="font-size:10px;color:var(--text-muted);">已完成</div></div>' +
+    '</div>' +
+    // 派发表单
+    '<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);">📝 新建清洁任务</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">' +
+    '<div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">房间号 <span style="color:var(--red);">*</span></label>' +
+    '<select id="hk-room-select" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">' +
+    '<option value="">选择房间</option>' +
+    '<option value="301">301 - 亲子间</option><option value="302">302 - 亲子间</option>' +
+    '<option value="303">303 - 亲子间</option><option value="304">304 - 亲子间</option>' +
+    '<option value="305">305 - 亲子间</option><option value="201">201 - 大床房</option>' +
+    '<option value="202">202 - 大床房</option><option value="203">203 - 大床房</option>' +
+    '</select></div>' +
+    '<div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">清洁类型 <span style="color:var(--red);">*</span></label>' +
+    '<select id="hk-type-select" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">' +
+    '<option value="checkout">退房清洁</option><option value="daily">日常清洁</option>' +
+    '<option value="deep">深度清洁</option><option value="emergency">紧急清洁</option>' +
+    '</select></div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">' +
+    '<div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">处理人员</label>' +
+    '<select id="hk-assignee-select" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">' +
+    '<option value="郑强">郑强（清洁人员）</option><option value="吴倩">吴倩（客房主管）</option>' +
+    '<option value="周敏">周敏（客房员工）</option>' +
+    '</select></div>' +
+    '<div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">紧急程度</label>' +
+    '<select id="hk-priority-select" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">' +
+    '<option value="normal">普通</option><option value="urgent">紧急</option>' +
+    '<option value="low">低优先级</option>' +
+    '</select></div>' +
+    '</div>' +
+    '<div style="margin-bottom:14px;"><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">备注</label>' +
+    '<input type="text" id="hk-notes-input" placeholder="特殊要求，如：有小孩、注意卫生..." style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"></div>' +
+    '<button onclick="confirmHousekeepingDispatch()" style="width:100%;padding:10px;background:var(--green);color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">🧹 确认派发任务</button>' +
+    // 今日任务列表
+    '<div style="font-size:13px;font-weight:600;margin:16px 0 10px;color:var(--text);">📋 今日清洁任务</div>' +
+    '<div id="hk-task-list" style="max-height:200px;overflow-y:auto;">' +
+    window.housekeepingTasks.slice(0,5).map(function(t) {
+      var statusColor = t.status === 'done' ? 'var(--green)' : (t.status === 'assigned' ? 'var(--blue)' : 'var(--orange)');
+      var statusBg = t.status === 'done' ? 'var(--green-bg)' : (t.status === 'assigned' ? 'var(--blue-bg)' : 'var(--orange-bg)');
+      var priorityColor = t.priority === 'urgent' ? 'var(--red)' : (t.priority === 'low' ? 'var(--text-muted)' : 'var(--text)');
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--bg);">' +
+        '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + t.room + ' <span style="font-size:10px;color:var(--text-muted);">' + t.type + '</span></div>' +
+        '<div style="font-size:10px;color:var(--text-muted);">' + t.assignee + ' · ' + t.createdAt + '</div></div>' +
+        '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:' + statusBg + ';color:' + statusColor + ';">' + (t.status === 'done' ? '✅ 完成' : (t.status === 'assigned' ? '🔄 执行中' : '⏳ 待接单')) + '</span></div>';
+    }).join('') +
+    '</div></div></div></div>';
+  var existing = document.querySelector('div[style*="position:fixed"][style*="z-index:999999"]');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', hkHtml);
+}
+
+function confirmHousekeepingDispatch() {
+  var room = document.getElementById('hk-room-select').value;
+  var type = document.getElementById('hk-type-select');
+  var typeText = type ? type.options[type.selectedIndex].text : '退房清洁';
+  var typeVal = document.getElementById('hk-type-select').value;
+  var assignee = document.getElementById('hk-assignee-select').value;
+  var priority = document.getElementById('hk-priority-select').value;
+  var notes = document.getElementById('hk-notes-input').value;
+  if (!room) { showToast('请选择房间号', 'error'); return; }
+  var typeLabels = { checkout: '退房清洁', daily: '日常清洁', deep: '深度清洁', emergency: '紧急清洁' };
+  var newTask = {
+    id: 'HK-' + Date.now().toString().slice(-8),
+    room: room,
+    type: typeLabels[typeVal] || '退房清洁',
+    priority: priority,
+    status: 'assigned',
+    assignee: assignee,
+    createdAt: new Date().toLocaleString('zh-CN', {hour:'2-digit',minute:'2-digit'}),
+    notes: notes
+  };
+  window.housekeepingTasks.unshift(newTask);
+  // 关闭弹窗
+  var modal = document.querySelector('div[style*="position:fixed"][style*="z-index:999999"]');
+  if (modal) modal.remove();
+  showToast('🧹 清洁任务已派发！房间 ' + room + ' 的' + typeLabels[typeVal] + '已分配给「' + assignee + '」', 'success');
+}
+
+
+// 【改进5：设备阈值配置系统】
+var deviceThresholds = {
+  batteryLow: 20,
+  offlineHours: 6,
+  energyHigh: 5.0,
+  acDelay: 120
+};
+
+function saveDeviceThresholds() {
+  deviceThresholds.batteryLow = parseInt(document.getElementById('threshold-battery-low').value) || 20;
+  deviceThresholds.offlineHours = parseInt(document.getElementById('threshold-offline').value) || 6;
+  deviceThresholds.energyHigh = parseFloat(document.getElementById('threshold-energy-high').value) || 5.0;
+  deviceThresholds.acDelay = parseInt(document.getElementById('threshold-ac-delay').value) || 120;
+  try { localStorage.setItem('device_thresholds', JSON.stringify(deviceThresholds)); } catch(e) {}
+  // 更新预览
+  document.getElementById('preview-battery').textContent = deviceThresholds.batteryLow + '%';
+  document.getElementById('preview-offline').textContent = deviceThresholds.offlineHours + 'h';
+  document.getElementById('preview-energy').textContent = '¥' + deviceThresholds.energyHigh + '/日';
+  var m = Math.floor(deviceThresholds.acDelay / 60), s = deviceThresholds.acDelay % 60;
+  document.getElementById('preview-ac').textContent = (m > 0 ? m + 'h' : '') + (s > 0 ? s + 'min' : '') || '0';
+  var msgEl = document.getElementById('threshold-save-msg');
+  if (msgEl) { msgEl.style.display = ''; setTimeout(function() { if (msgEl) msgEl.style.display = 'none'; }, 3000); }
+  showToast('✅ 设备阈值配置已保存', 'success');
+}
+
+function applyThresholdPreset(preset) {
+  var presets = {
+    eco: { batteryLow: 30, offlineHours: 4, energyHigh: 3.5, acDelay: 60 },
+    normal: { batteryLow: 20, offlineHours: 6, energyHigh: 5.0, acDelay: 120 },
+    strict: { batteryLow: 15, offlineHours: 12, energyHigh: 8.0, acDelay: 240 }
+  };
+  var p = presets[preset];
+  if (!p) return;
+  document.getElementById('threshold-battery-low').value = p.batteryLow;
+  document.getElementById('threshold-battery-low-val').textContent = p.batteryLow + '%';
+  document.getElementById('threshold-offline').value = p.offlineHours;
+  document.getElementById('threshold-offline-val').textContent = p.offlineHours + 'h';
+  document.getElementById('threshold-energy-high').value = p.energyHigh;
+  document.getElementById('threshold-energy-high-val').textContent = '¥' + p.energyHigh + '/日';
+  document.getElementById('threshold-ac-delay').value = p.acDelay;
+  var m = Math.floor(p.acDelay / 60), s = p.acDelay % 60;
+  document.getElementById('threshold-ac-delay-val').textContent = (m > 0 ? m + 'h' : '') + (s > 0 ? s + 'min' : '') || '0';
+  showToast('🌿 已应用「' + (preset === 'eco' ? '节能模式' : (preset === 'normal' ? '普通模式' : '严格模式')) + '」预设值，请点击保存', 'success');
+}
+
+// 初始化时加载已保存的阈值
+try {
+  var saved = localStorage.getItem('device_thresholds');
+  if (saved) {
+    var parsed = JSON.parse(saved);
+    Object.assign(deviceThresholds, parsed);
+  }
+} catch(e) {}
 </script>
 </body>
 </html>
