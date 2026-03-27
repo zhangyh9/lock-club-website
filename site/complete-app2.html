@@ -2507,6 +2507,68 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
     </div>
 
+    <!-- 【改进3】房型价格管理弹窗：支持设置不同入住时长的单价，支持钟点房/半天/全天计费 -->
+    <div class="modal-overlay hidden" id="modal-roomtype-price-v2">
+      <div class="modal" style="width:600px;">
+        <div class="modal-header">
+          <div class="modal-title">💰 房型价格管理 - <span id="rtp-type-name" style="color:var(--blue);"></span></div>
+          <button class="modal-close" onclick="closeModal('roomtype-price-v2')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">
+            💡 配置不同入住时长的价格策略：钟点房（4h）、半天房（12h）、全天房（24h），在住户入住时自动应用对应价格
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="detail-card" style="border:2px solid var(--orange);">
+              <div style="font-size:12px;font-weight:600;color:var(--orange);margin-bottom:8px;">🕐 钟点房（4小时）</div>
+              <div class="form-group" style="margin-bottom:8px;">
+                <label class="form-label" style="font-size:11px;">价格（元）</label>
+                <input type="number" class="form-input" id="rtp-hourly-price" placeholder="如：58" style="padding:6px 10px;font-size:13px;">
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);">适用于短暂休息、等人等场景</div>
+            </div>
+            <div class="detail-card" style="border:2px solid var(--blue);">
+              <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;">🏡 半天房（12小时）</div>
+              <div class="form-group" style="margin-bottom:8px;">
+                <label class="form-label" style="font-size:11px;">价格（元）</label>
+                <input type="number" class="form-input" id="rtp-halfday-price" placeholder="如：98" style="padding:6px 10px;font-size:13px;">
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);">适用于午休、过夜等场景</div>
+            </div>
+            <div class="detail-card" style="border:2px solid var(--green);">
+              <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:8px;">🌙 全天房（24小时）</div>
+              <div class="form-group" style="margin-bottom:8px;">
+                <label class="form-label" style="font-size:11px;">价格（元）</label>
+                <input type="number" class="form-input" id="rtp-fullday-price" placeholder="如：168" style="padding:6px 10px;font-size:13px;">
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);">标准入住计费单位</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">押金设置（元）</label>
+            <input type="number" class="form-input" id="rtp-deposit" placeholder="如：100" style="padding:6px 10px;font-size:13px;width:120px;">
+            <span style="font-size:12px;color:var(--text-muted);margin-left:8px;">退房时全额退还</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">含早餐</label>
+            <select class="form-select" id="rtp-breakfast" style="padding:6px 10px;font-size:13px;width:140px;">
+              <option value="none">不含早餐</option>
+              <option value="single">含单早</option>
+              <option value="double">含双早</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">加床费（元/张）</label>
+            <input type="number" class="form-input" id="rtp-extrabed" placeholder="如：80" style="padding:6px 10px;font-size:13px;width:120px;">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('roomtype-price-v2')">取消</button>
+          <button class="modal-btn primary" onclick="saveRoomTypePrice()" style="background:var(--blue);color:white;border:none;">💾 保存价格策略</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 【改进3】楼层管理新增楼层弹窗（原系统楼层管理有楼层但Demo无此弹窗） -->
     <div class="modal-overlay hidden" id="modal-add-floor">
       <div class="modal" style="width:420px;">
@@ -4554,6 +4616,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div class="stat-card">
           <div class="stat-icon" style="background:var(--orange-bg);">📊</div>
           <div><div class="stat-num">75%</div><div class="stat-label">入住率</div></div>
+        </div>
+      </div>
+      <!-- 【改进5】楼栋3D楼层可视化：展示楼栋各楼层房间状态，颜色区分入住/空房/告警 -->
+      <div class="card" id="bld-3d-view-section" style="margin-bottom:16px;">
+        <div class="card-header">
+          <div class="card-title">🏗️ 楼栋3D楼层可视化</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select class="form-select" id="bld-3d-selector" style="padding:5px 10px;font-size:12px;width:130px;" onchange="renderBuilding3DView()">
+              <option value="main">🏢 主楼</option>
+              <option value="east">🏢 东配楼</option>
+            </select>
+            <div style="display:flex;gap:10px;font-size:11px;">
+              <span style="color:var(--blue);">●</span><span>入住</span>
+              <span style="color:var(--green);">●</span><span>空房</span>
+              <span style="color:var(--red);">●</span><span>告警</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-body" style="padding:16px;">
+          <div id="bld-3d-floor-tabs" style="display:flex;gap:8px;margin-bottom:14px;"></div>
+          <div id="bld-3d-canvas" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:16px;background:linear-gradient(135deg,#f0f4ff 0%,#e8f0fe 100%);border-radius:12px;min-height:180px;"></div>
+          <div style="display:flex;gap:16px;margin-top:12px;font-size:11px;color:var(--text-muted);">
+            <span>🟢 在线设备：<strong id="bld-3d-online" style="color:var(--green);">14</strong> 台</span>
+            <span>🔴 离线设备：<strong id="bld-3d-offline" style="color:var(--red);">2</strong> 台</span>
+            <span>入住率：<strong id="bld-3d-occupancy" style="color:var(--blue);">75%</strong></span>
+          </div>
         </div>
       </div>
       <div class="card">
@@ -6809,7 +6897,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     </div>
     <div class="modal-footer" id="wd-action-buttons">
       <button class="modal-btn secondary" onclick="closeModal('workorder-detail')">关闭</button>
-      <button class="modal-btn" onclick="wdAccept()" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">✅ 接受工单</button>
+      <button class="modal-btn" onclick="wdReject()" id="wd-btn-reject" style="background:var(--red-bg);color:var(--red);border-color:var(--red);display:none;">❌ 拒绝</button>
+      <button class="modal-btn" onclick="wdAccept()" id="wd-btn-accept" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">✅ 接受工单</button>
+      <button class="modal-btn" onclick="wdStartProcess()" id="wd-btn-process" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);display:none;">🔄 开始处理</button>
+      <button class="modal-btn" onclick="wdComplete()" id="wd-btn-complete" style="background:var(--green-bg);color:var(--green);border-color:var(--green);display:none;">✅ 完成工单</button>
     </div>
   </div>
 </div>
@@ -7997,7 +8088,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">身份证号 <span class="required">*</span></label>
-            <input type="text" class="form-input" id="ci-idcard" placeholder="请输入18位身份证号">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" class="form-input" id="ci-idcard" placeholder="请输入18位身份证号" style="flex:1;">
+              <button type="button" class="action-btn" onclick="simulateIdCardScan()" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);white-space:nowrap;padding:6px 12px;font-size:12px;">🪪 扫描身份证</button>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">入住日期</label>
@@ -9900,6 +9994,269 @@ function showPage(name) {
   } else if (typeof dashboardRefreshInterval !== 'undefined' && dashboardRefreshInterval) {
     clearInterval(dashboardRefreshInterval);
     dashboardRefreshInterval = null;
+  }
+  // 【改进2】切换到设备页时启动心跳轮询
+  if (name === 'device' || name === 'device-detail') {
+    setTimeout(function() { startDeviceHeartbeatPolling(); }, 100);
+  }
+  // 【改进5】切换到楼栋管理页时初始化3D楼层可视化
+  if (name === 'building') {
+    setTimeout(function() { initBuilding3D(); }, 100);
+  }
+}
+
+// ======= 改进3: 房型价格管理（钟点房/半天/全天多档计费） =======
+var currentRoomTypePrice = '';
+
+function openRoomTypePriceModal(typeName) {
+  currentRoomTypePrice = typeName;
+  document.getElementById('rtp-type-name').textContent = typeName;
+  // 尝试从已有数据加载价格
+  var priceData = roomTypePriceData[typeName] || {};
+  document.getElementById('rtp-hourly-price').value = priceData.hourly || '';
+  document.getElementById('rtp-halfday-price').value = priceData.halfday || '';
+  document.getElementById('rtp-fullday-price').value = priceData.fullday || '';
+  document.getElementById('rtp-deposit').value = priceData.deposit || '100';
+  document.getElementById('rtp-breakfast').value = priceData.breakfast || 'none';
+  document.getElementById('rtp-extrabed').value = priceData.extrabed || '';
+  openModal('roomtype-price-v2');
+}
+
+function saveRoomTypePrice() {
+  var typeName = currentRoomTypePrice;
+  var hourly = parseFloat(document.getElementById('rtp-hourly-price').value) || 0;
+  var halfday = parseFloat(document.getElementById('rtp-halfday-price').value) || 0;
+  var fullday = parseFloat(document.getElementById('rtp-fullday-price').value) || 0;
+  var deposit = parseFloat(document.getElementById('rtp-deposit').value) || 100;
+  var breakfast = document.getElementById('rtp-breakfast').value;
+  var extrabed = parseFloat(document.getElementById('rtp-extrabed').value) || 0;
+  if (!hourly || !halfday || !fullday) { showToast('请填写完整的价格策略', 'error'); return; }
+  roomTypePriceData[typeName] = {hourly: hourly, halfday: halfday, fullday: fullday, deposit: deposit, breakfast: breakfast, extrabed: extrabed};
+  closeModal('roomtype-price-v2');
+  showToast('💰 房型「' + typeName + '」价格策略已保存', 'success');
+  // 同时更新房型列表中的价格显示
+  updateRoomTypePriceInList(typeName, fullday);
+}
+
+function updateRoomTypePriceInList(typeName, price) {
+  var typeCards = document.querySelectorAll('.roomtype-card');
+  typeCards.forEach(function(card) {
+    var nameEl = card.querySelector('.roomtype-name');
+    if (nameEl && nameEl.textContent === typeName) {
+      var priceEl = card.querySelector('.roomtype-price');
+      if (priceEl) priceEl.textContent = '¥' + price + '/天起';
+    }
+  });
+}
+
+var roomTypePriceData = {
+  '标准间': {hourly: 58, halfday: 98, fullday: 168, deposit: 100, breakfast: 'none', extrabed: 80},
+  '大床房': {hourly: 68, halfday: 108, fullday: 188, deposit: 100, breakfast: 'single', extrabed: 80},
+  '亲子间': {hourly: 88, halfday: 138, fullday: 238, deposit: 150, breakfast: 'double', extrabed: 100}
+};
+
+// ======= 改进4: 身份证扫描模拟（自动填充身份信息） =======
+function simulateIdCardScan() {
+  var scanBtn = document.querySelector('[onclick="simulateIdCardScan()"]');
+  if (scanBtn) { scanBtn.disabled = true; scanBtn.textContent = '🔄 扫描中…'; }
+  showToast('🪪 正在读取身份证信息…', 'info');
+  setTimeout(function() {
+    // 模拟从身份证读取的信息
+    var names = ['李明', '王芳', '张伟', '刘洋', '陈静', '杨帆'];
+    var name = names[Math.floor(Math.random() * names.length)];
+    var phone = '1' + (Math.floor(Math.random() * 900000000 + 100000000)).toString();
+    var idBase = Math.floor(Math.random() * 900000000000000 + 100000000000000).toString();
+    var birthYear = 1970 + Math.floor(Math.random() * 40);
+    var birthMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
+    var birthDay = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
+    var idcard = idBase.slice(0, 6) + birthYear + birthMonth + birthDay + idBase.slice(14, 17);
+    var idcardDisplay = idcard.slice(0, 6) + '********' + idcard.slice(14);
+
+    document.getElementById('ci-name').value = name;
+    document.getElementById('ci-phone').value = phone;
+    document.getElementById('ci-idcard').value = idcardDisplay;
+
+    if (scanBtn) { scanBtn.disabled = false; scanBtn.textContent = '🪪 扫描身份证'; }
+    showToast('✅ 身份证信息已读取：' + name + ' · ' + idcardDisplay, 'success');
+    // 同时记录到操作日志
+    addOpLog('checkin', '系统', '身份证扫描入住：' + name + '（' + phone + '）');
+  }, 1500);
+}
+
+// ======= 改进4: 操作日志自动记录 =======
+var opLogList = [
+  {time: '2026-03-27 11:45:23', type: 'config', user: '赵飞', content: '修改了退房时间为 12:00 → 14:00', ip: '192.168.1.101', result: '成功'},
+  {time: '2026-03-27 10:32:08', type: 'device', user: '系统', content: '设备 DLD-301 固件升级 v2.3.0 → v2.3.1', ip: '127.0.0.1', result: '成功'},
+  {time: '2026-03-27 10:15:00', type: 'checkin', user: '周敏', content: '办理入住：301房间 - 张三', ip: '192.168.1.102', result: '成功'},
+  {time: '2026-03-27 09:00:00', type: 'device', user: '赵飞', content: '远程开锁：301房间 - 授权开锁', ip: '192.168.1.101', result: '成功'},
+  {time: '2026-03-26 23:00:00', type: 'system', user: '系统', content: '自动执行夜审：结转 3 间脏房', ip: '127.0.0.1', result: '成功'},
+  {time: '2026-03-26 18:30:00', type: 'config', user: '吴倩', content: '新增员工：孙华（客房服务员）', ip: '192.168.1.103', result: '成功'},
+  {time: '2026-03-26 16:20:00', type: 'checkin', user: '周敏', content: '批量入住：201/202/203 房间 - 旅行团', ip: '192.168.1.102', result: '成功'},
+  {time: '2026-03-26 14:05:00', type: 'device', user: '赵飞', content: '同步设备 DLD-305 电量数据', ip: '192.168.1.101', result: '成功'},
+  {time: '2026-03-26 02:00:00', type: 'system', user: '系统', content: '凌晨自动重启：2 台离线设备', ip: '127.0.0.1', result: '成功'},
+  {time: '2026-03-25 22:15:00', type: 'config', user: '陈总', content: '修改系统Logo和联系电话', ip: '192.168.1.100', result: '成功'},
+  {time: '2026-03-25 20:00:00', type: 'checkin', user: '赵飞', content: '退房结算：201房间 - 王五，结算金额 ¥286', ip: '192.168.1.101', result: '成功'},
+  {time: '2026-03-25 15:30:00', type: 'device', user: '系统', content: '设备 DLD-303 离线告警（离线超过1小时）', ip: '127.0.0.1', result: '告警'}
+];
+
+function addOpLog(type, user, content) {
+  var now = new Date();
+  var timeStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+  var typeMap = {config: 'config', device: 'device', checkin: 'checkin', system: 'system'};
+  var typeMapLabel = {config: '⚙️ 配置变更', device: '📱 设备操作', checkin: '🏨 入住办理', system: '🔐 系统管理'};
+  opLogList.unshift({time: timeStr, type: typeMap[type] || 'system', user: user, content: content, ip: '127.0.0.1', result: '成功'});
+  // Keep only last 100 records
+  if (opLogList.length > 100) opLogList.pop();
+  // Update UI if oplog table exists
+  renderOplogTable();
+}
+
+function renderOplogTable() {
+  var tbody = document.getElementById('oplog-table-body');
+  if (!tbody) return;
+  var typeFilter = document.getElementById('oplog-type-filter') ? document.getElementById('oplog-type-filter').value : 'all';
+  var userFilter = document.getElementById('oplog-user-filter') ? document.getElementById('oplog-user-filter').value : 'all';
+  var filtered = opLogList.filter(function(log) {
+    if (typeFilter !== 'all' && log.type !== typeFilter) return false;
+    if (userFilter !== 'all' && log.user !== userFilter) return false;
+    return true;
+  });
+  var typeLabelMap = {config: '⚙️ 配置变更', device: '📱 设备操作', checkin: '🏨 入住办理', system: '🔐 系统管理'};
+  var typeBadgeMap = {config: 'blue', device: 'purple', checkin: 'green', system: 'gray'};
+  tbody.innerHTML = filtered.slice(0, 20).map(function(log) {
+    return '<tr data-type="' + log.type + '"><td>' + log.time + '</td><td><span class="tbadge ' + typeBadgeMap[log.type] + '">' + typeLabelMap[log.type] + '</span></td><td>' + log.user + '</td><td>' + log.content + '</td><td>' + log.ip + '</td><td><span class="tbadge ' + (log.result === '成功' ? 'green' : 'orange') + '">' + log.result + '</span></td></tr>';
+  }).join('');
+  var countLabel = document.getElementById('oplog-count-label');
+  if (countLabel) countLabel.textContent = '共 ' + filtered.length + ' 条记录';
+}
+
+function filterOplog() { renderOplogTable(); }
+
+function exportOplog() {
+  var csv = '时间,操作类型,操作人,操作内容,IP地址,结果\n';
+  opLogList.forEach(function(log) {
+    csv += log.time + ',' + log.type + ',' + log.user + ',' + log.content + ',' + log.ip + ',' + log.result + '\n';
+  });
+  downloadFile('操作日志_' + new Date().toISOString().slice(0,10) + '.csv', csv, 'text/csv');
+  showToast('📤 操作日志已导出', 'success');
+}
+
+function downloadFile(filename, content, type) {
+  var blob = new Blob([content], {type: type});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+// ======= 改进5: 楼栋3D楼层可视化 =======
+var building3DData = {
+  main: {
+    floors: [
+      {floor: 3, rooms: [
+        {num: '301', type: '亲子间', status: 'in', guest: '张三', device: '🟢'},
+        {num: '302', type: '亲子间', status: 'empty', guest: '', device: '🟢'},
+        {num: '303', type: '亲子间', status: 'alert', guest: '钱七', device: '🔴'},
+        {num: '304', type: '亲子间', status: 'in', guest: '周八', device: '🟢'},
+        {num: '305', type: '亲子间', status: 'empty', guest: '', device: '🟡'},
+        {num: '306', type: '亲子间', status: 'in', guest: '吴九', device: '🟢'}
+      ]},
+      {floor: 2, rooms: [
+        {num: '201', type: '大床房', status: 'in', guest: '王五', device: '🟢'},
+        {num: '202', type: '大床房', status: 'in', guest: '赵六', device: '🟢'},
+        {num: '203', type: '大床房', status: 'empty', guest: '', device: '🔴'},
+        {num: '204', type: '大床房', status: 'empty', guest: '', device: '🟢'},
+        {num: '205', type: '大床房', status: 'alert', guest: '孙十', device: '🔴'},
+        {num: '206', type: '大床房', status: 'in', guest: '郑一', device: '🟢'}
+      ]},
+      {floor: 1, rooms: [
+        {num: '101', type: '标准间', status: 'in', guest: '周二', device: '🟢'},
+        {num: '102', type: '标准间', status: 'empty', guest: '', device: '🟢'},
+        {num: '103', type: '标准间', status: 'empty', guest: '', device: '🟢'},
+        {num: '104', type: '标准间', status: 'in', guest: '陈丽', device: '🟡'}
+      ]}
+    ]
+  },
+  east: {
+    floors: [
+      {floor: 2, rooms: [
+        {num: 'E201', type: '大床房', status: 'empty', guest: '', device: '🟢'},
+        {num: 'E202', type: '大床房', status: 'in', guest: '刘明', device: '🟢'},
+        {num: 'E203', type: '大床房', status: 'empty', guest: '', device: '🔴'},
+        {num: 'E204', type: '大床房', status: 'in', guest: '马红', device: '🟢'}
+      ]},
+      {floor: 1, rooms: [
+        {num: 'E101', type: '标准间', status: 'empty', guest: '', device: '🟢'},
+        {num: 'E102', type: '标准间', status: 'in', guest: '王小', device: '🟢'},
+        {num: 'E103', type: '标准间', status: 'empty', guest: '', device: '🟢'},
+        {num: 'E104', type: '标准间', status: 'alert', guest: '赵龙', device: '🔴'}
+      ]}
+    ]
+  }
+};
+
+function renderBuilding3DView() {
+  var bldId = document.getElementById('bld-3d-selector') ? document.getElementById('bld-3d-selector').value : 'main';
+  var bld = building3DData[bldId];
+  if (!bld) return;
+  // Render floor tabs
+  var tabsEl = document.getElementById('bld-3d-floor-tabs');
+  if (!tabsEl) return;
+  var floorBtns = bld.floors.map(function(f, i) {
+    return '<button class="action-btn small ' + (i === 0 ? '' : '') + '" onclick="renderBuilding3DFloor(\'' + bldId + '\',' + f.floor + ',this)" style="padding:5px 12px;font-size:12px;">' + f.floor + '层</button>';
+  }).join('');
+  tabsEl.innerHTML = floorBtns;
+  // Render first floor
+  if (bld.floors.length > 0) {
+    var firstBtn = tabsEl.querySelector('button');
+    if (firstBtn) firstBtn.style.background = 'var(--blue)';
+    renderBuilding3DFloor(bldId, bld.floors[0].floor, firstBtn);
+  }
+}
+
+function renderBuilding3DFloor(bldId, floorNum, btn) {
+  if (!btn) return;
+  // Update tab style
+  var tabsEl = document.getElementById('bld-3d-floor-tabs');
+  if (tabsEl) tabsEl.querySelectorAll('button').forEach(function(b) { b.style.background = 'var(--bg)'; b.style.color = 'var(--text)'; });
+  btn.style.background = 'var(--blue)';
+  btn.style.color = 'white';
+
+  var bld = building3DData[bldId];
+  if (!bld) return;
+  var floor = bld.floors.find(function(f) { return f.floor === floorNum; });
+  if (!floor) return;
+  var canvas = document.getElementById('bld-3d-canvas');
+  if (!canvas) return;
+
+  var statusColorMap = {in: 'var(--blue)', empty: 'var(--green)', alert: 'var(--red)'};
+  var statusBgMap = {in: 'rgba(37,99,235,0.1)', empty: 'rgba(16,185,129,0.1)', alert: 'rgba(239,68,68,0.1)'};
+  canvas.innerHTML = floor.rooms.map(function(room) {
+    var color = statusColorMap[room.status] || 'var(--text-muted)';
+    var bg = statusBgMap[room.status] || 'var(--bg)';
+    return '<div style="background:' + bg + ';border:2px solid ' + color + ';border-radius:8px;padding:10px 6px;text-align:center;cursor:pointer;transition:all 0.2s;" onclick="showPage(\'room-detail\')" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
+      '<div style="font-size:14px;font-weight:700;color:' + color + ';">' + room.num + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">' + room.type + '</div>' +
+      '<div style="font-size:10px;font-weight:600;color:' + color + ';">' + room.device + ' ' + (room.status === 'in' ? room.guest || '入住' : room.status === 'empty' ? '空房' : '告警') + '</div>' +
+      '</div>';
+  }).join('');
+
+  // Update stats
+  var online = floor.rooms.filter(function(r){ return r.device === '🟢' || r.device === '🟡'; }).length;
+  var offline = floor.rooms.filter(function(r){ return r.device === '🔴'; }).length;
+  var inCount = floor.rooms.filter(function(r){ return r.status === 'in'; }).length;
+  var occu = Math.round(inCount / floor.rooms.length * 100);
+  var onlineEl = document.getElementById('bld-3d-online');
+  var offlineEl = document.getElementById('bld-3d-offline');
+  var occuEl = document.getElementById('bld-3d-occupancy');
+  if (onlineEl) onlineEl.textContent = online;
+  if (offlineEl) offlineEl.textContent = offline;
+  if (occuEl) occuEl.textContent = occu + '%';
+}
+
+function initBuilding3D() {
+  if (document.getElementById('bld-3d-view-section')) {
+    renderBuilding3DView();
   }
 }
 
@@ -17227,6 +17584,69 @@ function filterDeviceByStatus(status, el) {
   applyDeviceSearch();
 }
 
+// ======= 改进2: 设备列表实时心跳轮询（每30秒模拟设备状态变化，UI实时更新） =======
+var deviceHeartbeatInterval = null;
+function startDeviceHeartbeatPolling() {
+  if (deviceHeartbeatInterval) return;
+  deviceHeartbeatInterval = setInterval(function() {
+    var devPage = document.getElementById('page-device');
+    if (!devPage || !devPage.classList.contains('active')) return;
+    var rows = document.querySelectorAll('#device-table-body tr');
+    if (rows.length === 0) return;
+    var idx = Math.floor(Math.random() * rows.length);
+    var row = rows[idx];
+    var statusCell = row.cells[3];
+    var batteryCell = row.cells[4];
+    var timeCell = row.cells[6];
+    if (!statusCell) return;
+    var rand = Math.random();
+    if (rand < 0.05) {
+      if (statusCell.innerHTML.indexOf('red') !== -1 || statusCell.innerHTML.indexOf('离线') !== -1) {
+        statusCell.innerHTML = '<span class="tbadge green">🟢 在线</span>';
+        showToast('📡 设备 ' + row.cells[1].textContent + ' 恢复在线', 'success');
+      }
+    } else if (rand < 0.1) {
+      if (statusCell.innerHTML.indexOf('green') !== -1 || statusCell.innerHTML.indexOf('在线') !== -1) {
+        statusCell.innerHTML = '<span class="tbadge red">🔴 离线</span>';
+        showToast('⚠️ 设备 ' + row.cells[1].textContent + ' 已离线', 'warning');
+      }
+    }
+    var now = new Date();
+    var timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+    if (timeCell) timeCell.textContent = timeStr;
+    if (batteryCell && Math.random() < 0.3) {
+      var match = batteryCell.textContent.match(/(\d+)/);
+      if (match) {
+        var bat = parseInt(match[1]);
+        bat = Math.max(5, bat - 1);
+        batteryCell.textContent = bat + '%';
+        if (bat < 20) { batteryCell.style.color = 'var(--red)'; batteryCell.textContent = bat + '% ⚠️'; }
+        else if (bat < 50) { batteryCell.style.color = 'var(--orange)'; }
+      }
+    }
+    updateDeviceStatsFromTable();
+  }, 30000);
+}
+
+function updateDeviceStatsFromTable() {
+  var rows = document.querySelectorAll('#device-table-body tr');
+  var online = 0, offline = 0, low = 0;
+  rows.forEach(function(r) {
+    var html = r.cells[3].innerHTML;
+    if (html.indexOf('green') !== -1 || html.indexOf('在线') !== -1) online++;
+    else if (html.indexOf('red') !== -1 || html.indexOf('离线') !== -1) offline++;
+    else low++;
+  });
+  var statCards = document.querySelectorAll('#page-device .stats-row .stat-card');
+  if (statCards[0]) { var m = statCards[0].querySelector('.stat-num'); if (m) m.textContent = online; }
+  if (statCards[1]) { var m = statCards[1].querySelector('.stat-num'); if (m) m.textContent = low; }
+  if (statCards[2]) { var m = statCards[2].querySelector('.stat-num'); if (m) m.textContent = offline; }
+  var statusEl = document.getElementById('dashboard-device-status');
+  if (statusEl) statusEl.textContent = online + '/' + rows.length + ' 在线';
+  var pulseEl = document.getElementById('online-pulse');
+  if (pulseEl) { pulseEl.style.background = offline > 0 ? 'var(--red)' : 'var(--green)'; pulseEl.style.animation = offline > 0 ? 'offlinePulse 1.5s ease-in-out infinite' : 'onlinePulse 2s ease-in-out infinite'; }
+}
+
 function renderDeviceTable() {
   var tbody = document.getElementById('device-table-body');
   if (!tbody || deviceFilteredData.length === 0) {
@@ -22622,12 +23042,16 @@ function openWorkorderDetailV2(idx) {
   document.getElementById('wd-handler').textContent = wo.handler || '未分配';
   document.getElementById('wd-internal-note').value = '';
   var btnArea = document.getElementById('wd-action-buttons');
+  document.getElementById('wd-btn-reject').style.display = 'none';
+  document.getElementById('wd-btn-accept').style.display = 'none';
+  document.getElementById('wd-btn-process').style.display = 'none';
+  document.getElementById('wd-btn-complete').style.display = 'none';
   if (wo.status === 'pending') {
-    btnArea.innerHTML = '<button class="modal-btn secondary" onclick="closeModal(\'workorder-detail\')">关闭</button><button class="modal-btn" onclick="wdAccept()" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">✅ 接受工单</button>';
+    document.getElementById('wd-btn-reject').style.display = 'inline-block';
+    document.getElementById('wd-btn-accept').style.display = 'inline-block';
   } else if (wo.status === 'processing') {
-    btnArea.innerHTML = '<button class="modal-btn secondary" onclick="closeModal(\'workorder-detail\')">关闭</button><button class="modal-btn" onclick="wdLinkCheckout()" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🏨 关联退房</button><button class="modal-btn" onclick="wdDone()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">✅ 完成工单</button>';
-  } else {
-    btnArea.innerHTML = '<button class="modal-btn secondary" onclick="closeModal(\'workorder-detail\')">关闭</button>';
+    document.getElementById('wd-btn-process').style.display = 'inline-block';
+    document.getElementById('wd-btn-complete').style.display = 'inline-block';
   }
   openModal('workorder-detail');
 }
@@ -22650,6 +23074,52 @@ function wdLinkCheckout() {
   var wo = workorderData[currentWorkorderIdx];
   showToast('已发起退房流程：' + wo.room + ' 房间 ' + wo.guest, 'info');
   closeModal('workorder-detail');
+}
+
+// ======= 改进1：工单完整状态流转（拒绝/接受/处理中/完成） =======
+function wdReject() {
+  var idx = currentWoIdx;
+  if (workorderDataV2[idx]) {
+    workorderDataV2[idx].status = 'closed';
+    showToast('工单已拒绝', 'info');
+  } else {
+    workorderData[currentWorkorderIdx].status = 'closed';
+    showToast('工单已拒绝', 'info');
+  }
+  closeModal('workorder-detail');
+  renderWorkorderList();
+  updateWorkorderStats();
+}
+
+function wdStartProcess() {
+  var idx = currentWoIdx;
+  if (workorderDataV2[idx]) {
+    workorderDataV2[idx].status = 'processing';
+    showToast('工单已开始处理', 'success');
+  } else {
+    workorderData[currentWorkorderIdx].status = 'processing';
+    showToast('工单已开始处理', 'success');
+  }
+  closeModal('workorder-detail');
+  renderWorkorderList();
+  updateWorkorderStats();
+}
+
+function wdComplete() {
+  var idx = currentWoIdx;
+  var now = new Date();
+  var timeStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  if (workorderDataV2[idx]) {
+    workorderDataV2[idx].status = 'done';
+    workorderDataV2[idx].completeTime = timeStr;
+    showToast('工单已完成！', 'success');
+  } else {
+    workorderData[currentWorkorderIdx].status = 'done';
+    showToast('工单已完成！', 'success');
+  }
+  closeModal('workorder-detail');
+  renderWorkorderList();
+  updateWorkorderStats();
 }
 
 // ======= 改进E：楼栋快速初始化向导（创建楼栋→楼层→房间一站式搭建） ==============================
