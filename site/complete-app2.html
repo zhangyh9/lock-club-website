@@ -5166,6 +5166,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       <!-- 【改进A增强】节能页面增加"详细分析"入口按钮 -->
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
         <button class="action-btn" onclick="openEnergyAnalysisModal('')" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📊 详细数据分析</button>
+        <button class="action-btn" onclick="openEnergyForecastModal()" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">📈 能耗预测</button>
         <button class="action-btn" onclick="exportEnergyData()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出能耗报表</button>
         <!-- 【改进5】分时电价配置入口 -->
         <button class="action-btn small" onclick="openEnergyTouConfigModal()" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⏰ 分时电价</button>
@@ -20868,16 +20869,160 @@ function exportWorkorderCSV() {
   var visible = Array.from(rows).filter(function(r) { return r.style.display !== 'none'; }).length;
   showToast('工单已导出CSV（' + visible + ' 条记录）', 'success');
 }
+// ======= 工单自动派发规则 CRUD（改进2） =======
+var workorderAutoRules = [
+  {id:'R1', type:'complaint', typeText:'🔴 客户投诉', target:'赵飞', targetText:'赵飞（前厅经理）', urgent:true, sms:true, remind:true, sla:false, note:'普通投诉派给前厅经理', enabled:true, priority:1},
+  {id:'R2', type:'clean', typeText:'🧹 清洁服务', target:'周敏', targetText:'周敏（客房经理）', urgent:false, sms:true, remind:true, sla:false, note:'清洁需求派客房经理', enabled:true, priority:2},
+  {id:'R3', type:'maintain', typeText:'🔧 设施维修', target:'工程部', targetText:'🔧 工程部', urgent:true, sms:true, remind:true, sla:true, note:'设备维修派工程部，启用SLA 4小时', enabled:true, priority:3},
+  {id:'R4', type:'delivery', typeText:'📦 送物服务', target:'客房组', targetText:'👥 客房组', urgent:false, sms:false, remind:true, sla:false, note:'送物需求派客房服务员', enabled:false, priority:4}
+];
+var currentWoRuleEditIdx = null;
+var currentWoRuleEditId = null;
+
+function renderWoRuleTable() {
+  var table = document.getElementById('wo-rule-table');
+  if (!table) return;
+  var count = workorderAutoRules.filter(function(r){ return r.enabled; }).length;
+  var countEl = document.getElementById('wo-rule-count');
+  if (countEl) countEl.textContent = count;
+  if (workorderAutoRules.length === 0) {
+    table.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">暂无规则，点击上方「新增规则」创建</div>';
+    return;
+  }
+  var headers = '<div style="display:grid;grid-template-columns:30px 2fr 2fr 1fr 1fr 60px 60px;gap:6px;padding:8px 10px;background:var(--bg);border-radius:6px;font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">' +
+    '<div>#</div><div>工单类型</div><div>派发对象</div><div>触发条件</div><div>备注</div><div>状态</div><div>操作</div></div>';
+  var rows = workorderAutoRules.map(function(r, i) {
+    var condParts = [];
+    if (r.urgent) condParts.push('🔴超时升级');
+    if (r.sms) condParts.push('📳短信');
+    if (r.remind) condParts.push('⏰提醒');
+    if (r.sla) condParts.push('📋SLA');
+    var condText = condParts.length > 0 ? condParts.join('、') : '-';
+    var bg = r.enabled ? 'var(--green-bg)' : 'var(--bg)';
+    var statusColor = r.enabled ? 'var(--green)' : 'var(--text-muted)';
+    var statusIcon = r.enabled ? '✅' : '❌';
+    var delBtn = r.id ? '<button class="action-btn small red" style="padding:2px 6px;font-size:11px;" onclick="deleteWoRule(\'' + r.id + '\')">删除</button>' : '';
+    return '<div style="display:grid;grid-template-columns:30px 2fr 2fr 1fr 1fr 60px 60px;gap:6px;padding:10px;background:' + bg + ';border-radius:6px;align-items:center;margin-bottom:6px;font-size:12px;">' +
+      '<div style="font-weight:700;color:var(--text-muted);">' + (i+1) + '</div>' +
+      '<div style="font-weight:600;">' + r.typeText + '</div>' +
+      '<div style="color:var(--blue);">' + r.targetText + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + condText + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + (r.note||'-') + '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:' + statusColor + ';">' + statusIcon + (r.enabled?'启用':'停用') + '</div>' +
+      '<div style="display:flex;gap:4px;">' +
+      '<button class="action-btn small" style="padding:2px 6px;font-size:11px;" onclick="showWoRuleForm(\'edit\',' + i + ')">编辑</button>' +
+      delBtn +
+      '</div></div>';
+  }).join('');
+  table.innerHTML = headers + rows;
+}
+
+function showWoRuleForm(mode, idx) {
+  currentWoRuleEditIdx = idx;
+  currentWoRuleEditId = mode === 'edit' ? workorderAutoRules[idx].id : 'R' + (workorderAutoRules.length + 1);
+  var form = document.getElementById('wo-rule-form');
+  var list = document.getElementById('wo-rule-list');
+  var title = document.getElementById('wo-rule-form-title');
+  if (title) title.textContent = mode === 'edit' ? '✏️ 编辑规则' : '➕ 新增规则';
+  if (form) form.style.display = 'block';
+  if (list) list.style.display = 'none';
+  if (mode === 'edit' && idx !== null) {
+    var r = workorderAutoRules[idx];
+    var typeSel = document.getElementById('woar-type');
+    var targetSel = document.getElementById('woar-target');
+    if (typeSel) typeSel.value = r.type;
+    if (targetSel) {
+      // Try to match by name
+      var opts = targetSel.options;
+      for (var i = 0; i < opts.length; i++) {
+        if (opts[i].value === r.target) { targetSel.selectedIndex = i; break; }
+      }
+    }
+    var noteEl = document.getElementById('woar-note');
+    if (noteEl) noteEl.value = r.note || '';
+  } else {
+    var typeSel2 = document.getElementById('woar-type');
+    var targetSel2 = document.getElementById('woar-target');
+    var noteEl2 = document.getElementById('woar-note');
+    if (typeSel2) typeSel2.selectedIndex = 0;
+    if (targetSel2) targetSel2.selectedIndex = 0;
+    if (noteEl2) noteEl2.value = '';
+  }
+  // Reset checkboxes
+  var checks = {woar_urgent: 'urgent', woar_sms: 'sms', woar_remind: 'remind', woar_sla: 'sla'};
+  for (var cid in checks) {
+    var el = document.getElementById(cid);
+    if (el) el.checked = false;
+  }
+  if (mode === 'edit' && idx !== null) {
+    var r2 = workorderAutoRules[idx];
+    ['woar-urgent','woar-sms','woar-remind','woar-sla'].forEach(function(cname) {
+      var el2 = document.getElementById(cname);
+      if (el2) el2.checked = !!r2[cname.replace('woar-','')];
+    });
+  }
+}
+
+function hideWoRuleForm() {
+  var form = document.getElementById('wo-rule-form');
+  var list = document.getElementById('wo-rule-list');
+  if (form) form.style.display = 'none';
+  if (list) list.style.display = 'block';
+  currentWoRuleEditIdx = null;
+  currentWoRuleEditId = null;
+}
+
+function submitWoRule() {
+  var typeVal = document.getElementById('woar-type').value;
+  var targetVal = document.getElementById('woar-target').value;
+  var typeTextMap = {complaint:'🔴 客户投诉', clean:'🧹 清洁服务', maintain:'🔧 设施维修', delivery:'📦 送物服务', invoice:'📄 发票需求', checkin:'🏨 入住需求', checkout:'🚪 退房需求'};
+  var targetTextMap = {'赵飞':'👤 赵飞（前厅经理）','周敏':'👤 周敏（客房经理）','前台组':'👥 前台组','客房组':'👥 客房组','工程部':'🔧 工程部','值班经理':'👔 值班经理'};
+  var rule = {
+    id: currentWoRuleEditId,
+    type: typeVal,
+    typeText: typeTextMap[typeVal] || typeVal,
+    target: targetVal,
+    targetText: targetTextMap[targetVal] || targetVal,
+    urgent: document.getElementById('woar-urgent').checked,
+    sms: document.getElementById('woar-sms').checked,
+    remind: document.getElementById('woar-remind').checked,
+    sla: document.getElementById('woar-sla').checked,
+    note: document.getElementById('woar-note').value,
+    enabled: true,
+    priority: workorderAutoRules.length + 1
+  };
+  if (currentWoRuleEditIdx !== null) {
+    workorderAutoRules[currentWoRuleEditIdx] = rule;
+  } else {
+    workorderAutoRules.push(rule);
+  }
+  hideWoRuleForm();
+  renderWoRuleTable();
+  showToast('✅ 规则已保存：' + rule.typeText + ' → ' + rule.targetText, 'success');
+}
+
+function deleteWoRule(ruleId) {
+  if (!confirm('确认删除该规则？')) return;
+  var idx = workorderAutoRules.findIndex(function(r){ return r.id === ruleId; });
+  if (idx !== -1) {
+    var deleted = workorderAutoRules.splice(idx, 1)[0];
+    renderWoRuleTable();
+    showToast('规则已删除：' + deleted.typeText, 'success');
+  }
+}
+
+// Initialize rule table when modal opens
+function openWorkorderAutoRuleModal() {
+  renderWoRuleTable();
+  openModal('workorder-auto-rule');
+}
 function saveWorkorderAutoRule() {
-  var type = document.getElementById('woar-type').value;
-  var target = document.getElementById('woar-target').value;
-  var urgent = document.getElementById('woar-urgent').checked;
-  var sms = document.getElementById('woar-sms').checked;
-  var remind = document.getElementById('woar-remind').checked;
-  var enabled = document.querySelector('input[name="woar-enabled"]:checked').value === 'on';
-  closeModal('workorder-auto-rule');
-  showToast('工单自动派发规则已保存！类型=' + type + '，派发=' + target + '，启用=' + enabled, 'success');
-  addNotif('⚙️', 'var(--purple)', 'workorder', '工单派发规则已更新：' + type);
+  // Redirect to new form-based submission
+  if (currentWoRuleEditIdx !== null) {
+    submitWoRule();
+  } else {
+    showWoRuleForm('add', null);
+  }
 }
 function saveWorkorderAutoRule_old() {
   var handlers = [{val:'',label:'-- 请选择 --'}, {val:'赵飞',label:'赵飞（管理员）'}, {val:'周敏',label:'周敏（客房经理）'}, {val:'前台',label:'前台组'}, {val:'客房',label:'客房组'}, {val:'工程',label:'工程组'}];
@@ -23869,63 +24014,80 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- 【改进3】工单自动派发规则配置弹窗（解决openWorkorderAutoRuleModal未定义问题） -->
 <div class="modal-overlay hidden" id="modal-workorder-auto-rule">
-  <div class="modal" style="width:560px;">
+  <div class="modal" style="width:640px;max-height:85vh;overflow-y:auto;">
     <div class="modal-header">
-      <div class="modal-title">⚙️ 工单自动派发规则</div>
+      <div class="modal-title">⚙️ 工单自动派发规则 <span style="font-size:12px;font-weight:400;color:var(--text-muted);">— 自动化工单路由配置</span></div>
       <button class="modal-close" onclick="closeModal('workorder-auto-rule')">✕</button>
     </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">工单类型</label>
-        <select class="form-select" id="woar-type">
-          <option value="complaint">🔴 客户投诉 → 自动派发给 前厅经理</option>
-          <option value="clean">🧹 清洁服务 → 自动派发给 客房经理</option>
-          <option value="maintain">🔧 设施维修 → 自动派发给 工程部</option>
-          <option value="delivery">📦 送物服务 → 自动派发给 客房服务员</option>
-          <option value="invoice">📄 发票需求 → 自动派发给 前厅</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">派发对象</label>
-        <select class="form-select" id="woar-target">
-          <option value="front-manager">前厅经理（赵飞）</option>
-          <option value="housekeeping">客房经理（周敏）</option>
-          <option value="engineer">工程部（待配置）</option>
-          <option value="service">客房服务员（待配置）</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">触发条件</label>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-            <input type="checkbox" id="woar-urgent" checked style="accent-color:var(--blue);width:15px;height:15px;">
-            <span>紧急工单（30分钟内未响应自动升级）</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-            <input type="checkbox" id="woar-sms" checked style="accent-color:var(--blue);width:15px;height:15px;">
-            <span>创建时短信通知处理人</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-            <input type="checkbox" id="woar-remind" checked style="accent-color:var(--blue);width:15px;height:15px;">
-            <span>超过2小时未处理发送提醒</span>
-          </label>
+    <div class="modal-body" style="padding:16px 20px;">
+      <!-- 现有规则列表 -->
+      <div id="wo-rule-list">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div style="font-size:13px;font-weight:600;">📋 当前规则（<span id="wo-rule-count">4</span> 条）</div>
+          <button class="action-btn small" onclick="showWoRuleForm('add',null)" style="padding:4px 12px;font-size:12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">+ 新增规则</button>
         </div>
+        <div id="wo-rule-table" style="margin-bottom:16px;"></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">自动派发开关</label>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
-            <input type="radio" name="woar-enabled" value="on" checked style="accent-color:var(--blue);"> 开启
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
-            <input type="radio" name="woar-enabled" value="off" style="accent-color:var(--blue);"> 关闭
-          </label>
+      <!-- 新增/编辑规则表单（默认隐藏） -->
+      <div id="wo-rule-form" style="display:none;border-top:1px solid var(--border);padding-top:16px;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:14px;" id="wo-rule-form-title">➕ 新增规则</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">工单类型 <span class="required">*</span></label>
+            <select class="form-select" id="woar-type" style="font-size:13px;">
+              <option value="complaint">🔴 客户投诉</option>
+              <option value="clean">🧹 清洁服务</option>
+              <option value="maintain">🔧 设施维修</option>
+              <option value="delivery">📦 送物服务</option>
+              <option value="invoice">📄 发票需求</option>
+              <option value="checkin">🏨 入住需求</option>
+              <option value="checkout">🚪 退房需求</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">派发给 <span class="required">*</span></label>
+            <select class="form-select" id="woar-target" style="font-size:13px;">
+              <option value="赵飞">👤 赵飞（前厅经理）</option>
+              <option value="周敏">👤 周敏（客房经理）</option>
+              <option value="前台组">👥 前台组</option>
+              <option value="客房组">👥 客房组</option>
+              <option value="工程部">🔧 工程部</option>
+              <option value="值班经理">👔 值班经理</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">触发条件</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;">
+              <input type="checkbox" id="woar-urgent" checked style="accent-color:var(--blue);width:14px;height:14px;"> 紧急超时30分钟升级
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;">
+              <input type="checkbox" id="woar-sms" checked style="accent-color:var(--blue);width:14px;height:14px;"> 短信通知
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;">
+              <input type="checkbox" id="woar-remind" checked style="accent-color:var(--blue);width:14px;height:14px;"> 2小时未处理提醒
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;">
+              <input type="checkbox" id="woar-sla" style="accent-color:var(--orange);width:14px;height:14px;"> SLA时效限制
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">备注</label>
+          <input type="text" class="form-input" id="woar-note" placeholder="规则备注（可选）" style="font-size:13px;">
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+          <button class="modal-btn secondary" onclick="hideWoRuleForm()" style="padding:6px 16px;font-size:13px;">取消</button>
+          <button class="modal-btn primary" onclick="submitWoRule()" style="padding:6px 20px;font-size:13px;">💾 保存规则</button>
         </div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="modal-btn secondary" onclick="closeModal('workorder-auto-rule')">取消</button>
-      <button class="modal-btn primary" onclick="saveWorkorderAutoRule()">💾 保存规则</button>
+      <div style="display:flex;align-items:center;gap:10px;width:100%;">
+        <div style="font-size:12px;color:var(--text-muted);flex:1;">💡 规则按优先级顺序匹配，命中首条即派发</div>
+        <button class="modal-btn secondary" onclick="closeModal('workorder-auto-rule')" style="padding:6px 20px;">关闭</button>
+      </div>
     </div>
   </div>
 </div>
@@ -29387,7 +29549,71 @@ function closeRoomLifecycleModal() {
 
 function rlcCheckin() { closeRoomLifecycleModal(); openModal('quick-checkin-full'); showToast('正在为 ' + roomLifecycleData.room + ' 办理入住...', 'info'); }
 function rlcCheckout() { closeRoomLifecycleModal(); openModal('checkout-full'); showToast('正在为 ' + roomLifecycleData.room + ' 办理退房...', 'info'); }
-function rlcChangeRoom() { closeRoomLifecycleModal(); showToast('🔄 换房功能：选择目标房间后完成换房', 'info'); }
+function rlcChangeRoom() {
+  closeRoomLifecycleModal();
+  // 打开真实换房弹窗，从 roomLifecycleData 获取当前房间信息
+  var roomNum = roomLifecycleData.room || '301';
+  var guestName = roomLifecycleData.guest || '张三';
+  var targetSelect = '';
+  var targetRooms = [
+    {num:'302', type:'亲子间', status:'empty'},
+    {num:'304', type:'亲子间', status:'empty'},
+    {num:'201', type:'大床房', status:'empty'},
+    {num:'203', type:'标准间', status:'empty'},
+    {num:'205', type:'大床房', status:'empty'}
+  ];
+  // 过滤掉当前房间和已入住房间
+  targetRooms = targetRooms.filter(function(r){ return r.num !== roomNum && r.status === 'empty'; });
+  targetRooms.forEach(function(r){
+    targetSelect += '<option value="' + r.num + '">' + r.num + ' - ' + r.type + '（' + (r.status==='empty'?'可入住':'已入住') + '）</option>';
+  });
+  var oldModal = document.getElementById('modal-rlc-change-room');
+  if (oldModal) oldModal.remove();
+  var html = '<div class="modal-overlay" id="modal-rlc-change-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:520px;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">🔄 换房 - ' + roomNum + '</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-rlc-change-room\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;border:1px solid var(--border);">' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">当前房间</div>' +
+    '<div style="font-size:20px;font-weight:700;">' + roomNum + '</div>' +
+    '<div style="font-size:11px;color:var(--blue);">亲子间</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">住户：' + guestName + '</div></div>' +
+    '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;text-align:center;">' +
+    '<div style="font-size:11px;color:var(--blue);margin-bottom:4px;">目标房间</div>' +
+    '<select class="form-select" id="rlc-cr-target" style="text-align:center;font-weight:600;margin-bottom:4px;">' + targetSelect + '</select>' +
+    '</div></div>' +
+    '<div class="form-group"><label class="form-label">换房原因 <span class="required">*</span></label>' +
+    '<select class="form-select" id="rlc-cr-reason">' +
+    '<option value="noise">房间噪音大</option>' +
+    '<option value="facility">设施故障</option>' +
+    '<option value="floor">楼层/朝向问题</option>' +
+    '<option value="upgrade">想要升级房型</option>' +
+    '<option value="other">其他原因</option></select></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<textarea class="form-textarea" id="rlc-cr-note" placeholder="请输入换房备注（可选）" style="min-height:60px;"></textarea></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:6px;font-size:12px;color:var(--orange);margin-bottom:4px;">' +
+    '⚠️ 换房后原房间钥匙将自动失效，新钥匙自动开通，押金多退少补</div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-rlc-change-room\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitRlcChangeRoom(\'' + roomNum + '\')">确认换房</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitRlcChangeRoom(fromRoom) {
+  var targetRoom = document.getElementById('rlc-cr-target').value;
+  var reason = document.getElementById('rlc-cr-reason').value;
+  var note = document.getElementById('rlc-cr-note').value;
+  if (!targetRoom) { showToast('请选择目标房间', 'error'); return; }
+  var reasonMap = {noise:'房间噪音大', facility:'设施故障', floor:'楼层/朝向问题', upgrade:'升级房型', other:'其他原因'};
+  document.getElementById('modal-rlc-change-room').remove();
+  showToast('✅ 换房成功：' + fromRoom + ' → ' + targetRoom + '，原因：' + (reasonMap[reason]||reason), 'success');
+  // 刷新房间状态
+  var modal = document.getElementById('modal-room-lifecycle');
+  if (modal) modal.remove();
+  openRoomLifecycleModal(targetRoom);
+}
 function rlcExtendStay() { closeRoomLifecycleModal(); showToast('📅 续住已为 ' + roomLifecycleData.room + ' 续1天（原退房日+24小时）', 'success'); }
 function rlcViewRoom() { closeRoomLifecycleModal(); openDeviceDetailModal(roomLifecycleData.room); }
 function rlcViewGuest() { closeRoomLifecycleModal(); showToast('👤 客户档案：' + roomLifecycleData.room + ' 的历史入住记录已加载', 'info'); }
@@ -29415,9 +29641,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ======= 物联后台迭代v3 - 5项功能性改进 =======
 
-// ========== 改进1：房间入住状态实时刷新机制 ==========
-// 功能：每隔30秒自动刷新房间状态，自动将"已过预期退房时间"的房间标红
+// ========== 改进3：房间入住状态实时刷新机制（激活+增强） ==========
+// 功能：每隔30秒自动刷新房间状态，更新统计数字，显示刷新指示器
 var roomStatusRefreshInterval = null;
+var roomStatusLastRefresh = null;
 
 function startRoomStatusRefresh() {
   if (roomStatusRefreshInterval) clearInterval(roomStatusRefreshInterval);
@@ -29425,19 +29652,38 @@ function startRoomStatusRefresh() {
     var homePage = document.getElementById('page-home');
     if (!homePage || !homePage.classList.contains('active')) return;
     var now = new Date();
+    roomStatusLastRefresh = now;
+    // Update refresh indicator
+    var refreshEl = document.getElementById('home-refresh-time');
+    if (refreshEl) {
+      refreshEl.textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+      refreshEl.style.color = 'var(--blue)';
+    }
+    // Flash the refresh icon
+    var refreshIcon = document.getElementById('home-refresh-icon');
+    if (refreshIcon) {
+      refreshIcon.textContent = '🔄';
+      setTimeout(function(){ refreshIcon.textContent = '📡'; }, 800);
+    }
+    // Count statuses dynamically
     var cards = document.querySelectorAll('#page-home .room-card');
+    var inCount = 0, emptyCount = 0, alertCount = 0;
     cards.forEach(function(card) {
       var checkoutEl = card.querySelector('.room-checkout-time');
       if (!checkoutEl) return;
       var checkoutText = checkoutEl.textContent.replace('预计 ', '');
-      // 格式: "03-28 14:00"
       var parts = checkoutText.match(/(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
       if (!parts) return;
       var checkoutDate = new Date(2026, parseInt(parts[1]) - 1, parseInt(parts[2]), parseInt(parts[3]), parseInt(parts[4]));
       var timeDiff = checkoutDate - now;
+      if (card.classList.contains('occupied') || card.querySelector('.room-guest-name')) {
+        inCount++;
+        if (timeDiff < 0) alertCount++;
+      } else {
+        emptyCount++;
+      }
       var overdueBadge = card.querySelector('.overdue-badge');
       if (timeDiff < 0) {
-        // 已过退房时间
         if (!overdueBadge) {
           var badge = document.createElement('span');
           badge.className = 'overdue-badge tbadge';
@@ -29452,6 +29698,11 @@ function startRoomStatusRefresh() {
         card.style.boxShadow = '0 0 0 2px rgba(239,68,68,0.15)';
       }
     });
+    // Update dynamic stat on homepage
+    var statInUse = document.getElementById('home-stat-inuse');
+    if (statInUse) statInUse.textContent = inCount;
+    var statAlertEl = document.querySelector('#page-home .stat-card:nth-child(3) .stat-num');
+    if (statAlertEl) statAlertEl.textContent = alertCount;
   }, 30000);
 }
 
@@ -33473,6 +33724,95 @@ function addOpLog(type, user, content, ip) {
 }
 function exportOplog() { showToast('操作日志已导出（CSV）', 'success'); }
 function filterOplog() { showToast('日志筛选已更新', 'info'); }
+
+// ======= 改进5：能源管理预测分析弹窗（v3新增） =======
+function openEnergyForecastModal() {
+  var existing = document.getElementById('modal-energy-forecast');
+  if (existing) existing.remove();
+  // Build forecast data
+  var forecastDays = ['今天', '明天', '3天后', '4天后', '5天后', '6天后', '7天后'];
+  var forecastKwh = [48.2, 52.1, 45.0, 49.8, 47.3, 55.2, 50.1];
+  var forecastFee = [57.84, 62.52, 54.00, 59.76, 56.76, 66.24, 60.12];
+  var anomalyDays = [false, false, false, true, false, false, false];
+  var maxKwh = Math.max.apply(null, forecastKwh);
+  var totalKwh = forecastKwh.reduce(function(s,v){ return s+v; }, 0);
+  var totalFee = forecastFee.reduce(function(s,v){ return s+v; }, 0);
+  var avgKwh = (totalKwh / 7).toFixed(1);
+  var peakDay = forecastDays[forecastKwh.indexOf(Math.max.apply(null, forecastKwh))];
+  var html = '<div class="modal-overlay" id="modal-energy-forecast" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;overflow-y:auto;">' +
+    '<div class="modal" style="width:680px;max-height:88vh;overflow-y:auto;">' +
+    '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
+    '<div style="font-size:24px;">📈</div>' +
+    '<div><div style="font-size:16px;font-weight:700;">能耗预测分析</div><div style="font-size:11px;color:var(--text-muted);">基于历史数据的7天能耗预测与异常检测</div></div>' +
+    '<button onclick="document.getElementById(\'modal-energy-forecast\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">';
+  // Key metrics
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">';
+  html += '<div style="text-align:center;padding:12px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--blue);">352.7</div><div style="font-size:11px;color:var(--text-muted);">预测7天总用电(kWh)</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--green-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--green);">¥423.24</div><div style="font-size:11px;color:var(--text-muted);">预测7天总电费</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--orange);">' + avgKwh + ' kWh</div><div style="font-size:11px;color:var(--text-muted);">日均用电</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--purple-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--purple);">' + peakDay + '</div><div style="font-size:11px;color:var(--text-muted);">预计峰值日</div></div>';
+  html += '</div>';
+  // Forecast chart (bar chart using divs)
+  html += '<div style="margin-bottom:20px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">📊 7天能耗预测趋势</div>';
+  html += '<div style="display:flex;align-items:flex-end;gap:8px;height:120px;padding:12px;background:var(--bg);border-radius:10px;">';
+  forecastDays.forEach(function(day, i) {
+    var h = Math.round((forecastKwh[i] / maxKwh) * 90) + 10;
+    var isAnomaly = anomalyDays[i];
+    var barColor = isAnomaly ? 'var(--red)' : 'var(--blue)';
+    var barBg = isAnomaly ? 'var(--red-bg)' : 'var(--blue-bg)';
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">';
+    html += '<div style="font-size:11px;font-weight:700;color:' + barColor + ';">' + forecastKwh[i] + '</div>';
+    html += '<div style="width:100%;height:' + h + 'px;background:' + barBg + ';border:2px solid ' + barColor + ';border-radius:6px 6px 0 0;position:relative;" title="' + day + '：' + forecastKwh[i] + 'kWh / ¥' + forecastFee[i].toFixed(2) + '">';
+    if (isAnomaly) {
+      html += '<div style="position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:10px;background:var(--red);color:white;padding:1px 5px;border-radius:4px;white-space:nowrap;">⚠️异常</div>';
+    }
+    html += '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);">' + day + '</div></div>';
+  });
+  html += '</div></div>';
+  // Anomaly detection section
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">🚨 异常检测结果</div>';
+  html += '<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:8px;padding:12px;margin-bottom:8px;">' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+    '<span style="font-size:16px;">⚠️</span>' +
+    '<span style="font-weight:700;color:var(--red);font-size:13px;">第4天（' + forecastDays[3] + '）预测用电异常偏高</span></div>' +
+    '<div style="font-size:12px;color:var(--text);line-height:1.6;padding-left:24px;">预计耗电 <strong style="color:var(--red);">49.8 kWh</strong>，较日均值高出 <strong style="color:var(--red);">18.2%</strong>。<br>可能原因：高温空调持续运行 / 入住率突增 / 设备故障。建议提前巡检该区域空调设备。' +
+    '</div></div>';
+  html += '<div style="background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;padding:12px;">' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+    '<span style="font-size:16px;">💡</span>' +
+    '<span style="font-weight:700;color:var(--orange);font-size:13px;">节能优化建议</span></div>' +
+    '<div style="font-size:12px;color:var(--text);line-height:1.8;padding-left:24px;">' +
+    '• 尖峰时段（14:00-18:00）空调温度调高1°C，可节省约 <strong style="color:var(--green);">¥12/天</strong><br>' +
+    '• 301房间空调历史耗电偏高，建议安装人体感应控制器<br>' +
+    '• 低谷时段（23:00-07:00）执行洗衣机延迟启动，可节省约 <strong style="color:var(--green);">¥8/天</strong>' +
+    '</div></div>';
+  html += '</div>';
+  // Cost comparison
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">💰 分时电价收益分析</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
+  html += '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:6px;">📌 当前计费（固定价 ¥1.20/kWh）</div>';
+  html += '<div style="font-size:18px;font-weight:700;color:var(--blue);">¥423.24 <span style="font-size:11px;font-weight:400;">/ 7天</span></div>';
+  html += '</div>';
+  html += '<div style="padding:12px;background:var(--green-bg);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:6px;">📌 分时电价（TOU）后估算</div>';
+  html += '<div style="font-size:18px;font-weight:700;color:var(--green);">¥386.50 <span style="font-size:11px;font-weight:400;">/ 7天</span></div>';
+  html += '<div style="font-size:11px;color:var(--green);margin-top:2px;">节省 ¥36.74（8.7%）</div>';
+  html += '</div>';
+  html += '</div></div>';
+  // Actions
+  html += '<div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">';
+  html += '<button class="action-btn small" onclick="document.getElementById(\'modal-energy-forecast\').remove()">关闭</button>';
+  html += '<button class="action-btn small" onclick="openEnergyTouConfigModal();document.getElementById(\'modal-energy-forecast\').remove();" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⚙️ 配置分时电价</button>';
+  html += '<button class="action-btn small primary" onclick="document.getElementById(\'modal-energy-forecast\').remove();openEnergyAnalysisModal(\'\');" style="background:var(--blue);color:white;border:none;padding:5px 14px;">📊 详细数据分析</button>';
+  html += '</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
 </script>
 </body>
 </html>
