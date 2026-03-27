@@ -676,6 +676,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <div><div class="stat-num" id="home-stat-offline">2</div><div class="stat-label">设备离线</div></div>
         </div>
       </div>
+      <!-- 【改进E】首页入住率热力图 -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <div class="card-title">🏠 房间入住率热力图</div>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;">
+              <span style="width:12px;height:12px;background:var(--blue);border-radius:3px;"></span><span>入住</span>
+              <span style="width:12px;height:12px;background:var(--green);border-radius:3px;margin-left:8px;"></span><span>空房</span>
+              <span style="width:12px;height:12px;background:var(--red);border-radius:3px;margin-left:8px;"></span><span>告警</span>
+            </div>
+            <div style="font-size:13px;font-weight:600;color:var(--blue);">
+              入住率：<span id="home-occ-rate" style="font-size:18px;">62%</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-body" style="padding:16px;">
+          <div id="home-occupancy-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:10px;">
+            <!-- JS动态渲染 -->
+          </div>
+        </div>
+      </div>
       <!-- 【改进2】首页实时设备状态面板（动态心跳检测+实时刷新计数+设备详情列表） -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
         <div class="card" style="margin-bottom:0;">
@@ -3698,24 +3719,40 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
       <div class="card">
         <div class="card-header">
-          <div class="card-title">🏢 楼栋列表</div>
-          <button class="action-btn" onclick="openNewBuildingForm()" style="padding:4px 12px;">+ 新增楼栋</button>
-          <button class="action-btn" onclick="openQuickSetupWizard()" style="padding:4px 12px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🚀 快速初始化</button>
+          <div class="card-title">🏢 楼栋列表 <span id="bld-count" style="font-size:11px;font-weight:400;color:var(--text-muted);">2 个楼栋</span></div>
+          <div style="display:flex;gap:6px;">
+            <button class="action-btn" onclick="openBuildingFormModal('add','')" style="padding:4px 12px;">+ 新增楼栋</button>
+            <button class="action-btn" onclick="openQuickSetupWizard()" style="padding:4px 12px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🚀 快速初始化</button>
+          </div>
         </div>
         <div class="card-body">
           <table class="table">
-            <thead><tr><th>楼栋名称</th><th>楼层数</th><th>房间数</th><th>地址</th><th>状态</th><th>操作</th></tr></thead>
-            <tbody>
+            <thead><tr><th>楼栋名称</th><th>编号</th><th>楼层数</th><th>房间数</th><th>状态</th><th>地址</th><th>操作</th></tr></thead>
+            <tbody id="bld-list-body">
               <tr>
                 <td><span style="font-weight:600;">主楼</span></td>
+                <td><span style="font-size:12px;color:var(--text-muted);">MAIN</span></td>
                 <td>3层</td>
                 <td>16间</td>
-                <td>北京市朝阳区某街道1号</td>
                 <td><span class="tbadge green">启用</span></td>
+                <td style="font-size:12px;color:var(--text-muted);">北京市朝阳区建国路88号</td>
                 <td>
-                  <button class="action-btn small" onclick="openEditBuildingModal(0)">编辑</button>
-                  <button class="action-btn small" onclick="showFloorOfBuilding(0)">楼层管理</button>
-                  <button class="action-btn small red" onclick="deleteBuilding(0)">删除</button>
+                  <button class="action-btn small" onclick="openBuildingFormModal('edit','main')">编辑</button>
+                  <button class="action-btn small" onclick="showFloorOfBuilding('main')">楼层管理</button>
+                  <button class="action-btn small red" onclick="deleteBuildingItem('main')">删除</button>
+                </td>
+              </tr>
+              <tr>
+                <td><span style="font-weight:600;">东配楼</span></td>
+                <td><span style="font-size:12px;color:var(--text-muted);">EAST</span></td>
+                <td>2层</td>
+                <td>8间</td>
+                <td><span class="tbadge green">启用</span></td>
+                <td style="font-size:12px;color:var(--text-muted);">北京市朝阳区建国路88号（东侧）</td>
+                <td>
+                  <button class="action-btn small" onclick="openBuildingFormModal('edit','east')">编辑</button>
+                  <button class="action-btn small" onclick="showFloorOfBuilding('east')">楼层管理</button>
+                  <button class="action-btn small red" onclick="deleteBuildingItem('east')">删除</button>
                 </td>
               </tr>
             </tbody>
@@ -7266,6 +7303,304 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     </div>
   </div>
 </div>
+
+<!-- 【改进A】房型价格时段配置模态框 -->
+<div class="modal-overlay hidden" id="modal-roomtype-price">
+  <div class="modal" style="width:600px;">
+    <div class="modal-header">
+      <div class="modal-title" id="rtp-modal-title">💰 房型价格时段配置</div>
+      <button class="modal-close" onclick="closeModal('roomtype-price')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div class="form-group">
+          <label class="form-label">基础价格（元/小时）<span class="required">*</span></label>
+          <input type="number" class="form-input" id="rtp-base-price" placeholder="如：98" min="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">时段数量</label>
+          <div style="padding:8px 12px;background:var(--bg);border-radius:6px;font-size:13px;color:var(--text);">
+            <span id="rtp-period-count" style="font-weight:600;color:var(--blue);">0 个时段</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);">📋 时段列表</div>
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 80px 80px 60px;gap:8px;padding:8px 12px;background:var(--bg);font-size:11px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">
+            <div>时段</div><div>价格</div><div>溢价</div><div>编辑</div><div>删除</div>
+          </div>
+          <div id="rtp-period-list-body"></div>
+        </div>
+      </div>
+      <div style="padding:14px;background:var(--blue-bg);border-radius:8px;">
+        <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--blue);">➕ 添加/编辑时段</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 100px;gap:8px;align-items:end;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" style="font-size:11px;">开始时间</label>
+            <input type="time" class="form-input" id="rtp-new-start" value="14:00">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" style="font-size:11px;">结束时间</label>
+            <input type="time" class="form-input" id="rtp-new-end" value="18:00">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" style="font-size:11px;">价格（元）</label>
+            <input type="number" class="form-input" id="rtp-new-price" placeholder="价格" min="1">
+          </div>
+        </div>
+        <button class="action-btn" onclick="addPricePeriod()" style="margin-top:10px;width:100%;">➕ 添加时段</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('roomtype-price')">取消</button>
+      <button class="modal-btn primary" onclick="saveRoomTypePrice()">💾 保存配置</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进B】楼栋管理表单模态框 -->
+<div class="modal-overlay hidden" id="modal-building-form-v2">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header">
+      <div class="modal-title" id="bldf-title">➕ 新增楼栋</div>
+      <button class="modal-close" onclick="closeModal('building-form-v2')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="bldf-id">
+      <div class="form-group">
+        <label class="form-label">楼栋名称 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="bldf-name" placeholder="如：主楼、东配楼">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">楼栋编号 <span class="required">*</span></label>
+          <input type="text" class="form-input" id="bldf-code" placeholder="如：MAIN">
+        </div>
+        <div class="form-group">
+          <label class="form-label">楼层数</label>
+          <input type="number" class="form-input" id="bldf-floors" placeholder="如：3" min="1" value="3">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">房间数量</label>
+          <input type="number" class="form-input" id="bldf-rooms" placeholder="如：16" min="1" value="16">
+        </div>
+        <div class="form-group">
+          <label class="form-label">状态</label>
+          <select class="form-select" id="bldf-status">
+            <option value="active">✅ 启用</option>
+            <option value="inactive">❌ 停用</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">楼栋地址</label>
+        <input type="text" class="form-input" id="bldf-address" placeholder="楼栋详细地址">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('building-form-v2')">取消</button>
+      <button class="modal-btn primary" onclick="submitBuildingForm()">💾 保存楼栋</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进C】员工表单模态框 -->
+<div class="modal-overlay hidden" id="modal-staff-form-v2">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header">
+      <div class="modal-title" id="sfm-title">➕ 新增员工</div>
+      <button class="modal-close" onclick="closeModal('staff-form-v2')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">姓名 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="sfm-name" placeholder="员工姓名">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">部门</label>
+          <select class="form-select" id="sfm-dept">
+            <option value="前厅">前厅部</option>
+            <option value="客房">客房部</option>
+            <option value="工程">工程部</option>
+            <option value="管理">管理部</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">岗位</label>
+          <input type="text" class="form-input" id="sfm-title-input" placeholder="如：前厅经理">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">手机号</label>
+          <input type="text" class="form-input" id="sfm-phone" placeholder="手机号码">
+        </div>
+        <div class="form-group">
+          <label class="form-label">角色</label>
+          <select class="form-select" id="sfm-role">
+            <option value="员工">员工</option>
+            <option value="管理员">管理员</option>
+            <option value="超级管理员">超级管理员</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">入职日期</label>
+          <input type="date" class="form-input" id="sfm-join">
+        </div>
+        <div class="form-group">
+          <label class="form-label">状态</label>
+          <select class="form-select" id="sfm-status">
+            <option value="enabled">✅ 启用</option>
+            <option value="disabled">❌ 禁用</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('staff-form-v2')">取消</button>
+      <button class="modal-btn primary" onclick="submitStaffForm()">💾 保存员工</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进C】员工绩效模态框 -->
+<div class="modal-overlay hidden" id="modal-staff-performance">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">📊 员工绩效统计</div>
+      <button class="modal-close" onclick="closeModal('staff-performance')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:18px;font-weight:700;" id="sp-name">-</div>
+        <div style="font-size:12px;color:var(--text-muted);" id="sp-dept">-</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="text-align:center;padding:14px;background:var(--blue-bg);border-radius:8px;">
+          <div style="font-size:26px;font-weight:700;color:var(--blue);" id="sp-checkin">0</div>
+          <div style="font-size:11px;color:var(--text-muted);">入住办理</div>
+        </div>
+        <div style="text-align:center;padding:14px;background:var(--green-bg);border-radius:8px;">
+          <div style="font-size:26px;font-weight:700;color:var(--green);" id="sp-checkout">0</div>
+          <div style="font-size:11px;color:var(--text-muted);">退房办理</div>
+        </div>
+        <div style="text-align:center;padding:14px;background:var(--purple-bg);border-radius:8px;">
+          <div style="font-size:26px;font-weight:700;color:var(--purple);" id="sp-wo">0</div>
+          <div style="font-size:11px;color:var(--text-muted);">服务工单</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="padding:10px;background:var(--bg);border-radius:6px;text-align:center;">
+          <div style="font-size:13px;color:var(--text-muted);">总业务量</div>
+          <div style="font-size:20px;font-weight:700;color:var(--text);" id="sp-total">0</div>
+        </div>
+        <div style="padding:10px;background:var(--bg);border-radius:6px;text-align:center;">
+          <div style="font-size:13px;color:var(--text-muted);">当前状态</div>
+          <div style="font-size:14px;font-weight:700;color:var(--green);" id="sp-rate">在岗</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('staff-performance')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进C】重置密码模态框 -->
+<div class="modal-overlay hidden" id="modal-reset-pwd-v2">
+  <div class="modal" style="width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">🔑 重置员工密码</div>
+      <button class="modal-close" onclick="closeModal('reset-pwd-v2')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:14px;font-weight:600;">即将重置 <span id="rp-name" style="color:var(--blue);">-</span> 的登录密码</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">新密码 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="rp-new-pwd" placeholder="请输入新密码（至少6位）" minlength="6">
+      </div>
+      <div style="padding:10px;background:var(--orange-bg);border-radius:6px;font-size:12px;color:var(--orange);">
+        ⚠️ 密码重置后请告知员工及时修改密码
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('reset-pwd-v2')">取消</button>
+      <button class="modal-btn" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);" onclick="submitResetPwd()">🔑 确认重置</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进D】服务工单表单模态框 -->
+<div class="modal-overlay hidden" id="modal-workorder-form-v2">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title" id="wo2-title">➕ 创建服务工单</div>
+      <button class="modal-close" onclick="closeModal('workorder-form-v2')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">工单类型 <span class="required">*</span></label>
+          <select class="form-select" id="wo2-type">
+            <option value="complaint">🔴 客户投诉</option>
+            <option value="review">⭐ 差评反馈</option>
+            <option value="invoice">📄 发票需求</option>
+            <option value="delivery">📦 送物服务</option>
+            <option value="clean">🧹 清洁服务</option>
+            <option value="maintain">🔧 设施维修</option>
+            <option value="other">📝 其他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">房间号</label>
+          <input type="text" class="form-input" id="wo2-room" placeholder="如：301">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">客户姓名 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="wo2-customer" placeholder="客户姓名">
+      </div>
+      <div class="form-group">
+        <label class="form-label">工单内容 <span class="required">*</span></label>
+        <textarea class="form-textarea" id="wo2-content" placeholder="请详细描述工单内容" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">指定处理人</label>
+        <select class="form-select" id="wo2-handler">
+          <option value="">暂不分配</option>
+          <option value="赵飞">赵飞（前厅经理）</option>
+          <option value="周敏">周敏（前厅接待）</option>
+          <option value="吴静">吴静（客房经理）</option>
+          <option value="李强">李强（保洁员）</option>
+          <option value="王工">王工（工程师）</option>
+          <option value="陈管">陈管（店长）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">优先级</label>
+        <select class="form-select" id="wo2-priority">
+          <option value="normal">⚡ 普通</option>
+          <option value="urgent">🚨 紧急</option>
+          <option value="low">🔽 低</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('workorder-form-v2')">取消</button>
+      <button class="modal-btn primary" onclick="submitWorkorderForm()">💾 保存工单</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进E】首页入住率热力图区域（需插入到首页房间统计区域） -->
 
 <!-- 远程同步确认模态框 (NEW) -->
 <div class="modal-overlay hidden" id="modal-sync">
@@ -19649,6 +19984,460 @@ function submitQuickSetupWizard() {
   closeModal('quick-setup-wizard');
   showToast('🎉 快速初始化完成！已创建「' + wizardData.bldName + '」，包含 ' + wizardData.floorConfig.length + ' 层共 ' + totalRooms + ' 间房', 'success');
 }
+
+// ======= 【改进A】房型价格时段配置完整功能（增删改查闭环） =======
+var roomTypePriceData = [
+  {name:'标准间', bed:'大床1.8m', basePrice:98, periods:[{start:'06:00',end:'12:00',price:98},{start:'12:00',end:'18:00',price:88},{start:'18:00',end:'23:59',price:108}]},
+  {name:'大床房', bed:'大床1.5m', basePrice:108, periods:[{start:'06:00',end:'12:00',price:108},{start:'12:00',end:'18:00',price:98},{start:'18:00',end:'23:59',price:128}]},
+  {name:'亲子间', bed:'多床（1大+1小）', basePrice:128, periods:[{start:'06:00',end:'12:00',price:128},{start:'12:00',end:'18:00',price:118},{start:'18:00',end:'23:59',price:148}]},
+  {name:'家庭套房', bed:'子母床', basePrice:198, periods:[{start:'06:00',end:'12:00',price:198},{start:'12:00',end:'18:00',price:178},{start:'18:00',end:'23:59',price:228}]}
+];
+var editingPriceRoomTypeIdx = -1;
+var editingPricePeriodIdx = -1;
+
+function openRoomTypePriceModal(rtIdx) {
+  editingPriceRoomTypeIdx = rtIdx;
+  editingPricePeriodIdx = -1;
+  var rt = roomTypePriceData[rtIdx];
+  document.getElementById('rtp-modal-title').textContent = '💰 ' + rt.name + ' - 价格时段配置';
+  document.getElementById('rtp-base-price').value = rt.basePrice;
+  renderPricePeriodList(rtIdx);
+  openModal('modal-roomtype-price');
+}
+
+function renderPricePeriodList(rtIdx) {
+  var rt = roomTypePriceData[rtIdx];
+  var container = document.getElementById('rtp-period-list-body');
+  if (!container) return;
+  var html = '';
+  rt.periods.forEach(function(p, i) {
+    var bg = i % 2 === 0 ? 'var(--bg)' : 'white';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr 80px 80px 60px;gap:8px;align-items:center;padding:10px 12px;background:' + bg + ';border-bottom:1px solid var(--border);">';
+    html += '<div style="font-size:13px;">⏰ ' + p.start + ' - ' + p.end + '</div>';
+    html += '<div><span style="font-size:13px;font-weight:600;color:var(--blue);">¥' + p.price + '</span></div>';
+    html += '<div><span style="font-size:11px;color:var(--text-muted);">' + Math.round((p.price/rt.basePrice-1)*100) + '%</span></div>';
+    html += '<div><button class="action-btn small" onclick="editPricePeriod(' + i + ')" style="padding:2px 6px;font-size:10px;">编辑</button></div>';
+    html += '<div><button class="action-btn small red" onclick="deletePricePeriod(' + i + ')" style="padding:2px 6px;font-size:10px;">删除</button></div>';
+    html += '</div>';
+  });
+  container.innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">暂无时段配置，点击下方添加</div>';
+  document.getElementById('rtp-period-count').textContent = rt.periods.length + ' 个时段';
+}
+
+function addPricePeriod() {
+  var start = document.getElementById('rtp-new-start').value;
+  var end = document.getElementById('rtp-new-end').value;
+  var price = parseInt(document.getElementById('rtp-new-price').value);
+  if (!start || !end || !price) { showToast('请填写完整的时段和价格', 'error'); return; }
+  if (editingPricePeriodIdx >= 0) {
+    roomTypePriceData[editingPriceRoomTypeIdx].periods[editingPricePeriodIdx] = {start:start, end:end, price:price};
+    editingPricePeriodIdx = -1;
+    document.getElementById('rtp-new-start').value = '';
+    document.getElementById('rtp-new-end').value = '';
+    document.getElementById('rtp-new-price').value = '';
+    showToast('✅ 时段价格已更新', 'success');
+  } else {
+    roomTypePriceData[editingPriceRoomTypeIdx].periods.push({start:start, end:end, price:price});
+    showToast('✅ 时段已添加', 'success');
+  }
+  renderPricePeriodList(editingPriceRoomTypeIdx);
+}
+
+function editPricePeriod(idx) {
+  editingPricePeriodIdx = idx;
+  var p = roomTypePriceData[editingPriceRoomTypeIdx].periods[idx];
+  document.getElementById('rtp-new-start').value = p.start;
+  document.getElementById('rtp-new-end').value = p.end;
+  document.getElementById('rtp-new-price').value = p.price;
+  showToast('修改时段价格后点击「添加/更新时段」保存', 'info');
+}
+
+function deletePricePeriod(idx) {
+  roomTypePriceData[editingPriceRoomTypeIdx].periods.splice(idx, 1);
+  renderPricePeriodList(editingPriceRoomTypeIdx);
+  showToast('时段已删除', 'success');
+}
+
+function saveRoomTypePrice() {
+  var basePrice = parseInt(document.getElementById('rtp-base-price').value);
+  if (!basePrice || basePrice <= 0) { showToast('请输入有效的基础价格', 'error'); return; }
+  roomTypePriceData[editingPriceRoomTypeIdx].basePrice = basePrice;
+  closeModal('modal-roomtype-price');
+  showToast('✅ ' + roomTypePriceData[editingPriceRoomTypeIdx].name + ' 价格配置已保存', 'success');
+}
+
+// ======= 【改进B】楼栋管理完整增删改查 =======
+var buildingListData = [
+  {id:'main', name:'主楼', code:'MAIN', floors:3, rooms:16, status:'active', address:'北京市朝阳区建国路88号'},
+  {id:'east', name:'东配楼', code:'EAST', floors:2, rooms:8, status:'active', address:'北京市朝阳区建国路88号（东侧）'}
+];
+
+function openBuildingFormModal(mode, bldId) {
+  document.getElementById('bldf-title').textContent = mode === 'add' ? '➕ 新增楼栋' : '✏️ 编辑楼栋';
+  document.getElementById('bldf-id').value = mode === 'add' ? '' : bldId;
+  if (mode === 'edit' && bldId) {
+    var bld = buildingListData.find(function(b){return b.id===bldId;});
+    if (bld) {
+      document.getElementById('bldf-name').value = bld.name;
+      document.getElementById('bldf-code').value = bld.code;
+      document.getElementById('bldf-floors').value = bld.floors;
+      document.getElementById('bldf-rooms').value = bld.rooms;
+      document.getElementById('bldf-address').value = bld.address;
+      document.getElementById('bldf-status').value = bld.status;
+    }
+  } else {
+    ['bldf-name','bldf-code','bldf-floors','bldf-rooms','bldf-address'].forEach(function(id){document.getElementById(id).value='';});
+    document.getElementById('bldf-status').value = 'active';
+  }
+  openModal('modal-building-form-v2');
+}
+
+function submitBuildingForm() {
+  var name = document.getElementById('bldf-name').value.trim();
+  var code = document.getElementById('bldf-code').value.trim();
+  var floors = parseInt(document.getElementById('bldf-floors').value);
+  var rooms = parseInt(document.getElementById('bldf-rooms').value);
+  var address = document.getElementById('bldf-address').value.trim();
+  var status = document.getElementById('bldf-status').value;
+  if (!name || !code) { showToast('请填写楼栋名称和编号', 'error'); return; }
+  var id = document.getElementById('bldf-id').value;
+  if (id) {
+    var bld = buildingListData.find(function(b){return b.id===id;});
+    if (bld) { bld.name=name; bld.code=code; bld.floors=floors; bld.rooms=rooms; bld.address=address; bld.status=status; }
+    showToast('✅ 楼栋「' + name + '」信息已更新', 'success');
+  } else {
+    buildingListData.push({id:'bld_' + Date.now(), name:name, code:code, floors:floors||1, rooms:rooms||4, status:status, address:address||''});
+    showToast('✅ 楼栋「' + name + '」已创建', 'success');
+  }
+  closeModal('modal-building-form-v2');
+  renderBuildingList();
+}
+
+function deleteBuildingItem(bldId) {
+  var bld = buildingListData.find(function(b){return b.id===bldId;});
+  if (!bld) return;
+  if (confirm('确定要删除楼栋「' + bld.name + '」吗？\n删除后该楼栋下所有房间数据将一并清除。')) {
+    buildingListData = buildingListData.filter(function(b){return b.id!==bldId;});
+    showToast('楼栋「' + bld.name + '」已删除', 'success');
+    renderBuildingList();
+  }
+}
+
+function renderBuildingList() {
+  var tbody = document.getElementById('bld-list-body');
+  if (!tbody) return;
+  var html = '';
+  buildingListData.forEach(function(b) {
+    var statusBg = b.status === 'active' ? 'var(--green-bg)' : 'var(--red-bg)';
+    var statusColor = b.status === 'active' ? 'var(--green)' : 'var(--red)';
+    var statusText = b.status === 'active' ? '启用' : '已停用';
+    html += '<tr>' +
+      '<td><span style="font-weight:600;">' + b.name + '</span></td>' +
+      '<td><span style="font-size:12px;color:var(--text-muted);">' + b.code + '</span></td>' +
+      '<td>' + b.floors + ' 层</td>' +
+      '<td>' + b.rooms + ' 间</td>' +
+      '<td><span class="tbadge" style="background:' + statusBg + ';color:' + statusColor + ';">' + statusText + '</span></td>' +
+      '<td style="font-size:12px;color:var(--text-muted);">' + (b.address||'-') + '</td>' +
+      '<td>' +
+        '<button class="action-btn small" onclick="openBuildingFormModal(\'edit\',\'' + b.id + '\')">编辑</button> ' +
+        '<button class="action-btn small red" onclick="deleteBuildingItem(\'' + b.id + '\')">删除</button>' +
+      '</td></tr>';
+  });
+  tbody.innerHTML = html;
+  document.getElementById('bld-count').textContent = buildingListData.length + ' 个楼栋';
+}
+
+// ======= 【改进C】员工管理完整增删改查+绩效统计弹窗 =======
+var staffFormMode = 'add';
+var editingStaffIdx = -1;
+var staffList = [
+  {name:'赵飞', dept:'前厅', title:'前厅经理', phone:'138****8888', role:'管理员', joinDate:'2025-01-15', status:'enabled', loginTime:'今天 09:30', checkinCount:28, checkoutCount:22, woCount:5},
+  {name:'周敏', dept:'前厅', title:'前厅接待', phone:'139****6666', role:'员工', joinDate:'2025-03-20', status:'enabled', loginTime:'今天 10:15', checkinCount:45, checkoutCount:42, woCount:3},
+  {name:'吴静', dept:'客房', title:'客房经理', phone:'137****5555', role:'管理员', joinDate:'2024-11-01', status:'enabled', loginTime:'昨天 18:20', checkinCount:12, checkoutCount:10, woCount:28},
+  {name:'李强', dept:'客房', title:'保洁员', phone:'136****4444', role:'员工', joinDate:'2025-02-15', status:'enabled', loginTime:'昨天 17:00', checkinCount:0, checkoutCount:0, woCount:156},
+  {name:'王工', dept:'工程', title:'工程师', phone:'135****3333', role:'员工', joinDate:'2024-08-10', status:'enabled', loginTime:'今天 08:00', checkinCount:0, checkoutCount:0, woCount:89},
+  {name:'陈管', dept:'管理', title:'店长', phone:'134****2222', role:'超级管理员', joinDate:'2023-06-01', status:'enabled', loginTime:'今天 09:00', checkinCount:5, checkoutCount:3, woCount:2},
+  {name:'孙休', dept:'前厅', title:'前厅接待', phone:'133****1111', role:'员工', joinDate:'2025-05-01', status:'disabled', loginTime:'03-20 15:30', checkinCount:18, checkoutCount:16, woCount:1},
+  {name:'刘假', dept:'客房', title:'保洁员', phone:'132****0000', role:'员工', joinDate:'2025-04-01', status:'disabled', loginTime:'03-18 12:00', checkinCount:0, checkoutCount:0, woCount:45}
+];
+
+function openNewStaffForm() {
+  staffFormMode = 'add';
+  editingStaffIdx = -1;
+  document.getElementById('sfm-title').textContent = '➕ 新增员工';
+  ['sfm-name','sfm-phone','sfm-idcard','sfm-join'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('sfm-dept').value = '前厅';
+  document.getElementById('sfm-title-input').value = '';
+  document.getElementById('sfm-role').value = '员工';
+  document.getElementById('sfm-status').value = 'enabled';
+  openModal('modal-staff-form-v2');
+}
+
+function openEditStaffForm(idx) {
+  staffFormMode = 'edit';
+  editingStaffIdx = idx;
+  var s = staffList[idx];
+  document.getElementById('sfm-title').textContent = '✏️ 编辑员工 - ' + s.name;
+  document.getElementById('sfm-name').value = s.name;
+  document.getElementById('sfm-phone').value = s.phone.replace(/[^0-9\*]/g,'');
+  document.getElementById('sfm-dept').value = s.dept;
+  document.getElementById('sfm-title-input').value = s.title;
+  document.getElementById('sfm-role').value = s.role;
+  document.getElementById('sfm-status').value = s.status;
+  openModal('modal-staff-form-v2');
+}
+
+function submitStaffForm() {
+  var name = document.getElementById('sfm-name').value.trim();
+  var phone = document.getElementById('sfm-phone').value.trim();
+  var dept = document.getElementById('sfm-dept').value;
+  var title = document.getElementById('sfm-title-input').value.trim();
+  var role = document.getElementById('sfm-role').value;
+  var status = document.getElementById('sfm-status').value;
+  if (!name) { showToast('请输入员工姓名', 'error'); return; }
+  if (staffFormMode === 'edit' && editingStaffIdx >= 0) {
+    var s = staffList[editingStaffIdx];
+    s.name = name; s.dept = dept; s.title = title; s.role = role; s.status = status;
+    if (phone) s.phone = phone;
+    showToast('✅ 员工「' + name + '」信息已更新', 'success');
+  } else {
+    staffList.push({name:name, dept:dept, title:title, phone:phone||'未填写', role:role, joinDate:new Date().toISOString().slice(0,10), status:status, loginTime:'从未登录', checkinCount:0, checkoutCount:0, woCount:0});
+    showToast('✅ 员工「' + name + '」已添加', 'success');
+  }
+  closeModal('modal-staff-form-v2');
+  renderStaffTable();
+}
+
+function deleteStaff(idx) {
+  var s = staffList[idx];
+  if (confirm('确定要删除员工「' + s.name + '」吗？删除后无法恢复。')) {
+    staffList.splice(idx, 1);
+    showToast('员工「' + s.name + '」已删除', 'success');
+    renderStaffTable();
+  }
+}
+
+function openResetPwdModal(idx) {
+  document.getElementById('rp-name').textContent = staffList[idx].name;
+  document.getElementById('rp-new-pwd').value = '';
+  openModal('modal-reset-pwd-v2');
+}
+
+function submitResetPwd() {
+  var newPwd = document.getElementById('rp-new-pwd').value;
+  if (!newPwd || newPwd.length < 6) { showToast('密码长度不能少于6位', 'error'); return; }
+  closeModal('modal-reset-pwd-v2');
+  showToast('✅ 密码已重置为「' + newPwd + '」，请告知员工', 'success');
+}
+
+function openStaffPerformanceModal(idx) {
+  var s = staffList[idx];
+  document.getElementById('sp-name').textContent = s.name;
+  document.getElementById('sp-dept').textContent = s.dept + ' · ' + s.title;
+  document.getElementById('sp-checkin').textContent = s.checkinCount;
+  document.getElementById('sp-checkout').textContent = s.checkoutCount;
+  document.getElementById('sp-wo').textContent = s.woCount;
+  document.getElementById('sp-total').textContent = s.checkinCount + s.checkoutCount + s.woCount;
+  var rate = s.status === 'enabled' ? '在岗' : '休息/禁用';
+  document.getElementById('sp-rate').textContent = rate;
+  openModal('modal-staff-performance');
+}
+
+function renderStaffTable() {
+  var tbody = document.getElementById('staff-table-body');
+  if (!tbody) return;
+  var html = '';
+  staffList.forEach(function(s, i) {
+    var statusBg = s.status === 'enabled' ? 'var(--green-bg)' : 'var(--red-bg)';
+    var statusColor = s.status === 'enabled' ? 'var(--green)' : 'var(--red)';
+    var statusText = s.status === 'enabled' ? '启用' : '禁用';
+    var roleColor = s.role === '管理员' || s.role === '超级管理员' ? 'var(--purple)' : 'var(--text-light)';
+    html += '<tr>' +
+      '<td><span style="font-weight:600;">' + s.name + '</span></td>' +
+      '<td><span class="tbadge blue">' + s.dept + '部</span></td>' +
+      '<td>' + s.title + '</td>' +
+      '<td>' + s.phone + '</td>' +
+      '<td><span class="tbadge" style="color:' + roleColor + ';background:' + (s.role==='超级管理员'?'var(--purple-bg)':s.role==='管理员'?'var(--blue-bg)':'var(--bg)') + ';">' + s.role + '</span></td>' +
+      '<td>' + s.joinDate + '</td>' +
+      '<td><span class="tbadge" style="background:' + statusBg + ';color:' + statusColor + ';">' + statusText + '</span></td>' +
+      '<td>' + s.loginTime + '</td>' +
+      '<td>' +
+        '<button class="action-btn small" onclick="openStaffPerformanceModal(' + i + ')">绩效</button> ' +
+        '<button class="action-btn small" onclick="openEditStaffForm(' + i + ')">编辑</button> ' +
+        '<button class="action-btn small orange" onclick="openResetPwdModal(' + i + ')">重置密码</button> ' +
+        '<button class="action-btn small red" onclick="deleteStaff(' + i + ')">删除</button>' +
+      '</td></tr>';
+  });
+  tbody.innerHTML = html;
+  document.getElementById('staff-stat-total').textContent = staffList.length;
+  var enabledCount = staffList.filter(function(s){return s.status==='enabled';}).length;
+  var disabledCount = staffList.filter(function(s){return s.status==='disabled';}).length;
+}
+
+// ======= 【改进D】服务工单完整增删改查 =======
+var workorderList = [
+  {id:'WO-2026032701', type:'complaint', room:'301', customer:'张三', content:'房间空调噪音过大，无法休息', status:'pending', handler:'', createTime:'今天 10:32', completeTime:''},
+  {id:'WO-2026032702', type:'delivery', room:'203', customer:'李四', content:'需要添加矿泉水x2', status:'pending', handler:'', createTime:'今天 10:15', completeTime:''},
+  {id:'WO-2026032703', type:'invoice', room:'201', customer:'王五', content:'需要开具增值税普通发票', status:'pending', handler:'', createTime:'今天 09:48', completeTime:''},
+  {id:'WO-2026032528', type:'delivery', room:'304', customer:'钱七', content:'需要浴巾一套', status:'processing', handler:'周敏', createTime:'昨天 18:20', completeTime:''},
+  {id:'WO-2026032527', type:'complaint', room:'202', customer:'赵六', content:'热水器故障，无热水', status:'processing', handler:'赵飞', createTime:'昨天 17:05', completeTime:''},
+  {id:'WO-2026032520', type:'review', room:'303', customer:'周八', content:'服务态度好，点赞！', status:'done', handler:'赵飞', createTime:'03-25 14:30', completeTime:'03-25 16:45'}
+];
+var editingWoIdx = -1;
+var woTypeLabels = {complaint:'🔴 客户投诉', review:'⭐ 差评反馈', invoice:'📄 发票需求', delivery:'📦 送物服务', clean:'🧹 清洁服务', maintain:'🔧 设施维修', other:'📝 其他'};
+var woStatusLabels = {pending:'待接受', processing:'处理中', done:'已完成'};
+
+function openCreateWorkorderModal() {
+  editingWoIdx = -1;
+  document.getElementById('wo2-title').textContent = '➕ 创建服务工单';
+  document.getElementById('wo2-type').value = 'complaint';
+  document.getElementById('wo2-room').value = '';
+  document.getElementById('wo2-customer').value = '';
+  document.getElementById('wo2-content').value = '';
+  document.getElementById('wo2-handler').value = '';
+  document.getElementById('wo2-priority').value = 'normal';
+  openModal('modal-workorder-form-v2');
+}
+
+function openEditWorkorderModal(idx) {
+  editingWoIdx = idx;
+  var w = workorderList[idx];
+  document.getElementById('wo2-title').textContent = '✏️ 编辑工单 - ' + w.id;
+  document.getElementById('wo2-type').value = w.type;
+  document.getElementById('wo2-room').value = w.room;
+  document.getElementById('wo2-customer').value = w.customer;
+  document.getElementById('wo2-content').value = w.content;
+  document.getElementById('wo2-handler').value = w.handler;
+  document.getElementById('wo2-priority').value = 'normal';
+  openModal('modal-workorder-form-v2');
+}
+
+function submitWorkorderForm() {
+  var type = document.getElementById('wo2-type').value;
+  var room = document.getElementById('wo2-room').value;
+  var customer = document.getElementById('wo2-customer').value.trim();
+  var content = document.getElementById('wo2-content').value.trim();
+  var handler = document.getElementById('wo2-handler').value;
+  if (!customer || !content) { showToast('请填写客户姓名和工单内容', 'error'); return; }
+  if (editingWoIdx >= 0) {
+    var w = workorderList[editingWoIdx];
+    w.type = type; w.room = room; w.customer = customer; w.content = content; w.handler = handler;
+    showToast('✅ 工单已更新', 'success');
+  } else {
+    workorderList.unshift({id:'WO-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + String(workorderList.length+1).padStart(2,'0'), type:type, room:room, customer:customer, content:content, status:'pending', handler:handler, createTime:'今天 ' + new Date().toTimeString().slice(0,5), completeTime:''});
+    showToast('✅ 工单已创建', 'success');
+  }
+  closeModal('modal-workorder-form-v2');
+  renderWorkorderTable();
+}
+
+function deleteWorkorder(idx) {
+  if (confirm('确定要删除工单 ' + workorderList[idx].id + ' 吗？')) {
+    workorderList.splice(idx, 1);
+    showToast('工单已删除', 'success');
+    renderWorkorderTable();
+  }
+}
+
+function acceptWorkorder(idx) {
+  workorderList[idx].status = 'processing';
+  workorderList[idx].handler = '赵飞';
+  showToast('✅ 工单已接收，开始处理', 'success');
+  renderWorkorderTable();
+}
+
+function completeWorkorder(idx) {
+  workorderList[idx].status = 'done';
+  workorderList[idx].completeTime = '今天 ' + new Date().toTimeString().slice(0,5);
+  showToast('✅ 工单已完成', 'success');
+  renderWorkorderTable();
+}
+
+function renderWorkorderTable() {
+  var tbody = document.getElementById('workorder-table-body');
+  if (!tbody) return;
+  var html = '';
+  workorderList.forEach(function(w, i) {
+    var statusBg = w.status === 'done' ? 'var(--green-bg)' : w.status === 'processing' ? 'var(--purple-bg)' : 'var(--orange-bg)';
+    var statusColor = w.status === 'done' ? 'var(--green)' : w.status === 'processing' ? 'var(--purple)' : 'var(--orange)';
+    var typeLabel = woTypeLabels[w.type] || w.type;
+    html += '<tr>' +
+      '<td><span style="font-size:11px;">' + w.id + '</span></td>' +
+      '<td><span class="tbadge red" style="font-size:11px;">' + typeLabel + '</span></td>' +
+      '<td>' + (w.room||'-') + '</td>' +
+      '<td>' + w.customer + '</td>' +
+      '<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + w.content + '</td>' +
+      '<td><span class="tbadge" style="background:' + statusBg + ';color:' + statusColor + ';font-size:11px;">' + woStatusLabels[w.status] + '</span></td>' +
+      '<td>' + (w.handler?'<span class="tbadge blue" style="font-size:11px;">👤 '+w.handler+'</span>':'<span style="font-size:11px;color:var(--text-muted);">未分配</span>') + '</td>' +
+      '<td style="font-size:11px;">' + w.createTime + '</td>' +
+      '<td style="font-size:11px;">' + (w.completeTime||'--') + '</td>' +
+      '<td>';
+    if (w.status === 'pending') {
+      html += '<button class="action-btn small" onclick="acceptWorkorder(' + i + ')">接受</button> ';
+    } else if (w.status === 'processing') {
+      html += '<button class="action-btn small green" onclick="completeWorkorder(' + i + ')">完成</button> ';
+    }
+    html += '<button class="action-btn small" onclick="openEditWorkorderModal(' + i + ')">编辑</button> ' +
+      '<button class="action-btn small red" onclick="deleteWorkorder(' + i + ')">删除</button>' +
+      '</td></tr>';
+  });
+  tbody.innerHTML = html;
+  // Update stats
+  var pending = workorderList.filter(function(w){return w.status==='pending';}).length;
+  var processing = workorderList.filter(function(w){return w.status==='processing';}).length;
+  var done = workorderList.filter(function(w){return w.status==='done';}).length;
+  var cards = document.querySelectorAll('#page-workorder .stats-row .stat-card');
+  if (cards[1]) cards[1].querySelector('.stat-num').textContent = pending;
+  if (cards[2]) cards[2].querySelector('.stat-num').textContent = processing;
+  if (cards[3]) cards[3].querySelector('.stat-num').textContent = done;
+}
+
+// ======= 【改进E】首页房间入住率热力图 + 实时入住率统计 =======
+function updateHomepageOccupancyHeatmap() {
+  var occupancyData = [
+    {room:'301', status:'in', temp:22.5, power:1.2},
+    {room:'302', status:'empty', temp:18.0, power:0.0},
+    {room:'303', status:'alert', temp:0, power:0},
+    {room:'304', status:'in', temp:23.0, power:0.8},
+    {room:'305', status:'in', temp:21.0, power:1.5},
+    {room:'201', status:'in', temp:24.0, power:1.0},
+    {room:'202', status:'empty', temp:19.0, power:0.0},
+    {room:'203', status:'in', temp:22.0, power:0.9}
+  ];
+  var container = document.getElementById('home-occupancy-grid');
+  if (!container) return;
+  var totalRooms = occupancyData.length;
+  var occupiedRooms = occupancyData.filter(function(r){return r.status==='in';}).length;
+  var occupancyRate = Math.round(occupiedRooms / totalRooms * 100);
+  document.getElementById('home-occ-rate').textContent = occupancyRate + '%';
+  var html = '';
+  occupancyData.forEach(function(r) {
+    var bg, color;
+    if (r.status === 'in') { bg = 'var(--blue-bg)'; color = 'var(--blue)'; }
+    else if (r.status === 'empty') { bg = 'var(--green-bg)'; color = 'var(--green)'; }
+    else { bg = 'var(--red-bg)'; color = 'var(--red)'; }
+    html += '<div onclick="showPage(\'room-detail\')" style="padding:10px;background:' + bg + ';border-radius:8px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">';
+    html += '<div style="font-size:15px;font-weight:700;color:' + color + ';">' + r.room + '</div>';
+    html += '<div style="font-size:10px;color:' + color + ';margin-top:2px;">' + (r.status==='in'?'入住中':r.status==='empty'?'空房':'告警') + '</div>';
+    if (r.status === 'in') {
+      html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">🌡️' + r.temp + '°C</div>';
+    }
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function initHomepageImprovements() {
+  // Initialize occupancy heatmap
+  setTimeout(updateHomepageOccupancyHeatmap, 500);
+  // Render staff table on load
+  setTimeout(renderStaffTable, 300);
+  setTimeout(renderWorkorderTable, 300);
+  setTimeout(renderBuildingList, 300);
+}
+
+// Auto-initialize on DOM ready
+document.addEventListener('DOMContentLoaded', initHomepageImprovements);
 </script>
 </body>
 </html>
