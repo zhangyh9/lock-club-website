@@ -516,6 +516,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       <div class="menu-item" onclick="showPage('floor')"><span class="icon">🏗️</span><span>楼层管理</span></div>
       <div class="menu-item" onclick="showPage('building')"><span class="icon">🏢</span><span>楼栋管理</span></div>
       <div class="menu-item" onclick="showPage('records')"><span class="icon">📋</span><span>办理记录</span></div>
+      <div class="menu-item" onclick="showPage('housekeeping')"><span class="icon">🧹</span><span>房务管理</span></div>
     </div>
     <div class="menu-group-title" onclick="toggleGroup(this)">🔧 设备管理 <span class="group-arrow">▼</span></div>
     <div class="menu-group">
@@ -1753,8 +1754,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               <option value="offline">🔴 离线</option>
               <option value="lowbattery">🟡 低电量</option>
             </select>
+            <!-- 【改进v3-2】设备分组标签筛选 -->
+            <div style="display:flex;gap:4px;align-items:center;" id="device-group-tags">
+              <span style="font-size:11px;color:var(--text-muted);margin-right:2px;">分组：</span>
+              <button class="dg-tag-btn active" data-group="all" onclick="filterDeviceByGroup('all',this)" style="padding:3px 10px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);border-radius:12px;font-size:11px;cursor:pointer;font-weight:600;">全部</button>
+              <button class="dg-tag-btn" data-group="main" onclick="filterDeviceByGroup('main',this)" style="padding:3px 10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:12px;font-size:11px;cursor:pointer;">🏢 主楼</button>
+              <button class="dg-tag-btn" data-group="east" onclick="filterDeviceByGroup('east',this)" style="padding:3px 10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:12px;font-size:11px;cursor:pointer;">🏢 东配楼</button>
+              <button class="dg-tag-btn" data-group="vip" onclick="filterDeviceByGroup('vip',this)" style="padding:3px 10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:12px;font-size:11px;cursor:pointer;">⭐ VIP</button>
+              <button class="dg-tag-btn" data-group="lowbat" onclick="filterDeviceByGroup('lowbat',this)" style="padding:3px 10px;background:var(--red-bg);color:var(--red);border:1px solid var(--red);border-radius:12px;font-size:11px;cursor:pointer;">🔋 低电量</button>
+              <button class="action-btn small" onclick="openDeviceGroupManageModal()" style="padding:2px 8px;font-size:10px;">⚙️ 管理分组</button>
+            </div>
             <button class="action-btn small" onclick="applyDeviceSearch()" style="padding:6px 12px;">🔍 搜索</button>
-            <button class="action-btn small" onclick="document.getElementById('device-search-input').value='';document.getElementById('device-status-filter').value='all';applyDeviceSearch()" style="padding:6px 12px;">重置</button>
+            <button class="action-btn small" onclick="document.getElementById('device-search-input').value='';document.getElementById('device-status-filter').value='all';filterDeviceByGroup('all',document.querySelector('[data-group=all]'));" style="padding:6px 12px;">重置</button>
             <span style="margin-left:auto;font-size:12px;color:var(--text-muted);" id="device-filter-count">共 12 台设备</span>
           </div>
           <!-- 状态Tab快速筛选 -->
@@ -5578,6 +5589,325 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
       </div>
     </div>
+
+    <!-- 【改进v3-1】房务清洁管理完整页面 -->
+    <div id="page-housekeeping" class="page">
+      <div class="page-header">
+        <div class="page-title">🧹 房务管理</div>
+        <div class="page-sub">客房清洁 · 查房记录 · 任务派工 · 清洁质量检查</div>
+      </div>
+      <!-- 统计卡片 -->
+      <div class="stats-row" style="grid-template-columns:repeat(5,1fr);">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--green-bg);">🟢</div>
+          <div><div class="stat-num" id="hk-stat-clean">12</div><div class="stat-label">待清洁</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--blue-bg);">🔵</div>
+          <div><div class="stat-num" id="hk-stat-cleaning">5</div><div class="stat-label">清洁中</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--orange-bg);">🟡</div>
+          <div><div class="stat-num" id="hk-stat-inspect">3</div><div class="stat-label">待查房</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--purple-bg);">✅</div>
+          <div><div class="stat-num" id="hk-stat-done">8</div><div class="stat-label">已完成</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--red-bg);">⚠️</div>
+          <div><div class="stat-num" id="hk-stat-issue">2</div><div class="stat-label">异常房</div></div>
+        </div>
+      </div>
+      <!-- 工具栏 -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <select class="form-select" id="hk-status-filter" onchange="applyHousekeepingFilter()" style="padding:6px 10px;font-size:12px;width:130px;">
+          <option value="all">全部状态</option>
+          <option value="dirty">🟢 待清洁</option>
+          <option value="cleaning">🔵 清洁中</option>
+          <option value="inspect">🟡 待查房</option>
+          <option value="done">✅ 已完成</option>
+          <option value="issue">⚠️ 异常</option>
+        </select>
+        <select class="form-select" id="hk-floor-filter" onchange="applyHousekeepingFilter()" style="padding:6px 10px;font-size:12px;width:120px;">
+          <option value="all">全部楼层</option>
+          <option value="3">3层</option>
+          <option value="2">2层</option>
+          <option value="1">1层</option>
+        </select>
+        <select class="form-select" id="hk-staff-filter" onchange="applyHousekeepingFilter()" style="padding:6px 10px;font-size:12px;width:140px;">
+          <option value="all">全部保洁</option>
+          <option value="zheng">郑强</option>
+          <option value="sun">孙华</option>
+          <option value="wu">吴倩</option>
+        </select>
+        <button class="action-btn small" onclick="applyHousekeepingFilter()" style="padding:5px 10px;font-size:12px;">🔍 筛选</button>
+        <button class="action-btn small" onclick="resetHousekeepingFilter()" style="padding:5px 10px;font-size:12px;">重置</button>
+        <button class="action-btn small" onclick="openAssignHousekeepingModal()" style="padding:5px 10px;font-size:12px;margin-left:auto;">📋 派工</button>
+        <button class="action-btn small" onclick="exportHousekeepingReport()" style="padding:5px 10px;font-size:12px;">📤 导出</button>
+      </div>
+      <!-- 房间清洁状态看板 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🗺️ 房务状态看板</div>
+          <div style="display:flex;gap:16px;font-size:11px;color:var(--text-muted);">
+            <span>🟢 待清洁</span><span>🔵 清洁中</span><span>🟡 待查房</span><span>✅ 已完成</span><span>⚠️ 异常</span>
+          </div>
+        </div>
+        <div class="card-body" id="hk-room-grid">
+          <!-- 动态生成 -->
+        </div>
+      </div>
+      <!-- 查房记录表 -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header">
+          <div class="card-title">📋 查房记录</div>
+          <button class="action-btn small" onclick="openInspectRecordModal()" style="padding:4px 10px;font-size:11px;">+ 登记查房</button>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <table class="table">
+            <thead><tr><th>时间</th><th>房间</th><th>房型</th><th>保洁员</th><th>查房人</th><th>状态</th><th>备注</th><th>操作</th></tr></thead>
+            <tbody id="hk-inspect-body">
+              <tr data-status="done"><td>2026-03-27 10:30</td><td><b>301</b></td><td>亲子间</td><td>郑强</td><td>吴倩</td><td><span class="tbadge green">✅ 合格</span></td><td>房间整洁，无异常</td><td><button class="action-btn small" onclick="viewInspectDetail('2026032701')">详情</button></td></tr>
+              <tr data-status="issue"><td>2026-03-27 10:15</td><td><b>203</b></td><td>标准间</td><td>孙华</td><td>吴倩</td><td><span class="tbadge red">⚠️ 异常</span></td><td>床单有污渍，需重新换洗</td><td><button class="action-btn small" onclick="viewInspectDetail('2026032702')">详情</button></td></tr>
+              <tr data-status="done"><td>2026-03-27 09:50</td><td><b>201</b></td><td>大床房</td><td>郑强</td><td>吴倩</td><td><span class="tbadge green">✅ 合格</span></td><td>OK</td><td><button class="action-btn small" onclick="viewInspectDetail('2026032703')">详情</button></td></tr>
+              <tr data-status="done"><td>2026-03-27 09:20</td><td><b>305</b></td><td>亲子间</td><td>孙华</td><td>吴倩</td><td><span class="tbadge green">✅ 合格</span></td><td>已更换床品</td><td><button class="action-btn small" onclick="viewInspectDetail('2026032704')">详情</button></td></tr>
+              <tr data-status="issue"><td>2026-03-27 08:45</td><td><b>102</b></td><td>标准间</td><td>郑强</td><td>吴倩</td><td><span class="tbadge red">⚠️ 异常</span></td><td>浴室水龙头漏水</td><td><button class="action-btn small" onclick="viewInspectDetail('2026032705')">详情</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【改进v3-1】查房记录登记弹窗 -->
+    <div class="modal-overlay hidden" id="modal-hk-inspect">
+      <div class="modal" style="width:500px;">
+        <div class="modal-header">
+          <div class="modal-title">🔍 登记查房记录</div>
+          <button class="modal-close" onclick="closeModal('hk-inspect')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">房间号 <span class="required">*</span></label>
+              <select class="form-select" id="hki-room">
+                <option value="">请选择房间</option>
+                <option value="301">301 - 亲子间</option>
+                <option value="302">302 - 亲子间</option>
+                <option value="203">203 - 标准间</option>
+                <option value="102">102 - 标准间</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">查房人 <span class="required">*</span></label>
+              <select class="form-select" id="hki-inspector">
+                <option value="">请选择</option>
+                <option value="吴倩">吴倩（客房主管）</option>
+                <option value="赵飞">赵飞（前厅经理）</option>
+                <option value="陈总">陈总（总经理）</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">保洁员</label>
+            <select class="form-select" id="hki-staff">
+              <option value="">请选择</option>
+              <option value="郑强">郑强</option>
+              <option value="孙华">孙华</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">查房结果 <span class="required">*</span></label>
+            <select class="form-select" id="hki-result">
+              <option value="pass">✅ 合格</option>
+              <option value="fail">⚠️ 异常（需整改）</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">清洁项目检查</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--blue);">卧室床品</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--blue);">卫生间</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--blue);">地面清洁</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--blue);">家电检查</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:var(--blue);">易耗品补充</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:var(--blue);">门锁电量</label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">备注说明</label>
+            <textarea class="form-textarea" id="hki-remark" placeholder="查房备注，如发现的问题..." style="min-height:70px;"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('hk-inspect')">取消</button>
+          <button class="modal-btn primary" onclick="submitInspectRecord()">💾 保存记录</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【改进v3-1】房务派工弹窗 -->
+    <div class="modal-overlay hidden" id="modal-hk-assign">
+      <div class="modal" style="width:520px;">
+        <div class="modal-header">
+          <div class="modal-title">📋 房务任务派工</div>
+          <button class="modal-close" onclick="closeModal('hk-assign')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">
+            💡 选择需要派工的客房，分配给保洁人员，支持批量派工
+          </div>
+          <div class="form-group">
+            <label class="form-label">选择保洁员 <span class="required">*</span></label>
+            <select class="form-select" id="hka-staff">
+              <option value="">请选择保洁员</option>
+              <option value="郑强">🧹 郑强（待清洁：3间）</option>
+              <option value="孙华">🧹 孙华（待清洁：5间）</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">选择房间（可多选）</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;padding:12px;background:var(--bg);border-radius:8px;" id="hka-room-list">
+              <div class="batch-room-chip" onclick="this.classList.toggle('selected')" data-room="301">301</div>
+              <div class="batch-room-chip" onclick="this.classList.toggle('selected')" data-room="302">302</div>
+              <div class="batch-room-chip" onclick="this.classList.toggle('selected')" data-room="303">303</div>
+              <div class="batch-room-chip" onclick="this.classList.toggle('selected')" data-room="203">203</div>
+              <div class="batch-room-chip" onclick="this.classList.toggle('selected')" data-room="102">102</div>
+              <div class="batch-room-chip" onclick="this.classList.toggle('selected')" data-room="104">104</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">期望完成时间</label>
+            <input type="datetime-local" class="form-input" id="hka-due">
+          </div>
+          <div class="form-group">
+            <label class="form-label">备注说明</label>
+            <textarea class="form-textarea" id="hka-remark" placeholder="派工备注..." style="min-height:60px;"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('hk-assign')">取消</button>
+          <button class="modal-btn primary" onclick="submitHousekeepingAssign()">✅ 确认派工</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【改进v3-1】查房详情弹窗 -->
+    <div class="modal-overlay hidden" id="modal-hk-inspect-detail">
+      <div class="modal" style="width:480px;">
+        <div class="modal-header">
+          <div class="modal-title">🔍 查房详情</div>
+          <button class="modal-close" onclick="closeModal('hk-inspect-detail')">✕</button>
+        </div>
+        <div class="modal-body" id="hkid-body">
+          <!-- 动态填充 -->
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('hk-inspect-detail')">关闭</button>
+          <button class="modal-btn primary" onclick="closeModal('hk-inspect-detail')">✅ 确认查房结果</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【改进v3-1】JS函数 -->
+    <script>
+    var housekeepingRooms = [
+      {room:'301',floor:3,type:'亲子间',status:'dirty',staff:'郑强',assignTime:'10:00'},
+      {room:'302',floor:3,type:'亲子间',status:'cleaning',staff:'郑强',assignTime:'09:30'},
+      {room:'303',floor:3,type:'亲子间',status:'inspect',staff:'孙华',assignTime:'09:00'},
+      {room:'203',floor:2,type:'标准间',status:'issue',staff:'孙华',assignTime:'08:30'},
+      {room:'201',floor:2,type:'大床房',status:'done',staff:'郑强',assignTime:'08:00'},
+      {room:'202',floor:2,type:'大床房',status:'dirty',staff:'孙华',assignTime:'10:00'},
+      {room:'102',floor:1,type:'标准间',status:'issue',staff:'郑强',assignTime:'08:00'},
+      {room:'104',floor:1,type:'标准间',status:'cleaning',staff:'孙华',assignTime:'09:00'},
+    ];
+    var statusColors = {dirty:{bg:'var(--green-bg)',color:'var(--green)',text:'🟢 待清洁',border:'1px solid var(--green)'},cleaning:{bg:'var(--blue-bg)',color:'var(--blue)',text:'🔵 清洁中',border:'1px solid var(--blue)'},inspect:{bg:'var(--orange-bg)',color:'var(--orange)',text:'🟡 待查房',border:'1px solid var(--orange)'},done:{bg:'var(--purple-bg)',color:'var(--purple)',text:'✅ 已完成',border:'1px solid var(--purple)'},issue:{bg:'var(--red-bg)',color:'var(--red)',text:'⚠️ 异常',border:'1px solid var(--red)'}};
+
+    function renderHousekeepingGrid() {
+      var grid = document.getElementById('hk-room-grid');
+      if (!grid) return;
+      var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;padding:12px;">';
+      var statusFilter = document.getElementById('hk-status-filter') ? document.getElementById('hk-status-filter').value : 'all';
+      var floorFilter = document.getElementById('hk-floor-filter') ? document.getElementById('hk-floor-filter').value : 'all';
+      var staffFilter = document.getElementById('hk-staff-filter') ? document.getElementById('hk-staff-filter').value : 'all';
+      var filtered = housekeepingRooms.filter(function(r) {
+        return (statusFilter === 'all' || r.status === statusFilter) &&
+               (floorFilter === 'all' || String(r.floor) === floorFilter) &&
+               (staffFilter === 'all' || r.staff === staffFilter);
+      });
+      filtered.forEach(function(r) {
+        var st = statusColors[r.status] || statusColors.dirty;
+        html += '<div onclick="openRoomHousekeepingDetail(\'' + r.room + '\')" style="padding:14px 12px;border-radius:10px;background:' + st.bg + ';border:' + st.border + ';cursor:pointer;text-align:center;transition:all 0.2s;" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 4px 12px rgba(0,0,0,0.1)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'">';
+        html += '<div style="font-size:20px;font-weight:700;color:' + st.color + ';">' + r.room + '</div>';
+        html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + r.type + '</div>';
+        html += '<div style="margin-top:6px;font-size:11px;color:' + st.color + ';font-weight:600;">' + st.text + '</div>';
+        html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + (r.staff || '未分配') + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      grid.innerHTML = html;
+      // Update stats
+      var stats = {dirty:0,cleaning:0,inspect:0,done:0,issue:0};
+      housekeepingRooms.forEach(function(r){ if(stats[r.status] !== undefined) stats[r.status]++; });
+      var el = document.getElementById('hk-stat-clean'); if(el) el.textContent = stats.dirty;
+      el = document.getElementById('hk-stat-cleaning'); if(el) el.textContent = stats.cleaning;
+      el = document.getElementById('hk-stat-inspect'); if(el) el.textContent = stats.inspect;
+      el = document.getElementById('hk-stat-done'); if(el) el.textContent = stats.done;
+      el = document.getElementById('hk-stat-issue'); if(el) el.textContent = stats.issue;
+    }
+    function applyHousekeepingFilter() { renderHousekeepingGrid(); }
+    function resetHousekeepingFilter() {
+      document.getElementById('hk-status-filter').value = 'all';
+      document.getElementById('hk-floor-filter').value = 'all';
+      document.getElementById('hk-staff-filter').value = 'all';
+      renderHousekeepingGrid();
+    }
+    function openAssignHousekeepingModal() { openModal('hk-assign'); }
+    function submitHousekeepingAssign() {
+      var staff = document.getElementById('hka-staff').value;
+      if (!staff) { showToast('请选择保洁员', 'error'); return; }
+      var selected = document.querySelectorAll('#hka-room-list .batch-room-chip.selected');
+      if (selected.length === 0) { showToast('请选择至少一个房间', 'error'); return; }
+      var rooms = [];
+      selected.forEach(function(el){ rooms.push(el.dataset.room); el.classList.remove('selected'); });
+      closeModal('hk-assign');
+      showToast('✅ 已分配 ' + rooms.join('、') + ' 给 ' + staff, 'success');
+    }
+    function openInspectRecordModal() { openModal('hk-inspect'); }
+    function submitInspectRecord() {
+      var room = document.getElementById('hki-room').value;
+      var inspector = document.getElementById('hki-inspector').value;
+      var result = document.getElementById('hki-result').value;
+      if (!room || !inspector) { showToast('请填写必填项', 'error'); return; }
+      closeModal('hk-inspect');
+      showToast('✅ 查房记录已保存（房间 ' + room + '：' + (result === 'pass' ? '合格' : '异常') + '）', 'success');
+    }
+    function viewInspectDetail(id) {
+      var html = '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:12px;"><div style="font-size:13px;font-weight:600;margin-bottom:6px;">📋 查房信息</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">';
+      html += '<div><span style="color:var(--text-muted);">查房ID：</span>' + id + '</div>';
+      html += '<div><span style="color:var(--text-muted);">查房人：</span>吴倩</div>';
+      html += '<div><span style="color:var(--text-muted);">保洁员：</span>郑强</div>';
+      html += '<div><span style="color:var(--text-muted);">检查项：</span>卧室/卫生间/地面/家电</div></div></div>';
+      html += '<div style="padding:10px 14px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;font-size:12px;color:var(--green);">✅ 全部检查项合格，房间已达到入住标准</div>';
+      document.getElementById('hkid-body').innerHTML = html;
+      openModal('hk-inspect-detail');
+    }
+    function openRoomHousekeepingDetail(room) {
+      var r = housekeepingRooms.filter(function(x){ return x.room === room; })[0] || housekeepingRooms[0];
+      var st = statusColors[r.status] || statusColors.dirty;
+      showToast('房间 ' + room + '：' + st.text + '，保洁员：' + (r.staff || '未分配'), 'info');
+    }
+    function exportHousekeepingReport() {
+      var csv = '房间,楼层,房型,状态,保洁员,派工时间\n';
+      housekeepingRooms.forEach(function(r){ csv += r.room + ',' + r.floor + ',' + r.type + ',' + r.status + ',' + r.staff + ',' + r.assignTime + '\n'; });
+      var blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8'});
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = '房务报表_' + new Date().toISOString().slice(0,10) + '.csv'; a.click();
+      showToast('房务报表已导出', 'success');
+    }
+    setTimeout(renderHousekeepingGrid, 500);
+    </script>
 
     <!-- Page: Batch Check-in Management (v3新页面：批量入住管理) -->
     <div id="page-batch-checkin" class="page">
@@ -24277,6 +24607,527 @@ window.mrcConfirmLevelChange = function() {
   showToast('等级已调整为：' + levelNames[newLevel], 'success');
   switchMrcTab('recharge');
 };
+
+// ======= 【改进v3-2】设备分组标签管理 =======
+var deviceGroups = {
+  main: { name: '主楼', color: 'var(--blue)', icon: '🏢', devices: ['301','302','303','304','305','201','202','203'] },
+  east: { name: '东配楼', color: 'var(--green)', icon: '🏢', devices: ['401','402'] },
+  vip: { name: 'VIP', color: 'var(--orange)', icon: '⭐', devices: ['301','401'] },
+  lowbat: { name: '低电量', color: 'var(--red)', icon: '🔋', devices: ['201','303'] }
+};
+var currentDeviceGroupFilter = 'all';
+
+function filterDeviceByGroup(group, btn) {
+  currentDeviceGroupFilter = group;
+  document.querySelectorAll('.dg-tag-btn').forEach(function(b) {
+    b.classList.remove('active');
+    b.style.background = 'var(--bg)';
+    b.style.color = 'var(--text)';
+    b.style.borderColor = 'var(--border)';
+    b.style.fontWeight = '400';
+  });
+  if (btn) {
+    btn.classList.add('active');
+    var grp = deviceGroups[group];
+    if (group !== 'all' && grp) {
+      btn.style.background = grp.color.indexOf('blue') > -1 ? 'var(--blue-bg)' : grp.color.indexOf('green') > -1 ? 'var(--green-bg)' : grp.color.indexOf('orange') > -1 ? 'var(--orange-bg)' : 'var(--red-bg)';
+      btn.style.color = grp.color;
+      btn.style.borderColor = grp.color;
+      btn.style.fontWeight = '700';
+    } else {
+      btn.style.background = 'var(--blue-bg)';
+      btn.style.color = 'var(--blue)';
+      btn.style.borderColor = 'var(--blue)';
+      btn.style.fontWeight = '700';
+    }
+  }
+  // Apply filter to device table rows
+  var rows = document.querySelectorAll('#device-table-body tr');
+  var visibleCount = 0;
+  rows.forEach(function(r) {
+    var room = r.querySelector('td') ? r.querySelector('td').textContent.trim() : '';
+    var show = true;
+    if (group !== 'all' && deviceGroups[group]) {
+      show = deviceGroups[group].devices.indexOf(room) !== -1;
+    }
+    r.style.display = show ? '' : 'none';
+    if (show) visibleCount++;
+  });
+  var cntEl = document.getElementById('device-filter-count');
+  if (cntEl) cntEl.textContent = '共 ' + visibleCount + ' 台设备';
+  var label = group === 'all' ? '全部设备' : (deviceGroups[group] ? deviceGroups[group].icon + ' ' + deviceGroups[group].name : group);
+  showToast('已按分组筛选：' + label, 'info');
+}
+
+function openDeviceGroupManageModal() {
+  var old = document.getElementById('modal-device-group-manage');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-device-group-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:600px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">🏷️ 设备分组管理</div>';
+  html += '<button onclick="closeDeviceGroupManageModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">💡 设备分组可按楼栋/楼层/VIP/特殊用途等多维度管理，方便批量操作和筛选</div>';
+  // 分组列表
+  var grpKeys = Object.keys(deviceGroups);
+  grpKeys.forEach(function(key) {
+    var grp = deviceGroups[key];
+    html += '<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:12px;overflow:hidden;">';
+    html += '<div style="padding:10px 14px;background:var(--bg);display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);">';
+    html += '<span style="font-size:18px;">' + grp.icon + '</span>';
+    html += '<div style="flex:1;"><div style="font-weight:600;font-size:13px;">' + grp.name + '</div><div style="font-size:11px;color:var(--text-muted);">设备：' + grp.devices.join('、') + '</div></div>';
+    html += '<button onclick="openEditDeviceGroup(\'' + key + '\')" class="action-btn small" style="padding:3px 10px;font-size:11px;">✏️ 编辑</button>';
+    html += '</div>';
+    html += '<div style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px;">';
+    grp.devices.forEach(function(dev) {
+      html += '<span style="padding:3px 10px;background:' + grp.color.replace('var(', 'var(') + ';color:white;border-radius:12px;font-size:11px;font-weight:600;">' + dev + '</span>';
+    });
+    html += '</div></div>';
+  });
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button onclick="closeDeviceGroupManageModal()" class="modal-btn secondary">关闭</button>';
+  html += '<button onclick="openAddDeviceGroupModal()" class="modal-btn primary">+ 新增分组</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeDeviceGroupManageModal() { var m = document.getElementById('modal-device-group-manage'); if (m) m.remove(); }
+function openAddDeviceGroupModal() {
+  closeDeviceGroupManageModal();
+  var old = document.getElementById('modal-device-group-form');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-device-group-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:480px;background:white;border-radius:12px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">🏷️ 新增设备分组</div>';
+  html += '<button onclick="closeDeviceGroupFormModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div class="form-group"><label class="form-label">分组名称 <span class="required">*</span></label>';
+  html += '<input type="text" class="form-input" id="dgf-name" placeholder="如：主楼、东配楼、VIP客房"></div>';
+  html += '<div class="form-group"><label class="form-label">图标</label>';
+  html += '<select class="form-select" id="dgf-icon" style="font-size:13px;">';
+  html += '<option value="🏢">🏢 楼栋</option><option value="⭐">⭐ VIP</option><option value="🔋">🔋 低电量</option><option value="⚠️">⚠️ 告警</option><option value="🛏️">🛏️ 房型</option><option value="🔑">🔑 门锁</option>';
+  html += '</select></div>';
+  html += '<div class="form-group"><label class="form-label">颜色</label>';
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<button class="dgf-color-btn active" data-color="blue" onclick="selectDgfColor(this,\'blue\')" style="width:32px;height:32px;background:var(--blue);border-radius:50%;border:3px solid white;cursor:pointer;box-shadow:0 0 0 2px var(--blue);"></button>';
+  html += '<button class="dgf-color-btn" data-color="green" onclick="selectDgfColor(this,\'green\')" style="width:32px;height:32px;background:var(--green);border-radius:50%;border:3px solid white;cursor:pointer;"></button>';
+  html += '<button class="dgf-color-btn" data-color="orange" onclick="selectDgfColor(this,\'orange\')" style="width:32px;height:32px;background:var(--orange);border-radius:50%;border:3px solid white;cursor:pointer;"></button>';
+  html += '<button class="dgf-color-btn" data-color="red" onclick="selectDgfColor(this,\'red\')" style="width:32px;height:32px;background:var(--red);border-radius:50%;border:3px solid white;cursor:pointer;"></button>';
+  html += '<button class="dgf-color-btn" data-color="purple" onclick="selectDgfColor(this,\'purple\')" style="width:32px;height:32px;background:var(--purple);border-radius:50%;border:3px solid white;cursor:pointer;"></button>';
+  html += '</div></div>';
+  html += '<div class="form-group"><label class="form-label">包含设备</label>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--bg);border-radius:8px;">';
+  var allDevs = ['301','302','303','304','305','201','202','203','401','402'];
+  allDevs.forEach(function(d) { html += '<div class="batch-room-chip" onclick="this.classList.toggle(\'selected\')" data-room="' + d + '" style="padding:4px 12px;border-radius:12px;border:1px solid var(--border);font-size:11px;cursor:pointer;">' + d + '</div>'; });
+  html += '</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">点击选择要包含在此分组中的设备</div></div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button onclick="closeDeviceGroupFormModal()" class="modal-btn secondary">取消</button>';
+  html += '<button onclick="submitAddDeviceGroup()" class="modal-btn primary">💾 创建分组</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeDeviceGroupFormModal() { var m = document.getElementById('modal-device-group-form'); if (m) m.remove(); }
+var dgfSelectedColor = 'blue';
+function selectDgfColor(btn, color) {
+  dgfSelectedColor = color;
+  document.querySelectorAll('.dgf-color-btn').forEach(function(b) { b.style.boxShadow = 'none'; b.style.borderColor = 'white'; });
+  btn.style.boxShadow = '0 0 0 2px ' + (color === 'blue' ? 'var(--blue)' : color === 'green' ? 'var(--green)' : color === 'orange' ? 'var(--orange)' : color === 'red' ? 'var(--red)' : 'var(--purple)');
+  btn.style.borderColor = 'white';
+}
+function submitAddDeviceGroup() {
+  var name = document.getElementById('dgf-name').value.trim();
+  if (!name) { showToast('请输入分组名称', 'error'); return; }
+  var icon = document.getElementById('dgf-icon').value;
+  var selectedDevs = [];
+  document.querySelectorAll('#modal-device-group-form .batch-room-chip.selected').forEach(function(el) { selectedDevs.push(el.dataset.room); el.classList.remove('selected'); });
+  var key = 'grp_' + Date.now();
+  deviceGroups[key] = { name: name, color: 'var(' + dgfSelectedColor + ')', icon: icon, devices: selectedDevs };
+  closeDeviceGroupFormModal();
+  showToast('✅ 分组 "' + name + '" 创建成功（' + selectedDevs.length + ' 台设备）', 'success');
+}
+function openEditDeviceGroup(key) {
+  closeDeviceGroupManageModal();
+  var grp = deviceGroups[key];
+  if (!grp) return;
+  var old = document.getElementById('modal-device-group-form');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-device-group-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:480px;background:white;border-radius:12px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">✏️ 编辑分组：' + grp.name + '</div>';
+  html += '<button onclick="closeDeviceGroupFormModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div class="form-group"><label class="form-label">分组名称</label>';
+  html += '<input type="text" class="form-input" id="dgf-name" value="' + grp.name + '"></div>';
+  html += '<div class="form-group"><label class="form-label">图标</label>';
+  html += '<select class="form-select" id="dgf-icon" style="font-size:13px;">';
+  html += '<option value="🏢" ' + (grp.icon === '🏢' ? 'selected' : '') + '>🏢 楼栋</option>';
+  html += '<option value="⭐" ' + (grp.icon === '⭐' ? 'selected' : '') + '>⭐ VIP</option>';
+  html += '<option value="🔋" ' + (grp.icon === '🔋' ? 'selected' : '') + '>🔋 低电量</option>';
+  html += '<option value="⚠️" ' + (grp.icon === '⚠️' ? 'selected' : '') + '>⚠️ 告警</option>';
+  html += '</select></div>';
+  html += '<div class="form-group"><label class="form-label">包含设备</label>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--bg);border-radius:8px;">';
+  var allDevs = ['301','302','303','304','305','201','202','203','401','402'];
+  allDevs.forEach(function(d) {
+    var isSelected = grp.devices.indexOf(d) !== -1;
+    html += '<div class="batch-room-chip ' + (isSelected ? 'selected' : '') + '" onclick="this.classList.toggle(\'selected\')" data-room="' + d + '" style="padding:4px 12px;border-radius:12px;border:1px solid var(--border);font-size:11px;cursor:pointer;">' + d + '</div>';
+  });
+  html += '</div></div>';
+  html += '<div style="padding:10px 14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-top:12px;font-size:12px;color:var(--red);cursor:pointer;" onclick="deleteDeviceGroup(\'' + key + '\')">🗑️ 删除此分组</div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button onclick="closeDeviceGroupFormModal()" class="modal-btn secondary">取消</button>';
+  html += '<button onclick="submitEditDeviceGroup(\'' + key + '\')" class="modal-btn primary">💾 保存修改</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitEditDeviceGroup(key) {
+  var grp = deviceGroups[key];
+  if (!grp) return;
+  var name = document.getElementById('dgf-name').value.trim();
+  if (!name) { showToast('请输入分组名称', 'error'); return; }
+  grp.name = name;
+  grp.icon = document.getElementById('dgf-icon').value;
+  var selectedDevs = [];
+  document.querySelectorAll('#modal-device-group-form .batch-room-chip.selected').forEach(function(el) { selectedDevs.push(el.dataset.room); });
+  grp.devices = selectedDevs;
+  closeDeviceGroupFormModal();
+  showToast('✅ 分组 "' + name + '" 已更新（' + selectedDevs.length + ' 台设备）', 'success');
+}
+function deleteDeviceGroup(key) {
+  if (!confirm('确定删除此分组吗？')) return;
+  var name = deviceGroups[key] ? deviceGroups[key].name : key;
+  delete deviceGroups[key];
+  closeDeviceGroupFormModal();
+  showToast('🗑️ 分组 "' + name + '" 已删除', 'success');
+}
+
+// ======= 【改进v3-3】结算中心批量结算预览确认弹窗 =======
+function openBatchSettlementPreviewModal() {
+  var checked = document.querySelectorAll('.stl-row-check:checked');
+  if (checked.length === 0) { showToast('请先选择要结算的房间', 'error'); return; }
+  var total = 0;
+  var rows = [];
+  checked.forEach(function(cb) {
+    var row = cb.closest('tr');
+    var cells = row.querySelectorAll('td');
+    var roomNum = cells[1] ? cells[1].textContent.trim() : '?';
+    var name = cells[2] ? cells[2].textContent.trim() : '--';
+    var checkin = cells[3] ? cells[3].textContent.trim() : '--';
+    var nights = cells[4] ? cells[4].textContent.trim() : '--';
+    var roomFee = parseInt((cells[8] ? cells[8].textContent : '0').replace(/[^0-9]/g, '') || '0');
+    total += roomFee;
+    rows.push({room: roomNum, name: name, checkin: checkin, nights: nights, fee: roomFee});
+  });
+  var old = document.getElementById('modal-batch-settlement-preview');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-batch-settlement-preview" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:580px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:24px;">📋</div><div><div style="font-size:16px;font-weight:700;">批量结算确认</div><div style="font-size:11px;color:var(--text-muted);">共 ' + rows.length + ' 间房间待结算</div></div></div>';
+  html += '<button onclick="closeBatchSettlementPreviewModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:16px 24px;">';
+  // 汇总信息
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">';
+  html += '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">房间数</div><div style="font-size:22px;font-weight:700;color:var(--blue);">' + rows.length + '</div><div style="font-size:10px;color:var(--text-muted);">间</div></div>';
+  html += '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">费用合计</div><div style="font-size:22px;font-weight:700;color:var(--orange);">¥' + total + '</div><div style="font-size:10px;color:var(--text-muted);">元</div></div>';
+  html += '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">押金退还</div><div style="font-size:22px;font-weight:700;color:var(--green);">¥' + (rows.length * 100) + '</div><div style="font-size:10px;color:var(--text-muted);">元</div></div>';
+  html += '</div>';
+  // 房间明细列表
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📋 结算明细</div>';
+  html += '<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:14px;">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  html += '<thead><tr style="background:var(--bg);"><th style="padding:8px 12px;text-align:left;color:var(--text-muted);">房间</th><th style="padding:8px 12px;text-align:left;color:var(--text-muted);">入住人</th><th style="padding:8px 12px;text-align:left;color:var(--text-muted);">入住时间</th><th style="padding:8px 12px;text-align:left;color:var(--text-muted);">住夜</th><th style="padding:8px 12px;text-align:right;color:var(--text-muted);">应付金额</th></tr></thead>';
+  html += '<tbody>';
+  rows.forEach(function(r) {
+    html += '<tr style="border-bottom:1px solid var(--border);">';
+    html += '<td style="padding:8px 12px;font-weight:600;">' + r.room + '</td>';
+    html += '<td style="padding:8px 12px;">' + r.name + '</td>';
+    html += '<td style="padding:8px 12px;font-size:11px;color:var(--text-muted);">' + r.checkin + '</td>';
+    html += '<td style="padding:8px 12px;">' + r.nights + '</td>';
+    html += '<td style="padding:8px 12px;text-align:right;font-weight:700;color:var(--orange);">¥' + r.fee + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  // 批量操作选项
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">⚙️ 批量操作</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">';
+  html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label" style="font-size:11px;">统一折扣</label>';
+  html += '<select class="form-select" id="bsp-discount" onchange="updateBatchSettlePreview()" style="padding:6px 8px;font-size:12px;">';
+  html += '<option value="none">无折扣</option><option value="5p">全单5折</option><option value="8p">全单8折</option><option value="50r">减50元</option><option value="free">免房费</option>';
+  html += '</select></div>';
+  html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label" style="font-size:11px;">押金处理</label>';
+  html += '<select class="form-select" id="bsp-deposit" style="padding:6px 8px;font-size:12px;">';
+  html += '<option value="refund">全额退还</option><option value="partial">部分抵扣</option><option value="forfeit">不退还</option>';
+  html += '</select></div>';
+  html += '</div>';
+  // 支付方式
+  html += '<div class="form-group"><label class="form-label">支付方式</label>';
+  html += '<select class="form-select" id="bsp-pay-method" style="padding:8px 12px;font-size:13px;">';
+  html += '<option value="wechat">💚 微信支付</option><option value="alipay">💙 支付宝</option><option value="cash">💴 现金</option><option value="card">💳 银行卡</option>';
+  html += '</select></div>';
+  // 备注
+  html += '<div class="form-group"><label class="form-label">备注</label>';
+  html += '<textarea class="form-textarea" id="bsp-remark" placeholder="批量结算备注（选填）" style="min-height:50px;font-size:12px;"></textarea></div>';
+  // 结算摘要
+  html += '<div id="bsp-summary" style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-top:10px;">';
+  html += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>房费合计</span><span>¥' + total + '</span></div>';
+  html += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>押金退还</span><span>¥' + (rows.length * 100) + '</span></div>';
+  html += '<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;margin-top:6px;padding-top:6px;border-top:1px solid var(--blue);color:var(--blue);"><span>实退金额</span><span id="bsp-final">¥' + (total - rows.length * 100 > 0 ? 0 : (rows.length * 100 - total)) + '</span></div>';
+  html += '</div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button onclick="closeBatchSettlementPreviewModal()" class="modal-btn secondary">取消</button>';
+  html += '<button onclick="confirmBatchSettlementAll()" class="modal-btn primary" style="background:var(--green);border-color:var(--green);">✅ 确认批量结算</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeBatchSettlementPreviewModal() { var m = document.getElementById('modal-batch-settlement-preview'); if (m) m.remove(); }
+function updateBatchSettlePreview() {
+  var discount = document.getElementById('bsp-discount').value;
+  var checked = document.querySelectorAll('.stl-row-check:checked');
+  var total = 0;
+  checked.forEach(function(cb) {
+    var row = cb.closest('tr');
+    var amtCell = row.querySelectorAll('td')[8];
+    total += parseInt((amtCell ? amtCell.textContent : '0').replace(/[^0-9]/g, '') || '0');
+  });
+  var deposit = (checked.length || 0) * 100;
+  var finalAmount = total;
+  if (discount === '5p') finalAmount = Math.round(total * 0.5);
+  else if (discount === '8p') finalAmount = Math.round(total * 0.8);
+  else if (discount === '50r') finalAmount = Math.max(0, total - 50);
+  else if (discount === 'free') finalAmount = 0;
+  var refund = Math.max(0, deposit - finalAmount);
+  document.getElementById('bsp-final').textContent = '¥' + refund;
+}
+function confirmBatchSettlementAll() {
+  closeBatchSettlementPreviewModal();
+  var checked = document.querySelectorAll('.stl-row-check:checked');
+  var rooms = [];
+  checked.forEach(function(cb) {
+    var row = cb.closest('tr');
+    var room = row.querySelectorAll('td')[1] ? row.querySelectorAll('td')[1].textContent.trim() : '?';
+    rooms.push(room);
+    // Remove checked row from table (simulate settlement)
+    row.remove();
+  });
+  showToast('✅ 批量结算完成！' + rooms.join('、') + ' 已结算，共 ' + rooms.length + ' 间', 'success');
+}
+// Wire the batch settle button
+var _origBatchSettle = openBatchSettlementModal;
+window.openBatchSettlementModal = function() {
+  openBatchSettlementPreviewModal();
+};
+
+// ======= 【改进v3-4】会员详情完整弹窗（消费记录+积分记录+住宿历史） =======
+var currentMemberDetailIdx = -1;
+function openMemberDetailModal(idx) {
+  currentMemberDetailIdx = idx;
+  var rows = document.querySelectorAll('#member-table-body tr');
+  if (idx >= rows.length) return;
+  var cells = rows[idx].querySelectorAll('td');
+  var name = cells[0] ? cells[0].textContent.trim() : '未知';
+  var phone = cells[1] ? cells[1].textContent.trim() : '';
+  var level = cells[2] ? cells[2].textContent.trim() : '普通会员';
+  var balance = cells[3] ? cells[3].textContent.trim() : '¥0';
+  var join = cells[5] ? cells[5].textContent.trim() : '--';
+  var old = document.getElementById('modal-member-detail');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-member-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:620px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="display:flex;align-items:center;gap:12px;"><div style="width:48px;height:48px;background:linear-gradient(135deg,var(--blue),var(--purple));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">👤</div>';
+  html += '<div><div style="font-size:16px;font-weight:700;">' + name + '</div><div style="font-size:11px;color:var(--text-muted);">' + phone + ' · 注册于 ' + join + '</div></div></div>';
+  html += '<button onclick="closeMemberDetailModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:16px 24px 0;">';
+  // 会员信息卡
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">';
+  html += '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">会员等级</div><div style="font-size:14px;font-weight:700;color:var(--blue);">' + level + '</div></div>';
+  html += '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">账户余额</div><div style="font-size:14px;font-weight:700;color:var(--green);">' + balance + '</div></div>';
+  html += '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">累计积分</div><div style="font-size:14px;font-weight:700;color:var(--orange);">2,350</div></div>';
+  html += '<div style="padding:10px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">入住次数</div><div style="font-size:14px;font-weight:700;color:var(--purple);">8次</div></div>';
+  html += '</div>';
+  // Tab切换
+  html += '<div style="display:flex;border-bottom:2px solid var(--border);margin-bottom:14px;">';
+  html += '<div class="md-tab active" data-tab="consume" onclick="switchMemberDetailTab(\'consume\',this)" style="flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid var(--blue);color:var(--blue);">💰 消费记录</div>';
+  html += '<div class="md-tab" data-tab="points" onclick="switchMemberDetailTab(\'points\',this)" style="flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:var(--text-muted);">🎯 积分记录</div>';
+  html += '<div class="md-tab" data-tab="stay" onclick="switchMemberDetailTab(\'stay\',this)" style="flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:var(--text-muted);">🏨 住宿历史</div>';
+  html += '<div class="md-tab" data-tab="card" onclick="switchMemberDetailTab(\'card\',this)" style="flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:var(--text-muted);">💳 会员卡</div>';
+  html += '</div>';
+  // 消费记录内容
+  html += '<div id="md-content-consume" class="md-content" style="max-height:260px;overflow-y:auto;">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  html += '<thead><tr style="background:var(--bg);"><th style="padding:8px 10px;text-align:left;color:var(--text-muted);">时间</th><th style="padding:8px 10px;text-align:left;color:var(--text-muted);">类型</th><th style="padding:8px 10px;text-align:left;color:var(--text-muted);">房间</th><th style="padding:8px 10px;text-align:right;color:var(--text-muted);">金额</th><th style="padding:8px 10px;text-align:left;color:var(--text-muted);">状态</th></tr></thead><tbody>';
+  html += '<tr><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-26 14:00</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">🏨 入住</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">301</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:600;">¥128</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);"><span class="tbadge green">已完成</span></td></tr>';
+  html += '<tr><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-20 11:00</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">💰 充值</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">--</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:600;color:var(--green);">+¥1,000</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);"><span class="tbadge green">成功</span></td></tr>';
+  html += '<tr><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-15 10:00</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">🏨 入住</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">201</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:600;">¥216</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);"><span class="tbadge green">已完成</span></td></tr>';
+  html += '<tr><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-10 18:00</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">🏨 入住</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">305</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:600;">¥128</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);"><span class="tbadge green">已完成</span></td></tr>';
+  html += '</tbody></table></div>';
+  // 积分记录内容
+  html += '<div id="md-content-points" class="md-content" style="display:none;max-height:260px;overflow-y:auto;">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  html += '<thead><tr style="background:var(--bg);"><th style="padding:8px 10px;text-align:left;color:var(--text-muted);">时间</th><th style="padding:8px 10px;text-align:left;color:var(--text-muted);">类型</th><th style="padding:8px 10px;text-align:left;color:var(--text-muted);">来源</th><th style="padding:8px 10px;text-align:right;color:var(--text-muted);">积分</th></tr></thead><tbody>';
+  html += '<tr><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-26 14:00</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">➕ 获得</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">入住 301 房间</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:var(--green);">+128</td></tr>';
+  html += '<tr><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-20 11:05</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">➕ 获得</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">充值赠送</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:var(--green);">+100</td></tr>';
+  html += '<tr><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-15 10:05</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">➕ 获得</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">入住 201 房间</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:var(--green);">+216</td></tr>';
+  html += '<tr><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-10 18:10</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">➖ 兑换</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">会员礼品兑换</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:var(--red);">-500</td></tr>';
+  html += '</tbody></table></div>';
+  // 住宿历史内容
+  html += '<div id="md-content-stay" class="md-content" style="display:none;max-height:260px;overflow-y:auto;">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  html += '<thead><tr style="background:var(--bg);"><th style="padding:8px 10px;text-align:left;color:var(--text-muted);">入住日期</th><th style="padding:8px 10px;text-align:left;color:var(--text-muted);">退房日期</th><th style="padding:8px 10px;text-align:left;color:var(--text-muted);">房间</th><th style="padding:8px 10px;text-align:left;color:var(--text-muted);">房型</th><th style="padding:8px 10px;text-align:right;color:var(--text-muted);">金额</th></tr></thead><tbody>';
+  html += '<tr><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-26</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-27</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">301</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">亲子间</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:600;">¥128</td></tr>';
+  html += '<tr><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-15</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-17</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">201</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">大床房</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:600;">¥216</td></tr>';
+  html += '<tr><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-10</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">2026-03-12</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">305</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);">亲子间</td><td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:600;">¥256</td></tr>';
+  html += '</tbody></table></div>';
+  // 会员卡内容
+  html += '<div id="md-content-card" class="md-content" style="display:none;max-height:260px;overflow-y:auto;">';
+  html += '<div style="padding:16px;background:linear-gradient(135deg,var(--blue),#69c0ff);border-radius:10px;color:white;margin-bottom:12px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div style="font-size:14px;font-weight:700;">🏷️ 领锁会员卡</div><div style="font-size:10px;opacity:0.8;">有效期至 2027-03-27</div></div>';
+  html += '<div style="font-size:18px;font-weight:700;letter-spacing:2px;margin-bottom:8px;">' + (phone ? phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '****') + '</div>';
+  html += '<div style="display:flex;justify-content:space-between;font-size:11px;opacity:0.9;"><span>' + name + '</span><span>' + level + '</span></div></div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+  html += '<div style="padding:10px;background:var(--bg);border-radius:6px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);">余额</div><div style="font-size:16px;font-weight:700;color:var(--blue);">' + balance + '</div></div>';
+  html += '<div style="padding:10px;background:var(--bg);border-radius:6px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);">积分</div><div style="font-size:16px;font-weight:700;color:var(--orange);">2,350</div></div>';
+  html += '</div>';
+  html += '<div style="margin-top:12px;padding:10px 14px;background:var(--blue-bg);border-radius:8px;font-size:12px;color:var(--blue);">💡 会员卡可享受对应等级折扣，离店时自动结算</div>';
+  html += '</div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button onclick="closeMemberDetailModal()" class="modal-btn secondary">关闭</button>';
+  html += '<button onclick="closeMemberDetailModal();openMemberRechargeModal(' + idx + ')" class="modal-btn primary">💰 充值</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeMemberDetailModal() { var m = document.getElementById('modal-member-detail'); if (m) m.remove(); }
+function switchMemberDetailTab(tab, btn) {
+  document.querySelectorAll('.md-tab').forEach(function(t) {
+    var isActive = t.getAttribute('data-tab') === tab;
+    t.style.borderBottomColor = isActive ? 'var(--blue)' : 'transparent';
+    t.style.color = isActive ? 'var(--blue)' : 'var(--text-muted)';
+  });
+  document.querySelectorAll('.md-content').forEach(function(c) { c.style.display = 'none'; });
+  var content = document.getElementById('md-content-' + tab);
+  if (content) content.style.display = '';
+}
+// Override member table row click
+var _origRenderMemberTableV2 = typeof renderMemberTableV2 !== 'undefined' ? renderMemberTableV2 : null;
+function renderMemberTableV2() {
+  if (_origRenderMemberTableV2) { _origRenderMemberTableV2(); }
+  var tbody = document.getElementById('member-table-body');
+  if (!tbody) return;
+  var rows = tbody.querySelectorAll('tr');
+  rows.forEach(function(row, idx) {
+    row.style.cursor = 'pointer';
+    row.onclick = function(e) {
+      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+      openMemberDetailModal(idx);
+    };
+  });
+}
+setTimeout(renderMemberTableV2, 800);
+
+// ======= 【改进v3-5】工单处理进度时间线弹窗 =======
+function openWorkorderTimelineModal(woId) {
+  var woData = {
+    id: woId || 'WO-2026032601',
+    type: '客户投诉',
+    room: '301',
+    customer: '张三',
+    content: '房间空调噪音过大，影响休息',
+    status: '处理中',
+    assignee: '赵飞',
+    created: '2026-03-26 14:30',
+    timeline: [
+      {time: '2026-03-26 14:30', actor: '系统', action: '创建工单', detail: '客户通过前台投诉，客服已登记', type: 'create'},
+      {time: '2026-03-26 14:35', actor: '赵飞', action: '接单处理', detail: '已接受工单，正在联系工程部', type: 'assign'},
+      {time: '2026-03-26 15:10', actor: '王工', action: '上门检查', detail: '工程部王工已到房间检查空调，确认压缩机异响', type: 'process'},
+      {time: '2026-03-26 16:20', actor: '赵飞', action: '进度更新', detail: '已预约维修，配件需从市区调配，预计明天修复', type: 'update'},
+      {time: '2026-03-27 09:00', actor: '王工', action: '维修完成', detail: '空调已修复，测试运行正常', type: 'done'},
+    ]
+  };
+  var statusColor = woData.status === '已完成' ? 'var(--green)' : woData.status === '处理中' ? 'var(--orange)' : 'var(--blue)';
+  var old = document.getElementById('modal-wo-timeline');
+  if (old) old.remove();
+  var typeColors = {create:'var(--blue)',assign:'var(--purple)',process:'var(--orange)',update:'var(--blue)',done:'var(--green)'};
+  var typeIcons = {create:'📝',assign:'👤',process:'🔧',update:'🔄',done:'✅'};
+  var html = '<div class="modal-overlay" id="modal-wo-timeline" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:560px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:24px;">📋</div><div><div style="font-size:15px;font-weight:700;">工单处理进度</div><div style="font-size:11px;color:var(--text-muted);">' + woData.id + ' · ' + woData.room + ' · ' + woData.type + '</div></div></div>';
+  html += '<button onclick="closeWoTimelineModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:16px 24px;">';
+  // 工单摘要
+  html += '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:6px;">' + woData.content + '</div>';
+  html += '<div style="display:flex;gap:16px;font-size:11px;color:var(--text-muted);">';
+  html += '<span>👤 ' + woData.customer + '</span><span>🏠 ' + woData.room + '</span><span>👨‍💼 ' + woData.assignee + '</span><span>📅 ' + woData.created + '</span>';
+  html += '</div></div>';
+  // 时间线
+  html += '<div style="position:relative;padding-left:28px;">';
+  html += '<div style="position:absolute;left:10px;top:0;bottom:0;width:2px;background:var(--border);"></div>';
+  woData.timeline.forEach(function(item, idx) {
+    var color = typeColors[item.type] || 'var(--blue)';
+    var icon = typeIcons[item.type] || '📌';
+    html += '<div style="position:relative;margin-bottom:20px;">';
+    html += '<div style="position:absolute;left:-22px;top:4px;width:22px;height:22px;border-radius:50%;background:' + color + ';display:flex;align-items:center;justify-content:center;font-size:11px;color:white;">' + (idx + 1) + '</div>';
+    html += '<div style="padding:10px 14px;background:white;border:1px solid var(--border);border-radius:8px;margin-left:8px;">';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
+    html += '<span style="font-size:12px;font-weight:700;">' + icon + ' ' + item.action + '</span>';
+    html += '<span style="font-size:10px;color:var(--text-muted);margin-left:auto;">' + item.time + '</span>';
+    html += '</div>';
+    html += '<div style="font-size:12px;color:var(--text-muted);">👤 ' + item.actor + '：' + item.detail + '</div>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  // 添加进度备注
+  html += '<div style="margin-top:16px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--blue);">';
+  html += '💡 全部处理完成后请更新工单状态为"已完成"</div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button onclick="closeWoTimelineModal()" class="modal-btn secondary">关闭</button>';
+  html += '<button onclick="closeWoTimelineModal();openModal(\'wo-process\');" class="modal-btn primary">✏️ 处理工单</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeWoTimelineModal() { var m = document.getElementById('modal-wo-timeline'); if (m) m.remove(); }
+// Override workorder table to add timeline button
+setTimeout(function() {
+  var rows = document.querySelectorAll('#page-workorder tbody tr');
+  rows.forEach(function(row) {
+    var cells = row.querySelectorAll('td');
+    if (cells.length < 8) return;
+    var statusCell = cells[3]; // status column
+    var statusText = statusCell ? statusCell.textContent.trim() : '';
+    var btns = row.querySelectorAll('button');
+    btns.forEach(function(btn) {
+      if (btn.textContent.includes('详情')) {
+        var origOnclick = btn.onclick ? btn.onclick.toString() : '';
+        btn.setAttribute('data-wo-id', cells[0] ? cells[0].textContent.trim() : '');
+      }
+    });
+    // Add timeline button to each row
+    var lastCell = cells[cells.length - 1];
+    if (lastCell && !lastCell.querySelector('.wo-timeline-btn')) {
+      var timelineBtn = document.createElement('button');
+      timelineBtn.className = 'action-btn small wo-timeline-btn';
+      timelineBtn.style.marginLeft = '4px';
+      timelineBtn.style.background = 'var(--purple-bg)';
+      timelineBtn.style.color = 'var(--purple)';
+      timelineBtn.style.borderColor = 'var(--purple)';
+      timelineBtn.textContent = '📊 进度';
+      var woId = cells[0] ? cells[0].textContent.trim() : 'WO-001';
+      timelineBtn.onclick = function(e) { e.stopPropagation(); openWorkorderTimelineModal(woId); };
+      lastCell.appendChild(timelineBtn);
+    }
+  });
+}, 1200);
+
 </script>
 </body>
 </html>
