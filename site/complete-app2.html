@@ -792,7 +792,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <div style="font-size:11px;color:var(--text-muted);">入住人：李四 · 已过期 2小时 · 房费 ¥128/天</div>
               </div>
               <button class="action-btn small" onclick="openCheckoutFullModal('302','李四','2026-03-27 14:00')" style="padding:2px 8px;font-size:10px;background:var(--red);color:white;border:none;">立即退房</button>
-              <button class="action-btn small" onclick="openCheckoutPreSettlement('302','李四','2026-03-27 14:00',128)" style="padding:2px 8px;font-size:10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">预结算</button>
+              <button class="action-btn small" onclick="openCheckoutPreSettlementModal('302','李四','2026-03-27 14:00',128)" style="padding:2px 8px;font-size:10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">预结算</button>
             </div>
             <div style="display:flex;align-items:center;gap:8px;padding:8px 0;">
               <div style="width:28px;height:28px;background:var(--orange-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;">⏰</div>
@@ -2065,6 +2065,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       <div class="page-header">
         <div class="page-title">🔧 设备管理</div>
         <div class="page-sub">硬件设备列表</div>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button class="action-btn small" id="dev-view-list-btn" onclick="switchDeviceView('list')" style="padding:5px 12px;background:var(--blue);color:white;border:none;">📋 列表</button>
+          <button class="action-btn small" id="dev-view-floor-btn" onclick="switchDeviceView('floor')" style="padding:5px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);">🗺️ 平面图</button>
+        </div>
       </div>
       <!-- 【改进B】设备快捷操作工具栏：开锁/重启/固件升级/电池检测批量操作 -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">
@@ -2288,6 +2292,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               <button class="action-btn small" onclick="goDevicePage('next')" id="device-page-next" style="padding:5px 12px;">下一页 ›</button>
             </div>
           </div>
+        </div>
+        <!-- 【改进v3-1】楼层平面图视图容器 -->
+        <div id="device-floor-plan-container" style="display:none;padding:16px;">
+          <div id="device-floor-plan-grid"></div>
         </div>
       </div>
     </div>
@@ -5734,6 +5742,59 @@ setInterval(function() {
       document.querySelectorAll('input[name="sde-shift"]').forEach(function(r){ r.checked = false; });
       openModal('shift-edit-new');
     }
+    // ======= 【改进v3-3】员工排班-分配班次模态框 =======
+    var _shiftAssignCache = { staffName: '', dayIndex: 0, dayLabel: '' };
+    function openAssignShiftModal(staffName, dayIndex) {
+      _shiftAssignCache = { staffName: staffName, dayIndex: dayIndex, dayLabel: ['周一','周二','周三','周四','周五','周六','周日'][dayIndex] || '周' + (dayIndex+1) };
+      var html = '<div class="modal-overlay" id="modal-assign-shift" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+        '<div class="modal" style="width:420px;">' +
+        '<div class="modal-header"><div class="modal-title">📅 分配班次</div><button class="modal-close" onclick="closeModal(\'assign-shift\')">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">' +
+        '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--blue);margin-bottom:4px;">员工</div><div style="font-size:18px;font-weight:700;color:var(--blue);">' + staffName + '</div></div>' +
+        '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--green);margin-bottom:4px;">星期</div><div style="font-size:18px;font-weight:700;color:var(--green);">' + _shiftAssignCache.dayLabel + '</div></div>' +
+        '</div>' +
+        '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">选择班次：</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;">' +
+        '<div onclick="selectShiftRadio(\'早班\')" style="padding:12px 16px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:10px;" id="shift-opt-早班" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'var(--border)\'">' +
+        '<input type="radio" name="assign-shift-type" value="早班" id="shift-radio-早班" style="accent-color:var(--blue);width:16px;height:16px;">' +
+        '<div style="flex:1;"><div style="font-weight:600;font-size:14px;">🌅 早班</div><div style="font-size:11px;color:var(--text-muted);">06:00 - 14:00</div></div><span style="padding:3px 10px;background:var(--green-bg);color:var(--green);border-radius:12px;font-size:11px;font-weight:600;">正常</span></div>' +
+        '<div onclick="selectShiftRadio(\'中班\')" style="padding:12px 16px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:10px;" id="shift-opt-中班" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'var(--border)\'">' +
+        '<input type="radio" name="assign-shift-type" value="中班" id="shift-radio-中班" style="accent-color:var(--blue);width:16px;height:16px;">' +
+        '<div style="flex:1;"><div style="font-weight:600;font-size:14px;">☀️ 中班</div><div style="font-size:11px;color:var(--text-muted);">14:00 - 22:00</div></div><span style="padding:3px 10px;background:var(--orange-bg);color:var(--orange);border-radius:12px;font-size:11px;font-weight:600;">繁忙</span></div>' +
+        '<div onclick="selectShiftRadio(\'夜班\')" style="padding:12px 16px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:10px;" id="shift-opt-夜班" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'var(--border)\'">' +
+        '<input type="radio" name="assign-shift-type" value="夜班" id="shift-radio-夜班" style="accent-color:var(--blue);width:16px;height:16px;">' +
+        '<div style="flex:1;"><div style="font-weight:600;font-size:14px;">🌙 夜班</div><div style="font-size:11px;color:var(--text-muted);">22:00 - 06:00</div></div><span style="padding:3px 10px;background:var(--purple-bg);color:var(--purple);border-radius:12px;font-size:11px;font-weight:600;">特殊</span></div>' +
+        '<div onclick="selectShiftRadio(\'休息\')" style="padding:12px 16px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:10px;" id="shift-opt-休息" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'var(--border)\'">' +
+        '<input type="radio" name="assign-shift-type" value="休息" id="shift-radio-休息" style="accent-color:var(--blue);width:16px;height:16px;">' +
+        '<div style="flex:1;"><div style="font-weight:600;font-size:14px;">🚫 休息</div><div style="font-size:11px;color:var(--text-muted);">当日不上班</div></div><span style="padding:3px 10px;background:var(--bg);color:var(--text-muted);border-radius:12px;font-size:11px;font-weight:600;">无班次</span></div>' +
+        '</div></div>' +
+        '<div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border);">' +
+        '<button class="action-btn" onclick="closeModal(\'assign-shift\')" style="padding:10px 16px;">取消</button>' +
+        '<button class="action-btn primary" onclick="confirmAssignShift()" style="padding:10px 16px;background:var(--blue);color:white;border:none;">确认分配</button>' +
+        '</div></div></div>';
+      var existing = document.getElementById('modal-assign-shift');
+      if (existing) existing.remove();
+      document.body.insertAdjacentHTML('beforeend', html);
+      openModal('assign-shift');
+    }
+    function selectShiftRadio(shiftType) {
+      document.querySelectorAll('input[name="assign-shift-type"]').forEach(function(r){ r.checked = false; });
+      var radio = document.getElementById('shift-radio-' + shiftType);
+      if (radio) radio.checked = true;
+      document.querySelectorAll('[id^="shift-opt-"]').forEach(function(el){ el.style.borderColor = 'var(--border)'; el.style.background = 'var(--white)'; });
+      var opt = document.getElementById('shift-opt-' + shiftType);
+      if (opt) { opt.style.borderColor = 'var(--blue)'; opt.style.background = 'var(--blue-bg)'; }
+    }
+    function confirmAssignShift() {
+      var selected = document.querySelector('input[name="assign-shift-type"]:checked');
+      if (!selected) { showToast('请选择一个班次', 'error'); return; }
+      var shiftType = selected.value;
+      closeModal('assign-shift');
+      showToast('✅ 已为 ' + _shiftAssignCache.staffName + ' 的' + _shiftAssignCache.dayLabel + '分配班次：' + shiftType, 'success');
+      // If there's a schedule table, update it
+      if (typeof renderScheduleTable === 'function') renderScheduleTable();
+    }
     function submitDayShiftEdit() {
       var selected = document.querySelector('input[name="sde-shift"]:checked');
       if (!selected) { showToast('请选择一个班次', 'error'); return; }
@@ -7587,22 +7648,24 @@ function openEditMemberLevelModalV2(idx) {
         </div>
         <div class="card-header" style="border-top:1px solid var(--border);padding-top:12px;">
           <div class="card-tabs">
-            <div class="card-tab active" onclick="filterWorkorder('all',this)">全部 12</div>
+            <div class="card-tab active" onclick="filterWorkorder('all',this)">全部 8</div>
             <div class="card-tab" onclick="filterWorkorder('pending',this)">待接受 3</div>
-            <div class="card-tab" onclick="filterWorkorder('processing',this)">处理中 5</div>
-            <div class="card-tab" onclick="filterWorkorder('done',this)">已完成 8</div>
+            <div class="card-tab" onclick="filterWorkorder('processing',this)">处理中 3</div>
+            <div class="card-tab" onclick="filterWorkorder('done',this)">已完成 2</div>
           </div>
         </div>
         <div class="card-body" id="workorder-list">
           <table class="table">
             <thead><tr><th style="width:32px;"><input type="checkbox" id="wo-select-all" onchange="toggleAllWorkorderSelect(this.checked)" style="accent-color:var(--blue);cursor:pointer;" title="全选"></th><th>工单编号</th><th>类型</th><th>房间</th><th>客户</th><th>内容摘要</th><th>优先级</th><th>状态</th><th>处理人</th><th>创建时间</th><th>完成时间</th><th>操作</th></tr></thead>
             <tbody id="workorder-table-body">
-              <tr data-status="pending" data-priority="urgent" data-overdue="false"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032601" onchange="toggleWorkorderRow(this, 'WO-2026032601')" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032601</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>301</td><td>张三</td><td>房间空调噪音过大，无法休息</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--red-bg);color:var(--red);font-size:10px;">🔴紧急</span><span style="font-size:10px;color:var(--text-muted);">今天 10:32</span></div></td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:32</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(0)">处理</button></td></tr>
-              <tr data-status="pending" data-priority="normal" data-overdue="false"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032602" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032602</td><td><span class="tbadge blue">📦 送物服务</span></td><td>203</td><td>李四</td><td>需要添加矿泉水x2</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--blue-bg);color:var(--blue);font-size:10px;">🟡普通</span><span style="font-size:10px;color:var(--text-muted);">今天 10:15</span></div></td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:15</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(1)">处理</button></td></tr>
-              <tr data-status="pending" data-priority="low" data-overdue="false"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032603" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032603</td><td><span class="tbadge purple">📄 发票需求</span></td><td>201</td><td>王五</td><td>需要开具增值税普通发票</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--bg);color:var(--text-muted);font-size:10px;">⚪低</span><span style="font-size:10px;color:var(--text-muted);">今天 09:48</span></div></td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 09:48</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(2)">处理</button></td></tr>
-              <tr data-status="processing" data-priority="normal" data-overdue="false"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032528" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032528</td><td><span class="tbadge blue">📦 送物服务</span></td><td>304</td><td>钱七</td><td>需要浴巾一套</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--blue-bg);color:var(--blue);font-size:10px;">🟡普通</span><span style="font-size:10px;color:var(--text-muted);">昨天 18:20</span></div></td><td><span class="tbadge purple">处理中</span></td><td><span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 周敏</span></td><td>昨天 18:20</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(3)">详情</button></td></tr>
-              <tr data-status="processing"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032527" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032527</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>202</td><td>赵六</td><td>热水器故障，无热水</td><td><span class="tbadge purple">处理中</span></td><td><span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 赵飞</span></td><td>昨天 17:05</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(4)">详情</button></td></tr>
-              <tr data-status="done"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032520" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032520</td><td><span class="tbadge green">⭐ 点评表扬</span></td><td>303</td><td>周八</td><td>服务态度好，点赞！</td><td><span class="tbadge green">已完成</span></td><td><span class="tbadge green" style="font-size:11px;padding:2px 6px;">👤 赵飞</span></td><td>03-25 14:30</td><td><span style="font-size:11px;color:var(--green);">03-25 16:45</span></td><td><button class="action-btn" onclick="openWorkorderDetail(5)">查看</button></td></tr>
+              <tr data-status="pending" data-priority="high"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032801" onchange="toggleWorkorderRow(this, 'WO-2026032801')" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032801</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>301</td><td>张三</td><td>房间空调噪音过大，无法休息</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--orange-bg);color:var(--orange);font-size:10px;">🟠高</span><span style="font-size:10px;color:var(--text-muted);">今天 10:32</span></div></td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:32</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetailAndUpdate('WO-2026032801')">处理</button></td></tr>
+              <tr data-status="pending" data-priority="normal"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032802" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032802</td><td><span class="tbadge blue">📦 送物服务</span></td><td>203</td><td>李四</td><td>需要添加矿泉水x2</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--blue-bg);color:var(--blue);font-size:10px;">🟡普通</span><span style="font-size:10px;color:var(--text-muted);">今天 10:15</span></div></td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:15</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetailAndUpdate('WO-2026032802')">处理</button></td></tr>
+              <tr data-status="pending" data-priority="low"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032803" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032803</td><td><span class="tbadge purple">📄 发票需求</span></td><td>201</td><td>王五</td><td>需要开具增值税普通发票，金额约2000元</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--bg);color:var(--text-muted);font-size:10px;">⚪低</span><span style="font-size:10px;color:var(--text-muted);">今天 09:48</span></div></td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 09:48</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetailAndUpdate('WO-2026032803')">处理</button></td></tr>
+              <tr data-status="processing" data-priority="normal"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032701" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032701</td><td><span class="tbadge blue">📦 送物服务</span></td><td>304</td><td>钱七</td><td>需要浴巾一套，指尖陀螺</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--blue-bg);color:var(--blue);font-size:10px;">🟡普通</span><span style="font-size:10px;color:var(--text-muted);">昨天 18:20</span></div></td><td><span class="tbadge purple">处理中</span></td><td><span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 周敏</span></td><td>昨天 18:20</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetailAndUpdate('WO-2026032701')">详情</button></td></tr>
+              <tr data-status="processing" data-priority="high"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032702" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032702</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>202</td><td>赵六</td><td>热水器故障，无热水供应</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--orange-bg);color:var(--orange);font-size:10px;">🟠高</span><span style="font-size:10px;color:var(--text-muted);">昨天 17:05</span></div></td><td><span class="tbadge purple">处理中</span></td><td><span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 赵飞</span></td><td>昨天 17:05</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetailAndUpdate('WO-2026032702')">详情</button></td></tr>
+              <tr data-status="processing" data-priority="high"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032601" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032601</td><td><span class="tbadge orange">🔧 设备报修</span></td><td>305</td><td>孙九</td><td>门锁信号不稳定，偶发开锁失败</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--orange-bg);color:var(--orange);font-size:10px;">🟠高</span><span style="font-size:10px;color:var(--text-muted);">03-26 15:30</span></div></td><td><span class="tbadge purple">处理中</span></td><td><span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 王工</span></td><td>03-26 15:30</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetailAndUpdate('WO-2026032601')">详情</button></td></tr>
+              <tr data-status="done" data-priority="low"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032602" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032602</td><td><span class="tbadge green">⭐ 点评表扬</span></td><td>303</td><td>周八</td><td>服务态度好，点赞！</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--bg);color:var(--text-muted);font-size:10px;">⚪低</span><span style="font-size:10px;color:var(--text-muted);">03-26 14:30</span></div></td><td><span class="tbadge green">已完成</span></td><td><span class="tbadge green" style="font-size:11px;padding:2px 6px;">👤 赵飞</span></td><td>03-26 14:30</td><td><span style="font-size:11px;color:var(--green);">03-26 16:45</span></td><td><button class="action-btn" onclick="openWorkorderDetailAndUpdate('WO-2026032602')">查看</button></td></tr>
+              <tr data-status="done" data-priority="normal"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032603" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032603</td><td><span class="tbadge blue">📦 送物服务</span></td><td>206</td><td>吴十</td><td>加一床被子</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--blue-bg);color:var(--blue);font-size:10px;">🟡普通</span><span style="font-size:10px;color:var(--text-muted);">03-26 11:20</span></div></td><td><span class="tbadge green">已完成</span></td><td><span class="tbadge green" style="font-size:11px;padding:2px 6px;">👤 郑强</span></td><td>03-26 11:20</td><td><span style="font-size:11px;color:var(--green);">03-26 12:05</span></td><td><button class="action-btn" onclick="openWorkorderDetailAndUpdate('WO-2026032603')">查看</button></td></tr>
             </tbody>
           </table>
         </div>
@@ -13982,47 +14045,81 @@ function openEditMemberLevelModalV2(idx) {
 
 <!-- 改进2: 房间快速操作面板 -->
 <div class="modal-overlay hidden" id="modal-room-quick">
-  <div class="modal" style="width:420px;">
+  <div class="modal" style="width:480px;">
     <div class="modal-header">
-      <div class="modal-title" id="rqp-title">🚪 房间快速操作</div>
+      <div class="modal-title" id="rqp-title">🚪 房间详情</div>
       <button class="modal-close" onclick="closeModal('room-quick')">✕</button>
     </div>
     <div class="modal-body">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <!-- 房间基础信息 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
         <div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;">
-          <div style="font-size:11px;color:var(--blue);">房间号</div>
-          <div style="font-size:18px;font-weight:700;" id="rqp-room">301</div>
+          <div style="font-size:10px;color:var(--blue);">房间号</div>
+          <div style="font-size:20px;font-weight:700;color:var(--blue);" id="rqp-room">301</div>
         </div>
         <div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;">
-          <div style="font-size:11px;color:var(--green);">房型</div>
-          <div style="font-size:14px;font-weight:600;" id="rqp-type">亲子间</div>
+          <div style="font-size:10px;color:var(--green);">房型</div>
+          <div style="font-size:14px;font-weight:600;color:var(--green);" id="rqp-type">亲子间</div>
+        </div>
+        <div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--orange);">状态</div>
+          <div style="font-size:14px;font-weight:600;color:var(--orange);" id="rqp-status">在住</div>
         </div>
       </div>
+      <!-- 入住客人信息（在住时显示） -->
+      <div id="rqp-guest-section" style="display:none;padding:10px 12px;background:var(--blue-bg);border-radius:8px;margin-bottom:12px;">
+        <div style="font-size:11px;color:var(--blue);margin-bottom:6px;font-weight:600;">👤 当前入住人</div>
+        <div style="display:flex;gap:16px;font-size:12px;">
+          <div><span style="color:var(--text-muted);">姓名：</span><span style="font-weight:600;" id="rqp-guest-name">--</span></div>
+          <div><span style="color:var(--text-muted);">电话：</span><span style="font-weight:600;" id="rqp-guest-phone">--</span></div>
+          <div><span style="color:var(--text-muted);">入住：</span><span style="font-weight:600;" id="rqp-guest-checkin">--</span></div>
+        </div>
+      </div>
+      <!-- 设备状态 -->
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">📱 设备状态</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">🚪 门锁</div>
+            <div style="font-size:13px;font-weight:600;" id="rqp-lock">已反锁</div>
+          </div>
+          <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">⚡ 通电</div>
+            <div style="font-size:13px;font-weight:600;" id="rqp-power">空调开启</div>
+          </div>
+          <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">🔋 电量</div>
+            <div style="font-size:13px;font-weight:600;color:var(--green);" id="rqp-battery">85%</div>
+          </div>
+          <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">📶 信号</div>
+            <div style="font-size:13px;font-weight:600;color:var(--blue);" id="rqp-signal">-48 dBm</div>
+          </div>
+        </div>
+      </div>
+      <!-- 生效钥匙列表 -->
       <div style="margin-bottom:14px;">
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
-          <span style="font-size:14px;">🚪</span>
-          <span style="font-size:13px;color:var(--text-light);">门锁状态</span>
-          <span style="margin-left:auto;font-size:13px;font-weight:600;" id="rqp-lock">已反锁</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:11px;font-weight:600;color:var(--text-muted);">🔑 生效钥匙</div>
+          <span style="font-size:11px;color:var(--blue);font-weight:600;" id="rqp-keys">2张</span>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
-          <span style="font-size:14px;">⚡</span>
-          <span style="font-size:13px;color:var(--text-light);">通电状态</span>
-          <span style="margin-left:auto;font-size:13px;font-weight:600;" id="rqp-power">空调开启</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;">
-          <span style="font-size:14px;">🔑</span>
-          <span style="font-size:13px;color:var(--text-light);">生效钥匙</span>
-          <span style="margin-left:auto;font-size:13px;font-weight:600;" id="rqp-keys">2张</span>
+        <div id="rqp-keycard-list" style="display:flex;flex-direction:column;gap:4px;">
+          <div style="padding:6px 10px;background:var(--green-bg);border-radius:6px;display:flex;align-items:center;gap:8px;font-size:12px;">
+            <span>🟢</span><span style="flex:1;">张**（主人卡）</span><span style="font-size:10px;color:var(--text-muted);">有效期至 03-30</span>
+          </div>
+          <div style="padding:6px 10px;background:var(--blue-bg);border-radius:6px;display:flex;align-items:center;gap:8px;font-size:12px;">
+            <span style="color:var(--blue);">🔵</span><span style="flex:1;">李四（备用卡）</span><span style="font-size:10px;color:var(--text-muted);">有效期至 03-29</span>
+          </div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <button class="action-btn green" onclick="doQuickUnlock()" style="padding:12px;">🔓 远程开锁</button>
-        <button class="action-btn orange" onclick="doQuickTempPwd()" style="padding:12px;">🔢 临时密码</button>
-        <button class="action-btn" onclick="doQuickCheckin()" style="padding:12px;" id="rqp-checkin-btn">🏨 办理入住</button>
-        <button class="action-btn" onclick="doQuickCheckout()" style="padding:12px;" id="rqp-checkout-btn">🚪 办理退房</button>
-        <button class="action-btn" onclick="doQuickClean()" style="padding:12px;">🧹 清洁任务</button>
-        <button class="action-btn orange" onclick="doQuickClearCard()" style="padding:12px;">🗑️ 清除门卡</button>
-        <button class="action-btn" onclick="goToRoomDetail()" style="padding:12px;">📋 查看详情</button>
+      <!-- 操作按钮 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <button class="action-btn green" onclick="doQuickUnlock()" style="padding:10px;font-size:13px;">🔓 开锁</button>
+        <button class="action-btn" onclick="doQuickTempPwd()" style="padding:10px;font-size:13px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔢 密码</button>
+        <button class="action-btn" onclick="goToRoomDetail()" style="padding:10px;font-size:13px;">📋 记录</button>
+        <button class="action-btn" onclick="doQuickCheckin()" style="padding:10px;font-size:13px;" id="rqp-checkin-btn">🏨 入住</button>
+        <button class="action-btn" onclick="doQuickCheckout()" style="padding:10px;font-size:13px;" id="rqp-checkout-btn">🚪 退房</button>
+        <button class="action-btn" onclick="doQuickClean()" style="padding:10px;font-size:13px;">🧹 清洁</button>
       </div>
     </div>
   </div>
@@ -18466,6 +18563,123 @@ function filterDeviceTable(status, el) {
   });
 }
 
+// ======= 【改进v3-1】楼层平面图视图 =======
+var deviceFloorView = 'list'; // 'list' or 'floor'
+var floorPlanData = [
+  {room:'301',floor:3,type:'亲子间',status:'online',battery:85,signal:-45,occupancy:'in',guest:'张三'},
+  {room:'302',floor:3,type:'亲子间',status:'online',battery:72,signal:-52,occupancy:'in',guest:'李四'},
+  {room:'303',floor:3,type:'亲子间',status:'offline',battery:15,signal:-90,occupancy:'empty',guest:''},
+  {room:'304',floor:3,type:'亲子间',status:'online',battery:45,signal:-60,occupancy:'in',guest:'王五'},
+  {room:'305',floor:3,type:'亲子间',status:'low',battery:22,signal:-55,occupancy:'empty',guest:''},
+  {room:'306',floor:3,type:'标准间',status:'online',battery:91,signal:-40,occupancy:'in',guest:'赵六'},
+  {room:'201',floor:2,type:'大床房',status:'online',battery:68,signal:-48,occupancy:'in',guest:'孙七'},
+  {room:'202',floor:2,type:'大床房',status:'online',battery:33,signal:-65,occupancy:'empty',guest:''},
+  {room:'203',floor:2,type:'大床房',status:'low',battery:18,signal:-70,occupancy:'in',guest:'周八'},
+  {room:'204',floor:2,type:'大床房',status:'offline',battery:5,signal:-95,occupancy:'empty',guest:''},
+  {room:'205',floor:2,type:'大床房',status:'online',battery:78,signal:-42,occupancy:'in',guest:'吴九'},
+  {room:'206',floor:2,type:'大床房',status:'online',battery:55,signal:-58,occupancy:'empty',guest:''},
+  {room:'101',floor:1,type:'套房',status:'online',battery:82,signal:-38,occupancy:'in',guest:'郑十'},
+  {room:'102',floor:1,type:'套房',status:'online',battery:60,signal:-50,occupancy:'empty',guest:''},
+  {room:'103',floor:1,type:'套房',status:'low',battery:25,signal:-62,occupancy:'in',guest:'钱一'},
+  {room:'104',floor:1,type:'套房',status:'online',battery:88,signal:-35,occupancy:'empty',guest:''},
+];
+function switchDeviceView(view) {
+  deviceFloorView = view;
+  var listBtn = document.getElementById('dev-view-list-btn');
+  var floorBtn = document.getElementById('dev-view-floor-btn');
+  var deviceCardBody = document.getElementById('device-card-body');
+  var deviceFloorPlan = document.getElementById('device-floor-plan-container');
+  if (view === 'list') {
+    if (listBtn) { listBtn.style.background='var(--blue)'; listBtn.style.color='white'; listBtn.style.border='none'; }
+    if (floorBtn) { floorBtn.style.background='var(--bg)'; floorBtn.style.color='var(--text)'; floorBtn.style.border='1px solid var(--border)'; }
+    if (deviceCardBody) deviceCardBody.style.display = '';
+    if (deviceFloorPlan) deviceFloorPlan.style.display = 'none';
+  } else {
+    if (floorBtn) { floorBtn.style.background='var(--blue)'; floorBtn.style.color='white'; floorBtn.style.border='none'; }
+    if (listBtn) { listBtn.style.background='var(--bg)'; listBtn.style.color='var(--text)'; listBtn.style.border='1px solid var(--border)'; }
+    if (deviceCardBody) deviceCardBody.style.display = 'none';
+    if (deviceFloorPlan) { deviceFloorPlan.style.display = ''; renderDeviceFloorPlan(); }
+  }
+}
+function renderDeviceFloorPlan() {
+  var container = document.getElementById('device-floor-plan-grid');
+  if (!container) return;
+  var floor = 3; // 默认显示3楼
+  var floors = [3, 2, 1];
+  var html = '<div style="display:flex;gap:6px;margin-bottom:12px;">';
+  floors.forEach(function(f) {
+    html += '<button class="action-btn small" onclick="renderDeviceFloorPlanAt(' + f + ')" style="padding:4px 10px;">' + f + '楼</button>';
+  });
+  html += '</div><div id="device-floor-grid-inner" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;">';
+  var floorDevices = floorPlanData.filter(function(d) { return d.floor === floor; });
+  floorDevices.forEach(function(d) {
+    var bgColor = d.status === 'online' ? 'var(--green-bg)' : d.status === 'low' ? 'var(--orange-bg)' : 'var(--red-bg)';
+    var borderColor = d.status === 'online' ? 'var(--green)' : d.status === 'low' ? 'var(--orange)' : 'var(--red)';
+    var statusText = d.status === 'online' ? '🟢' : d.status === 'low' ? '🟡' : '🔴';
+    var occuText = d.occupancy === 'in' ? '🏠' : '⬜';
+    html += '<div onclick="openDeviceFloorDetail(\'' + d.room + '\')" style="padding:10px;background:' + bgColor + ';border:2px solid ' + borderColor + ';border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;" onmouseover="this.style.transform=\'scale(1.03)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
+      '<div style="font-size:16px;font-weight:700;color:var(--text);">' + occuText + ' ' + d.room + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);margin:2px 0;">' + d.type + '</div>' +
+      '<div style="font-size:11px;font-weight:600;color:' + borderColor + ';">' + statusText + ' ' + d.status + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">🔋' + d.battery + '% 📶' + d.signal + 'dBm</div>' +
+      (d.guest ? '<div style="font-size:9px;color:var(--blue);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + d.guest + '</div>' : '') +
+      '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+function renderDeviceFloorPlanAt(floor) {
+  var container = document.getElementById('device-floor-grid-inner');
+  if (!container) return;
+  var floorDevices = floorPlanData.filter(function(d) { return d.floor === floor; });
+  var html = '';
+  floorDevices.forEach(function(d) {
+    var bgColor = d.status === 'online' ? 'var(--green-bg)' : d.status === 'low' ? 'var(--orange-bg)' : 'var(--red-bg)';
+    var borderColor = d.status === 'online' ? 'var(--green)' : d.status === 'low' ? 'var(--orange)' : 'var(--red)';
+    var statusText = d.status === 'online' ? '🟢' : d.status === 'low' ? '🟡' : '🔴';
+    var occuText = d.occupancy === 'in' ? '🏠' : '⬜';
+    html += '<div onclick="openDeviceFloorDetail(\'' + d.room + '\')" style="padding:10px;background:' + bgColor + ';border:2px solid ' + borderColor + ';border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;" onmouseover="this.style.transform=\'scale(1.03)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
+      '<div style="font-size:16px;font-weight:700;color:var(--text);">' + occuText + ' ' + d.room + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);margin:2px 0;">' + d.type + '</div>' +
+      '<div style="font-size:11px;font-weight:600;color:' + borderColor + ';">' + statusText + ' ' + d.status + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">🔋' + d.battery + '% 📶' + d.signal + 'dBm</div>' +
+      (d.guest ? '<div style="font-size:9px;color:var(--blue);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + d.guest + '</div>' : '') +
+      '</div>';
+  });
+  container.innerHTML = html;
+}
+function openDeviceFloorDetail(roomNum) {
+  var d = floorPlanData.find(function(x) { return x.room === roomNum; });
+  if (!d) return;
+  var statusLabels = {online: '🟢 在线', low: '🟡 低电量', offline: '🔴 离线'};
+  var html = '<div class="modal-overlay" id="modal-device-floor-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:400px;">' +
+    '<div class="modal-header"><div class="modal-title">📱 设备详情 - ' + d.room + '房间</div><button class="modal-close" onclick="closeModal(\'device-floor-detail\')">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--blue);">房号</div><div style="font-size:18px;font-weight:700;">' + d.room + '</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--green);">房型</div><div style="font-size:14px;font-weight:600;">' + d.type + '</div></div>' +
+    '</div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:12px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">设备状态</div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>状态</span><span style="font-weight:600;">' + statusLabels[d.status] + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>电量</span><span style="font-weight:600;">' + d.battery + '%</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>信号</span><span style="font-weight:600;">' + d.signal + ' dBm</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;"><span>入住状态</span><span style="font-weight:600;">' + (d.occupancy === 'in' ? '🟢 在住' : '⬜ 空房') + '</span></div>' +
+    (d.guest ? '<div style="display:flex;justify-content:space-between;padding:6px 0;"><span>客人</span><span style="font-weight:600;color:var(--blue);">' + d.guest + '</span></div>' : '') +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">' +
+    '<button class="action-btn green" onclick="showToast(\'已向 ' + d.room + ' 下发开锁指令\', \'success\');" style="padding:10px;font-size:12px;">🔓 开锁</button>' +
+    '<button class="action-btn" onclick="showToast(\'正在重启设备...\', \'info\');" style="padding:10px;font-size:12px;">🔄 重启</button>' +
+    '<button class="action-btn" onclick="showPage(\'device-detail\');closeModal(\'device-floor-detail\');" style="padding:10px;font-size:12px;">📋 详情</button>' +
+    '</div>' +
+    '</div></div></div>';
+  var existing = document.getElementById('modal-device-floor-detail');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+  openModal('device-floor-detail');
+}
+
 // ======= Modal 控制 =======
 function openModal(id) { document.getElementById('modal-' + id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById('modal-' + id).classList.add('hidden'); }
@@ -18862,12 +19076,14 @@ function switchFloorTab(floor, el) {
 
 // ======= 服务工单功能 =======
 var workorderData = [
-  { id: 'WO-2026032601', type: '客户投诉', room: '301', customer: '张三', content: '房间空调噪音过大，无法休息', status: 'pending', time: '今天 10:32', assignee: null, completeTime: null },
-  { id: 'WO-2026032602', type: '送物服务', room: '203', customer: '李四', content: '需要添加矿泉水x2', status: 'pending', time: '今天 10:15', assignee: null, completeTime: null },
-  { id: 'WO-2026032603', type: '发票需求', room: '201', customer: '王五', content: '需要开具增值税普通发票', status: 'pending', time: '今天 09:48', assignee: null, completeTime: null },
-  { id: 'WO-2026032528', type: '送物服务', room: '304', customer: '钱七', content: '需要浴巾一套', status: 'processing', time: '昨天 18:20', assignee: '周敏', completeTime: null },
-  { id: 'WO-2026032527', type: '客户投诉', room: '202', customer: '赵六', content: '热水器故障，无热水', status: 'processing', time: '昨天 17:05', assignee: '赵飞', completeTime: null },
-  { id: 'WO-2026032520', type: '点评表扬', room: '303', customer: '周八', content: '服务态度好，点赞！', status: 'done', time: '03-25 14:30', assignee: '赵飞', completeTime: '03-25 16:45' }
+  { id: 'WO-2026032801', type: '客户投诉', room: '301', customer: '张三', content: '房间空调噪音过大，无法休息', status: 'pending', time: '今天 10:32', assignee: null, completeTime: null, priority: 'high', phone: '138****1234' },
+  { id: 'WO-2026032802', type: '送物服务', room: '203', customer: '李四', content: '需要添加矿泉水x2', status: 'pending', time: '今天 10:15', assignee: null, completeTime: null, priority: 'normal', phone: '139****5678' },
+  { id: 'WO-2026032803', type: '发票需求', room: '201', customer: '王五', content: '需要开具增值税普通发票，金额约2000元', status: 'pending', time: '今天 09:48', assignee: null, completeTime: null, priority: 'low', phone: '137****9012' },
+  { id: 'WO-2026032701', type: '送物服务', room: '304', customer: '钱七', content: '需要浴巾一套，指尖陀螺', status: 'processing', time: '昨天 18:20', assignee: '周敏', completeTime: null, priority: 'normal', phone: '136****3456' },
+  { id: 'WO-2026032702', type: '客户投诉', room: '202', customer: '赵六', content: '热水器故障，无热水供应', status: 'processing', time: '昨天 17:05', assignee: '赵飞', completeTime: null, priority: 'high', phone: '135****7890' },
+  { id: 'WO-2026032601', type: '设备报修', room: '305', customer: '孙九', content: '门锁信号不稳定，偶发开锁失败', status: 'processing', time: '03-26 15:30', assignee: '王工', completeTime: null, priority: 'high', phone: '134****2345' },
+  { id: 'WO-2026032602', type: '点评表扬', room: '303', customer: '周八', content: '服务态度好，点赞！', status: 'done', time: '03-26 14:30', assignee: '赵飞', completeTime: '03-26 16:45', priority: 'low', phone: '133****6789' },
+  { id: 'WO-2026032603', type: '送物服务', room: '206', customer: '吴十', content: '加一床被子', status: 'done', time: '03-26 11:20', assignee: '郑强', completeTime: '03-26 12:05', priority: 'normal', phone: '132****0123' }
 ];
 var currentWoIdx = 0;
 var selectedWoSolution = 'accept';
@@ -18885,6 +19101,123 @@ function filterWorkorder(status, el) {
 }
 
 function openCreateWorkorderModal() { openModal('create-wo'); }
+// ======= 【改进v3-2】工单完整生命周期：详情+状态流转 =======
+var _woUpdateCache = {};
+function openWorkorderDetailAndUpdate(orderId) {
+  var d = workorderData.find(function(w) { return w.id === orderId; });
+  if (!d) { showToast('工单不存在', 'error'); return; }
+  _woUpdateCache[orderId] = JSON.parse(JSON.stringify(d));
+  var statusMap = {pending: {label:'⏳ 待接受', bg:'var(--orange-bg)', color:'var(--orange)'}, processing: {label:'🔄 处理中', bg:'var(--purple-bg)', color:'var(--purple)'}, done: {label:'✅ 已完成', bg:'var(--green-bg)', color:'var(--green)'}};
+  var sm = statusMap[d.status] || statusMap.pending;
+  var priorityOptions = {low:'⚪ 低', normal:'🟡 普通', high:'🟠 高', urgent:'🔴 紧急'};
+  var handlerOptions = ['周敏','赵飞','王工','郑强'];
+  var handlerHtml = handlerOptions.map(function(h) {
+    return '<option value="' + h + '"' + (d.assignee === h ? ' selected' : '') + '>' + h + '</option>';
+  }).join('');
+  var typeOptions = ['客户投诉','送物服务','发票需求','点评表扬','设备报修','其他'];
+  var typeHtml = typeOptions.map(function(t) {
+    return '<option value="' + t + '"' + (d.type === t ? ' selected' : '') + '>' + t + '</option>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-wo-detail-update" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:560px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">📋 工单详情 - ' + d.id + '</div>' +
+    '<button class="modal-close" onclick="closeWoDetailModal()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">' +
+    '<div style="padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;background:' + sm.bg + ';color:' + sm.color + ';">' + sm.label + '</div>' +
+    '<div style="padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;background:var(--blue-bg);color:var(--blue);">' + (priorityOptions[d.priority] || '🟡 普通') + '</div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">工单编号</div><div style="font-size:13px;font-weight:600;">' + d.id + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">房间号</div><div style="font-size:13px;font-weight:600;">' + d.room + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">客户姓名</div><div style="font-size:13px;font-weight:600;">' + d.customer + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">联系电话</div><div style="font-size:13px;font-weight:600;">' + (d.phone || '--') + '</div></div>' +
+    '</div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;margin-bottom:12px;">' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">工单内容</div>' +
+    '<div style="font-size:13px;line-height:1.6;">' + d.content + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;margin-bottom:14px;">' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">📅 时间信息</div>' +
+    '<div style="display:flex;gap:16px;font-size:12px;">' +
+    '<div><span style="color:var(--text-muted);">创建：</span><span>' + d.time + '</span></div>' +
+    '<div><span style="color:var(--text-muted);">处理人：</span><span style="font-weight:600;">' + (d.assignee || '未分配') + '</span></div>' +
+    (d.completeTime ? '<div><span style="color:var(--text-muted);">完成：</span><span>' + d.completeTime + '</span></div>' : '') +
+    '</div></div>' +
+    '<div style="border-top:1px solid var(--border);padding-top:14px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:10px;">🔄 状态更新</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">' +
+    '<div class="form-group"><label class="form-label">工单类型</label><select class="form-select" id="wdu-type" style="font-size:12px;">' + typeHtml + '</select></div>' +
+    '<div class="form-group"><label class="form-label">处理人</label><select class="form-select" id="wdu-handler" style="font-size:12px;"><option value="">-- 未分配 --</option>' + handlerHtml + '</select></div>' +
+    '</div>' +
+    '<div class="form-group"><label class="form-label">处理备注</label><textarea class="form-input" id="wdu-note" rows="2" placeholder="填写处理备注（选填）" style="font-size:12px;resize:vertical;"></textarea></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">';
+  if (d.status === 'pending') {
+    html += '<button class="action-btn" onclick="updateWoStatus(\'' + d.id + '\',\'processing\')" style="padding:10px 16px;background:var(--purple);color:white;border:none;font-size:13px;">🔄 接单（处理中）</button>';
+  }
+  if (d.status === 'pending' || d.status === 'processing') {
+    html += '<button class="action-btn" onclick="updateWoStatus(\'' + d.id + '\',\'done\')" style="padding:10px 16px;background:var(--green);color:white;border:none;font-size:13px;">✅ 完成工单</button>';
+  }
+  if (d.status === 'done') {
+    html += '<span style="padding:10px 16px;font-size:13px;color:var(--green);font-weight:600;">✓ 此工单已完成</span>';
+  }
+  html += '</div></div></div></div></div>';
+  var existing = document.getElementById('modal-wo-detail-update');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('modal-wo-detail-update').classList.remove('hidden');
+}
+function updateWoStatus(orderId, newStatus) {
+  var idx = workorderData.findIndex(function(w) { return w.id === orderId; });
+  if (idx === -1) return;
+  var now = new Date();
+  var timeStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  workorderData[idx].status = newStatus;
+  if (newStatus === 'processing' && !workorderData[idx].assignee) {
+    var handler = document.getElementById('wdu-handler') ? document.getElementById('wdu-handler').value : '';
+    workorderData[idx].assignee = handler || '待分配';
+  }
+  if (newStatus === 'done') {
+    workorderData[idx].completeTime = timeStr;
+    if (!workorderData[idx].assignee) {
+      var h = document.getElementById('wdu-handler') ? document.getElementById('wdu-handler').value : '';
+      workorderData[idx].assignee = h || '待分配';
+    }
+  }
+  // Update table row
+  var rows = document.querySelectorAll('#workorder-table-body tr');
+  rows.forEach(function(row) {
+    var cells = row.querySelectorAll('td');
+    if (cells.length > 0 && cells[0].textContent.trim() === orderId) {
+      var statusLabels = {pending:'<span class="tbadge orange">⏳ 待接受</span>', processing:'<span class="tbadge purple">🔄 处理中</span>', done:'<span class="tbadge green">✅ 已完成</span>'};
+      cells[5].innerHTML = statusLabels[newStatus];
+      if (workorderData[idx].assignee) {
+        cells[6].innerHTML = '<span style="font-size:11px;color:var(--blue);">' + workorderData[idx].assignee + '</span>';
+      }
+      if (newStatus === 'done' && workorderData[idx].completeTime) {
+        cells[7].innerHTML = '<span style="font-size:11px;color:var(--green);">' + workorderData[idx].completeTime + '</span>';
+      }
+    }
+  });
+  // Update stat cards
+  updateWorkorderStats();
+  showToast('工单 ' + orderId + ' 已更新为：' + (newStatus === 'done' ? '已完成' : '处理中'), 'success');
+  closeWoDetailModal();
+}
+function closeWoDetailModal() {
+  var m = document.getElementById('modal-wo-detail-update');
+  if (m) m.classList.add('hidden');
+}
+function updateWorkorderStats() {
+  var pending = workorderData.filter(function(w) { return w.status === 'pending'; }).length;
+  var processing = workorderData.filter(function(w) { return w.status === 'processing'; }).length;
+  var done = workorderData.filter(function(w) { return w.status === 'done'; }).length;
+  var stats = document.querySelectorAll('#page-workorder .stats-row .stat-card');
+  if (stats[1]) stats[1].querySelector('.stat-num').textContent = pending;
+  if (stats[2]) stats[2].querySelector('.stat-num').textContent = processing;
+  if (stats[3]) stats[3].querySelector('.stat-num').textContent = done;
+}
+
 // ======= 【改进4】服务工单创建完善化：自动插入列表+统计数据更新+工单统计卡实时更新 =======
 
 // ========== 【改进1】工单自动派发预览功能 ==========
@@ -20517,15 +20850,58 @@ function openRoomQuickPanel(room, type, status, lock, power, keys) {
   document.getElementById('rqp-type').textContent = type;
   document.getElementById('rqp-lock').textContent = lock;
   document.getElementById('rqp-power').textContent = power;
-  document.getElementById('rqp-keys').textContent = keys;
+  document.getElementById('rqp-keys').textContent = keys || '0张';
+  // Status label
+  var statusLabels = { in: '在住', empty: '空房', alert: '告警', maintain: '维护', dirty: '脏房' };
+  document.getElementById('rqp-status').textContent = statusLabels[status] || status;
+  // 设备模拟数据（真实场景中从设备数据获取）
+  var deviceBattery = Math.floor(Math.random() * 60 + 40);
+  var deviceSignal = -(Math.floor(Math.random() * 30 + 40));
+  var batteryColor = deviceBattery > 60 ? 'var(--green)' : deviceBattery > 30 ? 'var(--orange)' : 'var(--red)';
+  document.getElementById('rqp-battery').textContent = deviceBattery + '%';
+  document.getElementById('rqp-battery').style.color = batteryColor;
+  document.getElementById('rqp-signal').textContent = deviceSignal + ' dBm';
+  // Guest info if occupied
+  var guestSection = document.getElementById('rqp-guest-section');
+  if (status === 'in') {
+    guestSection.style.display = '';
+    var guestNames = ['张三','李四','王五','赵六','孙七','周八'];
+    var guest = guestNames[Math.floor(Math.random() * guestNames.length)];
+    var phones = ['138****1234','139****5678','137****9012','136****3456'];
+    document.getElementById('rqp-guest-name').textContent = guest;
+    document.getElementById('rqp-guest-phone').textContent = phones[Math.floor(Math.random() * phones.length)];
+    var today = new Date();
+    var checkinDate = new Date(today);
+    checkinDate.setDate(today.getDate() - Math.floor(Math.random() * 3 + 1));
+    document.getElementById('rqp-guest-checkin').textContent = (checkinDate.getMonth()+1) + '-' + checkinDate.getDate() + ' ' + Math.floor(Math.random()*12+8) + ':00';
+  } else {
+    guestSection.style.display = 'none';
+  }
+  // Key card list (simulate)
+  var keyList = document.getElementById('rqp-keycard-list');
+  if (status === 'in') {
+    var keyCount = parseInt(keys) || 1;
+    var keyHtml = '';
+    for (var i = 0; i < Math.min(keyCount, 3); i++) {
+      var cardType = i === 0 ? '主人卡' : '备用卡' + i;
+      var cardBg = i === 0 ? 'var(--green-bg)' : 'var(--blue-bg)';
+      var cardDot = i === 0 ? '🟢' : '🔵';
+      var cardName = i === 0 ? document.getElementById('rqp-guest-name').textContent + '（' + cardType + '）' : document.getElementById('rqp-guest-name').textContent + '（卡' + (i+1) + '）';
+      keyHtml += '<div style="padding:6px 10px;background:' + cardBg + ';border-radius:6px;display:flex;align-items:center;gap:8px;font-size:12px;">' +
+        '<span>' + cardDot + '</span><span style="flex:1;">' + cardName + '</span><span style="font-size:10px;color:var(--text-muted);">有效期至 ' + (new Date().getMonth()+1) + '-' + (new Date().getDate()+2) + '</span></div>';
+    }
+    keyList.innerHTML = keyHtml;
+  } else {
+    keyList.innerHTML = '<div style="padding:8px 10px;text-align:center;font-size:12px;color:var(--text-muted);">无生效钥匙</div>';
+  }
   // 根据状态显示/隐藏按钮
   var checkinBtn = document.getElementById('rqp-checkin-btn');
   var checkoutBtn = document.getElementById('rqp-checkout-btn');
   if (status === 'in') {
     checkinBtn.style.display = 'none';
-    checkoutBtn.style.display = 'block';
+    checkoutBtn.style.display = '';
   } else {
-    checkinBtn.style.display = 'block';
+    checkinBtn.style.display = '';
     checkoutBtn.style.display = 'none';
   }
   openModal('room-quick');
@@ -29824,6 +30200,88 @@ function startBatchDeviceOp() {
 // ======= 【改进2】退房结算完整表单 ==============================
 var cfRoomFee = 128;
 var cfDeposit = 100;
+// ======= 【改进v3-5】退房预结算完整表单 =======
+function openCheckoutPreSettlementModal(roomNum, guestName, checkinTime, roomRate) {
+  var now = new Date();
+  var ciDate = checkinTime ? new Date(checkinTime.replace(' ', 'T')) : new Date(now.getTime() - 2 * 86400000);
+  var nights = Math.max(1, Math.floor((now - ciDate) / 86400000));
+  var rate = roomRate || 128;
+  var roomFee = nights * rate;
+  var extraBed = 0;
+  var lateCheckout = 0;
+  var damage = 0;
+  var deposit = 100;
+  var discount = 0;
+  var total = roomFee + extraBed + lateCheckout + damage - discount;
+  var refundable = deposit - total;
+  var roomNum_d = roomNum || '301';
+  var guestName_d = guestName || '张三';
+  var checkinTime_d = checkinTime || (ciDate.getFullYear() + '-' + String(ciDate.getMonth()+1).padStart(2,'0') + '-' + String(ciDate.getDate()).padStart(2,'0') + ' 14:00');
+  var html = '<div class="modal-overlay" id="modal-checkout-presettle" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:520px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">💰 退房预结算 - ' + roomNum_d + '房间</div><button class="modal-close" onclick="closeModal(\'checkout-presettle\')">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--blue);margin-bottom:3px;">房间号</div><div style="font-size:16px;font-weight:700;color:var(--blue);">' + roomNum_d + '</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--green);margin-bottom:3px;">入住人</div><div style="font-size:14px;font-weight:600;color:var(--green);">' + guestName_d + '</div></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--orange);margin-bottom:3px;">入住时间</div><div style="font-size:12px;font-weight:600;color:var(--orange);">' + checkinTime_d + '</div></div>' +
+    '</div>' +
+    '<!-- 费用明细 -->' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:10px;">📋 费用明细</div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;">' +
+    '<div style="padding:10px 12px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px;font-weight:600;">' +
+    '<span>项目</span><span>金额</span></div>' +
+    '<div style="padding:10px 12px;display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid var(--border);">' +
+    '<span>🏠 房费（' + nights + '晚 × ¥' + rate + '）</span><span style="font-weight:600;" id="cps-room-fee">¥' + roomFee + '</span></div>' +
+    '<div style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border);">' +
+    '<span>🛏️ 加床费</span><div style="display:flex;align-items:center;gap:8px;"><input type="number" id="cps-extrabed" value="0" min="0" oninput="cpsRecalc()" style="width:70px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;text-align:right;font-size:12px;"></div></div>' +
+    '<div style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border);">' +
+    '<span>⏰ 延迟退房费</span><div style="display:flex;align-items:center;gap:8px;"><input type="number" id="cps-latecheckout" value="0" min="0" oninput="cpsRecalc()" style="width:70px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;text-align:right;font-size:12px;"></div></div>' +
+    '<div style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border);">' +
+    '<span>💥 损耗赔偿</span><div style="display:flex;align-items:center;gap:8px;"><input type="number" id="cps-damage" value="0" min="0" oninput="cpsRecalc()" style="width:70px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;text-align:right;font-size:12px;"></div></div>' +
+    '<div style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:13px;">' +
+    '<span>🎁 折扣优惠</span><div style="display:flex;align-items:center;gap:8px;"><input type="number" id="cps-discount" value="0" min="0" oninput="cpsRecalc()" style="width:70px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;text-align:right;font-size:12px;"></div></div>' +
+    '</div>' +
+    '<!-- 汇总信息 -->' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">费用合计</div><div style="font-size:22px;font-weight:700;color:var(--text);" id="cps-total-fee">¥' + roomFee + '</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--orange);margin-bottom:3px;">押金（待退）</div><div style="font-size:22px;font-weight:700;color:var(--orange);" id="cps-deposit">¥' + deposit + '</div></div>' +
+    '</div>' +
+    '<div style="padding:14px;background:linear-gradient(135deg,#e8f5e9,#c8e6c9);border-radius:10px;text-align:center;margin-bottom:14px;">' +
+    '<div style="font-size:11px;color:var(--green);margin-bottom:4px;">应退金额（押金 - 费用）</div>' +
+    '<div style="font-size:28px;font-weight:700;color:var(--green);" id="cps-refund">¥' + Math.max(0, deposit - roomFee) + '</div>' +
+    '</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;text-align:center;">* 实际费用以退房时系统数据为准，此处仅供预估算</div>' +
+    '</div>' +
+    '<div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border);">' +
+    '<button class="action-btn" onclick="closeModal(\'checkout-presettle\')" style="padding:10px 20px;">取消</button>' +
+    '<button class="action-btn primary" onclick="confirmPreSettlementCheckout(\'' + roomNum_d + '\',\'' + guestName_d + '\',\'' + checkinTime_d + '\')" style="padding:10px 20px;background:var(--green);color:white;border:none;font-size:14px;font-weight:600;">✓ 确认退房</button>' +
+    '</div></div></div>';
+  var existing = document.getElementById('modal-checkout-presettle');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+  openModal('checkout-presettle');
+}
+function cpsRecalc() {
+  var roomFee = parseInt(document.getElementById('cps-room-fee').textContent.replace('¥','')) || 0;
+  var extraBed = parseInt(document.getElementById('cps-extrabed').value) || 0;
+  var lateCheckout = parseInt(document.getElementById('cps-latecheckout').value) || 0;
+  var damage = parseInt(document.getElementById('cps-damage').value) || 0;
+  var discount = parseInt(document.getElementById('cps-discount').value) || 0;
+  var deposit = parseInt(document.getElementById('cps-deposit').textContent.replace('¥','')) || 100;
+  var total = roomFee + extraBed + lateCheckout + damage - discount;
+  document.getElementById('cps-total-fee').textContent = '¥' + total;
+  var refund = deposit - total;
+  var refundEl = document.getElementById('cps-refund');
+  refundEl.textContent = '¥' + (refund >= 0 ? refund : Math.abs(refund));
+  refundEl.style.color = refund >= 0 ? 'var(--green)' : 'var(--red)';
+}
+function confirmPreSettlementCheckout(roomNum, guestName, checkinTime) {
+  closeModal('checkout-presettle');
+  showToast('✅ 退房办理成功！房间 ' + roomNum + ' 已转为空房', 'success');
+  openCheckoutFullModal(roomNum, guestName, checkinTime);
+}
+
 function openCheckoutFullModal(roomNum, guestName, checkinTime) {
   document.getElementById('cf-room-num').textContent = roomNum || '301';
   document.getElementById('cf-guest-name').textContent = guestName || '张三';
