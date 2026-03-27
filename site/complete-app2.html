@@ -678,6 +678,144 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <span>导出设备</span>
         </button>
       </div>
+      <!-- 【改进5：首页退房管理面板】离房状态实时跟踪，支持批量提醒+一键退房+未离房统计 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+        <!-- 今日待退房（Due-Out）追踪面板 -->
+        <div class="card" style="border:2px solid var(--orange);">
+          <div class="card-header" style="background:var(--orange-bg);">
+            <div class="card-title" style="color:var(--orange);">🚪 今日待退房（Due-Out）</div>
+            <span style="font-size:11px;color:var(--orange);font-weight:600;" id="dueout-count-badge">3间待退</span>
+          </div>
+          <div class="card-body" style="padding:10px 12px;" id="dueout-list">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">⏰ 退房时间：12:00前</div>
+            <div id="dueout-items" style="display:flex;flex-direction:column;gap:6px;">
+              <!-- JS动态渲染 -->
+            </div>
+          </div>
+          <div style="padding:8px 12px;border-top:1px solid var(--border);display:flex;gap:6px;">
+            <button class="action-btn small" onclick="openDueOutReminderAll()" style="flex:1;padding:5px 8px;background:var(--orange);color:white;border:none;font-size:11px;">📢 批量发送离店提醒</button>
+            <button class="action-btn small" onclick="openDueOutBatchCheckout()" style="flex:1;padding:5px 8px;background:var(--blue);color:white;border:none;font-size:11px;">🚪 批量退房</button>
+          </div>
+        </div>
+        <!-- 实时退房进度 -->
+        <div class="card" style="border:2px solid var(--green);">
+          <div class="card-header" style="background:var(--green-bg);">
+            <div class="card-title" style="color:var(--green);">✅ 退房进度追踪</div>
+            <span style="font-size:11px;color:var(--green);font-weight:600;" id="checkout-progress-label">1/4 已退</span>
+          </div>
+          <div class="card-body" style="padding:10px 12px;">
+            <div style="margin-bottom:12px;">
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;">
+                <span>退房完成度</span><span id="checkout-pct-label">25%</span>
+              </div>
+              <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;">
+                <div id="checkout-progress-bar" style="height:100%;width:25%;background:var(--green);border-radius:4px;transition:width 0.5s;"></div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;">
+              <div style="padding:8px;background:var(--green-bg);border-radius:6px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:var(--green);" id="checkout-done-count">1</div>
+                <div style="color:var(--text-muted);">已退房</div>
+              </div>
+              <div style="padding:8px;background:var(--orange-bg);border-radius:6px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:var(--orange);" id="checkout-pending-count">3</div>
+                <div style="color:var(--text-muted);">待退房</div>
+              </div>
+              <div style="padding:8px;background:var(--blue-bg);border-radius:6px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:var(--blue);" id="checkout-reminder-sent">2</div>
+                <div style="color:var(--text-muted);">已提醒</div>
+              </div>
+              <div style="padding:8px;background:var(--red-bg);border-radius:6px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:var(--red);" id="checkout-overdue-count">0</div>
+                <div style="color:var(--text-muted);">已超时</div>
+              </div>
+            </div>
+            <div style="margin-top:10px;padding:8px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--text-muted);text-align:center;">
+              <span id="dueout-last-action">📢 最后提醒：10:30 发送305房间</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <script>
+      (function(){
+        // Due-Out数据模型
+        var dueOutData = [
+          {room:'301', name:'张三', phone:'138****8888', type:'亲子间', dueTime:'12:00', status:'pending', reminded:false, checkoutTime:null},
+          {room:'305', name:'钱七', phone:'136****4444', type:'亲子间', dueTime:'12:00', status:'pending', reminded:true, checkoutTime:null},
+          {room:'203', name:'李四', phone:'139****6666', type:'大床房', dueTime:'12:00', status:'done', reminded:true, checkoutTime:'10:15'},
+          {room:'206', name:'吴十', phone:'135****1111', type:'大床房', dueTime:'12:00', status:'pending', reminded:false, checkoutTime:null},
+        ];
+        window._dueOutData = dueOutData;
+        function renderDueOutPanel() {
+          var pending = dueOutData.filter(function(d){ return d.status === 'pending'; });
+          var done = dueOutData.filter(function(d){ return d.status === 'done'; });
+          var reminded = dueOutData.filter(function(d){ return d.reminded; });
+          var overdue = pending.filter(function(d){ return new Date().getHours() >= 12; }).length;
+
+          // 更新计数
+          var badge = document.getElementById('dueout-count-badge');
+          if (badge) badge.textContent = pending.length + '间待退';
+          var progressLabel = document.getElementById('checkout-progress-label');
+          if (progressLabel) progressLabel.textContent = done.length + '/' + dueOutData.length + ' 已退';
+          var pct = Math.round(done.length / dueOutData.length * 100);
+          var bar = document.getElementById('checkout-progress-bar');
+          if (bar) bar.style.width = pct + '%';
+          var pctLabel = document.getElementById('checkout-pct-label');
+          if (pctLabel) pctLabel.textContent = pct + '%';
+          var doneEl = document.getElementById('checkout-done-count');
+          if (doneEl) doneEl.textContent = done.length;
+          var pendingEl = document.getElementById('checkout-pending-count');
+          if (pendingEl) pendingEl.textContent = pending.length;
+          var remindedEl = document.getElementById('checkout-reminder-sent');
+          if (remindedEl) remindedEl.textContent = reminded.length;
+          var overdueEl = document.getElementById('checkout-overdue-count');
+          if (overdueEl) overdueEl.textContent = overdue;
+
+          // 渲染列表
+          var itemsEl = document.getElementById('dueout-items');
+          if (!itemsEl) return;
+          if (pending.length === 0 && done.length === 0) {
+            itemsEl.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:var(--text-muted);">今日无待退房</div>';
+            return;
+          }
+          itemsEl.innerHTML = dueOutData.map(function(d) {
+            var bg = d.status === 'done' ? 'var(--green-bg)' : d.reminded ? 'var(--blue-bg)' : 'var(--white)';
+            var border = d.status === 'done' ? 'var(--green)' : d.reminded ? 'var(--blue)' : 'var(--orange)';
+            var statusText = d.status === 'done' ? '✅ 已退 ' + d.checkoutTime : d.reminded ? '📢 已提醒' : '⏳ 待退房';
+            var actionBtn = d.status === 'done' ? '' : '<button class="action-btn small" onclick="sendDueOutReminder(\'' + d.room + '\')" style="padding:2px 6px;font-size:10px;background:' + (d.reminded ? 'var(--bg)' : 'var(--orange)') + ';color:' + (d.reminded ? 'var(--text-muted)' : 'white') + ';border:' + (d.reminded ? '1px solid var(--border)' : 'none') + ';">' + (d.reminded ? '已提醒' : '📢 提醒') + '</button>';
+            return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:' + bg + ';border:1px solid ' + border + ';border-radius:6px;">' +
+              '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + d.room + ' <span style="font-size:10px;color:var(--text-muted);">' + d.type + '</span></div>' +
+              '<div style="font-size:10px;color:var(--text-muted);">' + d.name + ' · ' + d.phone + '</div></div>' +
+              '<div style="text-align:right;"><div style="font-size:10px;color:var(--text-muted);">' + statusText + '</div>' + actionBtn + '</div></div>';
+          }).join('');
+        }
+        window.sendDueOutReminder = function(room) {
+          var d = dueOutData.find(function(x){ return x.room === room; });
+          if (!d) return;
+          d.reminded = true;
+          var lastAction = document.getElementById('dueout-last-action');
+          if (lastAction) lastAction.textContent = '📢 最后提醒：' + new Date().toLocaleTimeString('zh-CN', {hour12:false}).slice(0,5) + ' 发送' + room + '房间';
+          showToast('📢 已发送离店提醒至 ' + d.name + '（' + d.phone + '）', 'success');
+          renderDueOutPanel();
+        };
+        window.openDueOutReminderAll = function() {
+          var pending = dueOutData.filter(function(d){ return d.status === 'pending' && !d.reminded; });
+          if (pending.length === 0) { showToast('所有待退房客人已发送提醒', 'info'); return; }
+          pending.forEach(function(d){ d.reminded = true; });
+          showToast('📢 已批量发送 ' + pending.length + ' 条离店提醒', 'success');
+          renderDueOutPanel();
+        };
+        window.openDueOutBatchCheckout = function() {
+          var pending = dueOutData.filter(function(d){ return d.status === 'pending'; });
+          if (pending.length === 0) { showToast('无待退房可批量处理', 'info'); return; }
+          showToast('🚪 已跳转至 ' + pending.length + ' 间待退房的批量退房确认', 'info');
+          showPage('records');
+          setTimeout(function(){ openCheckoutReminderModal && openCheckoutReminderModal(); }, 300);
+        };
+        // 初始渲染
+        renderDueOutPanel();
+      })();
+      </script>
       <!-- 改进3: 首页实时办理记录动态面板 -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
         <!-- 【改进v3-4】首页入住/退房日历迷你面板（原系统无此功能） -->
@@ -9610,6 +9748,8 @@ function openEditMemberLevelModalV2(idx) {
             <button class="action-btn small" onclick="openLeaveRequestModal()" style="padding:4px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">📋 请假申请</button>
             <!-- 【改进3】员工考勤打卡入口 -->
             <button class="action-btn small" onclick="openAttendanceModal()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📋 考勤打卡</button>
+            <!-- 【改进4】员工KPI绩效入口 -->
+            <button class="action-btn small" onclick="openStaffKPIPerformanceModal()" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📊 KPI绩效</button>
           </div>
         </div>
         <!-- 【改进2】员工页面Tab切换：列表 / 排班视图 -->
@@ -12044,17 +12184,36 @@ function openEditMemberLevelModalV2(idx) {
     </div>
 
     <!-- 【改进1-发票开具弹窗】 -->
+    <!-- 【改进1发票新增】发票开具完整表单弹窗：支持草稿保存+预览+自动填充客人信息 -->
     <div class="modal-overlay hidden" id="modal-invoice-create">
-      <div class="modal" style="width:560px;">
+      <div class="modal" style="width:600px;">
         <div class="modal-header">
-          <div class="modal-title">🧾 开具发票</div>
+          <div class="modal-title">🧾 开具发票 - 智能填充</div>
           <button class="modal-close" onclick="closeModal('invoice-create')">✕</button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" style="max-height:520px;overflow-y:auto;">
+          <!-- 改进1：发票草稿状态提示条 -->
+          <div id="inv-create-draft-tip" style="display:none;padding:8px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:12px;font-size:12px;color:var(--orange);">
+            💡 检测到未提交发票（草稿保存于 <span id="inv-draft-time">--</span>），<button class="action-btn small" onclick="loadInvoiceDraft()" style="padding:2px 8px;font-size:11px;background:var(--orange);color:white;border:none;">恢复草稿</button>
+          </div>
+          <!-- 改进1：客人信息快速检索 -->
+          <div style="padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:14px;">
+            <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;">🔍 快速检索入住客人（自动填充信息）</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <select class="form-select" id="inv-guest-quick-select" onchange="fillInvoiceFromGuest(this.value)" style="flex:1;min-width:200px;padding:6px 10px;font-size:12px;">
+                <option value="">-- 选择入住客人 --</option>
+                <option value="张三|138****8888|301|入住中">张三 · 138****8888 · 301（入住中）</option>
+                <option value="李四|139****6666|203|入住中">李四 · 139****6666 · 203（入住中）</option>
+                <option value="王五|137****5555|304|入住中">王五 · 137****5555 · 304（入住中）</option>
+                <option value="钱七|136****4444|305|入住中">钱七 · 136****4444 · 305（入住中）</option>
+              </select>
+              <span style="font-size:11px;color:var(--text-muted);align-self:center;">选择后自动填姓名/手机/房间</span>
+            </div>
+          </div>
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">发票类型 <span class="required">*</span></label>
-              <select class="form-select" id="inv-create-type">
+              <select class="form-select" id="inv-create-type" onchange="onInvoiceTypeChange(this.value)">
                 <option value="normal">📄 普通发票</option>
                 <option value="vat">🧾 增值税专用发票</option>
                 <option value="electronic">📱 电子发票</option>
@@ -12070,10 +12229,15 @@ function openEditMemberLevelModalV2(idx) {
               </select>
             </div>
           </div>
+          <!-- 改进1：发票预览区（实时显示） -->
+          <div id="inv-preview-section" style="display:none;margin-bottom:14px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px;">📋 发票预览</div>
+            <div id="inv-preview-content" style="font-size:12px;line-height:1.8;color:var(--text);"></div>
+          </div>
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">客人姓名 <span class="required">*</span></label>
-              <input type="text" class="form-input" id="inv-create-name" placeholder="输入客人姓名">
+              <input type="text" class="form-input" id="inv-create-name" placeholder="输入客人姓名" oninput="updateInvoicePreview()">
             </div>
             <div class="form-group">
               <label class="form-label">手机号</label>
@@ -12103,6 +12267,13 @@ function openEditMemberLevelModalV2(idx) {
           <div class="form-group">
             <label class="form-label">备注</label>
             <textarea class="form-textarea" id="inv-create-note" placeholder="可选备注信息" style="min-height:60px;"></textarea>
+          </div>
+        </div>
+        <!-- 改进1：发票作废入口 -->
+          <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+            <button class="action-btn small" onclick="saveInvoiceDraft()" style="padding:5px 12px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);font-size:12px;">💾 保存草稿</button>
+            <button class="action-btn small" onclick="resetInvoiceForm()" style="padding:5px 12px;font-size:12px;">🔄 重置表单</button>
+            <span style="margin-left:auto;font-size:11px;color:var(--text-muted);" id="inv-form-status">表单已修改</span>
           </div>
         </div>
         <div class="modal-footer">
@@ -14878,6 +15049,31 @@ function openEditMemberLevelModalV2(idx) {
       <div class="form-group">
         <label class="form-label">内部处理备注</label>
         <textarea class="form-textarea" id="wd-internal-note" placeholder="记录处理过程、内部沟通内容（不对客户可见）" style="min-height:70px;"></textarea>
+      </div>
+      <!-- 【改进2：工单内部协作备注线程，支持追加备注+@提及员工+图片附件模拟】 -->
+      <div id="wd-notes-section" style="margin-top:8px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);">💬 内部协作备注（<span id="wd-notes-count">0</span>条）</div>
+          <button class="action-btn small" onclick="openAddWorkorderNote()" style="padding:3px 10px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">+ 添加备注</button>
+        </div>
+        <div id="wd-notes-list" style="max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:11px;color:var(--text-muted);text-align:center;padding:12px;">暂无备注，点击上方按钮添加</div>
+        </div>
+        <!-- 快捷备注输入 -->
+        <div id="wd-notes-input-area" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+          <textarea class="form-textarea" id="wd-note-input" placeholder="输入备注内容（不对客户可见）…" style="min-height:50px;font-size:12px;margin-bottom:8px;"></textarea>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <select id="wd-note-mention" style="padding:4px 8px;font-size:11px;border:1px solid var(--border);border-radius:4px;background:white;">
+              <option value="">-- @提及员工 --</option>
+              <option value="赵飞">@赵飞</option>
+              <option value="周敏">@周敏</option>
+              <option value="吴倩">@吴倩</option>
+              <option value="王工">@王工</option>
+            </select>
+            <button class="action-btn small" onclick="submitWorkorderNote()" style="padding:4px 10px;font-size:11px;background:var(--blue);color:white;border:none;">💬 发送</button>
+            <button class="action-btn small" onclick="cancelWorkorderNote()" style="padding:4px 10px;font-size:11px;">取消</button>
+          </div>
+        </div>
       </div>
       <!-- 【改进3】客户满意度评价入口（工单完成后显示） -->
       <div id="wd-rating-section" style="display:none;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--blue-bg);margin-top:4px;">
@@ -36477,6 +36673,53 @@ function wdAccept() {
   closeModal('workorder-detail');
 }
 
+// ======= 改进2：工单内部协作备注线程 =======
+var _woNotes = {}; // {orderId: [{author, text, time, mention}]}
+function openAddWorkorderNote() {
+  document.getElementById('wd-notes-input-area').style.display = 'block';
+  document.getElementById('wd-note-input').focus();
+}
+function cancelWorkorderNote() {
+  document.getElementById('wd-notes-input-area').style.display = 'none';
+  document.getElementById('wd-note-input').value = '';
+  document.getElementById('wd-note-mention').value = '';
+}
+function submitWorkorderNote() {
+  var text = document.getElementById('wd-note-input').value.trim();
+  var mention = document.getElementById('wd-note-mention').value;
+  if (!text) { showToast('请输入备注内容', 'error'); return; }
+  var woId = document.getElementById('wd-wo-id') ? document.getElementById('wd-wo-id').textContent : 'WO-UNK';
+  if (!_woNotes[woId]) _woNotes[woId] = [];
+  var note = { author: '赵飞', text: text, time: new Date().toLocaleTimeString('zh-CN', {hour12:false}), mention: mention };
+  _woNotes[woId].push(note);
+  renderWorkorderNotes(woId);
+  document.getElementById('wd-note-input').value = '';
+  document.getElementById('wd-note-mention').value = '';
+  document.getElementById('wd-notes-input-area').style.display = 'none';
+  showToast('备注已添加' + (mention ? '，已@' + mention : ''), 'success');
+}
+function renderWorkorderNotes(woId) {
+  var notes = _woNotes[woId] || [];
+  var listEl = document.getElementById('wd-notes-list');
+  var countEl = document.getElementById('wd-notes-count');
+  if (!listEl) return;
+  if (countEl) countEl.textContent = notes.length;
+  if (notes.length === 0) {
+    listEl.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:12px;">暂无备注，点击上方按钮添加</div>';
+    return;
+  }
+  listEl.innerHTML = notes.map(function(n) {
+    var mentionHtml = n.mention ? '<span style="background:var(--blue-bg);color:var(--blue);padding:1px 5px;border-radius:3px;font-size:10px;margin-left:4px;">@' + n.mention + '</span>' : '';
+    return '<div style="padding:8px 10px;background:white;border-radius:6px;border:1px solid var(--border);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+      '<span style="font-size:11px;font-weight:600;color:var(--blue);">' + n.author + '</span>' + mentionHtml +
+      '<span style="font-size:10px;color:var(--text-muted);">' + n.time + '</span></div>' +
+      '<div style="font-size:12px;color:var(--text);line-height:1.5;">' + n.text + '</div></div>';
+  }).join('');
+  listEl.scrollTop = listEl.scrollHeight;
+}
+
+
 function wdDone() {
   workorderData[currentWorkorderIdx].status = 'done';
   var note = document.getElementById('wd-internal-note').value.trim();
@@ -46477,6 +46720,7 @@ function openBatchDeviceDiagnosticModal() { var activePage = document.querySelec
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
+// ======= 改进3：多设备并行同时Ping，带实时进度条和延迟折线图 =======
 function startBatchDiagnostic(count) {
   var resultsDiv = document.getElementById('batch-diag-results');
   var progressDiv = document.getElementById('batch-diag-progress');
@@ -46485,28 +46729,91 @@ function startBatchDiagnostic(count) {
   var done = 0;
   var success = 0;
   var fail = 0;
-  
-  function addResult(idx) {
-    var latency = Math.floor(Math.random() * 80 + 10);
-    var ok = latency < 200;
-    if (ok) success++; else fail++;
-    done++;
-    var color = ok ? 'var(--green)' : 'var(--red)';
-    var icon = ok ? '✅' : '❌';
-    var html = '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);">' +
-      '<span style="font-size:16px;">' + icon + '</span>' +
-      '<span style="flex:1;font-size:13px;font-weight:600;">设备 ' + (idx+1) + '</span>' +
-      '<span style="font-size:12px;color:' + color + ';font-weight:600;">延迟 ' + latency + 'ms</span>' +
-      '<span style="font-size:11px;color:var(--text-muted);">' + (ok ? '在线' : '超时') + '</span></div>';
-    resultsDiv.innerHTML += html;
-    progressDiv.textContent = '检测进度：' + done + '/' + total + '（成功:' + success + ' 失败:' + fail + '）';
+
+  // 改进3：先渲染等待状态行（所有设备同时开始ping）
+  var deviceLabels = [];
+  for (var i = 0; i < total; i++) {
+    deviceLabels.push('设备' + (i + 1) + '号');
+    var rowHtml = '<div id="bd-row-' + i + '" style="margin-bottom:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:white;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+      '<span style="font-size:12px;font-weight:600;" id="bd-label-' + i + '">设备' + (i + 1) + '号</span>' +
+      '<span style="font-size:11px;" id="bd-status-' + i + '">⏳ 等待中…</span>' +
+      '<span style="font-size:13px;font-weight:700;" id="bd-latency-' + i + '">--</span></div>' +
+      '<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;">' +
+      '<div id="bd-bar-' + i + '" style="height:100%;width:0%;background:var(--blue);border-radius:3px;transition:width 0.3s;"></div></div>' +
+      '<div id="bd-chart-' + i + '" style="height:30px;margin-top:4px;display:flex;align-items:flex-end;gap:2px;"></div></div>';
+    resultsDiv.innerHTML += rowHtml;
+  }
+
+  // 实时汇总区
+  resultsDiv.innerHTML += '<div id="bd-summary" style="margin-top:12px;padding:10px;background:var(--bg);border-radius:8px;text-align:center;font-size:12px;color:var(--text-muted);">🔄 正在同时Ping所有设备…</div>';
+  progressDiv.textContent = '🚀 启动并行检测：' + total + '台设备同时Ping';
+
+  // 改进3：所有设备并行Ping（并发模拟）
+  var pingData = []; // [{latency, ok, times[]}]
+  for (var i = 0; i < total; i++) {
+    pingData.push({ latencies: [], done: false, ok: false });
+    (function(idx) {
+      // 模拟3次Ping取平均（每次间隔模拟网络延迟）
+      var pingIdx = 0;
+      var totalLatency = 0;
+      function doPing() {
+        pingIdx++;
+        var latency = Math.floor(Math.random() * 100 + 8);
+        totalLatency += latency;
+        pingData[idx].latencies.push(latency);
+        var avgLatency = Math.round(totalLatency / pingIdx);
+        var ok = latency < 200;
+        var color = ok ? 'var(--green)' : 'var(--red)';
+        var statusIcon = ok ? '✅' : '❌';
+        var pct = Math.min(100, Math.round((pingIdx / 3) * 100));
+
+        document.getElementById('bd-status-' + idx).textContent = statusIcon + ' Ping' + pingIdx + ': ' + latency + 'ms';
+        document.getElementById('bd-latency-' + idx).textContent = '⏱ ' + avgLatency + 'ms';
+        document.getElementById('bd-latency-' + idx).style.color = pct < 100 ? (ok ? 'var(--green)' : 'var(--orange)') : (avgLatency < 100 ? 'var(--green)' : 'var(--red)');
+        document.getElementById('bd-bar-' + idx).style.width = pct + '%';
+        document.getElementById('bd-bar-' + idx).style.background = pct < 100 ? 'var(--blue)' : (avgLatency < 100 ? 'var(--green)' : 'var(--red)');
+
+        // 迷你折线图
+        var chartEl = document.getElementById('bd-chart-' + idx);
+        if (chartEl) {
+          var last5 = pingData[idx].latencies.slice(-5);
+          chartEl.innerHTML = last5.map(function(l) {
+            var h = Math.max(4, Math.min(26, Math.round((l / 200) * 26)));
+            var c = l < 100 ? 'var(--green)' : l < 200 ? 'var(--orange)' : 'var(--red)';
+            return '<div style="flex:1;background:' + c + ';border-radius:2px;height:' + h + 'px;min-height:2px;"></div>';
+          }).join('');
+        }
+
+        if (pingIdx < 3) {
+          setTimeout(doPing, 400 + Math.random() * 200);
+        } else {
+          pingData[idx].done = true;
+          pingData[idx].ok = avgLatency < 150;
+          if (avgLatency >= 150) fail++; else success++;
+          done++;
+          updateBatchDiagSummary();
+        }
+      }
+      // 错开启动时间（0-800ms随机延迟），实现真实并行感
+      setTimeout(doPing, Math.random() * 800);
+    })(i);
+  }
+
+  function updateBatchDiagSummary() {
+    var summaryEl = document.getElementById('bd-summary');
+    if (!summaryEl) return;
+    var pct = Math.round((done / total) * 100);
     if (done < total) {
-      setTimeout(function(){ addResult(done); }, 300);
+      summaryEl.innerHTML = '🔄 检测中… ' + done + '/' + total + ' 完成　<a style="color:var(--blue);cursor:pointer;" onclick="this.textContent=\'成功率 ' + (success + fail > 0 ? Math.round(success/(success+fail)*100) : 0) + '%\'">' + pct + '%</a>　✅' + success + '台　❌' + fail + '台';
     } else {
-      progressDiv.textContent = '✅ 检测完成！成功率 ' + Math.round(success/total*100) + '%';
+      var rate = Math.round(success / total * 100);
+      var rateColor = rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--orange)' : 'var(--red)';
+      summaryEl.innerHTML = '<div style="font-size:14px;font-weight:700;color:' + rateColor + ';">✅ 检测完成！成功率 ' + rate + '%</div>' +
+        '<div style="margin-top:6px;font-size:12px;">✅ 在线 <strong style="color:var(--green);">' + success + '</strong> 台　❌ 超时 <strong style="color:var(--red);">' + fail + '</strong> 台　平均延迟 <strong>' + Math.round(pingData.filter(function(p){return p.ok}).reduce(function(s,p){return s + p.latencies.reduce(function(a,b){return a+b;},0)/p.latencies.length;},0) / (success||1)) + '</strong> ms</div>';
+      progressDiv.textContent = '✅ 检测完成！成功率 ' + rate + '%（' + success + '/' + total + '）';
     }
   }
-  addResult(0);
 }
 
 function openBatchBatteryCheck() { var activePage = document.querySelector(".page.active"); if (!activePage || !activePage.id.includes("device")) { showToast("请在设备管理页面使用此功能", "error"); return; }
@@ -51359,9 +51666,70 @@ function openStaffAttendancePanel() {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
-function exportAttendanceReport() {
-  showToast('📤 正在导出考勤报告...', 'info');
-  setTimeout(function(){ showToast('✅ 考勤报告已导出（CSV格式）', 'success'); }, 800);
+// ======= 改进4：员工KPI绩效仪表盘（非考勤，是综合工作绩效） =======
+function openStaffKPIPerformanceModal() {
+  var staffKPI = [
+    {name:'赵飞', dept:'前厅', avatar:'👨‍💼', workorders:42, workordersDone:38, avgRating:4.8, responseTime:'8min', attendance:96},
+    {name:'周敏', dept:'前厅', avatar:'👩‍💼', workorders:35, workordersDone:33, avgRating:4.6, responseTime:'12min', attendance:92},
+    {name:'吴倩', dept:'客房', avatar:'👩‍🔧', workorders:28, workordersDone:28, avgRating:4.9, responseTime:'15min', attendance:98},
+    {name:'郑强', dept:'客房', avatar:'👨‍🔧', workorders:22, workordersDone:20, avgRating:4.7, responseTime:'18min', attendance:90},
+    {name:'王工', dept:'工程', avatar:'👨‍🔌', workorders:15, workordersDone:15, avgRating:5.0, responseTime:'5min', attendance:100},
+  ];
+
+  var old = document.getElementById('modal-staff-kpi');
+  if (old) old.remove();
+
+  var deptStats = { '前厅': { done: 0, total: 0 }, '客房': { done: 0, total: 0 }, '工程': { done: 0, total: 0 } };
+  staffKPI.forEach(function(s) {
+    deptStats[s.dept].total += s.workorders;
+    deptStats[s.dept].done += s.workordersDone;
+  });
+
+  var cardsHtml = staffKPI.map(function(s) {
+    var compRate = Math.round(s.workordersDone / s.workorders * 100);
+    var compColor = compRate >= 90 ? 'var(--green)' : compRate >= 70 ? 'var(--orange)' : 'var(--red)';
+    var ratingStars = '⭐'.repeat(Math.floor(s.avgRating)) + (s.avgRating % 1 >= 0.5 ? '☆' : '');
+    return '<div style="padding:14px;background:var(--bg);border-radius:8px;margin-bottom:10px;">' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">' +
+      '<div style="font-size:28px;">' + s.avatar + '</div>' +
+      '<div style="flex:1;">' +
+      '<div style="font-size:14px;font-weight:700;">' + s.name + ' <span style="font-size:11px;background:var(--blue-bg);color:var(--blue);padding:1px 6px;border-radius:4px;">' + s.dept + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">响应时间 ' + s.responseTime + ' · 出勤率 ' + s.attendance + '%</div></div>' +
+      '<div style="text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);">' + s.avgRating + '</div><div style="font-size:10px;color:var(--text-muted);">' + ratingStars + '</div></div></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">' +
+      '<div style="text-align:center;padding:8px;background:white;border-radius:6px;"><div style="font-size:18px;font-weight:700;color:var(--blue);">' + s.workorders + '</div><div style="font-size:10px;color:var(--text-muted);">工单数</div></div>' +
+      '<div style="text-align:center;padding:8px;background:white;border-radius:6px;"><div style="font-size:18px;font-weight:700;color:' + compColor + ';">' + compRate + '%</div><div style="font-size:10px;color:var(--text-muted);">完成率</div></div>' +
+      '<div style="text-align:center;padding:8px;background:white;border-radius:6px;"><div style="font-size:18px;font-weight:700;color:var(--green);">' + s.workordersDone + '</div><div style="font-size:10px;color:var(--text-muted);">已完成</div></div></div></div>';
+  }).join('');
+
+  var html = '<div class="modal-overlay" id="modal-staff-kpi" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="width:100%;max-width:600px;background:white;border-radius:14px;overflow:hidden;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div><div style="font-size:17px;font-weight:700;">📊 员工KPI绩效仪表盘</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">2026年3月 · 综合工作绩效评分</div></div>' +
+    '<button onclick="document.getElementById(\'modal-staff-kpi\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    // 部门汇总
+    '<div style="padding:14px 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;border-bottom:1px solid var(--border);">' +
+    Object.keys(deptStats).map(function(dept) {
+      var d = deptStats[dept];
+      var rate = Math.round(d.done / d.total * 100);
+      return '<div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px;">' +
+        '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">' + dept + '部</div>' +
+        '<div style="font-size:22px;font-weight:700;color:var(--blue);">' + rate + '%</div>' +
+        '<div style="font-size:10px;color:var(--text-muted);">完成率 ' + d.done + '/' + d.total + '</div></div>';
+    }).join('') + '</div>' +
+    '<div style="padding:16px 24px;max-height:400px;overflow-y:auto;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">👤 个人KPI明细</div>' +
+    cardsHtml + '</div>' +
+    '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">' +
+    '<button class="action-btn small" onclick="exportKPIPerformance()">📤 导出KPI报告</button>' +
+    '<button class="action-btn small" onclick="document.getElementById(\'modal-staff-kpi\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function exportKPIPerformance() {
+  showToast('📤 正在导出KPI绩效报告…', 'info');
+  setTimeout(function(){ showToast('✅ KPI报告已导出（Excel格式）', 'success'); }, 800);
 }
 
 function openLeaveRequestModal() {
@@ -52152,15 +52520,100 @@ function filterInvoiceTab(status,el){
   if(el)el.classList.add('active');
   applyInvoiceSearch();
 }
-function openInvoiceCreateModal(){openModal('invoice-create');}
+// 改进1：发票草稿管理
+var _invoiceDraftKey = 'lockclub_invoice_draft';
+function saveInvoiceDraft(){
+  var draft = {
+    name: document.getElementById('inv-create-name').value,
+    phone: document.getElementById('inv-create-phone').value,
+    room: document.getElementById('inv-create-room').value,
+    type: document.getElementById('inv-create-type').value,
+    amount: document.getElementById('inv-create-amount').value,
+    title: document.getElementById('inv-create-title').value,
+    tax: document.getElementById('inv-create-tax').value,
+    note: document.getElementById('inv-create-note').value,
+    time: new Date().toLocaleString('zh-CN',{hour12:false})
+  };
+  try { localStorage.setItem(_invoiceDraftKey, JSON.stringify(draft)); } catch(e){}
+  document.getElementById('inv-form-status').textContent = '✅ 草稿已保存';
+  showToast('草稿已保存本地，下次打开自动恢复','success');
+}
+function loadInvoiceDraft(){
+  try {
+    var draft = JSON.parse(localStorage.getItem(_invoiceDraftKey) || '{}');
+    if(!draft.name){ showToast('无草稿可恢复','info'); return; }
+    document.getElementById('inv-create-name').value = draft.name||'';
+    document.getElementById('inv-create-phone').value = draft.phone||'';
+    document.getElementById('inv-create-room').value = draft.room||'';
+    document.getElementById('inv-create-type').value = draft.type||'normal';
+    document.getElementById('inv-create-amount').value = draft.amount||'';
+    document.getElementById('inv-create-title').value = draft.title||'';
+    document.getElementById('inv-create-tax').value = draft.tax||'';
+    document.getElementById('inv-create-note').value = draft.note||'';
+    document.getElementById('inv-draft-time').textContent = draft.time||'--';
+    onInvoiceTypeChange(draft.type||'normal');
+    updateInvoicePreview();
+    showToast('草稿已恢复：'+draft.name,'success');
+  } catch(e){ showToast('草稿恢复失败','error'); }
+}
+function resetInvoiceForm(){
+  ['inv-create-name','inv-create-phone','inv-create-room','inv-create-type','inv-create-amount','inv-create-title','inv-create-tax','inv-create-note'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('inv-preview-section').style.display='none';
+  document.getElementById('inv-vat-fields').style.display='none';
+  document.getElementById('inv-form-status').textContent='表单已重置';
+  try{localStorage.removeItem(_invoiceDraftKey);}catch(e){}
+}
+function onInvoiceTypeChange(type){
+  var vatFields=document.getElementById('inv-vat-fields');
+  if(vatFields) vatFields.style.display=type==='vat'?'block':'none';
+  updateInvoicePreview();
+}
+function fillInvoiceFromGuest(val){
+  if(!val) return;
+  var parts=val.split('|');
+  document.getElementById('inv-create-name').value=parts[0]||'';
+  document.getElementById('inv-create-phone').value=parts[1]||'';
+  document.getElementById('inv-create-room').value=parts[2]||'';
+  updateInvoicePreview();
+  showToast('已自动填充：'+parts[0]+' 的信息','success');
+}
+function updateInvoicePreview(){
+  var name=document.getElementById('inv-create-name').value||'--';
+  var phone=document.getElementById('inv-create-phone').value||'--';
+  var room=document.getElementById('inv-create-room').value||'--';
+  var type=document.getElementById('inv-create-type').value||'normal';
+  var amount=document.getElementById('inv-create-amount').value||'0';
+  var typeMap={normal:'📄 普通发票',vat:'🧾 增值税专用发票',electronic:'📱 电子发票'};
+  var preview=document.getElementById('inv-preview-content');
+  var section=document.getElementById('inv-preview-section');
+  if(!name||name==='--'){ section.style.display='none'; return; }
+  section.style.display='block';
+  preview.innerHTML='<div><b>发票类型：</b>'+typeMap[type]+'</div><div><b>发票抬头：</b>'+name+'</div><div><b>手机号：</b>'+phone+'</div><div><b>关联房间：</b>'+room+'</div><div><b>开票金额：</b><span style="color:var(--green);font-weight:700;">¥'+amount+'</span></div>';
+}
+
+function openInvoiceCreateModal(){
+  // 检查草稿
+  try {
+    var draft = JSON.parse(localStorage.getItem(_invoiceDraftKey)||'{}');
+    if(draft.name){
+      document.getElementById('inv-create-draft-tip').style.display='flex';
+      document.getElementById('inv-draft-time').textContent=draft.time||'--';
+    } else {
+      document.getElementById('inv-create-draft-tip').style.display='none';
+    }
+  } catch(e){ document.getElementById('inv-create-draft-tip').style.display='none'; }
+  resetInvoiceForm();
+  openModal('invoice-create');
+}
 function submitInvoiceCreate(){
   var name=document.getElementById('inv-create-name').value.trim();
   var amount=document.getElementById('inv-create-amount').value;
   if(!name){showToast('请输入客人姓名','error');return;}
   if(!amount||parseFloat(amount)<=0){showToast('请输入正确的开票金额','error');return;}
+  // 清除草稿
+  try{localStorage.removeItem(_invoiceDraftKey);}catch(e){}
   closeModal('invoice-create');
   showToast('发票申请已提交，金额¥'+amount,'success');
-  // 添加到列表
   var invId='INV-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'0'+(invoiceData.length+1);
   invoiceData.unshift({id:invId,name:name,phone:document.getElementById('inv-create-phone').value,room:document.getElementById('inv-create-room').value||'--',type:document.getElementById('inv-create-type').value,typeLabel:document.getElementById('inv-create-type').options[document.getElementById('inv-create-type').selectedIndex].text,amount:parseFloat(amount),status:'pending',statusLabel:'待处理',createTime:new Date().toLocaleString('zh-CN',{hour12:false}).replace(/\//g,'-').slice(0,16),operator:'待处理'});
   var statusColors={done:'green',pending:'orange',processing:'blue',cancelled:'gray'};
