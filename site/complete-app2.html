@@ -2535,11 +2535,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div class="card-body">
           <table class="table">
             <thead><tr><th>操作类型</th><th>操作人</th><th>操作时间</th><th>结果</th></tr></thead>
-            <tbody>
-              <tr><td>🔄 立即同步</td><td>系统</td><td>2026-03-26 10:32:08</td><td><span class="tbadge green">成功</span></td></tr>
-              <tr><td>🔓 远程开锁</td><td>赵飞</td><td>2026-03-25 22:15:00</td><td><span class="tbadge green">成功</span></td></tr>
-              <tr><td>🔁 远程重启</td><td>系统</td><td>2026-03-25 03:00:00</td><td><span class="tbadge green">成功</span></td></tr>
-              <tr><td>📦 固件升级</td><td>系统</td><td>2026-03-20 02:00:00</td><td><span class="tbadge green">成功 v2.3.0→v2.3.1</span></td></tr>
+            <tbody id="remote-op-log-body">
+              <tr><td>🔄 立即同步</td><td>系统</td><td>2026-03-26 10:32:08</td><td><span class="tbadge green">成功</span></td><td><button class="action-btn small" onclick="showRemoteOpLogDetail(0)" style="padding:2px 6px;font-size:10px;">详情</button></td></tr>
+              <tr><td>🔓 远程开锁</td><td>赵飞</td><td>2026-03-25 22:15:00</td><td><span class="tbadge green">成功</span></td><td><button class="action-btn small" onclick="showRemoteOpLogDetail(1)" style="padding:2px 6px;font-size:10px;">详情</button></td></tr>
+              <tr><td>🔁 远程重启</td><td>系统</td><td>2026-03-25 03:00:00</td><td><span class="tbadge green">成功</span></td><td><button class="action-btn small" onclick="showRemoteOpLogDetail(2)" style="padding:2px 6px;font-size:10px;">详情</button></td></tr>
+              <tr><td>📦 固件升级</td><td>系统</td><td>2026-03-20 02:00:00</td><td><span class="tbadge green">成功 v2.3.0→v2.3.1</span></td><td><button class="action-btn small" onclick="showRemoteOpLogDetail(3)" style="padding:2px 6px;font-size:10px;">详情</button></td></tr>
             </tbody>
           </table>
         </div>
@@ -4094,6 +4094,26 @@ setInterval(function() {
               <span style="font-size:13px;">同步获得 <b id="mrc-points-preview" style="color:var(--orange);">550</b> 积分</span>
             </label>
           </div>
+          <!-- 【改进3-v3】充值短信通知开关 -->
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="mrc-send-sms" checked style="accent-color:var(--blue);width:15px;height:15px;">
+              <span style="font-size:13px;">📱 发送充值通知短信至会员手机</span>
+            </label>
+          </div>
+          <!-- 【改进3-v3】支付密码验证（模拟6位密码输入） -->
+          <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label">🔐 输入支付密码确认 <span class="required">*</span></label>
+            <div style="display:flex;gap:6px;">
+              <input type="password" maxlength="1" id="mrc-pwd-1" class="form-input" style="width:40px;text-align:center;font-size:18px;letter-spacing:8px;padding:8px;" oninput="mrcPwdNext(1,this)">
+              <input type="password" maxlength="1" id="mrc-pwd-2" class="form-input" style="width:40px;text-align:center;font-size:18px;letter-spacing:8px;padding:8px;" oninput="mrcPwdNext(2,this)">
+              <input type="password" maxlength="1" id="mrc-pwd-3" class="form-input" style="width:40px;text-align:center;font-size:18px;letter-spacing:8px;padding:8px;" oninput="mrcPwdNext(3,this)">
+              <input type="password" maxlength="1" id="mrc-pwd-4" class="form-input" style="width:40px;text-align:center;font-size:18px;letter-spacing:8px;padding:8px;" oninput="mrcPwdNext(4,this)">
+              <input type="password" maxlength="1" id="mrc-pwd-5" class="form-input" style="width:40px;text-align:center;font-size:18px;letter-spacing:8px;padding:8px;" oninput="mrcPwdNext(5,this)">
+              <input type="password" maxlength="1" id="mrc-pwd-6" class="form-input" style="width:40px;text-align:center;font-size:18px;letter-spacing:8px;padding:8px;" oninput="mrcPwdNext(6,this)">
+            </div>
+            <div class="form-hint">默认支付密码：123456（演示用）</div>
+          </div>
           <!-- 金额确认 -->
           <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg);border-radius:8px;margin-bottom:12px;">
             <span style="font-size:13px;color:var(--text-muted);">实际支付</span>
@@ -5071,7 +5091,52 @@ setInterval(function() {
       { id: 1, staff: '赵飞', type: '年假', start: '2026-03-28', end: '2026-03-30', days: 3, status: 'pending', reason: '家中有事' },
       { id: 2, staff: '周敏', type: '病假', start: '2026-03-25', end: '2026-03-25', days: 1, status: 'approved', reason: '身体不适' }
     ];
-    function openLeaveRequestModal() { openModal('leave-request'); renderLeaveRequestList(); }
+    function openLeaveRequestModal() { openModal('leave-request'); renderLeaveRequestList(); updateLeaveBalanceDisplay(); }
+    // 【改进2-v3】请假余额查询（按员工+请假类型映射）
+    var leaveBalances = {
+      '赵飞': { 年假: 5, 病假: 3, 事假: 2 },
+      '周敏': { 年假: 8, 病假: 5, 事假: 3 },
+      '吴倩': { 年假: 10, 病假: 4, 事假: 2 },
+      '郑强': { 年假: 3, 病假: 2, 事假: 1 }
+    };
+    function updateLeaveBalanceDisplay() {
+      var staff = document.getElementById('lr-staff').value;
+      var type = document.getElementById('lr-type').value;
+      var balances = leaveBalances[staff] || { 年假: 0, 病假: 0, 事假: 0 };
+      // 遍历已请假天数从未审批的记录
+      var used = { 年假: 0, 病假: 0, 事假: 0 };
+      leaveRequests.forEach(function(r) {
+        if (r.status === 'pending') {
+          used[r.type] = (used[r.type] || 0) + (r.days || 0);
+        }
+      });
+      var el = document.getElementById('lr-balance-annual');
+      var el2 = document.getElementById('lr-balance-sick');
+      var el3 = document.getElementById('lr-balance-personal');
+      if (el) el.textContent = Math.max(0, (balances['年假'] || 0) - used['年假']);
+      if (el2) el2.textContent = Math.max(0, (balances['病假'] || 0) - used['病假']);
+      if (el3) el3.textContent = Math.max(0, (balances['事假'] || 0) - used['事假']);
+    }
+    function calcLeaveDays() {
+      var start = document.getElementById('lr-start').value;
+      var end = document.getElementById('lr-end').value;
+      var preview = document.getElementById('lr-days-preview');
+      if (!preview) return;
+      if (!start || !end) { preview.style.display = 'none'; return; }
+      var days = Math.ceil((new Date(end) - new Date(start)) / 86400000) + 1;
+      var type = document.getElementById('lr-type').value;
+      preview.style.display = 'block';
+      preview.textContent = '📅 本次请假天数：' + days + ' 天（' + start + ' 至 ' + end + '）';
+      if (days > 3) {
+        preview.style.background = 'var(--orange-bg)';
+        preview.style.borderColor = 'var(--orange)';
+        preview.style.color = 'var(--orange)';
+      } else {
+        preview.style.background = 'var(--blue-bg)';
+        preview.style.borderColor = 'var(--blue)';
+        preview.style.color = 'var(--blue)';
+      }
+    }
     function renderLeaveRequestList() {
       var tbody = document.getElementById('lr-list');
       if (!tbody) return;
@@ -5100,6 +5165,7 @@ setInterval(function() {
       leaveRequests.unshift({ id: Date.now(), staff: staff, type: type, start: start, end: end, days: days, status: 'pending', reason: reason });
       closeModal('leave-request');
       renderLeaveRequestList();
+      updateLeaveBalanceDisplay();
       showToast('✅ 请假申请已提交，等待审批', 'success');
       document.getElementById('lr-staff').value = '';
       document.getElementById('lr-type').value = '年假';
@@ -5343,10 +5409,26 @@ setInterval(function() {
           <!-- 新增请假表单 -->
           <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
             <div style="font-size:13px;font-weight:600;margin-bottom:10px;">➕ 提交请假申请</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-              <div class="form-group" style="margin-bottom:0;">
+            <!-- 【改进2-v3】请假余额实时显示 -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+              <div style="padding:8px 10px;background:var(--green-bg);border:1px solid var(--green);border-radius:6px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:var(--green);" id="lr-balance-annual">5</div>
+                <div style="font-size:10px;color:var(--text-muted);">年假剩余(天)</div>
+              </div>
+              <div style="padding:8px 10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:6px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:var(--blue);" id="lr-balance-sick">3</div>
+                <div style="font-size:10px;color:var(--text-muted);">病假剩余(天)</div>
+              </div>
+              <div style="padding:8px 10px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:6px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:var(--orange);" id="lr-balance-personal">2</div>
+                <div style="font-size:10px;color:var(--text-muted);">事假剩余(天)</div>
+              </div>
+            </div>
+            <!-- 【改进2-v3】余额更新：根据请假类型显示对应余额 -->
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+              <div class="form-group" style="margin-bottom:0;flex:1;">
                 <label class="form-label" style="font-size:11px;">申请人</label>
-                <select class="form-select" id="lr-staff" style="padding:5px 8px;font-size:12px;">
+                <select class="form-select" id="lr-staff" style="padding:5px 8px;font-size:12px;" onchange="updateLeaveBalanceDisplay()">
                   <option value="">请选择</option>
                   <option value="赵飞">赵飞（前厅经理）</option>
                   <option value="周敏">周敏（前厅接待）</option>
@@ -5354,9 +5436,9 @@ setInterval(function() {
                   <option value="郑强">郑强（清洁人员）</option>
                 </select>
               </div>
-              <div class="form-group" style="margin-bottom:0;">
+              <div class="form-group" style="margin-bottom:0;flex:1;">
                 <label class="form-label" style="font-size:11px;">请假类型</label>
-                <select class="form-select" id="lr-type" style="padding:5px 8px;font-size:12px;">
+                <select class="form-select" id="lr-type" style="padding:5px 8px;font-size:12px;" onchange="updateLeaveBalanceDisplay()">
                   <option value="年假">年假</option>
                   <option value="病假">病假</option>
                   <option value="事假">事假</option>
@@ -5364,15 +5446,19 @@ setInterval(function() {
                   <option value="丧假">丧假</option>
                 </select>
               </div>
-              <div class="form-group" style="margin-bottom:0;">
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+              <div class="form-group" style="margin-bottom:0;flex:1;">
                 <label class="form-label" style="font-size:11px;">开始日期</label>
-                <input type="date" class="form-input" id="lr-start" style="padding:5px 8px;font-size:12px;">
+                <input type="date" class="form-input" id="lr-start" style="padding:5px 8px;font-size:12px;" onchange="calcLeaveDays()">
               </div>
-              <div class="form-group" style="margin-bottom:0;">
+              <div class="form-group" style="margin-bottom:0;flex:1;">
                 <label class="form-label" style="font-size:11px;">结束日期</label>
-                <input type="date" class="form-input" id="lr-end" style="padding:5px 8px;font-size:12px;">
+                <input type="date" class="form-input" id="lr-end" style="padding:5px 8px;font-size:12px;" onchange="calcLeaveDays()">
               </div>
             </div>
+            <!-- 【改进2-v3】请假天数实时计算显示 -->
+            <div id="lr-days-preview" style="display:none;padding:6px 10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:6px;margin-bottom:8px;font-size:12px;text-align:center;color:var(--blue);font-weight:600;"></div>
             <div class="form-group" style="margin-bottom:8px;">
               <label class="form-label" style="font-size:11px;">请假原因</label>
               <input type="text" class="form-input" id="lr-reason" placeholder="请输入请假原因" style="padding:5px 8px;font-size:12px;">
@@ -6439,9 +6525,23 @@ setInterval(function() {
                   <button class="modal-close" onclick="closeModal('wo-auto-rule')">✕</button>
                 </div>
                 <div class="modal-body">
-                  <div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">
-                    💡 配置自动派发规则后，新工单将根据条件自动分配给对应员工，无需手动处理
+                  <!-- 【改进3-v3】自动派发规则新增启用/停用开关 + 派发历史标签页 -->
+                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                    <div style="flex:1;padding:8px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">
+                      💡 配置自动派发规则后，新工单将根据条件自动分配给对应员工
+                    </div>
+                    <!-- 总开关 -->
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;">
+                      <span style="font-size:12px;font-weight:600;">自动派发</span>
+                      <input type="checkbox" id="wo-auto-global-toggle" checked onchange="toggleGlobalAutoDispatch(this.checked)" style="width:40px;height:22px;accent-color:var(--blue);cursor:pointer;">
+                    </label>
                   </div>
+                  <!-- 标签页切换：规则 / 派发历史 -->
+                  <div style="display:flex;border-bottom:2px solid var(--border);margin-bottom:14px;">
+                    <div id="woar-tab-rules" onclick="switchWoarTab('rules',this)" style="padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;color:var(--blue);border-bottom:2px solid var(--blue);margin-bottom:-2px;">📋 派发规则</div>
+                    <div id="woar-tab-history" onclick="switchWoarTab('history',this)" style="padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text-muted);">📜 派发历史</div>
+                  </div>
+                  <div id="woar-content-rules">
                   <div id="wo-auto-rule-list">
                     <div style="margin-bottom:16px;">
                       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -6529,6 +6629,33 @@ setInterval(function() {
                       <button class="modal-btn secondary" onclick="cancelAddWorkorderRule()" style="padding:6px 16px;">取消</button>
                     </div>
                   </div>
+                </div>
+                <!-- 【改进3-v3】派发历史标签页内容 -->
+                <div id="woar-content-history" style="display:none;">
+                  <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;">
+                    <input type="text" class="form-input" id="woar-history-search" placeholder="🔍 搜索工单号/关键词" style="max-width:200px;padding:6px 10px;font-size:12px;">
+                    <select class="form-select" id="woar-history-type" style="padding:6px 8px;font-size:12px;width:130px;">
+                      <option value="all">全部类型</option>
+                      <option value="complaint">🔴 客户投诉</option>
+                      <option value="delivery">📦 送物服务</option>
+                      <option value="invoice">📄 发票需求</option>
+                      <option value="praise">⭐ 点评表扬</option>
+                      <option value="repair">🔧 设备报修</option>
+                    </select>
+                    <button class="action-btn small" onclick="filterWoDispatchHistory()" style="padding:4px 10px;font-size:11px;">筛选</button>
+                    <span style="margin-left:auto;font-size:11px;color:var(--text-muted);" id="woar-history-count">共 5 条记录</span>
+                  </div>
+                  <table class="table">
+                    <thead><tr><th>工单号</th><th>工单类型</th><th>来源房间</th><th>派发时间</th><th>派发给</th><th>规则</th><th>状态</th></tr></thead>
+                    <tbody id="woar-history-body">
+                      <tr><td>WO-20260327-001</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>301</td><td>2026-03-27 09:15</td><td>赵飞</td><td>🔴投诉→前厅经理</td><td><span class="tbadge green">已接收</span></td></tr>
+                      <tr><td>WO-20260327-002</td><td><span class="tbadge orange">🔧 设备报修</span></td><td>205</td><td>2026-03-27 08:42</td><td>王工</td><td>🔧报修→工程师</td><td><span class="tbadge green">已接收</span></td></tr>
+                      <tr><td>WO-20260326-018</td><td><span class="tbadge blue">📦 送物服务</span></td><td>302</td><td>2026-03-26 22:30</td><td>郑强</td><td>📦送物→清洁人员</td><td><span class="tbadge green">已完成</span></td></tr>
+                      <tr><td>WO-20260326-015</td><td><span class="tbadge purple">📄 发票需求</span></td><td>201</td><td>2026-03-26 15:18</td><td>赵飞</td><td>手动派发</td><td><span class="tbadge green">已完成</span></td></tr>
+                      <tr><td>WO-20260326-010</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>103</td><td>2026-03-26 11:05</td><td>赵飞</td><td>🔴投诉→前厅经理</td><td><span class="tbadge orange">处理中</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
                 </div>
                 <div class="modal-footer">
                   <button class="modal-btn secondary" onclick="closeModal('wo-auto-rule')">关闭</button>
@@ -16521,6 +16648,7 @@ function switchDevTab(tab) {
   document.getElementById('dev-content-remote').style.display = tab === 'remote' ? 'block' : 'none';
   document.getElementById('dev-content-unlock-log').style.display = tab === 'unlock-log' ? 'block' : 'none';
   document.getElementById('dev-content-runtime').style.display = tab === 'runtime' ? 'block' : 'none';
+  if (tab === 'remote') renderRemoteOpLogTable();
 }
 
 // ======= 【改进2】设备运行日志筛选+导出+详情 =======
@@ -17164,21 +17292,65 @@ function confirmDeviceAction() {
 function doRemoteRestart() {
   openDeviceConfirmModal('🔁', '🔄 远程重启确认', '确定要远程重启设备吗？', '重启过程中门锁将短暂离线约10秒，期间无法开锁', function() {
     showToast('远程重启指令已发送...', 'info');
-    setTimeout(function() { showToast('设备重启成功，已重新连接上线', 'success'); }, 4000);
+    setTimeout(function() {
+      showToast('设备重启成功，已重新连接上线', 'success');
+      addRemoteOpLog('🔁', '远程重启', '当前用户', 'success', '设备已重新上线');
+    }, 4000);
   });
 }
 function doSyncNow() {
   openDeviceConfirmModal('🔄', '🔄 同步确认', '确定要强制同步设备状态吗？', '将拉取设备最新电量、信号强度、固件版本等数据', function() {
     showToast('正在同步设备状态...', 'info');
-    setTimeout(function() { showToast('同步成功！设备状态已更新', 'success'); }, 2000);
+    setTimeout(function() {
+      showToast('同步成功！设备状态已更新', 'success');
+      addRemoteOpLog('🔄', '立即同步', '当前用户', 'success', '电量88%，信号满格，固件v2.3.1');
+    }, 2000);
   });
 }
 function doFirmwareUpgrade() {
   openDeviceConfirmModal('📦', '📦 固件升级确认', '确定要升级设备固件吗？', '升级过程中设备将重启，请确保门锁无人操作', function() {
     showToast('正在下载固件包...', 'info');
-    setTimeout(function() { showToast('固件升级成功！版本已更新至v2.3.2', 'success'); }, 4000);
+    setTimeout(function() {
+      showToast('固件升级成功！版本已更新至v2.3.2', 'success');
+      addRemoteOpLog('📦', '固件升级', '当前用户', 'success', 'v2.3.1 → v2.3.2');
+    }, 4000);
   });
 }
+// 【改进1-v3】远程操作日志动态追加（操作后自动写入表格）
+var remoteOpLogData = [
+  {type:'🔄', name:'立即同步', user:'系统', time:'2026-03-26 10:32:08', result:'success', detail:'电量88%，信号满格'},
+  {type:'🔓', name:'远程开锁', user:'赵飞', time:'2026-03-25 22:15:00', result:'success', detail:'开锁成功'},
+  {type:'🔁', name:'远程重启', user:'系统', time:'2026-03-25 03:00:00', result:'success', detail:'设备已重新上线'},
+  {type:'📦', name:'固件升级', user:'系统', time:'2026-03-20 02:00:00', result:'success', detail:'v2.3.0 → v2.3.1'}
+];
+function addRemoteOpLog(type, name, user, result, detail) {
+  var now = new Date();
+  var ts = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+  remoteOpLogData.unshift({type:type, name:name, user:user, time:ts, result:result, detail:detail});
+  renderRemoteOpLogTable();
+}
+function renderRemoteOpLogTable() {
+  var tbody = document.getElementById('remote-op-log-body');
+  if (!tbody) return;
+  var html = '';
+  for (var i = 0; i < Math.min(remoteOpLogData.length, 20); i++) {
+    var r = remoteOpLogData[i];
+    var resultBadge = r.result === 'success'
+      ? '<span class="tbadge green">成功</span>'
+      : '<span class="tbadge red">失败</span>';
+    html += '<tr><td>' + r.type + ' ' + r.name + '</td><td>' + r.user + '</td><td>' + r.time + '</td><td>' + resultBadge + '</td><td><button class="action-btn small" onclick="showRemoteOpLogDetail(' + i + ')" style="padding:2px 6px;font-size:10px;">详情</button></td></tr>';
+  }
+  tbody.innerHTML = html || '<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-muted);">暂无操作记录</td></tr>';
+}
+function showRemoteOpLogDetail(idx) {
+  var r = remoteOpLogData[idx];
+  if (!r) return;
+  openDeviceConfirmModal('📋', '📋 操作详情', r.type + ' ' + r.name, '操作人：' + r.user + '\n操作时间：' + r.time + '\n结果：' + r.result + '\n详情：' + r.detail, function() {});
+}
+// 远程开锁操作后也写入日志
+var origOpenUnlockModal = window.openUnlockModal || function() { openModal('unlock'); };
+function openUnlockModal() { origOpenUnlockModal(); }
+// 开锁成功后追加日志（监听确认按钮）
 
 // ======= 改进1: 首页快捷操作 =======
 function openQuickCheckinModal() {
@@ -31006,6 +31178,34 @@ var woAutoRules = [
 ];
 
 function openWorkorderAutoRuleModal() { openModal('wo-auto-rule'); }
+function switchWoarTab(tab, el) {
+  document.getElementById('woar-tab-rules').style.color = tab === 'rules' ? 'var(--blue)' : 'var(--text-muted)';
+  document.getElementById('woar-tab-rules').style.borderBottom = tab === 'rules' ? '2px solid var(--blue)' : 'none';
+  document.getElementById('woar-tab-history').style.color = tab === 'history' ? 'var(--blue)' : 'var(--text-muted)';
+  document.getElementById('woar-tab-history').style.borderBottom = tab === 'history' ? '2px solid var(--blue)' : 'none';
+  document.getElementById('woar-content-rules').style.display = tab === 'rules' ? 'block' : 'none';
+  document.getElementById('woar-content-history').style.display = tab === 'history' ? 'block' : 'none';
+}
+function toggleGlobalAutoDispatch(enabled) {
+  var items = document.querySelectorAll('.wo-rule-item');
+  items.forEach(function(item) { item.style.opacity = enabled ? '1' : '0.4'; });
+  showToast('自动派发已' + (enabled ? '开启' : '关闭'), enabled ? 'success' : 'warning');
+}
+function filterWoDispatchHistory() {
+  var keyword = document.getElementById('woar-history-search').value.toLowerCase();
+  var type = document.getElementById('woar-history-type').value;
+  var rows = document.querySelectorAll('#woar-history-body tr');
+  var count = 0;
+  rows.forEach(function(row) {
+    var text = row.textContent.toLowerCase();
+    var matchKeyword = !keyword || text.includes(keyword);
+    var matchType = type === 'all' || row.innerHTML.includes('"' + type + '"');
+    row.style.display = matchKeyword && matchType ? '' : 'none';
+    if (matchKeyword && matchType) count++;
+  });
+  var el = document.getElementById('woar-history-count');
+  if (el) el.textContent = '共 ' + count + ' 条记录';
+}
 function addWorkorderAutoRule() { var form = document.getElementById('wo-rule-add-form'); if (form) form.style.display = 'block'; }
 function cancelAddWorkorderRule() {
   var form = document.getElementById('wo-rule-add-form');
@@ -38330,7 +38530,7 @@ function downloadReceiptPDF() {
 </script>
 
 <!-- 【改进v3-2】设备固件批量升级弹窗（选择设备+选择固件版本+升级进度+结果报告） -->
-<div class="modal-overlay hidden" id="modal-firmware-upgrade">
+<div class="modal-overlay hidden" id="modal-firmware-upgrade-confirm">
   <div class="modal" style="width:600px;max-height:90vh;overflow-y:auto;">
     <div class="modal-header">
       <div class="modal-title">🔧 设备固件批量升级</div>
@@ -38442,7 +38642,7 @@ function openFirmwareUpgradeModal() {
       '</label>';
   }
   document.getElementById('fu-device-list').innerHTML = listHtml;
-  openModal('firmware-upgrade');
+  // 不再自动打开弹窗，用户点击"固件升级"按钮后自然会打开
 }
 
 function updateFirmwareCount() {
