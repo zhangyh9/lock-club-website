@@ -4047,6 +4047,7 @@ setInterval(function() {
   }
 }, 300000); // 每5分钟
 
+</script>
 
     <!-- 【改进v3-2】会员余额充值完整弹窗（充值+积分+历史记录+支付方式） -->
     <div class="modal-overlay hidden" id="modal-member-recharge-v3">
@@ -9671,8 +9672,12 @@ setInterval(function() {
             <button class="action-btn small" onclick="applyRecordFilter()" style="padding:6px 12px;">🔍 筛选</button>
             <button class="action-btn small" onclick="resetRecordFilter()" style="padding:6px 12px;">重置</button>
             <span style="margin-left:auto;font-size:12px;color:var(--text-muted);" id="record-filter-count">共 6 条记录</span>
-            <button class="action-btn small" id="record-export-btn" onclick="exportRecords()" style="padding:5px 10px;font-size:11px;margin-left:4px;">📤 导出记录</button>
-            <button class="action-btn small red" id="record-batch-del-btn" onclick="batchDeleteRecords()" style="display:none;padding:5px 10px;font-size:11px;margin-left:4px;">🗑️ 批量删除</button>
+            <!-- 【改进4】批量操作工具栏：选中后显示计数+操作按钮 -->
+            <div id="record-batch-toolbar" style="display:none;align-items:center;gap:8px;margin-left:8px;">
+              <span style="font-size:12px;font-weight:600;color:var(--blue);background:var(--blue-bg);padding:3px 10px;border-radius:12px;border:1px solid var(--blue);" id="record-batch-count">已选 0 项</span>
+              <button class="action-btn small" onclick="exportRecordsExcel()" style="padding:4px 10px;font-size:11px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📊 导出Excel</button>
+              <button class="action-btn small red" onclick="batchDeleteRecords()" style="padding:4px 10px;font-size:11px;">🗑️ 批量删除</button>
+            </div>
           </div>
         </div>
       </div>
@@ -10201,6 +10206,21 @@ setInterval(function() {
       </div>
     </div>
 
+    <!-- 【改进3-附】系统配置保存确认弹窗 -->
+    <div class="modal-overlay hidden" id="modal-cfg-save-confirm">
+      <div class="modal" style="width:440px;">
+        <div class="modal-header">
+          <div class="modal-title">⚙️ 确认保存配置</div>
+          <button class="modal-close" onclick="closeModal('cfg-save-confirm')">✕</button>
+        </div>
+        <div class="modal-body" id="cfg-save-confirm-content"></div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('cfg-save-confirm')">取消</button>
+          <button class="modal-btn primary" onclick="confirmConfigSave()">💾 确认保存</button>
+        </div>
+      </div>
+    </div>
+
     
       <div class="page-header">
         <div class="page-title">💰 结算中心</div>
@@ -10593,6 +10613,83 @@ setInterval(function() {
               <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">损坏赔偿</div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【改进5-附】结算中心手工创建账单弹窗 -->
+    <div class="modal-overlay hidden" id="modal-create-settlement">
+      <div class="modal" style="width:520px;">
+        <div class="modal-header">
+          <div class="modal-title">💰 创建手工账单</div>
+          <button class="modal-close" onclick="closeModal('create-settlement')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">房间号 <span class="required">*</span></label>
+              <input type="text" class="form-input" id="ss-room" placeholder="如：301">
+            </div>
+            <div class="form-group">
+              <label class="form-label">客户姓名 <span class="required">*</span></label>
+              <input type="text" class="form-input" id="ss-name" placeholder="如：张三">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">房型</label>
+              <select class="form-select" id="ss-roomtype">
+                <option value="亲子间">亲子间</option>
+                <option value="大床房">大床房</option>
+                <option value="标准间">标准间</option>
+                <option value="家庭套房">家庭套房</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">入住日期</label>
+              <input type="date" class="form-input" id="ss-checkin" value="2026-03-27">
+            </div>
+            <div class="form-group">
+              <label class="form-label">入住天数</label>
+              <input type="number" class="form-input" id="ss-days" value="1" min="1" onchange="updateSettlementTotal()">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">房费（元）</label>
+              <input type="number" class="form-input" id="ss-room-fee" value="128" min="0" oninput="updateSettlementTotal()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">加床/加物（元）</label>
+              <input type="number" class="form-input" id="ss-extra" value="0" min="0" oninput="updateSettlementTotal()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">其他消费（元）</label>
+              <input type="number" class="form-input" id="ss-other" value="0" min="0" oninput="updateSettlementTotal()">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">押金（元）</label>
+              <input type="number" class="form-input" id="ss-deposit" value="100" min="0" oninput="updateSettlementTotal()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">应付总额预览</label>
+              <div style="padding:9px 12px;background:var(--bg);border-radius:6px;font-size:16px;font-weight:700;color:var(--blue);" id="ss-total-preview">¥128</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:6px;margin-bottom:8px;">
+            <span style="font-size:12px;color:var(--text-muted);">实付/退：</span>
+            <span style="font-size:14px;font-weight:700;color:var(--orange);" id="ss-payable-preview">¥28（待收）</span>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">账单备注</label>
+            <textarea class="form-textarea" id="ss-note" placeholder="可选填写备注，如：损坏赔偿、特殊优惠等" style="min-height:60px;"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('create-settlement')">取消</button>
+          <button class="modal-btn primary" onclick="submitCreateSettlement()">✅ 创建账单</button>
         </div>
       </div>
     </div>
@@ -14926,6 +15023,22 @@ setInterval(function() {
       <div style="padding:12px;background:var(--blue-bg);border-radius:6px;font-size:12px;color:var(--blue);" id="kp-preview-box">
         💡 生成的密码将显示在此处，可一键复制发送给客户
       </div>
+      <!-- 【改进2】密码强度实时指示器 -->
+      <div id="kp-strength-bar" style="margin-top:10px;display:none;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:11px;color:var(--text-muted);">密码强度：</span>
+          <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+            <div id="kp-strength-fill" style="height:100%;border-radius:3px;transition:all 0.3s;width:0%;"></div>
+          </div>
+          <span id="kp-strength-label" style="font-size:11px;font-weight:700;width:28px;text-align:right;"></span>
+        </div>
+        <div style="display:flex;gap:4px;" id="kp-strength-dots">
+          <span id="kp-dot-1" style="width:8px;height:8px;border-radius:50%;background:var(--border);display:inline-block;"></span>
+          <span id="kp-dot-2" style="width:8px;height:8px;border-radius:50%;background:var(--border);display:inline-block;"></span>
+          <span id="kp-dot-3" style="width:8px;height:8px;border-radius:50%;background:var(--border);display:inline-block;"></span>
+        </div>
+        <div id="kp-strength-hint" style="font-size:10px;color:var(--text-muted);margin-top:2px;"></div>
+      </div>
       <div id="kp-generated-preview" style="margin-top:12px;text-align:center;display:none;">
         <div style="padding:14px;background:var(--bg);border-radius:8px;border:2px dashed var(--blue);">
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">生成的密码</div>
@@ -17126,10 +17239,13 @@ function toggleAllRecordSelect(checked) {
 function onRecordRowCheck() { updateRecordSelection(); }
 function updateRecordSelection() {
   var checks = document.querySelectorAll('.record-row-check:checked');
-  selectedRecords = Array.from(checks).map(function(c){return c.closest('tr').dataset.name || '';});
+  selectedRecords = Array.from(checks).map(function(c){return c.closest('tr') ? (c.closest('tr').dataset.name || '') : '';});
   var count = selectedRecords.length;
-  var delBtn = document.getElementById('record-batch-del-btn');
-  if (delBtn) delBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+  // 【改进4】批量工具栏实时显示
+  var toolbar = document.getElementById('record-batch-toolbar');
+  var countEl = document.getElementById('record-batch-count');
+  if (toolbar) toolbar.style.display = count > 0 ? 'flex' : 'none';
+  if (countEl) countEl.textContent = '已选 ' + count + ' 项';
 }
 function batchDeleteRecords() {
   if (!selectedRecords.length) { showToast('请先选择要删除的记录', 'error'); return; }
@@ -17141,13 +17257,38 @@ function executeBatchDeleteRecords() {
   if (!selectedRecords || !selectedRecords.length) return;
   showToast('已删除 ' + selectedRecords.length + ' 条办理记录', 'success');
   selectedRecords = [];
-  var delBtn = document.getElementById('record-batch-del-btn');
-  if (delBtn) delBtn.style.display = 'none';
+  var toolbar = document.getElementById('record-batch-toolbar');
+  if (toolbar) toolbar.style.display = 'none';
   closeModal('batch-delete-record-confirm');
-  // Also hide check-all checkbox
   var checkAll = document.getElementById('record-select-all');
   if (checkAll) checkAll.checked = false;
+  // Re-render table to remove deleted rows
+  renderRecordsTable();
+  applyRecordsFilter();
 }
+
+// 【改进4】办理记录Excel格式导出
+function exportRecordsExcel() {
+  var records = recordsFiltered.length > 0 ? recordsFiltered : recordsAllData;
+  if (records.length === 0) { showToast('没有可导出的记录', 'error'); return; }
+  // Build Excel XML (xls format using HTML table)
+  var xls = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body><table border="1" style="border-collapse:collapse;font-size:12px;"><thead><tr style="background:#1890ff;color:white;font-weight:bold;"><th>时间</th><th>类型</th><th>姓名</th><th>房间</th><th>房型</th><th>联系方式</th><th>状态</th><th>押金</th><th>发卡</th><th>操作员</th><th>备注</th></tr></thead><tbody>';
+  records.forEach(function(r) {
+    xls += '<tr><td>' + r.time + '</td><td>' + r.typeLabel + '</td><td>' + r.name + '</td><td>' + r.room + '</td><td>' + r.roomType + '</td><td>' + r.phone + '</td><td>' + r.statusLabel + '</td><td>' + r.deposit + '</td><td>' + r.keyCount + '</td><td>' + r.operator + '</td><td>' + (r.note || '') + '</td></tr>';
+  });
+  xls += '</tbody></table></body></html>';
+  var blob = new Blob([xls], {type: 'application/vnd.ms-excel;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '办理记录_' + new Date().toISOString().slice(0,10) + '.xls';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('已导出 ' + records.length + ' 条记录为Excel', 'success');
+}
+
 function exportRecords() {
   var csv = '\ufeff类型,姓名,房间,房型,联系方式,时间,状态\n入住,张三,301,亲子间,138****8888,2026-03-27 10:32,进行中\n入住,李四,304,亲子间,139****6666,2026-03-27 09:15,进行中\n入住,王五,201,大床房,137****5555,2026-03-27 08:50,已完成';
   var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
@@ -18311,8 +18452,29 @@ function switchConfigTab(tab, el) {
   var oplogEl = document.getElementById('cfg-content-oplog');
   if (oplogEl) oplogEl.style.display = tab === 'oplog' ? 'block' : 'none';
 }
+// 【改进3】系统配置：增加保存前确认弹窗 + 完成后写入操作日志
+var pendingSaveTab = '';
 function saveConfigTab(tab) {
   var tabNames = {basic:'基本配置', notify:'通知设置', device:'设备阈值', security:'安全设置'};
+  var tab = tab || 'basic';
+  pendingSaveTab = tab;
+  var content = '<div style="text-align:center;margin-bottom:16px;"><div style="font-size:40px;margin-bottom:8px;">⚙️</div><div style="font-size:15px;font-weight:700;">确认保存配置？</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--orange);">⚠️ 配置修改将实时生效，请确认以下变更：</div>' +
+    '<div style="display:grid;gap:6px;">' +
+    '<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg);border-radius:6px;font-size:12px;">' +
+    '<span>🏢</span><span style="color:var(--text-muted);">酒店名称：</span><span style="font-weight:600;" id="cfg-confirm-hotel">' + (document.getElementById('cfg-hotel-name') ? document.getElementById('cfg-hotel-name').value : '') + '</span></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg);border-radius:6px;font-size:12px;">' +
+    '<span>📞</span><span style="color:var(--text-muted);">联系电话：</span><span style="font-weight:600;" id="cfg-confirm-phone">' + (document.getElementById('cfg-hotel-phone') ? document.getElementById('cfg-hotel-phone').value : '') + '</span></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg);border-radius:6px;font-size:12px;">' +
+    '<span>🕐</span><span style="color:var(--text-muted);">退房/入住时间：</span><span style="font-weight:600;" id="cfg-confirm-time">' + (document.getElementById('cfg-checkout-time') ? document.getElementById('cfg-checkout-time').value : '') + ' / ' + (document.getElementById('cfg-checkin-time') ? document.getElementById('cfg-checkin-time').value : '') + '</span></div>' +
+    '</div>';
+  document.getElementById('cfg-save-confirm-content').innerHTML = content;
+  openModal('cfg-save-confirm');
+}
+function confirmConfigSave() {
+  var tab = pendingSaveTab;
+  var tabNames = {basic:'基本配置', notify:'通知设置', device:'设备阈值', security:'安全设置'};
+  closeModal('cfg-save-confirm');
   showToast(tabNames[tab] + '已保存！', 'success');
   // 【改进3】记录配置变更到操作日志
   if (tab === 'basic' || tab === 'notify' || tab === 'device' || tab === 'security') {
@@ -19079,6 +19241,8 @@ function printCheckinReceipt() {
   var content = document.getElementById('checkin-receipt-content').innerHTML;
   var printWindow = window.open('', '_blank', 'width=400,height=600');
   printWindow.document.write('<html><head><title>入住押金收据</title><style>body{font-family:-apple-system,sans-serif;padding:20px;max-width:380px;margin:0 auto;}</style></head><body>' + content + '<script>window.onload=function(){window.print();window.close();}<\/script></body></html>');
+</script>
+<style>
 
 /* 物联后台迭代v3 - 新增功能样式 */
 .overdue-badge { animation: pulse-red 2s infinite; }
@@ -19088,6 +19252,8 @@ function printCheckinReceipt() {
 }
 .batch-room-chip { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
 .batch-room-chip:hover { border-color: var(--blue); background: var(--blue-bg); }
+</style>
+<script>
 .batch-room-chip.selected { border-color: var(--blue); background: var(--blue); color: white; }
 .clock-btn { cursor: pointer; }
 .clock-btn:hover { opacity: 0.85; }
@@ -20498,6 +20664,40 @@ function generateKeypadPreview() {
   document.getElementById('kp-generated-code').textContent = pwd;
   document.getElementById('kp-generated-preview').style.display = 'block';
   document.getElementById('kp-preview-box').style.display = 'none';
+  // 【改进2】密码强度实时计算
+  var cleanPwd = pwd.replace(/[-]/g, '');
+  var hasNum = /[0-9]/.test(cleanPwd);
+  var hasAlpha = /[A-Z]/.test(cleanPwd);
+  var hasSpecial = /[*#$\-&%+!@]/.test(cleanPwd);
+  var len = cleanPwd.length;
+  var score = 0;
+  if (len >= 6) score++;
+  if (len >= 8) score++;
+  if (hasNum) score++;
+  if (hasAlpha) score++;
+  if (hasSpecial) score++;
+  var strengthLevel = score <= 2 ? 'weak' : score <= 3 ? 'medium' : 'strong';
+  var colors = {weak: 'var(--red)', medium: 'var(--orange)', strong: 'var(--green)'};
+  var labels = {weak: '弱', medium: '中', strong: '强'};
+  var widths = {weak: '33%', medium: '66%', strong: '100%'};
+  var fill = document.getElementById('kp-strength-fill');
+  var label = document.getElementById('kp-strength-label');
+  var dots = ['kp-dot-1','kp-dot-2','kp-dot-3'];
+  var bar = document.getElementById('kp-strength-bar');
+  bar.style.display = '';
+  fill.style.width = widths[strengthLevel];
+  fill.style.background = colors[strengthLevel];
+  label.textContent = labels[strengthLevel];
+  label.style.color = colors[strengthLevel];
+  var activeDots = strengthLevel === 'weak' ? 1 : strengthLevel === 'medium' ? 2 : 3;
+  dots.forEach(function(d, i) {
+    var el = document.getElementById(d);
+    el.style.background = i < activeDots ? colors[strengthLevel] : 'var(--border)';
+  });
+  var hints = {weak: '⚠️ 建议增加字母和特殊字符', medium: '✓ 强度尚可，建议使用一次性密码', strong: '✅ 强度优秀，适合离线长期密码'};
+  document.getElementById('kp-strength-hint').textContent = hints[strengthLevel];
+  document.getElementById('kp-strength-hint').style.color = colors[strengthLevel];
+
 }
 
 function submitKeypad() {
@@ -27151,24 +27351,63 @@ function openEditBuildingModal(idx) {
   openModal('building-form');
 }
 
-function saveBuildingForm() {
+// 【改进1】楼栋管理：增加保存前预览确认 + 保存后更新首页楼栋统计
+function previewBuildingForm() {
+  var name = document.getElementById('bm-name').value.trim();
+  var floors = parseInt(document.getElementById('bm-floors').value) || 0;
+  var rooms = parseInt(document.getElementById('bm-rooms').value) || 0;
+  var desc = document.getElementById('bm-desc').value.trim();
+  if (!name) { showToast('请输入楼栋名称', 'error'); return; }
+  if (floors <= 0 || rooms <= 0) { showToast('楼层数和房间数必须大于0', 'error'); return; }
+  var idx = document.getElementById('bm-id').value;
+  var isEdit = idx !== '';
+  var content = '<div style="text-align:center;margin-bottom:16px;"><div style="font-size:40px;margin-bottom:8px;">🏢</div><div style="font-size:16px;font-weight:700;">' + (isEdit ? '确认修改楼栋？' : '确认新增楼栋？') + '</div></div>' +
+    '<div style="padding:14px;background:var(--bg);border-radius:8px;margin-bottom:12px;">' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);font-size:12px;">楼栋名称</span><span style="font-weight:600;">' + name + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);font-size:12px;">楼层数</span><span style="font-weight:600;">' + floors + ' 层</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);font-size:12px;">房间数</span><span style="font-weight:600;">' + rooms + ' 间</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;"><span style="color:var(--text-muted);font-size:12px;">备注</span><span style="font-size:12px;color:var(--text-light);">' + (desc || '无') + '</span></div>' +
+    '</div>' +
+    '<div style="padding:10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:6px;font-size:12px;color:var(--blue);">💡 合计 <strong>' + floors + ' 层 × ' + rooms + ' 间</strong>，总容量 <strong style="font-size:15px;">' + (floors * rooms) + ' 间客房</strong></div>';
+  document.getElementById('bld-preview-content').innerHTML = content;
+  openModal('bld-preview');
+}
+function confirmBuildingSave() {
   var name = document.getElementById('bm-name').value.trim();
   var floors = parseInt(document.getElementById('bm-floors').value) || 0;
   var rooms = parseInt(document.getElementById('bm-rooms').value) || 0;
   var desc = document.getElementById('bm-desc').value.trim();
   var idx = document.getElementById('bm-id').value;
-  if (!name) { showToast('请输入楼栋名称', 'error'); return; }
-  if (floors <= 0 || rooms <= 0) { showToast('楼层数和房间数必须大于0', 'error'); return; }
   var newB = {id:'B' + String(Date.now()).slice(-4), name:name, floors:floors, rooms:rooms, status:'active', desc:desc};
   if (idx === '') {
     buildingData.push(newB);
-    showToast('楼栋 ' + name + ' 添加成功！', 'success');
+    showToast('楼栋 ' + name + ' 添加成功！共 ' + floors + ' 层 ' + rooms + ' 间', 'success');
   } else {
     buildingData[idx] = {id:buildingData[idx].id, name:name, floors:floors, rooms:rooms, status:'active', desc:desc};
     showToast('楼栋信息已更新！', 'success');
   }
   closeModal('building-form');
+  closeModal('bld-preview');
   renderBuildingTable();
+  // 【改进1-附】保存后同步更新首页楼栋统计
+  var totalBuildings = buildingData.length;
+  var totalRooms = buildingData.reduce(function(s, b){ return s + b.rooms; }, 0);
+  var statEls = document.querySelectorAll('#page-home .stat-card');
+  // 找到首页楼栋统计（通过图标或文字特征）
+  statEls.forEach(function(card) {
+    var label = card.querySelector('.stat-label');
+    if (label && label.textContent.includes('楼栋')) {
+      var num = card.querySelector('.stat-num');
+      if (num) num.textContent = totalBuildings;
+    }
+    if (label && label.textContent.includes('房间')) {
+      var num = card.querySelector('.stat-num');
+      if (num) num.textContent = totalRooms + '间';
+    }
+  });
+}
+function saveBuildingForm() {
+  previewBuildingForm();
 }
 
 function deleteBuilding(idx) {
@@ -27659,9 +27898,74 @@ function filterSettlementTab(tab, el) {
   });
 }
 function renderSettlementTable() {}
+// 【改进5】结算中心：手工创建账单完整功能
+var settlementBillData = [
+  {id:'BL-2026032701',room:'301',name:'张三',roomType:'亲子间',checkinTime:'2026-03-26',days:1,roomFee:128,extra:0,other:0,total:128,deposit:100,status:'pending'},
+  {id:'BL-2026032702',room:'203',name:'李四',roomType:'大床房',checkinTime:'2026-03-26',days:2,roomFee:216,extra:50,other:20,total:286,deposit:100,status:'pending'},
+  {id:'BL-2026032503',room:'202',name:'钱七',roomType:'大床房',checkinTime:'2026-03-25',days:2,roomFee:216,extra:0,other:0,total:216,deposit:100,status:'overdue'}
+];
 function openCreateSettlementModal() {
-  showToast('新建账单功能：选择房间并录入消费明细', 'info');
+  document.getElementById('ss-room').value = '';
+  document.getElementById('ss-name').value = '';
+  document.getElementById('ss-roomtype').value = '亲子间';
+  document.getElementById('ss-checkin').value = '';
+  document.getElementById('ss-days').value = '1';
+  document.getElementById('ss-room-fee').value = '128';
+  document.getElementById('ss-extra').value = '0';
+  document.getElementById('ss-other').value = '0';
+  document.getElementById('ss-deposit').value = '100';
+  document.getElementById('ss-total-preview').textContent = '¥128';
+  document.getElementById('ss-note').value = '';
+  openModal('create-settlement');
 }
+function updateSettlementTotal() {
+  var roomFee = parseFloat(document.getElementById('ss-room-fee').value) || 0;
+  var extra = parseFloat(document.getElementById('ss-extra').value) || 0;
+  var other = parseFloat(document.getElementById('ss-other').value) || 0;
+  var total = roomFee + extra + other;
+  document.getElementById('ss-total-preview').textContent = '¥' + total;
+  var deposit = parseFloat(document.getElementById('ss-deposit').value) || 0;
+  var payable = total - deposit;
+  document.getElementById('ss-payable-preview').textContent = payable >= 0 ? '¥' + payable + '（待收）' : '¥' + Math.abs(payable) + '（待退）';
+  document.getElementById('ss-payable-preview').style.color = payable >= 0 ? 'var(--orange)' : 'var(--green)';
+}
+function submitCreateSettlement() {
+  var room = document.getElementById('ss-room').value.trim();
+  var name = document.getElementById('ss-name').value.trim();
+  var roomtype = document.getElementById('ss-roomtype').value;
+  var checkin = document.getElementById('ss-checkin').value;
+  var days = parseInt(document.getElementById('ss-days').value) || 1;
+  var roomFee = parseFloat(document.getElementById('ss-room-fee').value) || 0;
+  var extra = parseFloat(document.getElementById('ss-extra').value) || 0;
+  var other = parseFloat(document.getElementById('ss-other').value) || 0;
+  var deposit = parseFloat(document.getElementById('ss-deposit').value) || 0;
+  var note = document.getElementById('ss-note').value.trim();
+  if (!room) { showToast('请输入房间号', 'error'); return; }
+  if (!name) { showToast('请输入客户姓名', 'error'); return; }
+  var total = roomFee + extra + other;
+  var id = 'BL-' + new Date().getTime().toString().slice(-8);
+  var newBill = {id:id,room:room,name:name,roomType:roomtype,checkinTime:checkin,days:days,roomFee:roomFee,extra:extra,other:other,total:total,deposit:deposit,status:'pending'};
+  settlementBillData.unshift(newBill);
+  closeModal('create-settlement');
+  // Add row to pending body
+  var tbody = document.getElementById('stl-pending-body');
+  if (tbody) {
+    var row = document.createElement('tr');
+    row.dataset.status = 'pending';
+    row.innerHTML = '<td>' + id + '</td><td>' + room + '</td><td>' + name + '</td><td style="font-weight:700;color:var(--blue);">¥' + total + '</td><td><span class="tbadge orange">待结算</span></td><td><button class="action-btn small" onclick="openSettlementDetail(\'' + id + '\')">结算</button></td>';
+    row.style.animation = 'slideDown 0.3s ease';
+    tbody.insertBefore(row, tbody.firstChild);
+  }
+  // Update stats
+  var pendingCount = settlementBillData.filter(function(b){return b.status==='pending'}).length;
+  var pendingAmt = settlementBillData.filter(function(b){return b.status==='pending'}).reduce(function(s,b){return s+b.total;},0);
+  var stlPending = document.getElementById('stl-pending');
+  if (stlPending) stlPending.textContent = pendingCount;
+  var stlPendingAmt = document.getElementById('stl-pending-amount');
+  if (stlPendingAmt) stlPendingAmt.textContent = '¥' + pendingAmt;
+  showToast('手工账单已创建：' + room + ' - ' + name + '，金额 ¥' + total, 'success');
+}
+
 
 // ======= 【改进4】操作日志筛选 =======
 function applyOpLogFilter() {
@@ -27809,6 +28113,21 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="modal-footer">
       <button class="modal-btn secondary" onclick="closeModal('building-form')">取消</button>
       <button class="modal-btn primary" onclick="saveBuildingForm()">保存楼栋</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进1-附】楼栋保存预览确认弹窗 -->
+<div class="modal-overlay hidden" id="modal-bld-preview">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">🏢 楼栋信息预览</div>
+      <button class="modal-close" onclick="closeModal('bld-preview')">✕</button>
+    </div>
+    <div class="modal-body" id="bld-preview-content"></div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('bld-preview')">取消</button>
+      <button class="modal-btn primary" onclick="confirmBuildingSave()">✅ 确认保存</button>
     </div>
   </div>
 </div>
