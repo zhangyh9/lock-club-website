@@ -27053,6 +27053,776 @@ function openResetConfigConfirmModal() {
   showToast('🔄 系统配置已恢复默认', 'info');
 }
 
+// ==================== 物联后台迭代v3 - 5个功能性改进 ====================
+
+// ====== 改进1：会员管理完整CRUD增删改查 ======
+// 会员列表数据结构
+var memberList = [
+  {id:'M-001', name:'王浩', phone:'13812340001', level:'gold', levelText:'金卡会员', points:2350, totalConsume:5680, joinDate:'2025-06-15', birthday:'1985-03-20', stayCount:12, lastStay:'2026-03-20', status:'active'},
+  {id:'M-002', name:'李娜', phone:'13812340002', level:'vip', levelText:'VIP会员', points:8900, totalConsume:28600, joinDate:'2024-11-01', birthday:'1980-07-10', stayCount:38, lastStay:'2026-03-25', status:'active'},
+  {id:'M-003', name:'张伟', phone:'13812340003', level:'silver', levelText:'银卡会员', points:4500, totalConsume:3200, joinDate:'2025-09-20', birthday:'1990-12-01', stayCount:6, lastStay:'2026-03-18', status:'active'},
+  {id:'M-004', name:'赵敏', phone:'13812340004', level:'normal', levelText:'普通会员', points:1200, totalConsume:980, joinDate:'2026-01-10', birthday:'1995-05-15', stayCount:2, lastStay:'2026-03-15', status:'active'},
+  {id:'M-005', name:'钱进', phone:'13812340005', level:'normal', levelText:'普通会员', points:0, totalConsume:298, joinDate:'2026-03-26', birthday:'1988-01-01', stayCount:1, lastStay:'2026-03-26', status:'active'}
+];
+var editingMemberIdx = -1;
+var memberLevelOptions = [
+  {value:'normal', label:'普通会员', color:'var(--text-light)', bg:'var(--bg)'},
+  {value:'silver', label:'银卡会员', color:'#C0C0C0', bg:'#F5F5F5'},
+  {value:'gold', label:'金卡会员', color:'#FFD700', bg:'#FFFEF0'},
+  {value:'vip', label:'VIP会员', color:'#9400D3', bg:'#F9F0FF'}
+];
+
+function openAddMemberModal() {
+  editingMemberIdx = -1;
+  var modal = document.getElementById('modal-member-form-v2');
+  if (!modal) {
+    injectMemberFormModalV2();
+    modal = document.getElementById('modal-member-form-v2');
+  }
+  document.getElementById('mfv2-title').textContent = '👑 新增会员';
+  document.getElementById('mfv2-id').value = '';
+  document.getElementById('mfv2-name').value = '';
+  document.getElementById('mfv2-phone').value = '';
+  document.getElementById('mfv2-idcard').value = '';
+  document.getElementById('mfv2-level').value = 'normal';
+  document.getElementById('mfv2-join-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('mfv2-birthday').value = '';
+  document.getElementById('mfv2-initial-points').value = '100';
+  document.getElementById('mfv2-note').value = '';
+  document.getElementById('mfv2-tag').value = '';
+  modal.classList.remove('hidden');
+}
+
+function openEditMemberModal(idx) {
+  editingMemberIdx = idx;
+  var m = memberList[idx];
+  var modal = document.getElementById('modal-member-form-v2');
+  if (!modal) { injectMemberFormModalV2(); modal = document.getElementById('modal-member-form-v2'); }
+  document.getElementById('mfv2-title').textContent = '✏️ 编辑会员 - ' + m.name;
+  document.getElementById('mfv2-id').value = m.id;
+  document.getElementById('mfv2-name').value = m.name;
+  document.getElementById('mfv2-phone').value = m.phone;
+  document.getElementById('mfv2-idcard').value = '';
+  document.getElementById('mfv2-level').value = m.level;
+  document.getElementById('mfv2-join-date').value = m.joinDate;
+  document.getElementById('mfv2-birthday').value = m.birthday || '';
+  document.getElementById('mfv2-initial-points').value = m.points;
+  document.getElementById('mfv2-note').value = '';
+  modal.classList.remove('hidden');
+}
+
+function submitMemberFormV2() {
+  var name = document.getElementById('mfv2-name').value.trim();
+  var phone = document.getElementById('mfv2-phone').value.trim();
+  var level = document.getElementById('mfv2-level').value;
+  if (!name) { showToast('请输入会员姓名', 'error'); return; }
+  if (!phone) { showToast('请输入手机号', 'error'); return; }
+  if (!/^1[3-9]\d{9}$/.test(phone)) { showToast('手机号格式不正确', 'error'); return; }
+  var joinDate = document.getElementById('mfv2-join-date').value;
+  var birthday = document.getElementById('mfv2-birthday').value;
+  var initialPoints = parseInt(document.getElementById('mfv2-initial-points').value) || 0;
+  var levelOpt = memberLevelOptions.find(function(l){return l.value===level;});
+  var levelText = levelOpt ? levelOpt.label : '普通会员';
+  if (editingMemberIdx >= 0) {
+    var m = memberList[editingMemberIdx];
+    m.name = name; m.phone = phone; m.level = level;
+    m.levelText = levelText; m.joinDate = joinDate;
+    m.birthday = birthday;
+    showToast('✅ 会员信息已更新', 'success');
+  } else {
+    var newId = 'M-' + String(memberList.length + 1).padStart(3, '0');
+    memberList.unshift({
+      id: newId, name: name, phone: phone, level: level,
+      levelText: levelText, points: initialPoints, totalConsume: 0,
+      joinDate: joinDate, birthday: birthday, stayCount: 0,
+      lastStay: '', status: 'active'
+    });
+    showToast('✅ 新会员「' + name + '」已创建', 'success');
+  }
+  document.getElementById('modal-member-form-v2').classList.add('hidden');
+  renderMemberTableV2();
+}
+
+function deleteMember(idx) {
+  var m = memberList[idx];
+  if (!confirm('确定要删除会员「' + m.name + '」吗？删除后所有消费记录将无法恢复。')) return;
+  memberList.splice(idx, 1);
+  showToast('✅ 会员已删除', 'success');
+  renderMemberTableV2();
+}
+
+function openMemberPointsModal(idx) {
+  var m = memberList[idx];
+  var old = document.getElementById('modal-member-points');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-member-points" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:480px;">' +
+    '<div class="modal-header"><div class="modal-title">💰 积分管理 - ' + m.name + '</div><button class="modal-close" onclick="document.getElementById(\'modal-member-points\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="padding:16px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;text-align:center;margin-bottom:16px;">' +
+    '<div style="font-size:12px;color:var(--orange);margin-bottom:4px;">当前可用积分</div>' +
+    '<div style="font-size:36px;font-weight:700;color:var(--orange);">' + m.points + ' <span style="font-size:14px;">分</span></div></div>' +
+    '<div class="form-group"><label class="form-label">积分变动</label>' +
+    '<select class="form-select" id="mp-change-type" onchange="togglePointsAmount()">' +
+    '<option value="add">➕ 增加积分</option><option value="deduct">➖ 扣减积分</option></select></div>' +
+    '<div class="form-group"><label class="form-label">变动数量</label>' +
+    '<input type="number" class="form-input" id="mp-amount" placeholder="请输入积分数量" min="1"></div>' +
+    '<div class="form-group"><label class="form-label">原因</label>' +
+    '<select class="form-select" id="mp-reason">' +
+    '<option value="stay">住宿消费（每消费100元得100积分）</option>' +
+    '<option value="redeem">礼品兑换（扣减）</option>' +
+    '<option value="activity">活动奖励</option>' +
+    '<option value="manual">人工调整</option>' +
+    '<option value="refund">退款扣回</option></select></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<input type="text" class="form-input" id="mp-note" placeholder="可选备注"></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-points\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitMemberPointsChange(' + idx + ')">确认变动</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function togglePointsAmount() {}
+function submitMemberPointsChange(idx) {
+  var m = memberList[idx];
+  var changeType = document.getElementById('mp-change-type').value;
+  var amount = parseInt(document.getElementById('mp-amount').value) || 0;
+  var reason = document.getElementById('mp-reason').value;
+  if (amount <= 0) { showToast('请输入正确的积分数量', 'error'); return; }
+  if (changeType === 'deduct' && m.points < amount) {
+    showToast('积分不足，无法扣减', 'error'); return;
+  }
+  if (changeType === 'add') {
+    m.points += amount;
+    showToast('✅ 已增加 ' + amount + ' 积分，当前余额 ' + m.points + ' 分', 'success');
+  } else {
+    m.points -= amount;
+    showToast('✅ 已扣减 ' + amount + ' 积分，当前余额 ' + m.points + ' 分', 'success');
+  }
+  document.getElementById('modal-member-points').remove();
+  renderMemberTableV2();
+}
+
+function openMemberLevelUpgradeModal(idx) {
+  var m = memberList[idx];
+  var old = document.getElementById('modal-member-level');
+  if (old) old.remove();
+  var currentIdx = memberLevelOptions.findIndex(function(l){return l.value===m.level;});
+  var html = '<div class="modal-overlay" id="modal-member-level" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:500px;">' +
+    '<div class="modal-header"><div class="modal-title">⬆️ 会员等级变更 - ' + m.name + '</div><button class="modal-close" onclick="document.getElementById(\'modal-member-level\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">' +
+    '<div style="font-size:28px;">👤</div><div><div style="font-size:14px;font-weight:700;">' + m.name + '</div><div style="font-size:12px;color:var(--text-muted);">' + m.phone + ' · ' + m.levelText + ' · ' + m.points + ' 积分</div></div></div>' +
+    '<div class="form-group"><label class="form-label">选择新等级</label>';
+  memberLevelOptions.forEach(function(opt, i) {
+    var isCurrent = opt.value === m.level;
+    var isUpgrade = i > currentIdx;
+    html += '<div onclick="' + (isCurrent ? '' : 'upgradeMemberToLevel(' + idx + ',\'' + opt.value + '\')') + '" ' +
+      'style="padding:12px 16px;border:2px solid ' + (isCurrent ? opt.color : 'var(--border)') + ';' +
+      'border-radius:8px;margin-bottom:8px;cursor:' + (isCurrent ? 'default' : 'pointer') + ';display:flex;align-items:center;gap:10px;' +
+      (isCurrent ? 'background:' + opt.bg + ';' : 'background:var(--white);') + '">' +
+      '<div style="width:20px;height:20px;border-radius:50%;border:2px solid ' + opt.color + ';' +
+      'background:' + (isCurrent ? opt.color : 'transparent') + ';flex-shrink:0;"></div>' +
+      '<div style="flex:1;"><div style="font-size:14px;font-weight:600;color:' + opt.color + ';">' + opt.label + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + (isCurrent ? '当前等级' : (isUpgrade ? '⬆️ 可升级' : '⬇️ 降级')) + '</div></div>' +
+      (isCurrent ? '<span style="font-size:11px;font-weight:700;color:var(--green);">当前</span>' : '') + '</div>';
+  });
+  html += '</div><div class="form-group"><label class="form-label">变更说明</label>' +
+    '<textarea class="form-textarea" id="ml-change-reason" placeholder="请输入等级变更原因，如：消费满5000元升级"></textarea></div>' +
+    '</div><div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-level\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmMemberLevelChange(' + idx + ')">确认变更</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function upgradeMemberToLevel(idx, level) {}
+function confirmMemberLevelChange(idx) {
+  var m = memberList[idx];
+  var reason = document.getElementById('ml-change-reason').value.trim();
+  var newLevel = document.querySelector('#modal-member-level input[name="level"]:checked');
+  showToast('✅ 会员「' + m.name + '」等级已变更为' + m.levelText, 'success');
+  document.getElementById('modal-member-level').remove();
+  renderMemberTableV2();
+}
+
+function injectMemberFormModalV2() {
+  var html = '<div class="modal-overlay hidden" id="modal-member-form-v2">' +
+    '<div class="modal" style="width:540px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title" id="mfv2-title">👑 新增会员</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-member-form-v2\').classList.add(\'hidden\')">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<input type="hidden" id="mfv2-id">' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">姓名 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="mfv2-name" placeholder="请输入会员姓名"></div>' +
+    '<div class="form-group"><label class="form-label">手机号 <span class="required">*</span></label>' +
+    '<input type="tel" class="form-input" id="mfv2-phone" placeholder="请输入11位手机号"></div></div>' +
+    '<div class="form-group"><label class="form-label">身份证号</label>' +
+    '<input type="text" class="form-input" id="mfv2-idcard" placeholder="18位身份证号（选填）"></div></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">会员等级</label>' +
+    '<select class="form-select" id="mfv2-level">' +
+    '<option value="normal">普通会员</option>' +
+    '<option value="silver">🥈 银卡会员</option>' +
+    '<option value="gold">🥇 金卡会员</option>' +
+    '<option value="vip">💎 VIP会员</option></select></div>' +
+    '<div class="form-group"><label class="form-label">入会日期</label>' +
+    '<input type="date" class="form-input" id="mfv2-join-date"></div></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">生日</label>' +
+    '<input type="date" class="form-input" id="mfv2-birthday"></div>' +
+    '<div class="form-group"><label class="form-label">初始积分</label>' +
+    '<input type="number" class="form-input" id="mfv2-initial-points" value="100"></div></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">会员标签</label>' +
+    '<input type="text" class="form-input" id="mfv2-tag" placeholder="如：VIP客户/企业客户（选填）"></div></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<textarea class="form-textarea" id="mfv2-note" placeholder="可选备注，如特殊需求等"></textarea></div>' +
+    '</div><div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-form-v2\').classList.add(\'hidden\')">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitMemberFormV2()">确认保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function renderMemberTableV2() {
+  var tbody = document.getElementById('member-table-body-v2');
+  if (!tbody) return;
+  var html = '';
+  memberList.forEach(function(m, i) {
+    var lvOpt = memberLevelOptions.find(function(l){return l.value===m.level;}) || memberLevelOptions[0];
+    var statusBadge = m.status === 'active'
+      ? '<span class="tbadge green">正常</span>'
+      : '<span class="tbadge red">已注销</span>';
+    html += '<tr>' +
+      '<td><span style="font-weight:700;font-size:12px;">' + m.id + '</span></td>' +
+      '<td><div style="font-weight:600;">' + m.name + '</div><div style="font-size:11px;color:var(--text-muted);">' + m.phone + '</div></td>' +
+      '<td><span class="tbadge" style="color:' + lvOpt.color + ';background:' + lvOpt.bg + ';font-weight:600;">' + lvOpt.label + '</span></td>' +
+      '<td><span style="font-weight:700;color:var(--orange);">' + m.points + '</span><br><span style="font-size:11px;color:var(--text-muted);">积分</span></td>' +
+      '<td><span style="font-weight:600;">¥' + m.totalConsume.toLocaleString() + '</span><br><span style="font-size:11px;color:var(--text-muted);">累计消费</span></td>' +
+      '<td><span style="font-size:12px;">' + m.stayCount + '次</span><br><span style="font-size:11px;color:var(--text-muted);">' + (m.lastStay||'--') + '</span></td>' +
+      '<td><span style="font-size:12px;">' + m.joinDate + '</span></td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td><div style="display:flex;flex-direction:column;gap:3px;">' +
+        '<button class="action-btn small" onclick="openEditMemberModal(' + i + ')" style="padding:2px 6px;font-size:10px;">编辑</button>' +
+        '<button class="action-btn small" onclick="openMemberPointsModal(' + i + ')" style="padding:2px 6px;font-size:10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">积分</button>' +
+        '<button class="action-btn small" onclick="openMemberLevelUpgradeModal(' + i + ')" style="padding:2px 6px;font-size:10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">升级</button>' +
+        '<button class="action-btn small red" onclick="deleteMember(' + i + ')" style="padding:2px 6px;font-size:10px;">删除</button></div></td></tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+// ====== 改进2：房务管理派工完整弹窗 ======
+var housekeepingTasks = [
+  {id:'HK-001', room:'301', type:'亲子间', task:'退房清洁', status:'dirty', staff:'郑强', createTime:'10:32', priority:'normal'},
+  {id:'HK-002', room:'302', type:'亲子间', task:'日常清洁', status:'done', staff:'郑强', createTime:'09:15', priority:'normal'},
+  {id:'HK-003', room:'203', type:'标准间', task:'换房清洁', status:'inspect', staff:'孙华', createTime:'08:50', priority:'urgent'},
+  {id:'HK-004', room:'305', type:'大床房', task:'退房清洁', status:'cleaning', staff:'孙华', createTime:'08:20', priority:'normal'},
+  {id:'HK-005', room:'201', type:'大床房', task:'日常清洁', status:'dirty', staff:'吴倩', createTime:'08:00', priority:'low'}
+];
+var hkStaffList = ['郑强','孙华','吴倩'];
+
+function openAssignHousekeepingModal() {
+  var old = document.getElementById('modal-hk-assign');
+  if (old) old.remove();
+  var pendingTasks = housekeepingTasks.filter(function(t){return t.status==='dirty'||t.status==='cleaning';});
+  var taskOptions = pendingTasks.map(function(t){
+    return '<option value="' + t.id + '">' + t.room + ' · ' + t.task + ' (' + t.priority === 'urgent' ? '紧急' : '普通' + ')</option>';
+  }).join('');
+  var staffOptions = hkStaffList.map(function(s){
+    return '<option value="' + s + '">' + s + '</option>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-hk-assign" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:520px;">' +
+    '<div class="modal-header"><div class="modal-title">📋 派发清洁任务</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-hk-assign\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group"><label class="form-label">选择清洁任务 <span class="required">*</span></label>' +
+    '<select class="form-select" id="hk-assign-task">' + taskOptions + '</select></div>' +
+    '<div class="form-group"><label class="form-label">指派给 <span class="required">*</span></label>' +
+    '<select class="form-select" id="hk-assign-staff">' + staffOptions + '</select></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">优先级</label>' +
+    '<select class="form-select" id="hk-assign-priority">' +
+    '<option value="normal">普通</option>' +
+    '<option value="urgent">紧急</option>' +
+    '<option value="low">低</option></select></div>' +
+    '<div class="form-group"><label class="form-label">要求完成时间</label>' +
+    '<input type="time" class="form-input" id="hk-assign-deadline" value="12:00"></div></div>' +
+    '<div class="form-group"><label class="form-label">备注说明</label>' +
+    '<textarea class="form-textarea" id="hk-assign-note" placeholder="如：住客12点退房，请11:30前进房清洁"></textarea></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);">' +
+    '⚠️ 紧急任务将发送短信通知保洁人员，请确认后再提交</div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-hk-assign\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitHousekeepingAssign()">确认派工</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitHousekeepingAssign() {
+  var taskId = document.getElementById('hk-assign-task').value;
+  var staff = document.getElementById('hk-assign-staff').value;
+  var priority = document.getElementById('hk-assign-priority').value;
+  var deadline = document.getElementById('hk-assign-deadline').value;
+  var note = document.getElementById('hk-assign-note').value;
+  if (!taskId || !staff) { showToast('请选择任务和保洁人员', 'error'); return; }
+  var task = housekeepingTasks.find(function(t){return t.id===taskId;});
+  if (task) {
+    task.staff = staff;
+    task.status = 'cleaning';
+    task.priority = priority;
+  }
+  var priorityText = priority === 'urgent' ? '🔴 紧急' : priority === 'low' ? '🔵 低' : '🟡 普通';
+  showToast('✅ 任务已指派给' + staff + '，' + priorityText + '，要求' + deadline + '前完成', 'success');
+  document.getElementById('modal-hk-assign').remove();
+  renderHousekeepingTasks();
+}
+
+function renderHousekeepingTasks() {
+  // Re-render the housekeeping room grid from task data
+  var grid = document.getElementById('hk-room-grid');
+  if (!grid) return;
+  var html = '';
+  housekeepingTasks.forEach(function(t) {
+    var bgColor, statusText, statusClass;
+    if (t.status === 'dirty') { bgColor = 'var(--green-bg)'; statusText = '待清洁'; statusClass = 'var(--green)'; }
+    else if (t.status === 'cleaning') { bgColor = 'var(--blue-bg)'; statusText = '清洁中'; statusClass = 'var(--blue)'; }
+    else if (t.status === 'inspect') { bgColor = 'var(--orange-bg)'; statusText = '待查房'; statusClass = 'var(--orange)'; }
+    else if (t.status === 'done') { bgColor = 'var(--green-bg)'; statusText = '✅合格'; statusClass = 'var(--green)'; }
+    else { bgColor = 'var(--red-bg)'; statusText = '⚠️异常'; statusClass = 'var(--red)'; }
+    html += '<div style="padding:10px;background:' + bgColor + ';border-radius:8px;border:1px solid var(--border);cursor:pointer;" onclick="openHousekeepingTaskDetail(\'' + t.id + '\')">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+      '<span style="font-weight:700;font-size:14px;">' + t.room + '</span>' +
+      '<span style="font-size:11px;font-weight:600;color:' + statusClass + ';">' + statusText + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + t.type + ' · ' + t.task + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">🧹 ' + t.staff + ' · ' + t.createTime + '</div></div>';
+  });
+  grid.innerHTML = html;
+}
+
+function openHousekeepingTaskDetail(taskId) {
+  var task = housekeepingTasks.find(function(t){return t.id===taskId;});
+  if (!task) return;
+  var old = document.getElementById('modal-hk-task-detail');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-hk-task-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:460px;">' +
+    '<div class="modal-header"><div class="modal-title">🔍 任务详情 - ' + task.id + '</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-hk-task-detail\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">房间</div><div style="font-size:16px;font-weight:700;">' + task.room + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">房型</div><div style="font-size:14px;font-weight:600;">' + task.type + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">任务类型</div><div style="font-size:14px;font-weight:600;">' + task.task + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">负责人</div><div style="font-size:14px;font-weight:600;">' + task.staff + '</div></div></div>' +
+    '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:14px;text-align:center;">' +
+    '<div style="font-size:11px;color:var(--blue);margin-bottom:4px;">当前状态</div>' +
+    '<div style="font-size:18px;font-weight:700;color:var(--blue);">' + (task.status==='dirty'?'🟢 待清洁':task.status==='cleaning'?'🔵 清洁中':task.status==='inspect'?'🟡 待查房':task.status==='done'?'✅ 已完成':'⚠️ 异常') + '</div></div>' +
+    '<div style="display:flex;gap:8px;">';
+  if (task.status === 'dirty') {
+    html += '<button class="modal-btn primary" style="flex:1;" onclick="startHousekeepingTask(\'' + task.id + '\')">🔵 开始清洁</button>';
+  } else if (task.status === 'cleaning') {
+    html += '<button class="modal-btn primary" style="flex:1;" onclick="finishHousekeepingTask(\'' + task.id + '\')">✅ 完成清洁</button>';
+  } else if (task.status === 'inspect') {
+    html += '<button class="modal-btn primary" style="flex:1;" onclick="passHousekeepingTask(\'' + task.id + '\')">✅ 查房合格</button>';
+    html += '<button class="modal-btn" style="flex:1;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);" onclick="failHousekeepingTask(\'' + task.id + '\')">⚠️ 发现异常</button>';
+  }
+  html += '</div></div><div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-hk-task-detail\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function startHousekeepingTask(taskId) {
+  var t = housekeepingTasks.find(function(x){return x.id===taskId;});
+  if (t) t.status = 'cleaning';
+  showToast('✅ 任务已开始，保洁人员请尽快处理', 'success');
+  document.getElementById('modal-hk-task-detail').remove();
+  renderHousekeepingTasks();
+}
+function finishHousekeepingTask(taskId) {
+  var t = housekeepingTasks.find(function(x){return x.id===taskId;});
+  if (t) t.status = 'inspect';
+  showToast('✅ 清洁已完成，等待查房确认', 'success');
+  document.getElementById('modal-hk-task-detail').remove();
+  renderHousekeepingTasks();
+}
+function passHousekeepingTask(taskId) {
+  var t = housekeepingTasks.find(function(x){return x.id===taskId;});
+  if (t) t.status = 'done';
+  showToast('✅ 查房合格，任务完成！', 'success');
+  document.getElementById('modal-hk-task-detail').remove();
+  renderHousekeepingTasks();
+}
+function failHousekeepingTask(taskId) {
+  var t = housekeepingTasks.find(function(x){return x.id===taskId;});
+  if (t) t.status = 'issue';
+  showToast('⚠️ 发现异常，已记录并通知主管', 'warning');
+  document.getElementById('modal-hk-task-detail').remove();
+  renderHousekeepingTasks();
+}
+
+// ====== 改进3：操作日志详情弹窗 ======
+var oplogList = [
+  {id:'OL-001', time:'2026-03-26 10:32:08', user:'赵飞', module:'checkin', moduleText:'入住/退房', type:'create', typeText:'办理入住', target:'301 - 张三', detail:'亲子间·手机开锁·押金100元', ip:'192.168.1.105', result:'success'},
+  {id:'OL-002', time:'2026-03-26 10:30:22', user:'系统', module:'key', moduleText:'钥匙管理', type:'auth', typeText:'开通钥匙', target:'301 - 手机钥匙', detail:'为张三开通手机开锁权限', ip:'系统自动', result:'success'},
+  {id:'OL-003', time:'2026-03-26 10:28:05', user:'赵飞', module:'device', moduleText:'设备管理', type:'update', typeText:'修改配置', target:'303设备', detail:'修改设备名称', ip:'192.168.1.105', result:'fail'},
+  {id:'OL-004', time:'2026-03-26 10:15:00', user:'周敏', module:'workorder', moduleText:'服务工单', type:'create', typeText:'创建工单', target:'WO-2026032701', detail:'客户投诉·房间空调噪音', ip:'192.168.1.102', result:'success'},
+  {id:'OL-005', time:'2026-03-26 09:50:00', user:'管理员', module:'config', moduleText:'系统配置', type:'update', typeText:'修改配置', target:'系统参数', detail:'修改入住/退房时间', ip:'192.168.1.100', result:'success'}
+];
+
+function openOplogDetailModal(idx) {
+  var log = oplogList[idx];
+  if (!log) return;
+  var resultColor = log.result === 'success' ? 'var(--green)' : 'var(--red)';
+  var resultBg = log.result === 'success' ? 'var(--green-bg)' : 'var(--red-bg)';
+  var resultIcon = log.result === 'success' ? '✅' : '❌';
+  var moduleColors = {checkin:'var(--blue)', device:'var(--orange)', key:'var(--green)', workorder:'var(--purple)', config:'var(--text-light)'};
+  var moduleColor = moduleColors[log.module] || 'var(--text-light)';
+  var old = document.getElementById('modal-oplog-detail');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-oplog-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:580px;">' +
+    '<div class="modal-header"><div class="modal-title">📋 操作日志详情</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-oplog-detail\').remove()">✕</button></div>' +
+    '<div class="modal-body" style="padding:20px;">' +
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px;background:' + resultBg + ';border:1px solid ' + resultColor + ';border-radius:10px;">' +
+    '<div style="font-size:28px;">' + resultIcon + '</div>' +
+    '<div><div style="font-size:15px;font-weight:700;color:' + resultColor + ';">' + (log.result==='success'?'操作成功':'操作失败') + '</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">日志编号：' + log.id + '</div></div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">操作时间</div><div style="font-size:13px;font-weight:600;">' + log.time + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">操作人</div><div style="font-size:13px;font-weight:600;">' + log.user + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">操作模块</div><div style="font-size:13px;font-weight:600;color:' + moduleColor + ';">' + log.moduleText + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">操作类型</div><div style="font-size:13px;font-weight:600;">' + log.typeText + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">操作对象</div><div style="font-size:13px;font-weight:600;">' + log.target + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">IP地址</div><div style="font-size:13px;font-weight:600;">' + log.ip + '</div></div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">操作详情</div><div style="font-size:13px;font-weight:600;line-height:1.6;">' + log.detail + '</div></div>';
+  if (log.result === 'fail') {
+    html += '<div style="padding:12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:16px;"><div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:4px;">❌ 失败原因</div><div style="font-size:13px;color:var(--text);">设备连接超时，请检查网络后重试（错误码：CONN_TIMEOUT）</div></div>';
+  }
+  html += '<div style="display:flex;gap:8px;">' +
+    '<button class="modal-btn secondary" style="flex:1;" onclick="copyOplogToClipboard(' + idx + ')">📋 复制日志</button>' +
+    '<button class="modal-btn secondary" style="flex:1;" onclick="reportOplogIssue(' + idx + ')">🚨 举报问题</button>' +
+    '<button class="modal-btn" style="flex:1;" onclick="document.getElementById(\'modal-oplog-detail\').remove()">关闭</button></div>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function copyOplogToClipboard(idx) {
+  var log = oplogList[idx];
+  var text = '时间：' + log.time + '\n操作人：' + log.user + '\n模块：' + log.moduleText + '\n类型：' + log.typeText + '\n对象：' + log.target + '\n详情：' + log.detail + '\nIP地址：' + log.ip + '\n结果：' + (log.result==='success'?'成功':'失败');
+  navigator.clipboard.writeText(text).then(function(){
+    showToast('✅ 日志已复制到剪贴板', 'success');
+  });
+}
+
+function reportOplogIssue(idx) {
+  var log = oplogList[idx];
+  showToast('🚨 问题已提交给系统管理员，我们会尽快处理', 'info');
+}
+
+// ====== 改进4：设备批量固件升级完整弹窗 ======
+var deviceUpgradeList = [
+  {room:'301', uuid:'A84F1AF2', model:'领握LH-807', version:'v2.3.0', status:'selected'},
+  {room:'302', uuid:'B95F2BG3', model:'领握LH-807', version:'v2.3.0', status:'selected'},
+  {room:'303', uuid:'C06F3CH4', model:'领握LH-807', version:'v2.2.8', status:'offline'},
+  {room:'304', uuid:'D17G4DI5', model:'领握LH-807', version:'v2.3.1', status:'latest'},
+  {room:'305', uuid:'E28H5EJ6', model:'领握LH-807', version:'v2.3.0', status:'selected'},
+  {room:'306', uuid:'F39I6FK7', model:'领握LH-807', version:'v2.3.0', status:'selected'},
+  {room:'201', uuid:'G40J7GL8', model:'领握LH-807', version:'v2.3.0', status:'selected'},
+  {room:'202', uuid:'H51K8HM9', model:'领握LH-807', version:'v2.3.0', status:'selected'}
+];
+
+function openBatchFirmwareUpgradeModal() {
+  var old = document.getElementById('modal-firmware-upgrade');
+  if (old) old.remove();
+  var selectableDevices = deviceUpgradeList.filter(function(d){return d.status==='selected';});
+  var html = '<div class="modal-overlay" id="modal-firmware-upgrade" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="width:100%;max-width:620px;max-height:88vh;overflow-y:auto;background:white;border-radius:14px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div><div style="font-size:17px;font-weight:700;">📦 批量固件升级</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">勾选设备 → 确认版本 → 一键升级（预计5-10分钟）</div></div>' +
+    '<button onclick="document.getElementById(\'modal-firmware-upgrade\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    // 固件信息
+    '<div style="padding:14px 24px;background:var(--purple-bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;">' +
+    '<div style="flex:1;"><div style="font-size:12px;color:var(--purple);font-weight:600;margin-bottom:4px;">📦 目标固件版本</div>' +
+    '<div style="font-size:20px;font-weight:700;color:var(--purple);">v2.3.1 <span style="font-size:12px;font-weight:400;color:var(--text-muted);">（当前最新）</span></div></div>' +
+    '<div style="flex:1;"><div style="font-size:12px;color:var(--purple);font-weight:600;margin-bottom:4px;">📱 待升级设备</div>' +
+    '<div style="font-size:20px;font-weight:700;color:var(--purple);">' + selectableDevices.length + ' <span style="font-size:12px;font-weight:400;color:var(--text-muted);">台</span></div></div>' +
+    '<div style="flex:1;"><div style="font-size:12px;color:var(--purple);font-weight:600;margin-bottom:4px;">⏱️ 预计耗时</div>' +
+    '<div style="font-size:20px;font-weight:700;color:var(--purple);">约5-10 <span style="font-size:12px;font-weight:400;color:var(--text-muted);">分钟</span></div></div></div>' +
+    // 设备列表
+    '<div style="padding:14px 24px;max-height:280px;overflow-y:auto;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
+    '<div style="font-size:13px;font-weight:600;">选择设备（' + selectableDevices.length + '台）</div>' +
+    '<div style="display:flex;gap:8px;font-size:11px;">' +
+    '<span style="color:var(--green);cursor:pointer;" onclick="selectAllUpgradeDevices()">✓ 全选可升级</span>' +
+    '<span style="color:var(--blue);cursor:pointer;" onclick="deselectAllUpgradeDevices()">✕ 取消全选</span></div></div>';
+  deviceUpgradeList.forEach(function(d, i) {
+    var canUpgrade = d.status === 'selected';
+    var isLatest = d.status === 'latest';
+    var isOffline = d.status === 'offline';
+    var rowBg = isLatest ? 'var(--green-bg)' : isOffline ? 'var(--red-bg)' : 'var(--bg)';
+    var statusBadge = isLatest ? '<span style="font-size:10px;padding:2px 6px;background:var(--green);color:white;border-radius:4px;">已是最新</span>'
+      : isOffline ? '<span style="font-size:10px;padding:2px 6px;background:var(--red);color:white;border-radius:4px;">离线</span>'
+      : '<span style="font-size:10px;padding:2px 6px;background:var(--orange);color:white;border-radius:4px;">待升级 ' + d.version + '→v2.3.1</span>';
+    var checkAttr = canUpgrade ? 'checked' : 'disabled';
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:' + rowBg + ';border-radius:8px;margin-bottom:6px;">' +
+      '<input type="checkbox" ' + checkAttr + ' data-upgrade-idx="' + i + '" onchange="updateUpgradeSelection()" style="width:16px;height:16px;accent-color:var(--purple);flex-shrink:0;">' +
+      '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">' + d.room + ' <span style="font-size:11px;color:var(--text-muted);">· ' + d.model + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">UUID: ' + d.uuid + '</div></div>' +
+      '<div style="font-size:12px;">' + statusBadge + '</div></div>';
+  });
+  html += '</div>' +
+    // 进度条（升级时显示）
+    '<div id="fw-upgrade-progress" style="display:none;padding:14px 24px;border-top:1px solid var(--border);">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--purple);">🔄 正在升级…</div>' +
+    '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px;">' +
+    '<div id="fw-progress-bar" style="height:100%;background:linear-gradient(90deg,var(--purple),var(--blue));border-radius:4px;transition:width 0.5s;width:0%;"></div></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);">' +
+    '<span id="fw-upgrade-status">正在升级 301...</span><span id="fw-upgrade-percent">0%</span></div></div>' +
+    // 警告
+    '<div style="padding:12px 24px;border-top:1px solid var(--border);">' +
+    '<div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);">' +
+    '⚠️ 升级过程中设备将短暂离线（约10-30秒），请勿断电。已离线的设备将在恢复在线后自动升级。</div></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-firmware-upgrade\').remove()">取消</button>' +
+    '<button class="modal-btn primary" id="fw-start-btn" onclick="startBatchFirmwareUpgrade()" style="background:var(--purple);border-color:var(--purple);">🚀 开始升级（' + selectableDevices.length + '台）</button></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function selectAllUpgradeDevices() {
+  document.querySelectorAll('[data-upgrade-idx]').forEach(function(cb){
+    if (!cb.disabled) cb.checked = true;
+  });
+  updateUpgradeSelection();
+}
+function deselectAllUpgradeDevices() {
+  document.querySelectorAll('[data-upgrade-idx]').forEach(function(cb){ cb.checked = false; });
+  updateUpgradeSelection();
+}
+function updateUpgradeSelection() {
+  var checked = document.querySelectorAll('[data-upgrade-idx]:checked').length;
+  var btn = document.getElementById('fw-start-btn');
+  if (btn) btn.textContent = '🚀 开始升级（' + checked + '台）';
+}
+
+function startBatchFirmwareUpgrade() {
+  var checked = document.querySelectorAll('[data-upgrade-idx]:checked');
+  if (checked.length === 0) { showToast('请至少选择1台设备', 'error'); return; }
+  document.getElementById('fw-upgrade-progress').style.display = 'block';
+  var btn = document.getElementById('fw-start-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '升级中…'; }
+  var total = checked.length;
+  var current = 0;
+  var interval = setInterval(function() {
+    if (current >= total) {
+      clearInterval(interval);
+      showToast('✅ 固件升级完成！' + total + '台设备全部升级到v2.3.1', 'success');
+      document.getElementById('modal-firmware-upgrade').remove();
+      return;
+    }
+    var cb = checked[current];
+    var idx = parseInt(cb.getAttribute('data-upgrade-idx'));
+    var d = deviceUpgradeList[idx];
+    var pct = Math.round((current / total) * 100);
+    document.getElementById('fw-progress-bar').style.width = pct + '%';
+    document.getElementById('fw-upgrade-status').textContent = '正在升级 ' + d.room + '...';
+    document.getElementById('fw-upgrade-percent').textContent = pct + '%';
+    current++;
+  }, 800);
+}
+
+// ====== 改进5：退房结算完整弹窗 ======
+var checkoutData = {
+  room: '301', roomType: '亲子间', guest: '张三', phone: '138****8888',
+  checkinTime: '2026-03-26 14:00', checkoutTime: '2026-03-27 12:00',
+  nights: 1, roomRate: 298, extras: [{name:'加床费', amount:50},{name:'早餐×2', amount:40}],
+  deposit: 100, totalRoom: 298, totalExtras: 90, total: 388, paid: 398, discount: 0
+};
+
+function openCheckoutSettlementModal() {
+  var old = document.getElementById('modal-checkout-settlement');
+  if (old) old.remove();
+  var extrasHtml = checkoutData.extras.map(function(e){
+    return '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px dashed var(--border);">' +
+      '<span style="color:var(--text-light);">' + e.name + '</span><span style="font-weight:600;">¥' + e.amount + '</span></div>';
+  }).join('');
+  var change = checkoutData.paid - checkoutData.total;
+  var changeColor = change >= 0 ? 'var(--green)' : 'var(--red)';
+  var html = '<div class="modal-overlay" id="modal-checkout-settlement" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="width:100%;max-width:560px;background:white;border-radius:14px;overflow:hidden;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div><div style="font-size:17px;font-weight:700;">🚪 退房结算单</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">房间 <strong>' + checkoutData.room + '</strong> · ' + checkoutData.roomType + ' · ' + checkoutData.guest + '</div></div>' +
+    '<button onclick="document.getElementById(\'modal-checkout-settlement\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    // 入住信息
+    '<div style="padding:14px 24px;background:var(--blue-bg);border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center;">' +
+    '<div><div style="font-size:10px;color:var(--blue);">入住时间</div><div style="font-size:13px;font-weight:600;color:var(--blue);">' + checkoutData.checkinTime + '</div></div>' +
+    '<div><div style="font-size:10px;color:var(--blue);">退房时间</div><div style="font-size:13px;font-weight:600;color:var(--blue);">' + checkoutData.checkoutTime + '</div></div>' +
+    '<div><div style="font-size:10px;color:var(--blue);">入住天数</div><div style="font-size:13px;font-weight:600;color:var(--blue);">' + checkoutData.nights + '晚</div></div></div>' +
+    // 费用明细
+    '<div style="padding:16px 24px;">' +
+    '<div style="font-size:14px;font-weight:700;margin-bottom:10px;">💰 费用明细</div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">' +
+    '<div style="padding:12px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px;">' +
+    '<span>房费（' + checkoutData.nights + '晚 × ¥' + checkoutData.roomRate + '）</span><span style="font-weight:700;">¥' + checkoutData.totalRoom + '</span></div>' +
+    '<div style="padding:12px;border-bottom:1px solid var(--border);">' + extrasHtml + '</div>' +
+    '<div id="cs-discount-row" style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px;">' +
+    '<span style="color:var(--green);">折扣优惠</span><span style="font-weight:700;color:var(--green);">-¥' + checkoutData.discount + '</span></div>' +
+    '<div style="padding:14px;display:flex;justify-content:space-between;font-size:16px;font-weight:700;">' +
+    '<span>合计应付</span><span style="font-size:22px;color:var(--blue);">¥<span id="cs-total-amount">' + checkoutData.total + '</span></span></div></div>' +
+    // 支付信息
+    '<div style="margin-top:14px;padding:14px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;">' +
+    '<div style="display:flex;justify-content:space-between;margin-bottom:8px;">' +
+    '<span style="font-size:13px;color:var(--green);font-weight:600;">已收款</span>' +
+    '<span style="font-size:15px;font-weight:700;color:var(--green);">¥' + checkoutData.paid + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;">' +
+    '<span style="font-size:13px;color:' + changeColor + ';font-weight:600;">找零/补收</span>' +
+    '<span style="font-size:15px;font-weight:700;color:' + changeColor + ';">¥' + Math.abs(change).toFixed(2) + '</span></div></div>' +
+    // 操作按钮
+    '<div style="padding:14px 24px;display:flex;gap:8px;border-top:1px solid var(--border);">' +
+    '<button class="modal-btn secondary" style="flex:1;" onclick="openCheckoutDiscountModal()">🎁 打折/优惠</button>' +
+    '<button class="modal-btn secondary" style="flex:1;" onclick="openCheckoutKeyReturnModal()">🔑 钥匙回收</button>' +
+    '<button class="modal-btn primary" style="flex:2;" onclick="confirmCheckout()">✅ 确认退房</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openCheckoutDiscountModal() {
+  var old = document.getElementById('modal-checkout-discount');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-checkout-discount" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">' +
+    '<div class="modal" style="width:420px;">' +
+    '<div class="modal-header"><div class="modal-title">🎁 打折/优惠</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-checkout-discount\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group"><label class="form-label">优惠方式</label>' +
+    '<select class="form-select" id="cs-discount-type" onchange="toggleDiscountInput()">' +
+    '<option value="none">无优惠</option>' +
+    '<option value="percent">折扣（X折）</option>' +
+    '<option value="amount">直接减免（¥）</option>' +
+    '<option value="voucher">代金券</option>' +
+    '<option value="member">会员折扣</option></select></div>' +
+    '<div class="form-group" id="cs-discount-input-group" style="display:none;">' +
+    '<label class="form-label" id="cs-discount-label">优惠值</label>' +
+    '<input type="number" class="form-input" id="cs-discount-value" placeholder="请输入"></div>' +
+    '<div class="form-group"><label class="form-label">优惠原因</label>' +
+    '<select class="form-select" id="cs-discount-reason">' +
+    '<option value="">请选择原因</option>' +
+    '<option value="vip">VIP客户优惠</option>' +
+    '<option value="long">长住优惠</option>' +
+    '<option value="complaint">投诉补偿</option>' +
+    '<option value="corporate">企业协议价</option>' +
+    '<option value="other">其他原因</option></select></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<input type="text" class="form-input" id="cs-discount-note" placeholder="可选备注"></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-checkout-discount\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="applyCheckoutDiscount()">应用优惠</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function toggleDiscountInput() {
+  var type = document.getElementById('cs-discount-type').value;
+  var group = document.getElementById('cs-discount-input-group');
+  var label = document.getElementById('cs-discount-label');
+  if (type === 'none') { group.style.display = 'none'; return; }
+  group.style.display = 'block';
+  if (type === 'percent') { label.textContent = '折扣（如：8.8折输入88）'; document.getElementById('cs-discount-value').placeholder = '如：88'; }
+  else if (type === 'amount') { label.textContent = '减免金额（¥）'; document.getElementById('cs-discount-value').placeholder = '如：50'; }
+  else if (type === 'voucher') { label.textContent = '代金券金额（¥）'; document.getElementById('cs-discount-value').placeholder = '如：100'; }
+  else if (type === 'member') { label.textContent = '会员折扣（X折）'; document.getElementById('cs-discount-value').placeholder = '如：95'; }
+}
+
+function applyCheckoutDiscount() {
+  var type = document.getElementById('cs-discount-type').value;
+  var value = parseFloat(document.getElementById('cs-discount-value').value) || 0;
+  if (type !== 'none' && value <= 0) { showToast('请输入正确的优惠值', 'error'); return; }
+  var discount = 0;
+  if (type === 'amount' || type === 'voucher') discount = value;
+  else if (type === 'percent') discount = checkoutData.totalRoom * (1 - value/100);
+  else if (type === 'member') discount = checkoutData.totalRoom * (1 - value/100);
+  checkoutData.discount = Math.round(discount);
+  checkoutData.total = checkoutData.totalRoom + checkoutData.totalExtras - checkoutData.discount;
+  document.getElementById('modal-checkout-discount').remove();
+  openCheckoutSettlementModal();
+  showToast('✅ 优惠已应用：-¥' + checkoutData.discount, 'success');
+}
+
+function openCheckoutKeyReturnModal() {
+  var old = document.getElementById('modal-checkout-key-return');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-checkout-key-return" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">' +
+    '<div class="modal" style="width:440px;">' +
+    '<div class="modal-header"><div class="modal-title">🔑 钥匙回收确认</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-checkout-key-return\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:14px;">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:8px;">房间 301 当前有效钥匙</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<div style="padding:6px 12px;background:white;border:1px solid var(--border);border-radius:6px;font-size:12px;">📱 手机钥匙 · 张三 · <span style="color:var(--green);">未回收</span></div>' +
+    '<div style="padding:6px 12px;background:white;border:1px solid var(--border);border-radius:6px;font-size:12px;">💳 门卡(2张) · 张三 · <span style="color:var(--green);">未回收</span></div></div></div>' +
+    '<div class="form-group"><label class="form-label">钥匙回收情况</label>' +
+    '<div style="display:flex;flex-direction:column;gap:8px;">' +
+    '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:6px;cursor:pointer;font-size:13px;">' +
+    '<input type="checkbox" checked style="accent-color:var(--green);">📱 手机钥匙（已禁用开锁权限）</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:6px;cursor:pointer;font-size:13px;">' +
+    '<input type="checkbox" checked style="accent-color:var(--green);">💳 门卡1（卡号：8888-xxxx）</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:6px;cursor:pointer;font-size:13px;">' +
+    '<input type="checkbox" checked style="accent-color:var(--green);">💳 门卡2（卡号：8889-xxxx）</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:6px;cursor:pointer;font-size:13px;">' +
+    '<input type="checkbox" style="accent-color:var(--blue);">🔢 密码（已清除）</label></div></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<input type="text" class="form-input" id="cs-key-note" placeholder="如：门卡遗失，请挂失"></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-checkout-key-return\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmKeyReturn()">✅ 确认回收</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function confirmKeyReturn() {
+  showToast('✅ 钥匙已回收，权限已清除', 'success');
+  document.getElementById('modal-checkout-key-return').remove();
+}
+
+function confirmCheckout() {
+  var old = document.getElementById('modal-checkout-success');
+  if (old) old.remove();
+  var change = checkoutData.paid - checkoutData.total;
+  var html = '<div class="modal-overlay" id="modal-checkout-success" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999;">' +
+    '<div style="width:100%;max-width:420px;background:white;border-radius:16px;text-align:center;padding:40px 32px;">' +
+    '<div style="font-size:64px;margin-bottom:16px;">🎉</div>' +
+    '<div style="font-size:22px;font-weight:700;color:var(--green);margin-bottom:8px;">退房成功！</div>' +
+    '<div style="font-size:14px;color:var(--text-muted);margin-bottom:24px;">房间 ' + checkoutData.room + ' 已成功退房</div>' +
+    '<div style="padding:16px;background:var(--green-bg);border-radius:12px;margin-bottom:24px;">' +
+    '<div style="font-size:13px;color:var(--green);margin-bottom:4px;">找零金额</div>' +
+    '<div style="font-size:32px;font-weight:700;color:var(--green);">¥' + Math.abs(change).toFixed(2) + '</div></div>' +
+    '<div style="font-size:13px;color:var(--text-muted);margin-bottom:24px;">押金 ¥' + checkoutData.deposit + ' 已退回，请确认收款</div>' +
+    '<button onclick="document.getElementById(\'modal-checkout-success\').remove();document.getElementById(\'modal-checkout-settlement\').remove();" ' +
+    'style="width:100%;padding:14px;background:var(--green);color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">完成退房</button></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// 初始化改进5个功能的表格渲染
+document.addEventListener('DOMContentLoaded', function() {
+  // 初始化会员表格
+  setTimeout(function() {
+    var existingBtn = document.querySelector('[onclick*="openAddMemberModal"]');
+    if (!existingBtn) {
+      var memberPageAddBtn = document.querySelector('#page-member .action-btn[onclick*="member"]');
+      if (memberPageAddBtn) {
+        memberPageAddBtn.setAttribute('onclick', 'openAddMemberModal()');
+      }
+    }
+    // 注入会员表单
+    if (!document.getElementById('modal-member-form-v2')) {
+      injectMemberFormModalV2();
+    }
+    renderMemberTableV2();
+  }, 600);
+});
+
 </script>
 </body>
 </html>
