@@ -17223,7 +17223,9 @@ function openRoomQuickPanel(room, type, status, lock, power, keys) {
 // 【改进2】房间快速操作-倒计时二次确认防误操作
 var _confirmCountdown = 5;
 var _confirmTimer = null;
+var _confirmAutoCloseTimer = null;
 function openCountdownConfirm(type, room) {
+  if (_confirmAutoCloseTimer) { clearTimeout(_confirmAutoCloseTimer); _confirmAutoCloseTimer = null; }
   var titles = { unlock: '🔓 确认远程开锁', clearkey: '🗑️ 确认清除门卡', restart: '🔁 确认重启设备' };
   var msgs = {
     unlock: '即将向 ' + room + ' 下发远程开锁指令，请确认是否为当前在住客人或工作人员操作。',
@@ -17236,7 +17238,8 @@ function openCountdownConfirm(type, room) {
   if (!box) {
     box = document.createElement('div');
     box.id = 'countdown-confirm-box';
-    box.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+    box.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+    box.onclick = function(e) { if (e.target === box) cancelCountdownConfirm(); };
     document.body.appendChild(box);
   }
   box.style.display = 'flex';
@@ -17265,17 +17268,26 @@ function openCountdownConfirm(type, room) {
       _confirmTimer = null;
       if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.style.opacity = '1'; confirmBtn.style.cursor = 'pointer'; }
       if (countdownEl) countdownEl.textContent = '✓';
+      // 【修复】倒计时结束后30秒无操作自动关闭
+      if (_confirmAutoCloseTimer) clearTimeout(_confirmAutoCloseTimer);
+      _confirmAutoCloseTimer = setTimeout(function() {
+        cancelCountdownConfirm();
+        showToast('操作已自动取消，请重新发起', 'info');
+      }, 30000);
     }
   }, 1000);
 }
 function cancelCountdownConfirm() {
   if (_confirmTimer) { clearInterval(_confirmTimer); _confirmTimer = null; }
+  if (_confirmAutoCloseTimer) { clearTimeout(_confirmAutoCloseTimer); _confirmAutoCloseTimer = null; }
   var box = document.getElementById('countdown-confirm-box');
   if (box) box.style.display = 'none';
   window._confirmAction = null;
 }
 function executeCountdownConfirm() {
   if (_confirmCountdown > 0) return;
+  if (_confirmTimer) { clearInterval(_confirmTimer); _confirmTimer = null; }
+  if (_confirmAutoCloseTimer) { clearTimeout(_confirmAutoCloseTimer); _confirmAutoCloseTimer = null; }
   var action = window._confirmAction;
   var room = window._confirmRoom;
   cancelCountdownConfirm();
