@@ -533,7 +533,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     <div class="menu-group-title" onclick="toggleGroup(this)">🛡️ 系统管理 <span class="group-arrow">▼</span></div>
     <div class="menu-group">
       <div class="menu-item" onclick="showPage('staff')"><span class="icon">👨‍💼</span><span>员工管理</span></div>
-      <div class="menu-item" onclick="openStaffSchedulePage()"><span class="icon">📅</span><span>员工排班</span></div>
       <div class="menu-item" onclick="showPage('member')"><span class="icon">👑</span><span>会员管理</span></div>
       <div class="menu-item" onclick="showPage('roles')"><span class="icon">🛡️</span><span>角色权限</span></div>
       <div class="menu-item" onclick="showPage('config')"><span class="icon">⚙️</span><span>管理配置</span></div>
@@ -3013,24 +3012,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <table class="table">
             <thead><tr><th>楼栋名称</th><th>编号</th><th>楼层数</th><th>房间数</th><th>状态</th><th>操作</th></tr></thead>
             <tbody id="bldm-table-body">
-              <tr data-bld-idx="0" style="cursor:pointer;" onclick="openBuildingDetailModal(0)" title="点击查看楼栋详情">
-                <td><span style="font-weight:600;">🏢 主楼</span> <span style="font-size:10px;color:var(--blue);">🔍详情</span></td>
+              <tr data-bld-idx="0">
+                <td><span style="font-weight:600;">🏢 主楼</span></td>
                 <td><span class="tbadge blue">MAIN</span></td>
                 <td>3层</td>
                 <td>16间</td>
                 <td><span class="tbadge green">启用</span></td>
-                <td onclick="event.stopPropagation()">
+                <td>
                   <button class="action-btn small" onclick="openEditBuildingModalV2(0)">编辑</button>
                   <button class="action-btn small red" onclick="deleteBuildingV2(0)">删除</button>
                 </td>
               </tr>
-              <tr data-bld-idx="1" style="cursor:pointer;" onclick="openBuildingDetailModal(1)" title="点击查看楼栋详情">
-                <td><span style="font-weight:600;">🏢 东配楼</span> <span style="font-size:10px;color:var(--blue);">🔍详情</span></td>
+              <tr data-bld-idx="1">
+                <td><span style="font-weight:600;">🏢 东配楼</span></td>
                 <td><span class="tbadge blue">EAST</span></td>
                 <td>2层</td>
                 <td>8间</td>
                 <td><span class="tbadge green">启用</span></td>
-                <td onclick="event.stopPropagation()">
+                <td>
                   <button class="action-btn small" onclick="openEditBuildingModalV2(1)">编辑</button>
                   <button class="action-btn small red" onclick="deleteBuildingV2(1)">删除</button>
                 </td>
@@ -3041,729 +3040,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
     </div>
 
-    <!-- 【改进v3-1】楼栋详情完整弹窗（楼栋信息+楼层列表+设备统计+操作按钮） -->
-    <div class="modal-overlay hidden" id="modal-building-detail">
-      <div class="modal" style="width:600px;">
-        <div class="modal-header">
-          <div class="modal-title" id="bld-detail-title">🏢 主楼</div>
-          <button class="modal-close" onclick="closeModal('building-detail')">✕</button>
-        </div>
-        <div class="modal-body" style="padding:0;">
-          <!-- 楼栋统计 -->
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border);">
-            <div style="padding:14px;text-align:center;border-right:1px solid var(--border);">
-              <div style="font-size:22px;font-weight:700;color:var(--blue);" id="bldd-floor-count">3</div>
-              <div style="font-size:11px;color:var(--text-muted);">楼层数</div>
-            </div>
-            <div style="padding:14px;text-align:center;border-right:1px solid var(--border);">
-              <div style="font-size:22px;font-weight:700;color:var(--green);" id="bldd-room-count">16</div>
-              <div style="font-size:11px;color:var(--text-muted);">房间数</div>
-            </div>
-            <div style="padding:14px;text-align:center;border-right:1px solid var(--border);">
-              <div style="font-size:22px;font-weight:700;color:var(--orange);" id="bldd-device-online">11</div>
-              <div style="font-size:11px;color:var(--text-muted);">在线设备</div>
-            </div>
-            <div style="padding:14px;text-align:center;">
-              <div style="font-size:22px;font-weight:700;color:var(--red);" id="bldd-device-offline">2</div>
-              <div style="font-size:11px;color:var(--text-muted);">离线设备</div>
-            </div>
-          </div>
-          <!-- Tab切换 -->
-          <div class="tabs" style="margin-bottom:0;padding:0 16px;">
-            <div class="tab active" id="bldd-tab-info" onclick="switchBldDetailTab('info',this)" style="font-size:12px;padding:8px 12px;">基本信息</div>
-            <div class="tab" id="bldd-tab-floors" onclick="switchBldDetailTab('floors',this)" style="font-size:12px;padding:8px 12px;">楼层列表</div>
-            <div class="tab" id="bldd-tab-devices" onclick="switchBldDetailTab('devices',this)" style="font-size:12px;padding:8px 12px;">设备状态</div>
-          </div>
-          <div id="bldd-content-info" style="padding:16px;">
-            <div class="info-grid" style="gap:16px;">
-              <div class="info-item"><div class="label">楼栋名称</div><div class="value" id="bldd-name">主楼</div></div>
-              <div class="info-item"><div class="label">楼栋编号</div><div class="value" id="bldd-code">MAIN</div></div>
-              <div class="info-item"><div class="label">楼层数量</div><div class="value" id="bldd-floors-val">3层</div></div>
-              <div class="info-item"><div class="label">状态</div><div class="value" id="bldd-status"><span class="tbadge green">启用</span></div></div>
-              <div class="info-item"><div class="label">创建时间</div><div class="value" id="bldd-create-time">2025-01-15</div></div>
-              <div class="info-item"><div class="label">备注</div><div class="value" id="bldd-remark" style="color:var(--text-muted);">-</div></div>
-            </div>
-            <div style="display:flex;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-              <button class="action-btn" onclick="editBuildingFromDetail()" style="background:var(--blue);color:white;border:none;">✏️ 编辑楼栋</button>
-              <button class="action-btn" onclick="showToast('楼层分布图功能开发中','info')" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">📐 楼层分布图</button>
-            </div>
-          </div>
-          <div id="bldd-content-floors" style="display:none;padding:16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-              <div style="font-size:13px;font-weight:600;">楼层列表</div>
-              <button class="action-btn small" onclick="openModal('add-floor')" style="padding:3px 10px;font-size:11px;">+ 新增楼层</button>
-            </div>
-            <div id="bldd-floor-list" style="display:flex;flex-direction:column;gap:8px;">
-              <!-- JS动态渲染 -->
-            </div>
-          </div>
-          <div id="bldd-content-devices" style="display:none;padding:16px;">
-            <div style="display:flex;gap:16px;margin-bottom:12px;">
-              <div style="flex:1;padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;">
-                <div style="font-size:18px;font-weight:700;color:var(--green);" id="bldd-dev-online">11</div>
-                <div style="font-size:11px;color:var(--text-muted);">🟢 正常在线</div>
-              </div>
-              <div style="flex:1;padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;">
-                <div style="font-size:18px;font-weight:700;color:var(--orange);" id="bldd-dev-low">2</div>
-                <div style="font-size:11px;color:var(--text-muted);">🟡 低电量</div>
-              </div>
-              <div style="flex:1;padding:10px;background:var(--red-bg);border-radius:8px;text-align:center;">
-                <div style="font-size:18px;font-weight:700;color:var(--red);" id="bldd-dev-off">2</div>
-                <div style="font-size:11px;color:var(--text-muted);">🔴 离线</div>
-              </div>
-            </div>
-            <div id="bldd-device-list" style="max-height:200px;overflow-y:auto;">
-              <!-- JS动态渲染 -->
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="modal-btn secondary" onclick="closeModal('building-detail')">关闭</button>
-        </div>
-      </div>
-    </div>
-    <script>
-    var currentBldDetailIdx = null;
-    var buildingDetailData = [
-      {name:'主楼', code:'MAIN', floors:3, rooms:16, online:11, offline:2, low:3, status:'enabled', createTime:'2025-01-15', remark:'主楼共有3层16间房'},
-      {name:'东配楼', code:'EAST', floors:2, rooms:8, online:3, offline:0, low:1, status:'enabled', createTime:'2025-06-20', remark:'东配楼主要接待VIP客户'}
-    ];
-    function openBuildingDetailModal(idx) {
-      currentBldDetailIdx = idx;
-      var b = buildingDetailData[idx];
-      document.getElementById('bld-detail-title').textContent = '🏢 ' + b.name;
-      document.getElementById('bldd-floor-count').textContent = b.floors;
-      document.getElementById('bldd-room-count').textContent = b.rooms;
-      document.getElementById('bldd-device-online').textContent = b.online;
-      document.getElementById('bldd-device-offline').textContent = b.offline;
-      document.getElementById('bldd-name').textContent = b.name;
-      document.getElementById('bldd-code').textContent = b.code;
-      document.getElementById('bldd-floors-val').textContent = b.floors + '层';
-      document.getElementById('bldd-status').innerHTML = b.status === 'enabled' ? '<span class="tbadge green">启用</span>' : '<span class="tbadge red">禁用</span>';
-      document.getElementById('bldd-create-time').textContent = b.createTime;
-      document.getElementById('bldd-remark').textContent = b.remark || '-';
-      document.getElementById('bldd-dev-online').textContent = b.online;
-      document.getElementById('bldd-dev-low').textContent = b.low;
-      document.getElementById('bldd-dev-off').textContent = b.offline;
-      // 楼层列表
-      var floorList = document.getElementById('bldd-floor-list');
-      var floorsHtml = '';
-      for (var i = 1; i <= b.floors; i++) {
-        var roomCount = i === 3 ? 6 : i === 2 ? 5 : 5;
-        floorsHtml += '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">' +
-          '<div style="width:36px;height:36px;background:var(--blue-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">' + i + '层</div>' +
-          '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">' + i + '层</div><div style="font-size:11px;color:var(--text-muted);">' + roomCount + '间房间</div></div>' +
-          '<div style="display:flex;gap:6px;"><span style="font-size:11px;color:var(--green);background:var(--green-bg);padding:2px 8px;border-radius:4px;">🟢 ' + (roomCount-1) + '</span><span style="font-size:11px;color:var(--red);background:var(--red-bg);padding:2px 8px;border-radius:4px;">🔴 0</span></div>' +
-          '</div>';
-      }
-      floorList.innerHTML = floorsHtml;
-      // 设备列表
-      var devList = document.getElementById('bldd-device-list');
-      var devs = [{room:'301',status:'online'},{room:'302',status:'online'},{room:'303',status:'offline'},{room:'304',status:'low'}];
-      var devsHtml = '';
-      devs.forEach(function(d) {
-        var bg = d.status === 'online' ? 'var(--green-bg)' : d.status === 'low' ? 'var(--orange-bg)' : 'var(--red-bg)';
-        var color = d.status === 'online' ? 'var(--green)' : d.status === 'low' ? 'var(--orange)' : 'var(--red)';
-        var label = d.status === 'online' ? '🟢 在线' : d.status === 'low' ? '🟡 ' + (d.battery || 28) + '%' : '🔴 离线';
-        devsHtml += '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);background:' + bg + ';border-radius:6px;margin-bottom:6px;">' +
-          '<div style="font-size:12px;font-weight:600;flex:0 0 40px;">' + d.room + '</div>' +
-          '<div style="flex:1;font-size:11px;color:var(--text-muted);">领握LH-807</div>' +
-          '<div style="font-size:11px;font-weight:600;color:' + color + ';">' + label + '</div>' +
-          '</div>';
-      });
-      devList.innerHTML = devsHtml;
-      switchBldDetailTab('info', document.getElementById('bldd-tab-info'));
-      openModal('building-detail');
-    }
-    function switchBldDetailTab(tab, el) {
-      document.getElementById('bldd-content-info').style.display = tab === 'info' ? 'block' : 'none';
-      document.getElementById('bldd-content-floors').style.display = tab === 'floors' ? 'block' : 'none';
-      document.getElementById('bldd-content-devices').style.display = tab === 'devices' ? 'block' : 'none';
-      document.querySelectorAll('#modal-building-detail .tab').forEach(function(t){ t.classList.remove('active'); });
-      if (el) el.classList.add('active');
-    }
-    function editBuildingFromDetail() {
-      closeModal('building-detail');
-      openEditBuildingModal(currentBldDetailIdx);
-    }
-    </script>
-
-    <!-- 【改进v3-2】会员余额充值完整弹窗（充值+积分+历史记录+支付方式） -->
-    <div class="modal-overlay hidden" id="modal-member-recharge-v3">
-      <div class="modal" style="width:520px;">
-        <div class="modal-header">
-          <div class="modal-title">💳 会员充值 - <span id="mrc-member-name" style="color:var(--blue);"></span></div>
-          <button class="modal-close" onclick="closeModal('member-recharge-v3')">✕</button>
-        </div>
-        <div class="modal-body">
-          <!-- 会员信息摘要 -->
-          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;">
-            <div style="width:44px;height:44px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:white;">👤</div>
-            <div style="flex:1;">
-              <div style="font-size:14px;font-weight:700;" id="mrc-member-info">王浩 · 金卡会员</div>
-              <div style="font-size:11px;color:var(--text-muted);" id="mrc-member-phone">138****8888</div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-size:11px;color:var(--text-muted);">当前余额</div>
-              <div style="font-size:18px;font-weight:700;color:var(--orange);" id="mrc-current-balance">¥860</div>
-            </div>
-          </div>
-          <!-- 充值金额快捷选择 -->
-          <div class="form-group">
-            <label class="form-label">💰 充值金额 <span class="required">*</span></label>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
-              <button class="mrc-amount-btn" onclick="selectRechargeAmount(100,this)" style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--white);font-size:13px;font-weight:600;cursor:pointer;">¥100</button>
-              <button class="mrc-amount-btn" onclick="selectRechargeAmount(200,this)" style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--white);font-size:13px;font-weight:600;cursor:pointer;">¥200</button>
-              <button class="mrc-amount-btn selected" onclick="selectRechargeAmount(500,this)" style="padding:8px;border:2px solid var(--blue);border-radius:6px;background:var(--blue-bg);font-size:13px;font-weight:600;cursor:pointer;color:var(--blue);">¥500</button>
-              <button class="mrc-amount-btn" onclick="selectRechargeAmount(1000,this)" style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--white);font-size:13px;font-weight:600;cursor:pointer;">¥1000</button>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-              <span style="font-size:12px;color:var(--text-muted);">自定义：¥</span>
-              <input type="number" class="form-input" id="mrc-custom-amount" placeholder="输入金额" style="width:120px;padding:6px 10px;" oninput="onCustomRechargeAmount(this.value)">
-            </div>
-          </div>
-          <!-- 充值优惠 -->
-          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;margin-bottom:16px;">
-            <div style="font-size:18px;">🎁</div>
-            <div style="flex:1;">
-              <div style="font-size:12px;font-weight:600;color:var(--green);">充值赠送</div>
-              <div style="font-size:11px;color:var(--text-muted);" id="mrc-bonus-text">充500送50，实际到账¥550</div>
-            </div>
-          </div>
-          <!-- 支付方式 -->
-          <div class="form-group">
-            <label class="form-label">💳 支付方式</label>
-            <div style="display:flex;gap:8px;">
-              <label class="mrc-pay-option selected" style="flex:1;display:flex;align-items:center;gap:8px;padding:10px;border:2px solid var(--blue);border-radius:8px;cursor:pointer;background:var(--blue-bg);" onclick="selectPayMethod('wechat',this)">
-                <input type="radio" name="pay-method" value="wechat" checked style="display:none;">
-                <div style="font-size:20px;">💚</div>
-                <div><div style="font-size:12px;font-weight:600;">微信支付</div><div style="font-size:10px;color:var(--text-muted);">推荐</div></div>
-              </label>
-              <label class="mrc-pay-option" style="flex:1;display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;" onclick="selectPayMethod('alipay',this)">
-                <input type="radio" name="pay-method" value="alipay" style="display:none;">
-                <div style="font-size:20px;">💙</div>
-                <div><div style="font-size:12px;font-weight:600;">支付宝</div><div style="font-size:10px;color:var(--text-muted);">快捷</div></div>
-              </label>
-            </div>
-          </div>
-          <!-- 积分选项 -->
-          <div class="form-group">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-              <input type="checkbox" id="mrc-add-points" checked style="accent-color:var(--blue);width:15px;height:15px;">
-              <span style="font-size:13px;">同步获得 <b id="mrc-points-preview" style="color:var(--orange);">550</b> 积分</span>
-            </label>
-          </div>
-          <!-- 金额确认 -->
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg);border-radius:8px;margin-bottom:12px;">
-            <span style="font-size:13px;color:var(--text-muted);">实际支付</span>
-            <span style="font-size:24px;font-weight:700;color:var(--red);" id="mrc-final-amount">¥500</span>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="modal-btn secondary" onclick="closeModal('member-recharge-v3')">取消</button>
-          <button class="modal-btn primary" onclick="submitMemberRechargeV3()" style="background:var(--orange);border-color:var(--orange);font-size:14px;padding:8px 24px;">💳 确认支付 ¥500</button>
-        </div>
-      </div>
-    </div>
-    <script>
-    var currentRechargeMemberIdx = null;
-    var currentRechargeAmount = 500;
-    var currentPayMethod = 'wechat';
-    var memberBalanceData = [
-      {name:'王浩', phone:'138****8888', level:'金卡', balance:860},
-      {name:'李娜', phone:'139****6666', level:'银卡', balance:320},
-      {name:'张伟', phone:'137****5555', level:'VIP', balance:2180},
-      {name:'赵敏', phone:'136****4444', level:'银卡', balance:150},
-      {name:'钱进', phone:'135****3333', level:'普通', balance:50}
-    ];
-    function openMemberRechargeModalV3(idx) {
-      currentRechargeMemberIdx = idx;
-      var m = memberBalanceData[idx];
-      document.getElementById('mrc-member-name').textContent = m.name;
-      document.getElementById('mrc-member-info').textContent = m.name + ' · ' + m.level + '会员';
-      document.getElementById('mrc-member-phone').textContent = m.phone;
-      document.getElementById('mrc-current-balance').textContent = '¥' + m.balance;
-      currentRechargeAmount = 500;
-      document.getElementById('mrc-custom-amount').value = '';
-      document.getElementById('mrc-final-amount').textContent = '¥500';
-      document.getElementById('mrc-bonus-text').textContent = '充500送50，实际到账¥550';
-      document.getElementById('mrc-points-preview').textContent = '550';
-      updateRechargeBtn();
-      openModal('member-recharge-v3');
-    }
-    function selectRechargeAmount(amount, btn) {
-      currentRechargeAmount = amount;
-      document.getElementById('mrc-custom-amount').value = '';
-      document.querySelectorAll('.mrc-amount-btn').forEach(function(b){ b.classList.remove('selected','selected'); b.style.border='1px solid var(--border)'; b.style.background='var(--white)'; b.style.color='var(--text)'; });
-      btn.classList.add('selected');
-      btn.style.border='2px solid var(--blue)';
-      btn.style.background='var(--blue-bg)';
-      btn.style.color='var(--blue)';
-      updateRechargeBonus();
-      updateRechargeBtn();
-    }
-    function onCustomRechargeAmount(val) {
-      var amt = parseInt(val) || 0;
-      currentRechargeAmount = amt;
-      document.querySelectorAll('.mrc-amount-btn').forEach(function(b){ b.classList.remove('selected','selected'); b.style.border='1px solid var(--border)'; b.style.background='var(--white)'; b.style.color='var(--text)'; });
-      if (amt > 0) updateRechargeBonus();
-      updateRechargeBtn();
-    }
-    function updateRechargeBonus() {
-      var bonus = currentRechargeAmount >= 1000 ? Math.floor(currentRechargeAmount * 0.15) : currentRechargeAmount >= 500 ? 50 : currentRechargeAmount >= 200 ? 20 : 0;
-      var actual = currentRechargeAmount + bonus;
-      document.getElementById('mrc-bonus-text').textContent = bonus > 0 ? '充' + currentRechargeAmount + '送' + bonus + '，实际到账¥' + actual : '暂无优惠';
-      document.getElementById('mrc-points-preview').textContent = actual;
-    }
-    function updateRechargeBtn() {
-      var btn = document.querySelector('#modal-member-recharge-v3 .modal-btn.primary');
-      if (btn) btn.textContent = '💳 确认支付 ¥' + currentRechargeAmount;
-    }
-    function selectPayMethod(method, el) {
-      currentPayMethod = method;
-      document.querySelectorAll('.mrc-pay-option').forEach(function(e){ e.style.border='1px solid var(--border)'; e.style.background='white'; });
-      el.style.border='2px solid var(--blue)';
-      el.style.background='var(--blue-bg)';
-    }
-    function submitMemberRechargeV3() {
-      if (currentRechargeAmount <= 0) { showToast('请输入有效充值金额', 'error'); return; }
-      var bonus = currentRechargeAmount >= 1000 ? Math.floor(currentRechargeAmount * 0.15) : currentRechargeAmount >= 500 ? 50 : currentRechargeAmount >= 200 ? 20 : 0;
-      var actual = currentRechargeAmount + bonus;
-      var m = memberBalanceData[currentRechargeMemberIdx];
-      m.balance += actual;
-      document.getElementById('mrc-current-balance').textContent = '¥' + m.balance;
-      showToast('✅ 充值成功！' + m.name + ' 充值¥' + currentRechargeAmount + '，实际到账¥' + actual + '（含赠送¥' + bonus + '）', 'success');
-      setTimeout(function(){ closeModal('member-recharge-v3'); }, 1500);
-    }
-    </script>
-
-    <!-- 【改进v3-3】退房结算详细确认弹窗（完整费用清单+押金处理+支付+小票打印） -->
-    <div class="modal-overlay hidden" id="modal-settlement-confirm">
-      <div class="modal" style="width:520px;">
-        <div class="modal-header">
-          <div class="modal-title" id="scl-title">💰 结算确认 - 301</div>
-          <button class="modal-close" onclick="closeModal('settlement-confirm')">✕</button>
-        </div>
-        <div class="modal-body" style="padding:0;">
-          <!-- 入住信息 -->
-          <div style="padding:14px 20px;background:var(--blue-bg);border-bottom:1px solid var(--border);">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <div style="font-size:15px;font-weight:700;color:var(--blue);" id="scl-room">301 - 亲子间</div>
-                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="scl-guest">入住人：张三 · 138****8888</div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:11px;color:var(--text-muted);">入住时间</div>
-                <div style="font-size:13px;font-weight:600;" id="scl-checkin-time">2026-03-26 14:00</div>
-              </div>
-            </div>
-          </div>
-          <!-- 费用明细 -->
-          <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
-            <div style="font-size:13px;font-weight:700;margin-bottom:12px;">📋 费用明细</div>
-            <div id="scl-fee-list">
-              <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--border);">
-                <span style="font-size:13px;color:var(--text-light);">房费（1晚）</span>
-                <span style="font-size:13px;font-weight:600;">¥128.00</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--border);">
-                <span style="font-size:13px;color:var(--text-light);">加床费</span>
-                <span style="font-size:13px;font-weight:600;">¥0.00</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--border);">
-                <span style="font-size:13px;color:var(--text-light);">迷你吧消费</span>
-                <span style="font-size:13px;font-weight:600;">¥20.00</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--border);">
-                <span style="font-size:13px;color:var(--text-light);">赔偿费</span>
-                <span style="font-size:13px;font-weight:600;">¥0.00</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--border);">
-                <span style="font-size:13px;color:var(--text-light);">其他费用</span>
-                <span style="font-size:13px;font-weight:600;">¥0.00</span>
-              </div>
-            </div>
-          </div>
-          <!-- 汇总 -->
-          <div style="padding:14px 20px;background:var(--bg);border-bottom:1px solid var(--border);">
-            <div style="display:flex;justify-content:space-between;padding:4px 0;">
-              <span style="font-size:13px;color:var(--text-light);">房费合计</span>
-              <span style="font-size:13px;font-weight:600;">¥148.00</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:4px 0;">
-              <span style="font-size:13px;color:var(--text-light);">押金（已付）</span>
-              <span style="font-size:13px;font-weight:600;color:var(--green);">-¥100.00</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid var(--border);margin-top:4px;">
-              <span style="font-size:15px;font-weight:700;">应付金额</span>
-              <span style="font-size:22px;font-weight:700;color:var(--red);" id="scl-total-amount">¥48.00</span>
-            </div>
-          </div>
-          <!-- 押金处理 -->
-          <div style="padding:14px 20px;border-bottom:1px solid var(--border);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span style="font-size:13px;font-weight:600;">💰 押金退还</span>
-            </div>
-            <div style="display:flex;gap:8px;">
-              <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px;border:2px solid var(--green);border-radius:6px;background:var(--green-bg);cursor:pointer;">
-                <input type="radio" name="deposit-method" value="refund" checked style="accent-color:var(--green);">
-                <span style="font-size:12px;font-weight:600;color:var(--green);">💚 原路退回</span>
-              </label>
-              <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
-                <input type="radio" name="deposit-method" value="抵扣" style="accent-color:var(--blue);">
-                <span style="font-size:12px;font-weight:600;">抵扣房费</span>
-              </label>
-              <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
-                <input type="radio" name="deposit-method" value="现金" style="accent-color:var(--blue);">
-                <span style="font-size:12px;font-weight:600;">💵 现金</span>
-              </label>
-            </div>
-          </div>
-          <!-- 支付方式 -->
-          <div style="padding:14px 20px;">
-            <div style="font-size:13px;font-weight:600;margin-bottom:10px;">💳 支付方式</div>
-            <div style="display:flex;gap:8px;">
-              <label style="flex:1;display:flex;align-items:center;gap:6px;padding:10px;border:2px solid var(--blue);border-radius:8px;background:var(--blue-bg);cursor:pointer;">
-                <input type="radio" name="pay-method-settle" value="wechat" checked style="accent-color:var(--blue);display:none;">
-                <div style="font-size:18px;">💚</div>
-                <span style="font-size:12px;font-weight:600;color:var(--blue);">微信</span>
-              </label>
-              <label style="flex:1;display:flex;align-items:center;gap:6px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;" onclick="this.querySelector('input').checked=true;this.style.border='2px solid var(--blue)';this.style.background='var(--blue-bg)'">
-                <input type="radio" name="pay-method-settle" value="alipay" style="accent-color:var(--blue);display:none;">
-                <div style="font-size:18px;">💙</div>
-                <span style="font-size:12px;font-weight:600;">支付宝</span>
-              </label>
-              <label style="flex:1;display:flex;align-items:center;gap:6px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;" onclick="this.querySelector('input').checked=true;this.style.border='2px solid var(--blue)';this.style.background='var(--blue-bg)'">
-                <input type="radio" name="pay-method-settle" value="cash" style="accent-color:var(--blue);display:none;">
-                <div style="font-size:18px;">💵</div>
-                <span style="font-size:12px;font-weight:600;">现金</span>
-              </label>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="modal-btn secondary" onclick="closeModal('settlement-confirm')">取消</button>
-          <button class="modal-btn" onclick="printSettlementReceipt()" style="padding:8px 14px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🖨️ 打印小票</button>
-          <button class="modal-btn primary" onclick="confirmSettlementPay()" style="background:var(--green);border-color:var(--green);font-size:14px;">💳 确认结算 ¥<span id="scl-pay-btn-amount">48</span></button>
-        </div>
-      </div>
-    </div>
-    <script>
-    var currentSettlementData = null;
-    function openSettlementConfirmModal(data) {
-      currentSettlementData = data;
-      document.getElementById('scl-title').textContent = '💰 结算确认 - ' + data.room;
-      document.getElementById('scl-room').textContent = data.room + ' - ' + (data.type || '亲子间');
-      document.getElementById('scl-guest').textContent = '入住人：' + data.name + ' · ' + (data.phone || '138****8888');
-      document.getElementById('scl-checkin-time').textContent = data.checkinTime;
-      document.getElementById('scl-total-amount').textContent = '¥' + data.payable;
-      document.getElementById('scl-pay-btn-amount').textContent = data.payable;
-      openModal('settlement-confirm');
-    }
-    function confirmSettlementPay() {
-      if (!currentSettlementData) return;
-      showToast('✅ 结算成功！房间 ' + currentSettlementData.room + ' 已完成退房结算，实付¥' + currentSettlementData.payable, 'success');
-      setTimeout(function(){ closeModal('settlement-confirm'); }, 1500);
-    }
-    function printSettlementReceipt() {
-      showToast('🖨️ 小票正在打印中...', 'info');
-    }
-    </script>
-
-    <!-- 【改进v3-4】员工排班日历完整页面（班次管理+考勤统计+请假申请） -->
-    <div id="page-staffschedule" class="page">
-      <div class="page-header">
-        <div class="page-title">📅 员工排班管理</div>
-        <div class="page-sub">班次安排 · 考勤统计 · 请假申请 · <span id="ss-month-label" style="color:var(--blue);font-weight:600;">2026年3月</span></div>
-      </div>
-      <!-- 统计卡片 -->
-      <div class="stats-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
-        <div class="stat-card">
-          <div class="stat-icon" style="background:var(--blue-bg);">👥</div>
-          <div><div class="stat-num" id="ss-stat-total">12</div><div class="stat-label">在岗员工</div></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:var(--green-bg);">✅</div>
-          <div><div class="stat-num" id="ss-stat-on">10</div><div class="stat-label">正常出勤</div></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:var(--orange-bg);">🔶</div>
-          <div><div class="stat-num" id="ss-stat-late">1</div><div class="stat-label">迟到</div></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:var(--red-bg);">❌</div>
-          <div><div class="stat-num" id="ss-stat-absent">1</div><div class="stat-label">缺勤</div></div>
-        </div>
-      </div>
-      <!-- 操作工具栏 -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-        <button class="action-btn" onclick="openShiftTemplateModal()" style="background:var(--blue);color:white;border:none;">+ 班次模板</button>
-        <button class="action-btn" onclick="openLeaveRequestModal()" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">📝 请假申请</button>
-        <button class="action-btn" onclick="autoGenerateSchedule()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">🤖 自动排班</button>
-        <div style="display:flex;gap:6px;margin-left:auto;">
-          <button class="action-btn small" onclick="switchScheduleMonth(-1)" style="padding:6px 10px;">‹ 上月</button>
-          <button class="action-btn small" onclick="switchScheduleMonth(1)" style="padding:6px 10px;">下月 ›</button>
-        </div>
-        <div style="display:flex;gap:6px;">
-          <button class="action-btn small" onclick="openExportScheduleModal()" style="padding:5px 10px;">📤 导出</button>
-        </div>
-      </div>
-      <!-- 员工班次表格 -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">📋 3月排班表</div>
-          <div class="card-tabs">
-            <div class="card-tab active" onclick="filterScheduleDept('all',this)">全部</div>
-            <div class="card-tab" onclick="filterScheduleDept('reception',this)">前厅</div>
-            <div class="card-tab" onclick="filterScheduleDept('housekeeping',this)">客房</div>
-            <div class="card-tab" onclick="filterScheduleDept('engineering',this)">工程</div>
-          </div>
-        </div>
-        <div class="card-body" style="padding:0;overflow-x:auto;">
-          <table class="table" style="white-space:nowrap;">
-            <thead>
-              <tr>
-                <th style="position:sticky;left:0;background:var(--bg);z-index:1;">员工</th>
-                <th>部门</th>
-                <th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th>
-                <th>8</th><th>9</th><th>10</th><th>11</th><th>12</th><th>13</th><th>14</th>
-                <th>15</th><th>16</th><th>17</th><th>18</th><th>19</th><th>20</th><th>21</th>
-                <th>22</th><th>23</th><th>24</th><th>25</th><th>26</th><th>27</th><th>28</th>
-                <th>29</th><th>30</th><th>31</th>
-              </tr>
-            </thead>
-            <tbody id="ss-table-body">
-              <!-- JS动态渲染 -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <!-- 图例 -->
-      <div style="display:flex;gap:16px;margin-top:12px;font-size:12px;color:var(--text-muted);">
-        <span>🌅 <span style="display:inline-block;padding:1px 6px;background:#e3f2fd;border-radius:3px;">早班</span> 08:00-16:00</span>
-        <span>🌄 <span style="display:inline-block;padding:1px 6px;background:#fff3e0;border-radius:3px;">中班</span> 16:00-24:00</span>
-        <span>🌙 <span style="display:inline-block;padding:1px 6px;background:#f3e5f5;border-radius:3px;">夜班</span> 24:00-08:00</span>
-        <span>🏖️ <span style="display:inline-block;padding:1px 6px;background:#e8f5e9;border-radius:3px;">休息</span></span>
-        <span>❌ <span style="display:inline-block;padding:1px 6px;background:#ffebee;border-radius:3px;">请假</span></span>
-      </div>
-    </div>
-    <script>
-    var currentScheduleMonth = 3;
-    var scheduleStaffData = [
-      {name:'赵飞', dept:'前厅', deptCode:'reception', schedule:['早班','早班','中班','休息','早班','早班','中班','休息','早班','早班','中班','休息','早班','早班','中班','休息','早班','早班','中班','休息','早班','早班','中班','休息','早班','早班','中班','休息','早班','早班','中班']},
-      {name:'周敏', dept:'前厅', deptCode:'reception', schedule:['中班','休息','早班','早班','中班','休息','早班','早班','中班','休息','早班','早班','中班','休息','早班','早班','中班','休息','早班','早班','中班','休息','早班','早班','中班','休息','早班','早班','中班','休息','早班']},
-      {name:'吴倩', dept:'客房', deptCode:'housekeeping', schedule:['早班','早班','休息','中班','早班','早班','休息','中班','早班','早班','休息','中班','早班','早班','休息','中班','早班','早班','休息','中班','早班','早班','休息','中班','早班','早班','休息','中班','早班','早班','休息']},
-      {name:'郑强', dept:'客房', deptCode:'housekeeping', schedule:['休息','早班','早班','早班','休息','中班','早班','早班','休息','中班','早班','早班','休息','中班','早班','早班','休息','中班','早班','早班','休息','中班','早班','早班','休息','中班','早班','早班','休息','中班','早班']},
-      {name:'王工', dept:'工程', deptCode:'engineering', schedule:['早班','早班','早班','早班','休息','休息','早班','早班','早班','早班','休息','休息','早班','早班','早班','早班','休息','休息','早班','早班','早班','早班','休息','休息','早班','早班','早班','早班','休息','休息','早班']}
-    ];
-    var shiftColors = {'早班':'#e3f2fd','中班':'#fff3e0','夜班':'#f3e5f5','休息':'#e8f5e9','请假':'#ffebee'};
-    var shiftTextColors = {'早班':'#1565c0','中班':'#e65100','夜班':'#6a1b9a','休息':'#2e7d32','请假':'#c62828'};
-
-    function renderScheduleTable() {
-      var tbody = document.getElementById('ss-table-body');
-      if (!tbody) return;
-      var html = '';
-      scheduleStaffData.forEach(function(staff) {
-        html += '<tr><td style="position:sticky;left:0;background:white;z-index:1;font-weight:600;">' + staff.name + '</td><td><span class="tbadge blue" style="font-size:10px;">' + staff.dept + '</span></td>';
-        for (var d = 1; d <= 31; d++) {
-          var shift = staff.schedule[d-1] || '-';
-          var bg = shiftColors[shift] || 'var(--bg)';
-          var color = shiftTextColors[shift] || 'var(--text-muted)';
-          var shortShift = shift === '早班' ? '早' : shift === '中班' ? '中' : shift === '夜班' ? '夜' : shift === '休息' ? '休' : shift === '请假' ? '假' : '-';
-          var isWeekend = (d % 7 === 0 || d % 7 === 6) && d <= 28;
-          html += '<td style="padding:4px 2px;text-align:center;' + (isWeekend ? 'background:#fafafa;' : '') + '">' +
-            '<div onclick="openDayShiftEdit(\'' + staff.name + '\',' + d + ',\'' + shift + '\')" ' +
-            'style="padding:3px 2px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;background:' + bg + ';color:' + color + ';min-width:24px;text-align:center;" ' +
-            'title="' + staff.name + ' ' + d + '日: ' + shift + '">' + shortShift + '</div></td>';
-        }
-        html += '</tr>';
-      });
-      tbody.innerHTML = html;
-    }
-    function filterScheduleDept(dept, el) {
-      document.querySelectorAll('#page-staffschedule .card-tab').forEach(function(t){ t.classList.remove('active'); });
-      if (el) el.classList.add('active');
-      showToast('已筛选 ' + (dept === 'all' ? '全部部门' : dept) + ' 的排班', 'info');
-    }
-    function switchScheduleMonth(dir) {
-      currentScheduleMonth += dir;
-      var label = currentScheduleMonth + '月';
-      document.getElementById('ss-month-label').textContent = '2026年' + label;
-      showToast('已切换至' + label + '排班视图', 'info');
-    }
-    function openShiftTemplateModal() { showToast('班次模板管理弹窗开发中', 'info'); }
-    function openLeaveRequestModal() { showToast('请假申请弹窗开发中', 'info'); }
-    function autoGenerateSchedule() { showToast('🤖 自动排班功能开发中', 'info'); }
-    function openExportScheduleModal() { showToast('📤 正在导出排班表...', 'info'); }
-    function openDayShiftEdit(name, day, currentShift) { showToast(name + ' ' + day + '日：' + currentShift + '（班次编辑弹窗开发中）', 'info'); }
-    document.addEventListener('DOMContentLoaded', function() { renderScheduleTable(); });
-    </script>
-
-    <!-- 【改进v3-5】能耗分析详细弹窗（分类统计+历史趋势+节能建议） -->
-    <div class="modal-overlay hidden" id="modal-energy-detail">
-      <div class="modal" style="width:640px;">
-        <div class="modal-header">
-          <div class="modal-title" id="ed-title">⚡ 能耗详情 - 3层</div>
-          <button class="modal-close" onclick="closeModal('energy-detail')">✕</button>
-        </div>
-        <div class="modal-body" style="padding:0;">
-          <!-- 统计概览 -->
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border);">
-            <div style="padding:14px;text-align:center;border-right:1px solid var(--border);">
-              <div style="font-size:20px;font-weight:700;color:var(--blue);" id="ed-total-kwh">186.5</div>
-              <div style="font-size:11px;color:var(--text-muted);">本月总用电(kWh)</div>
-            </div>
-            <div style="padding:14px;text-align:center;border-right:1px solid var(--border);">
-              <div style="font-size:20px;font-weight:700;color:var(--green);" id="ed-compare">-8.3%</div>
-              <div style="font-size:11px;color:var(--text-muted);">较上月同期</div>
-            </div>
-            <div style="padding:14px;text-align:center;border-right:1px solid var(--border);">
-              <div style="font-size:20px;font-weight:700;color:var(--orange);" id="ed-avg">12.4</div>
-              <div style="font-size:11px;color:var(--text-muted);">日均用电(kWh)</div>
-            </div>
-            <div style="padding:14px;text-align:center;">
-              <div style="font-size:20px;font-weight:700;color:var(--purple);" id="ed-cost">¥93.3</div>
-              <div style="font-size:11px;color:var(--text-muted);">预估电费</div>
-            </div>
-          </div>
-          <!-- Tab -->
-          <div class="tabs" style="margin-bottom:0;padding:0 16px;">
-            <div class="tab active" id="ed-tab-category" onclick="switchEnergyDetailTab('category',this)" style="font-size:12px;padding:8px 12px;">分类统计</div>
-            <div class="tab" id="ed-tab-trend" onclick="switchEnergyDetailTab('trend',this)" style="font-size:12px;padding:8px 12px;">历史趋势</div>
-            <div class="tab" id="ed-tab-advice" onclick="switchEnergyDetailTab('advice',this)" style="font-size:12px;padding:8px 12px;">节能建议</div>
-          </div>
-          <!-- 分类统计 -->
-          <div id="ed-content-category" style="padding:16px;">
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <div style="display:flex;align-items:center;gap:12px;">
-                <div style="width:60px;font-size:12px;color:var(--text-muted);text-align:right;">空调</div>
-                <div style="flex:1;height:24px;background:var(--border);border-radius:4px;overflow:hidden;">
-                  <div style="width:45%;height:100%;background:linear-gradient(90deg,#1890ff,#69c0ff);border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;">
-                    <span style="font-size:11px;color:white;font-weight:600;">45%</span>
-                  </div>
-                </div>
-                <div style="width:80px;font-size:12px;font-weight:600;">83.9 kWh</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:12px;">
-                <div style="width:60px;font-size:12px;color:var(--text-muted);text-align:right;">照明</div>
-                <div style="flex:1;height:24px;background:var(--border);border-radius:4px;overflow:hidden;">
-                  <div style="width:25%;height:100%;background:linear-gradient(90deg,#fa8c16,#ffc53d);border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;">
-                    <span style="font-size:11px;color:white;font-weight:600;">25%</span>
-                  </div>
-                </div>
-                <div style="width:80px;font-size:12px;font-weight:600;">46.6 kWh</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:12px;">
-                <div style="width:60px;font-size:12px;color:var(--text-muted);text-align:right;">热水器</div>
-                <div style="flex:1;height:24px;background:var(--border);border-radius:4px;overflow:hidden;">
-                  <div style="width:20%;height:100%;background:linear-gradient(90deg,#52c41a,#95de64);border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;">
-                    <span style="font-size:11px;color:white;font-weight:600;">20%</span>
-                  </div>
-                </div>
-                <div style="width:80px;font-size:12px;font-weight:600;">37.3 kWh</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:12px;">
-                <div style="width:60px;font-size:12px;color:var(--text-muted);text-align:right;">其他</div>
-                <div style="flex:1;height:24px;background:var(--border);border-radius:4px;overflow:hidden;">
-                  <div style="width:10%;height:100%;background:linear-gradient(90deg,#722ed1,#b37feb);border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;">
-                    <span style="font-size:11px;color:white;font-weight:600;">10%</span>
-                  </div>
-                </div>
-                <div style="width:80px;font-size:12px;font-weight:600;">18.7 kWh</div>
-              </div>
-            </div>
-          </div>
-          <!-- 历史趋势 -->
-          <div id="ed-content-trend" style="display:none;padding:16px;">
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">📈 近7日用电趋势（kWh）</div>
-            <div style="display:flex;align-items:flex-end;gap:8px;height:100px;padding:0 8px;">
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:60px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-21</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">12.1</div>
-              </div>
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:75px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-22</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">15.2</div>
-              </div>
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:55px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-23</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">11.2</div>
-              </div>
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:90px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-24</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">18.3</div>
-              </div>
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:80px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-25</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">16.2</div>
-              </div>
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:95px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-26</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">19.3</div>
-              </div>
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:70px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-27</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">14.2</div>
-              </div>
-            </div>
-          </div>
-          <!-- 节能建议 -->
-          <div id="ed-content-advice" style="display:none;padding:16px;">
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;">
-                <div style="font-size:20px;flex-shrink:0;">💡</div>
-                <div>
-                  <div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:4px;">空调温度优化</div>
-                  <div style="font-size:12px;color:var(--text-muted);">建议将空调温度设置在26℃，相比24℃可节省约15%电能</div>
-                </div>
-              </div>
-              <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">
-                <div style="font-size:20px;flex-shrink:0;">⏰</div>
-                <div>
-                  <div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:4px;">人走断电</div>
-                  <div style="font-size:12px;color:var(--text-muted);">客房退房后自动断电措施可减少约8%的待机功耗</div>
-                </div>
-              </div>
-              <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;">
-                <div style="font-size:20px;flex-shrink:0;">🔄</div>
-                <div>
-                  <div style="font-size:13px;font-weight:600;color:var(--orange);margin-bottom:4px;">错峰用电</div>
-                  <div style="font-size:12px;color:var(--text-muted);">将大功率电器使用时段调整至23:00-07:00低谷电价区间</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="modal-btn secondary" onclick="closeModal('energy-detail')">关闭</button>
-          <button class="modal-btn primary" onclick="exportEnergyReport()" style="background:var(--green);border-color:var(--green);">📤 导出报告</button>
-        </div>
-      </div>
-    </div>
-    <script>
-    function openEnergyDetailModal(floor) {
-      document.getElementById('ed-title').textContent = '⚡ 能耗详情 - ' + (floor || '3层');
-      switchEnergyDetailTab('category', document.getElementById('ed-tab-category'));
-      openModal('energy-detail');
-    }
-    function switchEnergyDetailTab(tab, el) {
-      document.getElementById('ed-content-category').style.display = tab === 'category' ? 'block' : 'none';
-      document.getElementById('ed-content-trend').style.display = tab === 'trend' ? 'block' : 'none';
-      document.getElementById('ed-content-advice').style.display = tab === 'advice' ? 'block' : 'none';
-      document.querySelectorAll('#modal-energy-detail .tab').forEach(function(t){ t.classList.remove('active'); });
-      if (el) el.classList.add('active');
-    }
-    function exportEnergyReport() { showToast('📤 能耗报告导出中...', 'info'); }
-    </script>
-
-    <!-- 【改进v3-1】Page: Room Type 房型管理完整CRUD页面 -->
+    <!-- 【改进2】Page: Room Type 房型管理完整CRUD页面 -->
     <div id="page-roomtypemgr" class="page">
       <div class="page-header">
         <div class="page-title">🏠 房型管理</div>
@@ -5914,7 +5191,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td><span class="tbadge blue">28晚</span></td>
                 <td style="font-weight:600;color:var(--orange);">¥8,860</td>
                 <td>2025-06-15</td>
-                <td><button class="action-btn small" onclick="openMemberDetail(0)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(0)">编辑</button> <button class="action-btn small" onclick="openMemberRechargeModalV3(0)" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small red" onclick="deleteMember(0)">删除</button></td>
+                <td><button class="action-btn small" onclick="openMemberDetail(0)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(0)">编辑</button> <button class="action-btn small" onclick="openMemberRechargeModal(0)" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small red" onclick="deleteMember(0)">删除</button></td>
               </tr>
               <tr data-level="silver">
                 <td><span style="font-weight:600;">李娜</span></td>
@@ -5924,7 +5201,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td><span class="tbadge blue">15晚</span></td>
                 <td style="font-weight:600;">¥4,520</td>
                 <td>2025-09-20</td>
-                <td><button class="action-btn small" onclick="openMemberDetail(1)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(1)">编辑</button> <button class="action-btn small" onclick="openMemberRechargeModalV3(1)" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small red" onclick="deleteMember(1)">删除</button></td>
+                <td><button class="action-btn small" onclick="openMemberDetail(1)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(1)">编辑</button> <button class="action-btn small" onclick="openMemberRechargeModal(1)" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small red" onclick="deleteMember(1)">删除</button></td>
               </tr>
               <tr data-level="vip">
                 <td><span style="font-weight:600;">张伟</span></td>
@@ -5934,7 +5211,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td><span class="tbadge blue">52晚</span></td>
                 <td style="font-weight:600;color:var(--red);">¥15,680</td>
                 <td>2024-11-01</td>
-                <td><button class="action-btn small" onclick="openMemberDetail(2)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(2)">编辑</button> <button class="action-btn small" onclick="openMemberRechargeModalV3(2)" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small red" onclick="deleteMember(2)">删除</button></td>
+                <td><button class="action-btn small" onclick="openMemberDetail(2)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(2)">编辑</button> <button class="action-btn small" onclick="openMemberRechargeModal(2)" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small red" onclick="deleteMember(2)">删除</button></td>
               </tr>
               <tr data-level="silver">
                 <td><span style="font-weight:600;">赵敏</span></td>
@@ -5944,7 +5221,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td><span class="tbadge blue">8晚</span></td>
                 <td style="font-weight:600;">¥2,240</td>
                 <td>2026-01-10</td>
-                <td><button class="action-btn small" onclick="openMemberDetail(3)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(3)">编辑</button> <button class="action-btn small" onclick="openMemberRechargeModalV3(3)" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small red" onclick="deleteMember(3)">删除</button></td>
+                <td><button class="action-btn small" onclick="openMemberDetail(3)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(3)">编辑</button> <button class="action-btn small" onclick="openMemberRechargeModal(3)" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small red" onclick="deleteMember(3)">删除</button></td>
               </tr>
               <tr data-level="normal">
                 <td><span style="font-weight:600;">钱进</span></td>
@@ -5954,7 +5231,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td><span class="tbadge blue">3晚</span></td>
                 <td style="font-weight:600;">¥860</td>
                 <td>2026-02-28</td>
-                <td><button class="action-btn small" onclick="openMemberDetail(4)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(4)">编辑</button> <button class="action-btn small" onclick="openMemberRechargeModalV3(4)" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small red" onclick="deleteMember(4)">删除</button></td>
+                <td><button class="action-btn small" onclick="openMemberDetail(4)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(4)">编辑</button> <button class="action-btn small" onclick="openMemberRechargeModal(4)" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small red" onclick="deleteMember(4)">删除</button></td>
               </tr>
             </tbody>
           </table>
@@ -7389,7 +6666,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td style="font-weight:700;color:var(--orange);font-size:14px;">¥128</td>
                 <td><span class="tbadge orange">待退押金¥100</span></td>
                 <td>
-                  <button class="action-btn small primary" onclick="openSettlementConfirmModal({room:'301',name:'张三',phone:'138****8888',type:'亲子间',checkinTime:'2026-03-26 14:00',payable:48})" style="background:var(--blue);color:white;border:none;">结算</button>
+                  <button class="action-btn small primary" onclick="openSettlementModal('STL-2026032701','301','张三','2026-03-26 14:00','1晚',128,100)" style="background:var(--blue);color:white;border:none;">结算</button>
                   <button class="action-btn small" onclick="openSettlementDetail('STL-2026032701')">详情</button>
                 </td>
               </tr>
@@ -7405,7 +6682,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td style="font-weight:700;color:var(--orange);font-size:14px;">¥286</td>
                 <td><span class="tbadge orange">待退押金¥100</span></td>
                 <td>
-                  <button class="action-btn small primary" onclick="openSettlementConfirmModal({room:'201',name:'王五',phone:'139****6666',type:'大床房',checkinTime:'2026-03-25 15:30',payable:186})" style="background:var(--blue);color:white;border:none;">结算</button>
+                  <button class="action-btn small primary" onclick="openSettlementModal('STL-2026032602','201','王五','2026-03-25 15:30','2晚',286,100)" style="background:var(--blue);color:white;border:none;">结算</button>
                   <button class="action-btn small" onclick="openSettlementDetail('STL-2026032602')">详情</button>
                 </td>
               </tr>
