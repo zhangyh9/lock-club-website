@@ -2012,3 +2012,286 @@ window.selectRechargeAmount = selectRechargeAmount;
 window.onCustomRechargeAmount = onCustomRechargeAmount;
 window.selectRechargePayMethod = selectRechargePayMethod;
 window.submitMemberRecharge = submitMemberRecharge;
+
+// ==================== 【改进1】工单处理人批量重新分配功能 ====================
+// 功能：从工单列表多选工单，批量重新分配处理人，解决原系统无此功能的问题
+function toggleWorkorderRow(cb, woId) {
+  if (!window._selectedWorkorders) window._selectedWorkorders = new Set();
+  if (cb.checked) {
+    window._selectedWorkorders.add(woId);
+  } else {
+    window._selectedWorkorders.delete(woId);
+  }
+  var count = window._selectedWorkorders.size;
+  var toolbar = document.getElementById('wo-batch-toolbar');
+  var countEl = document.getElementById('wo-batch-count');
+  if (toolbar) toolbar.style.display = count > 0 ? 'flex' : 'none';
+  if (countEl) countEl.textContent = '已选择 ' + count + ' 项';
+}
+
+function clearWorkorderSelection() {
+  window._selectedWorkorders && window._selectedWorkorders.clear();
+  document.querySelectorAll('.wo-row-cb').forEach(function(cb) { cb.checked = false; });
+  var toolbar = document.getElementById('wo-batch-toolbar');
+  var countEl = document.getElementById('wo-batch-count');
+  if (toolbar) toolbar.style.display = 'none';
+  if (countEl) countEl.textContent = '已选择 0 项';
+}
+
+function openBatchAssignWorkorder() {
+  if (!window._selectedWorkorders || window._selectedWorkorders.size === 0) {
+    showToast('请先在工单列表中勾选要分配的工单', 'warning');
+    return;
+  }
+  var html = '<div id="modal-batch-assign-wo" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);z-index:10000;display:flex;align-items:center;justify-content:center;">' +
+    '<div class="modal" style="width:480px;max-width:90vw;background:white;border-radius:12px;overflow:hidden;">' +
+    '<div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">' +
+    '<div style="font-size:16px;font-weight:700;">🔄 批量分配工单 <span style="font-size:13px;color:var(--blue);background:var(--blue-bg);padding:2px 8px;border-radius:10px;margin-left:6px;">' + window._selectedWorkorders.size + '条</span></div>' +
+    '<button onclick="closeBatchAssignWo()" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg);cursor:pointer;font-size:16px;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:24px;">' +
+    '<div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">' +
+    '💡 将为选中的 <strong>' + window._selectedWorkorders.size + '条</strong> 工单统一分配新的处理人</div>' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">选择新处理人 <span style="color:var(--red);">*</span></div>' +
+    '<select id="batch-assign-handler" class="form-select" style="width:100%;padding:10px 12px;font-size:13px;margin-bottom:16px;">' +
+    '<option value="">请选择处理人</option>' +
+    '<option value="赵飞">👨‍💼 赵飞（前厅经理）</option>' +
+    '<option value="周敏">👩‍💼 周敏（客房经理）</option>' +
+    '<option value="郑强">🧹 郑强（清洁人员）</option>' +
+    '<option value="王工">🔧 王工（工程师）</option>' +
+    '</select>' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">填写备注</div>' +
+    '<textarea id="batch-assign-note" class="form-textarea" placeholder="批量分配备注（可选）" style="width:100%;min-height:70px;padding:10px 12px;font-size:12px;border:1px solid var(--border);border-radius:8px;resize:none;"></textarea>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button onclick="closeBatchAssignWo()" class="modal-btn secondary" style="padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--text-light);">取消</button>' +
+    '<button onclick="submitBatchAssignWo()" class="modal-btn primary" style="padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:var(--blue);color:white;">✅ 确认分配</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeBatchAssignWo() {
+  var el = document.getElementById('modal-batch-assign-wo');
+  if (el) el.remove();
+}
+
+function submitBatchAssignWo() {
+  var handler = document.getElementById('batch-assign-handler').value;
+  if (!handler) { showToast('请选择处理人', 'error'); return; }
+  var note = document.getElementById('batch-assign-note').value;
+  var count = window._selectedWorkorders.size;
+  // 更新内存数据
+  if (typeof workorderData !== 'undefined') {
+    workorderData.forEach(function(wo) {
+      if (window._selectedWorkorders.has(wo.id)) {
+        wo.assignee = handler;
+        if (wo.status === 'pending') wo.status = 'processing';
+      }
+    });
+  }
+  addOpLog('workorder', '赵飞', '批量重新分配 ' + count + ' 条工单给 ' + handler + (note ? '，备注：' + note : ''), '127.0.0.1');
+  closeBatchAssignWo();
+  clearWorkorderSelection();
+  showToast('✅ 批量分配成功！' + count + ' 条工单已分配给 ' + handler, 'success');
+  // 刷新工单表格
+  if (typeof renderWorkorderTable === 'function') renderWorkorderTable();
+  else if (typeof filterWorkorder === 'function') filterWorkorder('all', document.querySelector('.card-tab'));
+}
+
+// ==================== 【改进2】退房预结算预览功能 ====================
+// 功能：退房前自动计算当前应付金额（含过夜费估算），让前台一目了然
+function openCheckoutPreSettlement(roomNum, guestName, checkinTime, roomRate) {
+  var now = new Date();
+  var ciTime = new Date((checkinTime || '2026-03-27 14:00').replace(' ', 'T'));
+  var diffMs = now - ciTime;
+  var diffHours = Math.floor(diffMs / 3600000);
+  var days = Math.floor(diffHours / 24);
+  var remainingHours = diffHours % 24;
+  var rate = parseFloat(roomRate) || 128;
+  // 估算：超过14:00算过夜
+  var checkoutHour = 14;
+  var ciHour = ciTime.getHours();
+  var estimatedDays = days;
+  if (remainingHours > (checkoutHour - ciHour) && days === 0) estimatedDays = 1;
+  if (remainingHours > 0 && days > 0) estimatedDays = days + (diffHours % 24 > checkoutHour ? 1 : 0);
+  var estimatedTotal = estimatedDays * rate;
+  var deposit = 100; // 默认押金
+  var refund = deposit - estimatedTotal;
+  var html = '<div id="modal-checkout-preview" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);z-index:10000;display:flex;align-items:center;justify-content:center;">' +
+    '<div class="modal" style="width:460px;max-width:90vw;background:white;border-radius:12px;overflow:hidden;">' +
+    '<div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">' +
+    '<div style="font-size:16px;font-weight:700;">📋 退房预结算 - ' + roomNum + '房间</div>' +
+    '<button onclick="closeCheckoutPreview()" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg);cursor:pointer;font-size:16px;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">' +
+    '💡 基于当前时间 <strong>' + now.toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) + '</strong> 自动估算费用，仅供参考</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">入住时间</div><div style="font-size:13px;font-weight:700;">' + (checkinTime || '2026-03-27 14:00').slice(0, 16) + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">当前时长</div><div style="font-size:13px;font-weight:700;color:var(--blue);">' + days + '天' + remainingHours + '小时</div></div>' +
+    '</div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg);"><span style="font-size:12px;color:var(--text-muted);">房费（¥' + rate + '/天 × ' + estimatedDays + '天）</span><span style="font-size:13px;font-weight:700;">¥' + estimatedTotal + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg);"><span style="font-size:12px;color:var(--text-muted);">押金</span><span style="font-size:13px;font-weight:700;">¥' + deposit + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;' + (refund >= 0 ? 'background:var(--green-bg);' : 'background:var(--red-bg);') + '">' +
+    '<span style="font-size:13px;font-weight:700;">' + (refund >= 0 ? '应退金额' : '需补缴金额') + '</span><span style="font-size:16px;font-weight:700;color:' + (refund >= 0 ? 'var(--green)' : 'var(--red)') + ';">¥' + Math.abs(refund).toFixed(0) + '</span></div>' +
+    '</div>' +
+    '<div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);margin-bottom:12px;">' +
+    '⚠️ 实际金额以退房结算时计算为准，此为预估算</div>' +
+    '<div style="display:flex;gap:10px;"><button onclick="closeCheckoutPreview()" class="modal-btn secondary" style="flex:1;padding:10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--text-light);">返回</button>' +
+    '<button onclick="closeCheckoutPreview();openCheckoutFullModal(\'' + roomNum + '\',\'' + guestName + '\',\'' + checkinTime + '\')" class="modal-btn primary" style="flex:1;padding:10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:var(--blue);color:white;">去结算 ➜</button></div>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeCheckoutPreview() {
+  var el = document.getElementById('modal-checkout-preview');
+  if (el) el.remove();
+}
+
+// ==================== 【改进3】设备固件版本对比表 ====================
+// 功能：一次性展示所有设备当前固件版本 vs 最新版本，一目了然哪些需要升级
+function openFirmwareComparisonModal() {
+  // 模拟设备数据
+  var devices = [
+    {room:'301', name:'领握LH-807', uuid:'A84F1AF2', ver:'v2.3.1', latest:'v2.3.1', status:'latest'},
+    {room:'302', name:'领握LH-807', uuid:'B92E2BB3', ver:'v2.3.0', latest:'v2.3.1', status:'outdated'},
+    {room:'303', name:'领握LH-807', uuid:'C73D3CC4', ver:'v2.2.8', latest:'v2.3.1', status:'outdated'},
+    {room:'201', name:'领握LH-807', uuid:'D64D4DD5', ver:'v2.3.1', latest:'v2.3.1', status:'latest'},
+    {room:'202', name:'领握LH-807', uuid:'E55E5EE6', ver:'v2.3.0', latest:'v2.3.1', status:'outdated'},
+    {room:'203', name:'领握LH-807', uuid:'F46F6FF7', ver:'v2.3.1', latest:'v2.3.1', status:'latest'},
+    {room:'102', name:'领握LH-807', uuid:'G37G7AG8', ver:'v2.2.5', latest:'v2.3.1', status:'critical'},
+    {room:'104', name:'领握LH-807', uuid:'H28H8BH9', ver:'v2.3.1', latest:'v2.3.1', status:'latest'},
+  ];
+  var latestVer = 'v2.3.1';
+  var outdatedCount = devices.filter(function(d){ return d.status !== 'latest'; }).length;
+  var html = '<div id="modal-firmware-compare" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);z-index:10000;display:flex;align-items:center;justify-content:center;">' +
+    '<div class="modal" style="width:680px;max-width:95vw;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">' +
+    '<div><div style="font-size:16px;font-weight:700;">📦 设备固件版本对比</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">最新版本：<span style="color:var(--green);font-weight:700;">' + latestVer + '</span>　<span style="color:var(--orange);">' + outdatedCount + '台设备需要升级</span></div></div>' +
+    '<button onclick="closeFirmwareCompare()" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg);cursor:pointer;font-size:16px;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:16px 24px;flex:1;overflow-y:auto;">' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+    '<thead><tr style="background:var(--bg);"><th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">房间</th><th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">设备UUID</th><th style="padding:8px 10px;text-align:center;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">当前版本</th><th style="padding:8px 10px;text-align:center;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">最新版本</th><th style="padding:8px 10px;text-align:center;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">状态</th><th style="padding:8px 10px;text-align:center;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">操作</th></tr></thead>' +
+    '<tbody>';
+  devices.forEach(function(d) {
+    var statusLabel = d.status === 'latest' ? '<span style="background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">已是最新</span>' :
+                       d.status === 'outdated' ? '<span style="background:var(--orange-bg);color:var(--orange);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">有更新</span>' :
+                       '<span style="background:var(--red-bg);color:var(--red);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">严重落后</span>';
+    var btn = d.status === 'latest' ? '<button style="padding:4px 10px;border-radius:5px;border:none;background:var(--bg);color:var(--text-muted);font-size:11px;cursor:default;">-</button>' :
+              '<button onclick="doSingleFirmwareUpgrade(\'' + d.uuid + '\')" style="padding:4px 10px;border-radius:5px;border:1px solid var(--purple);background:var(--purple-bg);color:var(--purple);font-size:11px;font-weight:600;cursor:pointer;">📦 升级</button>';
+    var rowBg = d.status === 'critical' ? 'background:var(--red-bg);' : '';
+    html += '<tr style="' + rowBg + '">' +
+      '<td style="padding:8px 10px;border-bottom:1px solid var(--border);"><span style="font-weight:700;">' + d.room + '</span></td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px;color:var(--text-muted);">' + d.uuid + '-xxxx</td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:center;font-weight:' + (d.status !== 'latest' ? '700;color:var(--orange);' : '400;') + ';">' + d.ver + '</td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:center;font-weight:700;color:var(--green);">' + d.latest + '</td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:center;">' + statusLabel + '</td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:center;">' + btn + '</td></tr>';
+  });
+  html += '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">' +
+    '<div style="font-size:12px;color:var(--text-muted);">共 <strong>8</strong> 台设备　<span style="color:var(--green);">5台已是最新</span>　<span style="color:var(--orange);">2台有更新</span>　<span style="color:var(--red);">1台严重落后</span></div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<button onclick="closeFirmwareCompare()" style="padding:7px 16px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-light);font-size:12px;font-weight:600;cursor:pointer;">关闭</button>' +
+    '<button onclick="openBatchUpgradeModal();closeFirmwareCompare();" style="padding:7px 16px;border-radius:6px;border:none;background:var(--purple);color:white;font-size:12px;font-weight:600;cursor:pointer;">📦 批量升级全部</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeFirmwareCompare() {
+  var el = document.getElementById('modal-firmware-compare');
+  if (el) el.remove();
+}
+
+function doSingleFirmwareUpgrade(uuid) {
+  showToast('📦 正在升级设备 ' + uuid.slice(0, 8) + '...', 'info');
+  setTimeout(function() {
+    showToast('✅ 设备 ' + uuid.slice(0, 8) + ' 固件升级完成（v2.3.0 → v2.3.1）', 'success');
+    closeFirmwareCompare();
+  }, 2000);
+}
+
+// ==================== 【改进4】首页待办事项交互面板 ====================
+// 功能：首页聚合今日所有待办（告警/工单/退房/查房），点击可标记处理并跳转
+function renderHomeTodoPanel() {
+  var todos = [
+    {id:'todo-1', type:'alert', icon:'🔴', title:'303房间门锁离线', desc:'已离线48分钟，需检查网络', priority:'high', page:'alert', time:'10分钟前'},
+    {id:'todo-2', type:'alert', icon:'🟡', title:'306房间电量低于20%', desc:'请尽快更换电池', priority:'medium', page:'device', time:'25分钟前'},
+    {id:'todo-3', type:'workorder', icon:'🛠️', title:'305房间热水投诉', desc:'待接受工单', priority:'high', page:'workorder', time:'30分钟前'},
+    {id:'todo-4', type:'workorder', icon:'⏰', title:'201房间发票需求', desc:'已超时2小时', priority:'high', page:'workorder', time:'1小时前'},
+    {id:'todo-5', type:'checkout', icon:'⏰', title:'302房间超时未退', desc:'已过期2小时', priority:'high', page:'checkout', time:'2小时前'},
+    {id:'todo-6', type:'housekeeping', icon:'🧹', title:'203房间待查房', desc:'保洁完成待查房', priority:'low', page:'housekeeping', time:'15分钟前'},
+  ];
+  var colors = {high:'var(--red)', medium:'var(--orange)', low:'var(--green)'};
+  var bgColors = {high:'var(--red-bg)', medium:'var(--orange-bg)', low:'var(--green-bg)'};
+  var panel = document.getElementById('home-todo-panel');
+  if (!panel) return;
+  var html = '<div style="padding:14px 16px;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+    '<div style="font-size:14px;font-weight:700;">📋 今日待办 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">（' + todos.length + '项）</span></div>' +
+    '<button onclick="showPage(\'notif\')" style="background:none;border:none;color:var(--blue);font-size:11px;cursor:pointer;font-weight:600;">查看全部 ›</button></div>';
+  todos.forEach(function(t) {
+    var c = colors[t.priority] || colors.medium;
+    var bg = bgColors[t.priority] || bgColors.medium;
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:10px;' + (t !== todos[todos.length-1] ? 'border-bottom:1px solid var(--border);' : '') + '">' +
+      '<div style="width:32px;height:32px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">' + t.icon + '</div>' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="font-size:12px;font-weight:600;color:var(--text);">' + t.title + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:1px;">' + t.desc + ' · ' + t.time + '</div></div>' +
+      '<button onclick="dismissTodo(\'' + t.id + '\', \'' + t.page + '\')" style="padding:4px 10px;border-radius:6px;border:1px solid ' + c + ';background:' + bg + ';color:' + c + ';font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">处理</button></div>';
+  });
+  html += '</div>';
+  panel.innerHTML = html;
+}
+
+function dismissTodo(id, page) {
+  var el = document.getElementById('todo-item-' + id);
+  if (el) { el.style.transition = 'all 0.3s'; el.style.opacity = '0'; el.style.transform = 'translateX(20px)'; setTimeout(function() { el.remove(); }, 300); }
+  if (page === 'checkout') openCheckoutFullModal('302', '李四', '2026-03-27 14:00');
+  else if (page === 'workorder') showPage('workorder');
+  else if (page === 'device') showPage('device');
+  else if (page === 'alert') showPage('alert');
+  else if (page === 'housekeeping') showPage('housekeeping');
+  else showPage(page);
+}
+
+// ==================== 【改进5】交接班报表数据导出 ====================
+// 功能：将交接班报表数据导出为CSV格式，便于存档和追溯
+function exportHandoverReportCSV() {
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g,'-');
+  var timeStr = now.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  // 模拟交接班数据
+  var shifts = [
+    {shift:'早班', time:'07:00-15:00', revenue:4820, checkin:5, checkout:3, settlement:8, alerts:1, workorders:2, staffPresent:4, staffAbsent:0},
+    {shift:'中班', time:'15:00-23:00', revenue:3260, checkin:3, checkout:4, settlement:6, alerts:0, workorders:1, staffPresent:3, staffAbsent:1},
+    {shift:'晚班', time:'23:00-07:00', revenue:1280, checkin:2, checkout:1, settlement:3, alerts:2, workorders:0, staffPresent:2, staffAbsent:0},
+  ];
+  var csv = '\uFEFF交接班报表,' + dateStr + ' ' + timeStr + '\n';
+  csv += '班次,时段,营收,入住,退房,结算笔数,待处理告警,待办工单,出勤人数,缺勤人数\n';
+  shifts.forEach(function(s) { csv += s.shift + ',' + s.time + ',' + s.revenue + ',' + s.checkin + ',' + s.checkout + ',' + s.settlement + ',' + s.alerts + ',' + s.workorders + ',' + s.staffPresent + ',' + s.staffAbsent + '\n'; });
+  csv += '\n备注：\n';
+  csv += '1. 营收数据已核对\n';
+  csv += '2. 房间状态已确认\n';
+  csv += '3. 工单已移交\n';
+  csv += '4. 设备告警已记录\n';
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '交接班报表_' + dateStr + '.csv';
+  a.click();
+  showToast('📤 交接班报表已导出：交接班报表_' + dateStr + '.csv', 'success');
+}
+
+// 挂载到 window
+window.toggleWorkorderRow = toggleWorkorderRow;
+window.clearWorkorderSelection = clearWorkorderSelection;
+window.openBatchAssignWorkorder = openBatchAssignWorkorder;
+window.closeBatchAssignWo = closeBatchAssignWo;
+window.submitBatchAssignWo = submitBatchAssignWo;
+window.openCheckoutPreSettlement = openCheckoutPreSettlement;
+window.closeCheckoutPreview = closeCheckoutPreview;
+window.openFirmwareComparisonModal = openFirmwareComparisonModal;
+window.closeFirmwareCompare = closeFirmwareCompare;
+window.doSingleFirmwareUpgrade = doSingleFirmwareUpgrade;
+window.renderHomeTodoPanel = renderHomeTodoPanel;
+window.dismissTodo = dismissTodo;
+window.exportHandoverReportCSV = exportHandoverReportCSV;

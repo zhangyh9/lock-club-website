@@ -791,6 +791,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <div style="font-size:11px;color:var(--text-muted);">入住人：李四 · 已过期 2小时 · 房费 ¥128/天</div>
               </div>
               <button class="action-btn small" onclick="openCheckoutFullModal('302','李四','2026-03-27 14:00')" style="padding:2px 8px;font-size:10px;background:var(--red);color:white;border:none;">立即退房</button>
+              <button class="action-btn small" onclick="openCheckoutPreSettlement('302','李四','2026-03-27 14:00',128)" style="padding:2px 8px;font-size:10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">预结算</button>
             </div>
             <div style="display:flex;align-items:center;gap:8px;padding:8px 0;">
               <div style="width:28px;height:28px;background:var(--orange-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;">⏰</div>
@@ -814,6 +815,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <p>303房间离线超过10小时 · 306房间电量低于20%</p>
         </div>
         <button class="btn" onclick="showPage('alert')">立即处理</button>
+      </div>
+      <!-- 【改进4】首页待办事项交互面板 -->
+      <div id="home-todo-panel" class="card" style="margin-bottom:16px;">
+        <!-- 由 renderHomeTodoPanel() 动态渲染 -->
       </div>
       <!-- 【改进v3-1】首页通知铃铛 + 未读计数红点（实时提醒待处理事项） -->
       <div style="position:fixed;top:16px;right:24px;z-index:999;">
@@ -2020,6 +2025,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <button class="action-btn small" onclick="window._userClickedBatchUpgrade=true;openBatchUpgradeModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📦 批量升级固件</button>
         <button class="action-btn small" onclick="openDeviceBatchActionModal('battery')" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔋 电池检测</button>
         <button class="action-btn small" onclick="openDeviceBatchActionModal('sync')" style="padding:5px 10px;background:var(--bg);color:var(--text);border-color:var(--border);">🔍 状态同步</button>
+        <button class="action-btn small" onclick="openFirmwareComparisonModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📋 固件对比表</button>
         <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">💡 勾选左侧设备列表可精确选择设备</span>
       </div>
       <!-- 【改进4】设备电量实时监控仪表盘 -->
@@ -7400,7 +7406,7 @@ function openEditMemberLevelModalV2(idx) {
           <table class="table">
             <thead><tr><th style="width:32px;"><input type="checkbox" id="wo-select-all" onchange="toggleAllWorkorderSelect(this.checked)" style="accent-color:var(--blue);cursor:pointer;" title="全选"></th><th>工单编号</th><th>类型</th><th>房间</th><th>客户</th><th>内容摘要</th><th>优先级</th><th>状态</th><th>处理人</th><th>创建时间</th><th>完成时间</th><th>操作</th></tr></thead>
             <tbody id="workorder-table-body">
-              <tr data-status="pending" data-priority="urgent" data-overdue="false"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032601" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032601</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>301</td><td>张三</td><td>房间空调噪音过大，无法休息</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--red-bg);color:var(--red);font-size:10px;">🔴紧急</span><span style="font-size:10px;color:var(--text-muted);">今天 10:32</span></div></td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:32</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(0)">处理</button></td></tr>
+              <tr data-status="pending" data-priority="urgent" data-overdue="false"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032601" onchange="toggleWorkorderRow(this, 'WO-2026032601')" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032601</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>301</td><td>张三</td><td>房间空调噪音过大，无法休息</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--red-bg);color:var(--red);font-size:10px;">🔴紧急</span><span style="font-size:10px;color:var(--text-muted);">今天 10:32</span></div></td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:32</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(0)">处理</button></td></tr>
               <tr data-status="pending" data-priority="normal" data-overdue="false"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032602" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032602</td><td><span class="tbadge blue">📦 送物服务</span></td><td>203</td><td>李四</td><td>需要添加矿泉水x2</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--blue-bg);color:var(--blue);font-size:10px;">🟡普通</span><span style="font-size:10px;color:var(--text-muted);">今天 10:15</span></div></td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:15</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(1)">处理</button></td></tr>
               <tr data-status="pending" data-priority="low" data-overdue="false"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032603" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032603</td><td><span class="tbadge purple">📄 发票需求</span></td><td>201</td><td>王五</td><td>需要开具增值税普通发票</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--bg);color:var(--text-muted);font-size:10px;">⚪低</span><span style="font-size:10px;color:var(--text-muted);">今天 09:48</span></div></td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 09:48</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(2)">处理</button></td></tr>
               <tr data-status="processing" data-priority="normal" data-overdue="false"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032528" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032528</td><td><span class="tbadge blue">📦 送物服务</span></td><td>304</td><td>钱七</td><td>需要浴巾一套</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--blue-bg);color:var(--blue);font-size:10px;">🟡普通</span><span style="font-size:10px;color:var(--text-muted);">昨天 18:20</span></div></td><td><span class="tbadge purple">处理中</span></td><td><span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 周敏</span></td><td>昨天 18:20</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(3)">详情</button></td></tr>
@@ -8143,6 +8149,7 @@ function openEditMemberLevelModalV2(idx) {
         <span style="font-size:13px;color:var(--text-muted);margin-left:8px;">交接日期：</span>
         <input type="date" class="form-input" id="handover-date" value="2026-03-27" style="padding:6px 10px;font-size:13px;width:140px;" onchange="renderHandoverReport()">
         <button class="action-btn primary" onclick="exportHandoverReport()" style="background:var(--blue);color:white;border:none;padding:6px 14px;font-size:13px;">📤 导出报表</button>
+        <button class="action-btn" onclick="exportHandoverReportCSV()" style="padding:6px 14px;font-size:13px;">📊 导出CSV</button>
         <button class="action-btn" onclick="openHandoverSignModal()" style="padding:6px 14px;font-size:13px;">✍️ 确认交班</button>
       </div>
       <!-- 营收统计卡片 -->
@@ -16661,6 +16668,7 @@ function showPage(name) {
     document.querySelectorAll('.card-tab').forEach(t => t.classList.remove('active'));
     const tabs = document.querySelectorAll('#page-home .card-tabs .card-tab');
     if (tabs[0]) tabs[0].classList.add('active');
+    if (typeof renderHomeTodoPanel === 'function') setTimeout(renderHomeTodoPanel, 100);
   }
   // 如果切换到看板页面，启动实时刷新
   if (name === 'dashboard') {
@@ -46392,6 +46400,6 @@ function filterKanbanByHandler(handler) {
   });
 }
 </script>
-<script src="v3-improvements.js?v=20260328d"></script>
+<script src="v3-improvements.js?v=20260328e"></script>
 </body>
 </html>
