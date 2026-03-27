@@ -4149,6 +4149,8 @@ setInterval(function() {
       document.getElementById('mrc-final-amount').textContent = '¥500';
       document.getElementById('mrc-bonus-text').textContent = '充500送50，实际到账¥550';
       document.getElementById('mrc-points-preview').textContent = '550';
+      // 【改进3-v3】重置支付密码
+      for (var i = 1; i <= 6; i++) { var el = document.getElementById('mrc-pwd-' + i); if (el) { el.value = ''; el.style.borderColor = ''; } }
       updateRechargeBtn();
       openModal('member-recharge-v3');
     }
@@ -4188,13 +4190,48 @@ setInterval(function() {
     }
     function submitMemberRechargeV3() {
       if (currentRechargeAmount <= 0) { showToast('请输入有效充值金额', 'error'); return; }
+      // 【改进3-v3】支付密码验证
+      var pwd = '';
+      for (var i = 1; i <= 6; i++) {
+        var el = document.getElementById('mrc-pwd-' + i);
+        if (el) pwd += el.value;
+      }
+      if (pwd.length < 6) { showToast('请输入完整的6位支付密码', 'error'); return; }
+      if (pwd !== '123456') { showToast('支付密码错误（演示密码：123456）', 'error'); return; }
       var bonus = currentRechargeAmount >= 1000 ? Math.floor(currentRechargeAmount * 0.15) : currentRechargeAmount >= 500 ? 50 : currentRechargeAmount >= 200 ? 20 : 0;
       var actual = currentRechargeAmount + bonus;
       var m = memberBalanceData[currentRechargeMemberIdx];
       m.balance += actual;
       document.getElementById('mrc-current-balance').textContent = '¥' + m.balance;
-      showToast('✅ 充值成功！' + m.name + ' 充值¥' + currentRechargeAmount + '，实际到账¥' + actual + '（含赠送¥' + bonus + '）', 'success');
-      setTimeout(function(){ closeModal('member-recharge-v3'); }, 1500);
+      // 【改进3-v3】生成充值流水号
+      var now = new Date();
+      var txId = 'RE' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + String(now.getSeconds()).padStart(2,'0') + '-' + Math.floor(1000 + Math.random() * 9000);
+      // 【改进3-v3】短信通知模拟
+      var sendSms = document.getElementById('mrc-send-sms') && document.getElementById('mrc-send-sms').checked;
+      if (sendSms) {
+        showToast('📱 充值通知短信已发送至 ' + m.phone + '，流水号：' + txId, 'info');
+      }
+      showToast('✅ 充值成功！流水号：' + txId + '，' + m.name + ' 充值¥' + currentRechargeAmount + '，实际到账¥' + actual + '（含赠送¥' + bonus + '）', 'success');
+      setTimeout(function(){ closeModal('member-recharge-v3'); }, 2000);
+    }
+    function mrcPwdNext(num, el) {
+      if (el.value.length === 1 && num < 6) {
+        var next = document.getElementById('mrc-pwd-' + (num + 1));
+        if (next) next.focus();
+      }
+      if (num === 6) {
+        var pwd = '';
+        for (var i = 1; i <= 6; i++) { var e = document.getElementById('mrc-pwd-' + i); if(e) pwd += e.value; }
+        if (pwd.length === 6) {
+          document.getElementById('mrc-pwd-1').style.borderColor = pwd === '123456' ? 'var(--green)' : 'var(--red)';
+          if (pwd !== '123456') {
+            setTimeout(function() {
+              for (var j = 1; j <= 6; j++) { var e2 = document.getElementById('mrc-pwd-' + j); if(e2) { e2.value = ''; e2.style.borderColor = ''; } }
+              document.getElementById('mrc-pwd-1').focus();
+            }, 600);
+          }
+        }
+      }
     }
 
     // ============================================================
@@ -6139,7 +6176,82 @@ setInterval(function() {
         </div>
       </div>
     </div>
+    <!-- 【改进5-v3】删除楼层确认弹窗（带楼层名验证+房间占用检查） -->
+    <div class="modal-overlay hidden" id="modal-delete-floor">
+      <div class="modal" style="width:460px;">
+        <div class="modal-header">
+          <div class="modal-title">⚠️ 删除楼层确认</div>
+          <button class="modal-close" onclick="closeModal('delete-floor')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="text-align:center;margin-bottom:16px;">
+            <div style="font-size:56px;margin-bottom:12px;">🗑️</div>
+            <div style="font-size:16px;font-weight:600;margin-bottom:6px;" id="delf-floor-name">确定要删除 3层 吗？</div>
+            <div style="font-size:13px;color:var(--text-muted);" id="delf-floor-info">该操作不可恢复！</div>
+          </div>
+          <!-- 楼层房间统计 -->
+          <div id="delf-room-warning" style="display:none;padding:12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--red);">
+            ⚠️ 该楼层当前有 <b id="delf-room-count">0</b> 间客房，删除前请先转移或清空房间！
+          </div>
+          <div style="padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--orange);">
+            ⚠️ 删除楼层将同步删除楼层下所有房间和设备关联关系，此操作不可恢复！
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">请输入楼层名称以确认删除 <span class="required">*</span></label>
+            <input type="text" class="form-input" id="delf-confirm-input" placeholder="请输入楼层名称确认">
+            <div class="form-hint" id="delf-hint">输入楼层名称（如：3层）后才能点击确认删除</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('delete-floor')">取消</button>
+          <button class="modal-btn primary" id="delf-submit-btn" onclick="confirmDeleteFloor()" disabled style="opacity:0.5;cursor:not-allowed;background:var(--red);border-color:var(--red);">确认删除</button>
+        </div>
+      </div>
+    </div>
     <script>
+    var floorDeleteIdx = -1;
+    var floorDeleteName = '';
+    var floorDeleteRooms = 0;
+    var floorData = [
+      {bld:'主楼',num:3,name:'3层',rooms:8,status:'enabled'},
+      {bld:'主楼',num:2,name:'2层',rooms:5,status:'enabled'},
+      {bld:'主楼',num:1,name:'1层',rooms:3,status:'enabled'}
+    ];
+    function openDeleteFloorModal(idx) {
+      floorDeleteIdx = idx;
+      var f = floorData[idx] || floorData[0];
+      floorDeleteName = f.name;
+      floorDeleteRooms = f.rooms;
+      document.getElementById('delf-floor-name').textContent = '确定要删除 ' + f.name + ' 吗？';
+      document.getElementById('delf-floor-info').textContent = '所属楼栋：' + f.bld + ' · 房间数：' + f.rooms + '间';
+      document.getElementById('delf-confirm-input').value = '';
+      document.getElementById('delf-submit-btn').disabled = true;
+      document.getElementById('delf-submit-btn').style.opacity = '0.5';
+      document.getElementById('delf-submit-btn').style.cursor = 'not-allowed';
+      var warnEl = document.getElementById('delf-room-warning');
+      if (f.rooms > 0) {
+        warnEl.style.display = 'block';
+        document.getElementById('delf-room-count').textContent = f.rooms;
+      } else {
+        warnEl.style.display = 'none';
+      }
+      openModal('delete-floor');
+      document.getElementById('delf-confirm-input').focus();
+      document.getElementById('delf-confirm-input').oninput = function() {
+        var matches = this.value.trim() === floorDeleteName;
+        var btn = document.getElementById('delf-submit-btn');
+        btn.disabled = !matches;
+        btn.style.opacity = matches ? '1' : '0.5';
+        btn.style.cursor = matches ? 'pointer' : 'not-allowed';
+        document.getElementById('delf-hint').textContent = matches ? '✅ 楼层名称匹配，可以删除' : '输入楼层名称（如：' + floorDeleteName + '）确认';
+      };
+    }
+    function confirmDeleteFloor() {
+      var input = document.getElementById('delf-confirm-input').value.trim();
+      if (input !== floorDeleteName) { showToast('楼层名称不匹配，删除失败', 'error'); return; }
+      showToast('✅ 楼层 ' + floorDeleteName + ' 已删除', 'success');
+      closeModal('delete-floor');
+    }
     var floorEditIdx = -1;
     function openEditFloorModal(idx) {
       floorEditIdx = idx;
@@ -6421,9 +6533,9 @@ setInterval(function() {
           <table class="table">
             <thead><tr><th>楼层</th><th>房间数</th><th>入住</th><th>空房</th><th>告警</th><th>设备在线率</th><th>操作</th></tr></thead>
             <tbody>
-              <tr data-floor-idx="0"><td>3层</td><td>8</td><td><span class="tbadge blue">5</span></td><td><span class="tbadge green">3</span></td><td><span class="tbadge red">1</span></td><td><span class="tbadge green">87.5%</span></td><td><button class="action-btn small" onclick="openEditFloorModal(0)">编辑</button></td></tr>
-              <tr data-floor-idx="1"><td>2层</td><td>5</td><td><span class="tbadge blue">2</span></td><td><span class="tbadge green">2</span></td><td><span class="tbadge red">1</span></td><td><span class="tbadge green">80%</span></td><td><button class="action-btn small" onclick="openEditFloorModal(1)">编辑</button></td></tr>
-              <tr data-floor-idx="2"><td>1层</td><td>3</td><td><span class="tbadge blue">1</span></td><td><span class="tbadge green">2</span></td><td><span class="tbadge red">0</span></td><td><span class="tbadge green">100%</span></td><td><button class="action-btn small" onclick="openEditFloorModal(2)">编辑</button></td></tr>
+              <tr data-floor-idx="0"><td>3层</td><td>8</td><td><span class="tbadge blue">5</span></td><td><span class="tbadge green">3</span></td><td><span class="tbadge red">1</span></td><td><span class="tbadge green">87.5%</span></td><td><button class="action-btn small" onclick="openEditFloorModal(0)">编辑</button> <button class="action-btn small red" onclick="openDeleteFloorModal(0)">删除</button></td></tr>
+              <tr data-floor-idx="1"><td>2层</td><td>5</td><td><span class="tbadge blue">2</span></td><td><span class="tbadge green">2</span></td><td><span class="tbadge red">1</span></td><td><span class="tbadge green">80%</span></td><td><button class="action-btn small" onclick="openEditFloorModal(1)">编辑</button> <button class="action-btn small red" onclick="openDeleteFloorModal(1)">删除</button></td></tr>
+              <tr data-floor-idx="2"><td>1层</td><td>3</td><td><span class="tbadge blue">1</span></td><td><span class="tbadge green">2</span></td><td><span class="tbadge red">0</span></td><td><span class="tbadge green">100%</span></td><td><button class="action-btn small" onclick="openEditFloorModal(2)">编辑</button> <button class="action-btn small red" onclick="openDeleteFloorModal(2)">删除</button></td></tr>
             </tbody>
           </table>
         </div>
