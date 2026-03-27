@@ -539,6 +539,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       <div class="menu-item" onclick="showPage('keypad')"><span class="icon">🔑</span><span>密码管理</span></div>
       <div class="menu-item" onclick="showPage('oplog')"><span class="icon">📝</span><span>操作日志</span></div>
       <div class="menu-item" onclick="showPage('report')"><span class="icon">📊</span><span>数据报表</span></div>
+    <div class="menu-item" onclick="openNightAuditFullPage()" style="color:var(--orange);"><span class="icon">🌙</span><span>夜审报表</span></div>
+    <div class="menu-item" onclick="openStaffSchedulePage()" style="color:var(--purple);"><span class="icon">📅</span><span>排班管理</span></div>
+    <div class="menu-item" onclick="openEnergyDetailPage()" style="color:var(--blue);"><span class="icon">⚡</span><span>能耗分析</span></div>
+    <div class="menu-item" onclick="openPointsMallPage()" style="color:var(--orange);"><span class="icon">🎁</span><span>积分商城</span></div>
+    <div class="menu-item" onclick="openWorkorderRatingPage()" style="color:var(--green);"><span class="icon">⭐</span><span>服务评价</span></div>
     </div>
     <!-- 【改进4】通知面板（点击铃铛展开，可标记已读/全部清除） -->
     <div id="notif-panel" style="display:none;position:fixed;top:0;right:0;width:340px;height:100vh;background:white;border-left:1px solid var(--border);z-index:200;box-shadow:-4px 0 20px rgba(0,0,0,0.1);overflow-y:auto;">
@@ -29379,6 +29384,862 @@ function downloadCSV(content, filename) {
   link.href = URL.createObjectURL(blob);
   link.download = filename;
   link.click();
+}
+
+// ======= v3 改进HTML页面区域 =======
+
+<!-- v3改进1: 夜审报表完整页面 -->
+<div id="page-nightaudit" class="page">
+  <div class="page-header">
+    <div class="page-title">🌙 夜审报表</div>
+    <div class="page-sub">每日结账 · 营收核对 · 交接班确认 · <span id="naf-date" style="color:var(--blue);">--</span></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <!-- 左侧: 营收概况 -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">💰 营收概况</div></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);" id="naf-revenue">¥12,860</div><div style="font-size:11px;color:var(--text-muted);">当日营收</div></div>
+          <div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);" id="naf-deposit">¥1,200</div><div style="font-size:11px;color:var(--text-muted);">押金收入</div></div>
+          <div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);" id="naf-consumption">¥680</div><div style="font-size:11px;color:var(--text-muted);">其他消费</div></div>
+          <div style="padding:12px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--purple);" id="naf-key-used">18次</div><div style="font-size:11px;color:var(--text-muted);">开锁次数</div></div>
+        </div>
+        <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-muted);">
+          <div>入住: <span id="naf-checkin-count" style="color:var(--blue);font-weight:600;">5</span> 人</div>
+          <div>退房: <span id="naf-checkout-count" style="color:var(--green);font-weight:600;">3</span> 人</div>
+          <div>在住房: <span id="naf-in-count" style="color:var(--orange);font-weight:600;">8</span> 间</div>
+          <div>空房: <span id="naf-empty-count" style="color:var(--text);font-weight:600;">8</span> 间</div>
+        </div>
+      </div>
+    </div>
+    <!-- 右侧: 设备/工单状态 -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">📊 设备与工单状态</div></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <div style="padding:10px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--red);" id="naf-offline-count">2</div><div style="font-size:10px;color:var(--text-muted);">离线设备</div></div>
+          <div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);" id="naf-alert-count">3</div><div style="font-size:10px;color:var(--text-muted);">低电量</div></div>
+          <div style="padding:10px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--purple);" id="naf-wo-pending">3</div><div style="font-size:10px;color:var(--text-muted);">待处理工单</div></div>
+          <div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);" id="naf-wo-done">8</div><div style="font-size:10px;color:var(--text-muted);">已完成工单</div></div>
+          <div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);">14/16</div><div style="font-size:10px;color:var(--text-muted);">在线设备</div></div>
+          <div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--text);">✅</div><div style="font-size:10px;color:var(--text-muted);">运营正常</div></div>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">报表生成: <span id="naf-report-time" style="color:var(--blue);">--</span></div>
+      </div>
+    </div>
+  </div>
+  <!-- 夜审 checklist -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-header">
+      <div class="card-title">📋 夜审检查项 <span id="naf-checklist-text" style="font-size:12px;color:var(--text-muted);font-weight:400;">0/8 已完成</span></div>
+      <div style="display:flex;gap:8px;">
+        <button class="action-btn" onclick="exportNightAuditFull()" style="padding:4px 12px;">📤 导出报表</button>
+        <button class="action-btn" onclick="confirmNightAuditFull()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);padding:4px 12px;">✅ 确认夜审完成</button>
+      </div>
+    </div>
+    <div style="padding:8px 14px;background:var(--blue-bg);border-radius:8px;margin:8px 14px 0;font-size:12px;color:var(--blue);">
+      💡 勾选所有项目后方可提交夜审，确保当日运营数据完整闭环
+    </div>
+    <div style="height:6px;background:var(--border);margin:0 14px;border-radius:0 0 4px 4px;overflow:hidden;">
+      <div id="naf-checklist-progress" style="height:100%;background:var(--green);width:0%;transition:width 0.3s;border-radius:0 0 4px 4px;"></div>
+    </div>
+    <div id="naf-checklist-body" class="card-body" style="padding:0;"></div>
+  </div>
+  <!-- 夜审历史 -->
+  <div class="card">
+    <div class="card-header"><div class="card-title">📜 夜审历史记录</div></div>
+    <div class="card-body">
+      <table class="table">
+        <thead><tr><th>日期</th><th>审计人</th><th>营收</th><th>房间状态</th><th>状态</th><th>异常事项</th></tr></thead>
+        <tbody id="naf-history-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- v3改进2: 员工排班管理完整页面 -->
+<div id="page-staffschedule" class="page">
+  <div class="page-header">
+    <div class="page-title">📅 员工排班管理</div>
+    <div class="page-sub">本周排班日历 · 考勤记录 · 调班申请 · 03/23-03/29</div>
+  </div>
+  <div class="stats-row" style="grid-template-columns:repeat(5,1fr);">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--blue-bg);">👥</div>
+      <div><div class="stat-num" id="ssp-stat-total">5</div><div class="stat-label">员工总数</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--green-bg);">✅</div>
+      <div><div class="stat-num" id="ssp-stat-present">0</div><div class="stat-label">出勤</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--orange-bg);">⏰</div>
+      <div><div class="stat-num" id="ssp-stat-late">0</div><div class="stat-label">迟到</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--red-bg);">❌</div>
+      <div><div class="stat-num" id="ssp-stat-absent">0</div><div class="stat-label">缺勤</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--purple-bg);">📊</div>
+      <div><div class="stat-num" id="ssp-attendance-rate">95%</div><div class="stat-label">出勤率</div></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
+    <div style="display:flex;gap:6px;align-items:center;">
+      <span style="font-size:12px;color:var(--text-muted);">图例：</span>
+      <span style="font-size:11px;padding:3px 8px;background:var(--green-bg);border-radius:10px;">✅ 正常</span>
+      <span style="font-size:11px;padding:3px 8px;background:var(--orange-bg);border-radius:10px;">⏰ 迟到</span>
+      <span style="font-size:11px;padding:3px 8px;background:var(--red-bg);border-radius:10px;">❌ 缺勤</span>
+      <span style="font-size:11px;padding:3px 8px;background:var(--bg);border-radius:10px;">⬜ 休息</span>
+    </div>
+    <button class="action-btn small" onclick="openAddScheduleRuleModal()" style="margin-left:auto;padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⚙️ 排班规则</button>
+    <button class="action-btn small" onclick="exportSchedule()" style="padding:4px 10px;">📤 导出排班</button>
+  </div>
+  <div style="overflow-x:auto;" id="ssp-calendar"></div>
+  <div style="margin-top:12px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">
+    💡 点击任意排班单元格可修改该员工的班次或考勤状态
+  </div>
+</div>
+
+<!-- v3改进3: 能耗详细分析完整页面 -->
+<div id="page-energydetail" class="page">
+  <div class="page-header">
+    <div class="page-title">⚡ 能耗详细分析</div>
+    <div class="page-sub">房间级用电明细 · 成本核算 · 节能建议</div>
+  </div>
+  <div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--blue-bg);">⚡</div>
+      <div><div class="stat-num" id="eed-stat-today">--</div><div class="stat-label">今日用电(度)</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--orange-bg);">💰</div>
+      <div><div class="stat-num" id="eed-stat-today-cost">--</div><div class="stat-label">今日电费(元)</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--purple-bg);">📊</div>
+      <div><div class="stat-num" id="eed-stat-month">--</div><div class="stat-label">本月用电(度)</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--red-bg);">⚠️</div>
+      <div><div class="stat-num" id="eed-stat-alert">--</div><div class="stat-label">异常房间</div></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+    <select class="form-select" id="eed-type-filter" onchange="renderEnergyDetailTable()" style="padding:6px 10px;font-size:12px;width:130px;">
+      <option value="all">全部房型</option>
+      <option value="亲子间">🏠 亲子间</option>
+      <option value="大床房">🛏️ 大床房</option>
+      <option value="标准间">🛏️ 标准间</option>
+    </select>
+    <select class="form-select" id="eed-sort" onchange="renderEnergyDetailTable()" style="padding:6px 10px;font-size:12px;width:150px;">
+      <option value="todayKwh">按今日用电排序</option>
+      <option value="monthKwh">按本月用电排序</option>
+      <option value="weekAvg">按周均用电排序</option>
+    </select>
+    <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">单价: <span style="color:var(--orange);font-weight:600;">¥0.6/度</span></span>
+    <span style="font-size:12px;color:var(--text-muted);" id="eed-count">9间</span>
+    <button class="action-btn small" onclick="exportEnergyDetail()" style="padding:4px 10px;">📤 导出</button>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">🏠 各房间用电明细</div></div>
+    <div class="card-body">
+      <table class="table">
+        <thead><tr><th>房间</th><th>今日用电</th><th>昨日用电</th><th>周均</th><th>今日成本</th><th>本月累计</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody id="eed-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header"><div class="card-title">💡 节能建议</div></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div style="padding:14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;">
+          <div style="font-weight:600;color:var(--red);margin-bottom:6px;">⚠️ 异常偏高房间</div>
+          <div style="font-size:12px;color:var(--text);">302房间、202房间、102房间今日用电明显偏高（>50%），建议检查门锁是否存在异常耗电或待机功耗问题。</div>
+          <div style="font-size:11px;color:var(--red);margin-top:6px;">建议：联系工程部检测设备供电模块</div>
+        </div>
+        <div style="padding:14px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;">
+          <div style="font-weight:600;color:var(--green);margin-bottom:6px;">✅ 节能房间</div>
+          <div style="font-size:12px;color:var(--text);">103、101、203等标准间用电控制良好，低于周均值10%以上，可作为节能标杆房间推广。</div>
+          <div style="font-size:11px;color:var(--green);margin-top:6px;">建议：对标学习，优化其他房间用电习惯</div>
+        </div>
+        <div style="padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">
+          <div style="font-weight:600;color:var(--blue);margin-bottom:6px;">📊 整体评估</div>
+          <div style="font-size:12px;color:var(--text);">本月整体用电较上月同期下降约8%，主要得益于低电量设备及时更换电池，设备离线率降低。</div>
+          <div style="font-size:11px;color:var(--blue);margin-top:6px;">预计本月电费: ¥<span id="eed-stat-month-cost">--</span></div>
+        </div>
+        <div style="padding:14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;">
+          <div style="font-weight:600;color:var(--orange);margin-bottom:6px;">🔧 优化建议</div>
+          <div style="font-size:12px;color:var(--text);">1. 为所有设备设置低电量告警阈值（低于30%即告警）</div>
+          <div style="font-size:12px;color:var(--text);">2. 每周定期检查离线设备，减少无效待机功耗</div>
+          <div style="font-size:12px;color:var(--text);">3. 在退房后确认门锁进入低功耗模式</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v3改进4: 会员积分商城完整页面 -->
+<div id="page-pointsmall" class="page">
+  <div class="page-header">
+    <div class="page-title">🎁 会员积分商城</div>
+    <div class="page-sub">积分兑换 · 权益领取 · 积分明细</div>
+  </div>
+  <div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">
+    <div class="stat-card" style="background:linear-gradient(135deg,var(--orange-bg),var(--yellow-bg));">
+      <div class="stat-icon" style="background:rgba(250,140,22,0.15);">💰</div>
+      <div><div class="stat-num" id="pm-total-points" style="color:var(--orange);font-size:28px;">1280</div><div class="stat-label">当前积分</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--blue-bg);">🎁</div>
+      <div><div class="stat-num" id="pm-points-value">≈ ¥13</div><div class="stat-label">积分价值</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--green-bg);">⭐</div>
+      <div><div class="stat-num">4.8</div><div class="stat-label">会员等级</div></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;">
+    <button class="card-tab active" onclick="switchPointsTab('catalog', this)" style="border-bottom:2px solid var(--blue);border-radius:0;padding:8px 16px;font-size:13px;">🎁 兑换专区</button>
+    <button class="card-tab" onclick="switchPointsTab('history', this)" style="border-bottom:2px solid transparent;border-radius:0;padding:8px 16px;font-size:13px;">📋 积分明细</button>
+    <button class="card-tab" onclick="switchPointsTab('rules', this)" style="border-bottom:2px solid transparent;border-radius:0;padding:8px 16px;font-size:13px;">📜 积分规则</button>
+  </div>
+  <div id="pm-catalog-tab">
+    <div id="pm-catalog-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;"></div>
+  </div>
+  <div id="pm-history-tab" style="display:none;">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📋 积分明细</div>
+        <button class="action-btn small" onclick="exportPointsHistory()" style="padding:4px 10px;">📤 导出</button>
+      </div>
+      <div id="pm-history-list" class="card-body"></div>
+    </div>
+  </div>
+  <div id="pm-rules-tab" style="display:none;">
+    <div class="card">
+      <div class="card-header"><div class="card-title">📜 积分规则</div></div>
+      <div class="card-body">
+        <div style="padding:14px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;margin-bottom:12px;">
+          <div style="font-weight:600;color:var(--green);margin-bottom:8px;">💰 如何获得积分</div>
+          <div style="font-size:12px;color:var(--text);line-height:1.8;">• 住宿消费：每消费1元得1积分（会员日双倍）<br>• 点评入住：完成入住点评额外奖励50积分<br>• 会员推荐：推荐新会员入住奖励200积分/次<br>• 生日入住：生日当月入住双倍积分</div>
+        </div>
+        <div style="padding:14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;">
+          <div style="font-weight:600;color:var(--orange);margin-bottom:8px;">🎁 积分如何使用</div>
+          <div style="font-size:12px;color:var(--text);line-height:1.8;">• 积分不可提现，不可转让<br>• 积分兑换后不可撤回<br>• 积分有效期2年，逾期清零<br>• 兑换商品以门店实物为准</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function switchPointsTab(tab, el) {
+  document.querySelectorAll('#page-pointsmall .card-tab').forEach(function(t){ t.classList.remove('active'); t.style.borderBottom = '2px solid transparent'; });
+  el.classList.add('active'); el.style.borderBottom = '2px solid var(--blue)';
+  document.getElementById('pm-catalog-tab').style.display = tab === 'catalog' ? '' : 'none';
+  document.getElementById('pm-history-tab').style.display = tab === 'history' ? '' : 'none';
+  document.getElementById('pm-rules-tab').style.display = tab === 'rules' ? '' : 'none';
+}
+function exportPointsHistory() { showToast('积分明细导出中...', 'info'); setTimeout(function(){ showToast('导出成功！', 'success'); }, 600); }
+</script>
+
+<!-- v3改进5: 服务工单满意度评价页面 -->
+<div id="page-worating" class="page">
+  <div class="page-header">
+    <div class="page-title">⭐ 服务工单评价管理</div>
+    <div class="page-sub">满意度评分 · 客户反馈 · 服务改进闭环</div>
+  </div>
+  <div class="stats-row" style="grid-template-columns:repeat(5,1fr);">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--blue-bg);">📋</div>
+      <div><div class="stat-num" id="wor-stat-total">4</div><div class="stat-label">累计评价</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--orange-bg);">⭐</div>
+      <div><div class="stat-num" id="wor-stat-avg">4.3</div><div class="stat-label">平均评分</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--green-bg);">😊</div>
+      <div><div class="stat-num" id="wor-stat-good">3</div><div class="stat-label">满意(4-5星)</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--red-bg);">😞</div>
+      <div><div class="stat-num" id="wor-stat-bad">0</div><div class="stat-label">不满意(1-2星)</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--purple-bg);">💬</div>
+      <div><div class="stat-num" id="wor-stat-no-response">2</div><div class="stat-label">待回复</div></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+    <select class="form-select" id="wor-rating-filter" onchange="renderWorkorderRatingTable()" style="padding:6px 10px;font-size:12px;width:130px;">
+      <option value="all">全部评分</option>
+      <option value="5">⭐⭐⭐⭐⭐ 5星</option>
+      <option value="4">⭐⭐⭐⭐ 4星</option>
+      <option value="3">⭐⭐⭐ 3星</option>
+      <option value="2">⭐⭐ 2星</option>
+      <option value="1">⭐ 1星</option>
+    </select>
+    <button class="action-btn small" onclick="exportWorkorderRatings()" style="padding:4px 10px;">📤 导出评价</button>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📋 评价列表</div>
+    </div>
+    <div class="card-body">
+      <table class="table">
+        <thead><tr><th>工单号</th><th>房间</th><th>服务类型</th><th>处理人</th><th>评分</th><th>客户评价</th><th>日期</th><th>回复</th></tr></thead>
+        <tbody id="wor-rating-body"></tbody>
+      </table>
+    </div>
+  </div>
+  <div style="margin-top:16px;padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">
+    <div style="font-weight:600;color:var(--blue);margin-bottom:8px;">💡 满意度管理说明</div>
+    <div style="font-size:12px;color:var(--text);line-height:1.8;">• 3星以下评价需在24小时内回复并记录改进措施<br>• 月度满意度低于4.0分将触发服务改进流程<br>• 客户好评(4-5星)将自动同步到员工绩效考核加分项</div>
+  </div>
+</div>
+
+<!-- 改进1-5相关弹窗 -->
+<div class="modal-overlay hidden" id="modal-shift-edit">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">🕐 修改排班 - <span id="ssem-staff-name"></span></div>
+      <button class="modal-close" onclick="closeModal('shift-edit')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">班次类型</label>
+        <select class="form-select" id="ssem-shift">
+          <option value="morning">🌅 早班（07:00-15:00）</option>
+          <option value="afternoon">🌇 中班（15:00-23:00）</option>
+          <option value="night">🌙 夜班（23:00-07:00）</option>
+          <option value="off">⬜ 休息</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">考勤状态</label>
+        <select class="form-select" id="ssem-status">
+          <option value="present">✅ 正常出勤</option>
+          <option value="late">⏰ 迟到</option>
+          <option value="absent">❌ 缺勤</option>
+          <option value="off">⬜ 休息日</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('shift-edit')">取消</button>
+      <button class="modal-btn primary" onclick="submitShiftEdit()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-energy-room-detail">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">⚡ 房间用电详情 - <span id="eerd-room"></span></div>
+      <button class="modal-close" onclick="closeModal('energy-room-detail')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:var(--blue);" id="eerd-today">--</div>
+          <div style="font-size:11px;color:var(--text-muted);">今日用电</div>
+        </div>
+        <div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:var(--orange);" id="eerd-month">--</div>
+          <div style="font-size:11px;color:var(--text-muted);">本月累计</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;">
+          <div style="font-size:16px;font-weight:700;color:var(--text);" id="eerd-month-cost">--</div>
+          <div style="font-size:11px;color:var(--text-muted);">本月电费</div>
+        </div>
+        <div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;" id="eerd-status-cell">
+          <div id="eerd-status">--</div>
+        </div>
+      </div>
+      <div style="padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">📊 用电趋势分析</div>
+        <div style="font-size:11px;color:var(--text-muted);line-height:1.7;">相比昨日同期用电 +15%，周均用电 +12%。如持续异常偏高，建议检查门锁模块是否存在待机功耗异常或遭受恶意开锁攻击尝试。</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('energy-room-detail')">关闭</button>
+      <button class="modal-btn primary" onclick="showToast('已将异常信息通知工程部', 'success');closeModal('energy-room-detail')">📩 通知工程部</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-rating-response">
+  <div class="modal" style="width:500px;">
+    <div class="modal-header">
+      <div class="modal-title">💬 评价回复 - <span id="rrm-wo-id" style="color:var(--blue);"></span></div>
+      <button class="modal-close" onclick="closeModal('rating-response')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">客户评价内容</label>
+        <div id="rrm-comment" style="padding:10px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--text);line-height:1.6;min-height:50px;"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">官方回复 <span class="required">*</span></label>
+        <textarea class="form-textarea" id="rrm-response-text" placeholder="请认真回复客户评价，体现酒店对服务的重视..." style="min-height:80px;"></textarea>
+      </div>
+      <div style="padding:10px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);">
+        ⚠️ 回复提交后不可修改，请确认内容后提交。优质回复可提升客户满意度评分。
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('rating-response')">取消</button>
+      <button class="modal-btn primary" onclick="submitRatingResponse()">💬 提交回复</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-add-schedule-rule">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ 排班规则配置</div>
+      <button class="modal-close" onclick="closeModal('add-schedule-rule')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">
+        💡 设置默认排班规则后，系统将按规则自动生成排班表，支持手动调整
+      </div>
+      <div class="form-group">
+        <label class="form-label">默认班次模式</label>
+        <select class="form-select" id="asr-default-shift">
+          <option value="morning">🌅 早班（07:00-15:00）</option>
+          <option value="afternoon">🌇 中班（15:00-23:00）</option>
+          <option value="night">🌙 夜班（23:00-07:00）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">每周休息天数</label>
+        <select class="form-select" id="asr-rest-days">
+          <option value="1">1天</option>
+          <option value="2" selected>2天</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">最晚签退时间</label>
+        <input type="time" class="form-input" id="asr-late-time" value="23:00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">紧急联系人</label>
+        <input type="text" class="form-input" id="asr-emergency-contact" placeholder="如：赵飞 13800138000">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('add-schedule-rule')">取消</button>
+      <button class="modal-btn primary" onclick="submitScheduleRule()">💾 保存规则</button>
+    </div>
+  </div>
+</div>
+<script>
+function openAddScheduleRuleModal() { openModal('add-schedule-rule'); }
+function submitScheduleRule() {
+  showToast('✅ 排班规则已保存', 'success');
+  closeModal('add-schedule-rule');
+}
+function exportSchedule() { showToast('排班表导出中...', 'info'); setTimeout(function(){ showToast('导出成功！', 'success'); }, 600); }
+function exportEnergyDetail() { showToast('能耗明细导出中...', 'info'); setTimeout(function(){ showToast('导出成功！', 'success'); }, 600); }
+function exportWorkorderRatings() { showToast('评价记录导出中...', 'info'); setTimeout(function(){ showToast('导出成功！', 'success'); }, 600); }
+</script>
+
+<!-- ======= v3 改进1: 夜审报表完整页面 =======
+var nightAuditChecklist = [
+  {id:'c1', text:'确认所有退房房间已查房', done:false, category:'room'},
+  {id:'c2', text:'确认所有入住房间门锁电量>20%', done:false, category:'device'},
+  {id:'c3', text:'核对当日营收与押金金额', done:false, category:'finance'},
+  {id:'c4', text:'处理所有待接受服务工单', done:false, category:'workorder'},
+  {id:'c5', text:'检查低电量/离线设备', done:false, category:'device'},
+  {id:'c6', text:'确认次日预计入住房间', done:false, category:'room'},
+  {id:'c7', text:'核对会员积分变动', done:false, category:'member'},
+  {id:'c8', text:'夜审值班人签字确认', done:false, category:'sign'}
+];
+var auditHistory = [
+  {date:'2026-03-26', auditor:'赵飞', revenue:'¥12,860', rooms:'16间/在住房8间', status:'已完成', issues:'2项告警已处理'},
+  {date:'2026-03-25', auditor:'周敏', revenue:'¥9,240', rooms:'16间/在住房6间', status:'已完成', issues:'1项低电量已换电池'},
+  {date:'2026-03-24', auditor:'赵飞', revenue:'¥15,680', rooms:'16间/在住房10间', status:'已完成', issues:'无'},
+  {date:'2026-03-23', auditor:'吴倩', revenue:'¥8,320', rooms:'16间/在住房5间', status:'已完成', issues:'1台设备离线已重启'}
+];
+function openNightAuditFullPage() { showPage('nightaudit'); renderNightAuditChecklist(); renderAuditHistory(); renderNightAuditSummary(); }
+function renderNightAuditChecklist() {
+  var cats = {room:'🏠 房务',device:'📱 设备',finance:'💰 财务',workorder:'📋 工单',member:'👑 会员',sign:'✍️ 签字'};
+  var items = nightAuditChecklist;
+  var html = '';
+  items.forEach(function(item) {
+    var catLabel = cats[item.category] || item.category;
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);' + (item.done ? 'background:var(--green-bg);' : 'background:white;') + '">';
+    html += '<input type="checkbox" ' + (item.done ? 'checked' : '') + ' onchange="toggleAuditChecklist(\'' + item.id + '\')" style="accent-color:var(--green);width:18px;height:18px;cursor:pointer;flex-shrink:0;">';
+    html += '<div style="flex:1;font-size:13px;' + (item.done ? 'color:var(--text-muted);text-decoration:line-through;' : 'font-weight:500;') + '">' + item.text + '</div>';
+    html += '<span style="font-size:10px;padding:2px 8px;background:var(--bg);border-radius:10px;color:var(--text-muted);white-space:nowrap;">' + catLabel + '</span>';
+    html += '</div>';
+  });
+  document.getElementById('naf-checklist-body').innerHTML = html;
+  var done = items.filter(function(i){ return i.done; }).length;
+  document.getElementById('naf-checklist-progress').style.width = Math.round(done/items.length*100) + '%';
+  document.getElementById('naf-checklist-text').textContent = done + '/' + items.length + ' 已完成';
+}
+function toggleAuditChecklist(id) {
+  var item = nightAuditChecklist.find(function(i){ return i.id === id; });
+  if (item) { item.done = !item.done; renderNightAuditChecklist(); }
+}
+function renderNightAuditSummary() {
+  var now = new Date();
+  document.getElementById('naf-date').textContent = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  document.getElementById('naf-checkin-count').textContent = '5';
+  document.getElementById('naf-checkout-count').textContent = '3';
+  document.getElementById('naf-in-count').textContent = '8';
+  document.getElementById('naf-empty-count').textContent = '8';
+  document.getElementById('naf-revenue').textContent = '¥12,860';
+  document.getElementById('naf-deposit').textContent = '¥1,200';
+  document.getElementById('naf-consumption').textContent = '¥680';
+  document.getElementById('naf-alert-count').textContent = '3';
+  document.getElementById('naf-offline-count').textContent = '2';
+  document.getElementById('naf-wo-pending').textContent = '3';
+  document.getElementById('naf-wo-done').textContent = '8';
+  document.getElementById('naf-key-used').textContent = '18次';
+  document.getElementById('naf-report-time').textContent = now.toLocaleString('zh-CN');
+}
+function renderAuditHistory() {
+  var html = '';
+  auditHistory.forEach(function(r) {
+    html += '<tr>';
+    html += '<td>' + r.date + '</td>';
+    html += '<td>' + r.auditor + '</td>';
+    html += '<td style="font-weight:700;color:var(--orange);">' + r.revenue + '</td>';
+    html += '<td>' + r.rooms + '</td>';
+    html += '<td><span class="tbadge green">' + r.status + '</span></td>';
+    html += '<td style="font-size:12px;color:var(--text-muted);">' + r.issues + '</td>';
+    html += '</tr>';
+  });
+  document.getElementById('naf-history-body').innerHTML = html;
+}
+function confirmNightAuditFull() {
+  var undone = nightAuditChecklist.filter(function(i){ return !i.done; });
+  if (undone.length > 0) {
+    showToast('⚠️ 仍有 ' + undone.length + ' 项未完成，请先处理后再提交夜审', 'warning');
+    return;
+  }
+  var now = new Date();
+  var auditor = '赵飞';
+  auditHistory.unshift({
+    date: now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0'),
+    auditor: auditor,
+    revenue: document.getElementById('naf-revenue').textContent,
+    rooms: document.getElementById('naf-in-count').textContent + '间/在住房' + document.getElementById('naf-in-count').textContent + '间',
+    status: '已完成',
+    issues: '无'
+  });
+  nightAuditChecklist.forEach(function(i){ i.done = false; });
+  renderNightAuditChecklist();
+  renderAuditHistory();
+  showToast('✅ 夜审已完成！数据已归档', 'success');
+}
+function exportNightAuditFull() {
+  var date = document.getElementById('naf-date').textContent;
+  var rows = nightAuditChecklist.map(function(i){ return (i.done ? '✅' : '⬜') + ' ' + i.text; }).join('\n');
+  var content = '===== 夜审报表 ' + date + ' =====\n\n【 checklist完成情况】\n' + rows + '\n\n【经营概况】\n入住：' + document.getElementById('naf-checkin-count').textContent + '\n退房：' + document.getElementById('naf-checkout-count').textContent + '\n在住房：' + document.getElementById('naf-in-count').textContent + '\n空房：' + document.getElementById('naf-empty-count').textContent + '\n\n【财务概况】\n营收：' + document.getElementById('naf-revenue').textContent + '\n押金：' + document.getElementById('naf-deposit').textContent + '\n消费：' + document.getElementById('naf-consumption').textContent + '\n\n【设备概况】\n离线：' + document.getElementById('naf-offline-count').textContent + '\n告警：' + document.getElementById('naf-alert-count').textContent + '\n开锁次数：' + document.getElementById('naf-key-used').textContent;
+  var blob = new Blob([content], {type:'text/plain'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = '夜审报表_' + date + '.txt'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('夜审报表已导出', 'success');
+}
+
+// ======= v3 改进2: 员工排班管理完整页面 =======
+var scheduleData = [
+  {staff:'赵飞', dept:'前厅', role:'经理', shifts:[
+    {day:0, shift:'morning', status:'present'}, {day:1, shift:'morning', status:'present'}, {day:2, shift:'morning', status:'late'}, {day:3, shift:'morning', status:'absent'}, {day:4, shift:'morning', status:'present'}, {day:5, shift:'morning', status:'present'}, {day:6, shift:'off', status:'off'}
+  ]},
+  {staff:'周敏', dept:'前厅', role:'接待', shifts:[
+    {day:0, shift:'morning', status:'present'}, {day:1, shift:'morning', status:'present'}, {day:2, shift:'morning', status:'present'}, {day:3, shift:'afternoon', status:'present'}, {day:4, shift:'afternoon', status:'late'}, {day:5, shift:'morning', status:'present'}, {day:6, shift:'off', status:'off'}
+  ]},
+  {staff:'吴倩', dept:'客房', role:'主管', shifts:[
+    {day:0, shift:'morning', status:'present'}, {day:1, shift:'afternoon', status:'present'}, {day:2, shift:'morning', status:'present'}, {day:3, shift:'morning', status:'present'}, {day:4, shift:'morning', status:'absent'}, {day:5, shift:'morning', status:'present'}, {day:6, shift:'off', status:'off'}
+  ]},
+  {staff:'郑强', dept:'客房', role:'清洁', shifts:[
+    {day:0, shift:'morning', status:'present'}, {day:1, shift:'morning', status:'present'}, {day:2, shift:'morning', status:'late'}, {day:3, shift:'morning', status:'present'}, {day:4, shift:'morning', status:'present'}, {day:5, shift:'afternoon', status:'present'}, {day:6, shift:'off', status:'off'}
+  ]},
+  {staff:'王工', dept:'工程', role:'工程师', shifts:[
+    {day:0, shift:'afternoon', status:'present'}, {day:1, shift:'afternoon', status:'present'}, {day:2, shift:'afternoon', status:'present'}, {day:3, shift:'morning', status:'present'}, {day:4, shift:'morning', status:'off'}, {day:5, shift:'morning', status:'present'}, {day:6, shift:'off', status:'off'}
+  ]}
+];
+var weekDays = ['周一 03/23','周二 03/24','周三 03/25','周四 03/26','周五 03/27','周六 03/28','周日 03/29'];
+var shiftTypes = {morning:'早班', afternoon:'中班', night:'夜班', off:'休息'};
+var shiftColors = {present:'var(--green)', late:'var(--orange)', absent:'var(--red)', off:'var(--text-muted)'};
+var shiftBgColors = {present:'var(--green-bg)', late:'var(--orange-bg)', absent:'var(--red-bg)', off:'var(--bg)'};
+function openStaffSchedulePage() { showPage('staffschedule'); renderScheduleCalendar(); updateScheduleStats(); }
+function renderScheduleCalendar() {
+  var days = weekDays;
+  var cols = days.length;
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  html += '<thead><tr><th style="padding:8px 6px;background:var(--bg);border:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:2;min-width:90px;">员工</th>';
+  days.forEach(function(d){ html += '<th style="padding:8px 4px;background:var(--blue-bg);border:1px solid var(--border);text-align:center;font-size:11px;color:var(--blue);white-space:nowrap;">' + d + '</th>'; });
+  html += '</tr></thead><tbody>';
+  scheduleData.forEach(function(staff, si) {
+    html += '<tr>';
+    html += '<td style="padding:10px 8px;border:1px solid var(--border);background:white;">';
+    html += '<div style="font-weight:600;font-size:12px;">' + staff.staff + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);">' + staff.dept + '·' + staff.role + '</div>';
+    html += '</td>';
+    staff.shifts.forEach(function(s, di) {
+      var color = shiftColors[s.status] || 'var(--text-muted)';
+      var bg = shiftBgColors[s.status] || 'var(--bg)';
+      var icon = s.status === 'present' ? '✅' : s.status === 'late' ? '⏰' : s.status === 'absent' ? '❌' : '⬜';
+      var label = s.status === 'off' ? '休息' : shiftTypes[s.shift] || s.shift;
+      html += '<td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;background:' + bg + ';" onclick="openShiftEditModal(' + si + ',' + di + ')" title="点击修改排班" onmouseover="this.style.boxShadow=\'0 0 0 2px var(--blue)\'" onmouseout="this.style.boxShadow=\'\'">';
+      html += '<div style="font-size:16px;">' + icon + '</div>';
+      html += '<div style="font-size:10px;color:' + color + ';font-weight:600;">' + label + '</div>';
+      html += '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('ssp-calendar').innerHTML = html;
+}
+function updateScheduleStats() {
+  var totalStaff = scheduleData.length;
+  var present = scheduleData.reduce(function(s, st){ return s + st.shifts.filter(function(sh){ return sh.status === 'present'; }).length; }, 0);
+  var late = scheduleData.reduce(function(s, st){ return s + st.shifts.filter(function(sh){ return sh.status === 'late'; }).length; }, 0);
+  var absent = scheduleData.reduce(function(s, st){ return s + st.shifts.filter(function(sh){ return sh.status === 'absent'; }).length; }, 0);
+  var total = totalStaff * 7;
+  document.getElementById('ssp-stat-total').textContent = totalStaff;
+  document.getElementById('ssp-stat-present').textContent = present;
+  document.getElementById('ssp-stat-late').textContent = late;
+  document.getElementById('ssp-stat-absent').textContent = absent;
+  document.getElementById('ssp-attendance-rate').textContent = Math.round(present / (present + late + absent) * 100) + '%';
+}
+function openShiftEditModal(si, di) {
+  var staff = scheduleData[si];
+  var s = staff.shifts[di];
+  document.getElementById('ssem-staff-name').textContent = staff.staff + ' - ' + weekDays[di];
+  document.getElementById('ssem-shift').value = s.shift;
+  document.getElementById('ssem-status').value = s.status;
+  window.currentShiftEdit = {si:si, di:di};
+  openModal('shift-edit');
+}
+function submitShiftEdit() {
+  var c = window.currentShiftEdit;
+  if (!c) return;
+  scheduleData[c.si].shifts[c.di].shift = document.getElementById('ssem-shift').value;
+  scheduleData[c.si].shifts[c.di].status = document.getElementById('ssem-status').value;
+  renderScheduleCalendar();
+  updateScheduleStats();
+  closeModal('shift-edit');
+  showToast('排班已更新', 'success');
+}
+
+// ======= v3 改进3: 能耗详细分析完整页面 =======
+var energyDetailData = [
+  {room:'301', type:'亲子间', todayKwh:2.4, yesterdayKwh:2.1, weekAvg:2.2, monthKwh:68, status:'normal', alert:false},
+  {room:'302', type:'亲子间', todayKwh:2.8, yesterdayKwh:2.0, weekAvg:2.3, monthKwh:72, status:'high', alert:true},
+  {room:'303', type:'亲子间', todayKwh:1.9, yesterdayKwh:1.8, weekAvg:2.0, monthKwh:58, status:'normal', alert:false},
+  {room:'201', type:'大床房', todayKwh:1.6, yesterdayKwh:1.5, weekAvg:1.6, monthKwh:48, status:'normal', alert:false},
+  {room:'202', type:'大床房', todayKwh:3.2, yesterdayKwh:2.0, weekAvg:2.1, monthKwh:78, status:'high', alert:true},
+  {room:'203', type:'大床房', todayKwh:1.4, yesterdayKwh:1.3, weekAvg:1.5, monthKwh:42, status:'normal', alert:false},
+  {room:'101', type:'标准间', todayKwh:1.1, yesterdayKwh:1.0, weekAvg:1.2, monthKwh:35, status:'normal', alert:false},
+  {room:'102', type:'标准间', todayKwh:1.8, yesterdayKwh:1.2, weekAvg:1.3, monthKwh:52, status:'high', alert:true},
+  {room:'103', type:'标准间', todayKwh:1.0, yesterdayKwh:0.9, weekAvg:1.1, monthKwh:32, status:'normal', alert:false}
+];
+var energyPrice = 0.6; // 元/度
+function openEnergyDetailPage() { showPage('energydetail'); renderEnergyDetailTable(); updateEnergyDetailStats(); }
+function renderEnergyDetailTable() {
+  var sortKey = document.getElementById('eed-sort') ? document.getElementById('eed-sort').value : 'todayKwh';
+  var filterType = document.getElementById('eed-type-filter') ? document.getElementById('eed-type-filter').value : 'all';
+  var filtered = energyDetailData.filter(function(r){ return filterType === 'all' || r.type === filterType; });
+  filtered.sort(function(a,b){ return b[sortKey] - a[sortKey]; });
+  var html = '';
+  filtered.forEach(function(r) {
+    var todayCost = (r.todayKwh * energyPrice).toFixed(1);
+    var monthCost = (r.monthKwh * energyPrice).toFixed(0);
+    var changePct = r.todayKwh > 0 ? Math.round((r.todayKwh - r.yesterdayKwh) / r.yesterdayKwh * 100) : 0;
+    var changeColor = changePct > 0 ? 'var(--red)' : changePct < 0 ? 'var(--green)' : 'var(--text-muted)';
+    var changeIcon = changePct > 0 ? '↑' : changePct < 0 ? '↓' : '→';
+    html += '<tr style="' + (r.alert ? 'background:var(--red-bg);' : '') + '">';
+    html += '<td><span style="font-weight:700;">' + r.room + '</span><br><span style="font-size:10px;color:var(--text-muted);">' + r.type + '</span></td>';
+    html += '<td><span style="font-weight:600;color:var(--blue);">' + r.todayKwh.toFixed(1) + '</span> <span style="font-size:10px;color:var(--text-muted);">度</span><br><span style="font-size:10px;color:' + changeColor + ';">' + changeIcon + Math.abs(changePct) + '%（昨日）</span></td>';
+    html += '<td>' + r.yesterdayKwh.toFixed(1) + '度</td>';
+    html += '<td>' + r.weekAvg.toFixed(1) + '度</td>';
+    html += '<td><span style="font-weight:600;color:var(--orange);">¥' + todayCost + '</span></td>';
+    html += '<td>' + r.monthKwh + '度<br><span style="font-size:10px;color:var(--orange);">¥' + monthCost + '</span></td>';
+    html += '<td>' + (r.alert ? '<span class="tbadge red">⚠️ 异常偏高</span>' : '<span class="tbadge green">正常</span>') + '</td>';
+    html += '<td><button class="action-btn small" onclick="openEnergyRoomDetail(\'' + r.room + '\')" style="padding:2px 6px;font-size:10px;">📊 详情</button></td>';
+    html += '</tr>';
+  });
+  document.getElementById('eed-table-body').innerHTML = html || '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">暂无数据</td></tr>';
+  document.getElementById('eed-count').textContent = filtered.length + '间';
+}
+function updateEnergyDetailStats() {
+  var totalToday = energyDetailData.reduce(function(s,r){ return s + r.todayKwh; }, 0);
+  var totalMonth = energyDetailData.reduce(function(s,r){ return s + r.monthKwh; }, 0);
+  var alertCount = energyDetailData.filter(function(r){ return r.alert; }).length;
+  document.getElementById('eed-stat-today').textContent = totalToday.toFixed(1) + '度';
+  document.getElementById('eed-stat-today-cost').textContent = '¥' + (totalToday * energyPrice).toFixed(1);
+  document.getElementById('eed-stat-month').textContent = totalMonth + '度';
+  document.getElementById('eed-stat-month-cost').textContent = '¥' + (totalMonth * energyPrice).toFixed(0);
+  document.getElementById('eed-stat-alert').textContent = alertCount + '间异常';
+}
+function openEnergyRoomDetail(room) {
+  var r = energyDetailData.find(function(d){ return d.room === room; });
+  if (!r) return;
+  document.getElementById('eerd-room').textContent = room + ' - ' + r.type;
+  document.getElementById('eerd-today').textContent = r.todayKwh + ' kWh';
+  document.getElementById('eerd-month').textContent = r.monthKwh + ' kWh';
+  document.getElementById('eerd-month-cost').textContent = '¥' + (r.monthKwh * energyPrice).toFixed(0);
+  document.getElementById('eerd-status').innerHTML = r.alert ? '<span class="tbadge red">用电异常偏高，建议检查</span>' : '<span class="tbadge green">用电正常</span>';
+  openModal('energy-room-detail');
+}
+
+// ======= v3 改进4: 会员积分商城完整页面 =======
+var pointsCatalog = [
+  {id:'p1', name:'延迟退房1小时', points:200, stock:99, desc:'无需额外申请，直接享受'},
+  {id:'p2', name:'免费洗衣1次', points:300, stock:50, desc:'干洗/水洗均可，限当次'},
+  {id:'p3', name:'双份早餐', points:400, stock:30, desc:'次日早餐适用'},
+  {id:'p4', name:'房型免费升级', points:800, stock:10, desc:'视酒店情况而定'},
+  {id:'p5', name:'免费停车1天', points:250, stock:20, desc:'地下停车场适用'},
+  {id:'p6', name:'SPA抵用券50元', points:500, stock:15, desc:'不可与其他优惠同用'},
+  {id:'p7', name:'餐厅消费8折', points:600, stock:8, desc:'全场餐饮适用，烟酒除外'},
+  {id:'p8', name:'免费下午茶1份', points:150, stock:40, desc:'大堂吧/咖啡厅适用'}
+];
+var pointsHistoryData = [
+  {date:'2026-03-26', type:'earn', amount:128, desc:'入住301房间消费', balance:1280},
+  {date:'2026-03-24', type:'redeem', amount:-200, desc:'兑换延迟退房1小时', balance:1152},
+  {date:'2026-03-20', type:'earn', amount:256, desc:'入住201房间消费', balance:1352},
+  {date:'2026-03-15', type:'earn', amount:400, desc:'会员日双倍积分', balance:1096},
+  {date:'2026-03-10', type:'redeem', amount:-300, desc:'兑换免费洗衣1次', balance:696},
+  {date:'2026-03-01', type:'earn', amount:168, desc:'入住102房间消费', balance:996}
+];
+var currentMemberPoints = 1280;
+function openPointsMallPage() { showPage('pointsmall'); renderPointsCatalog(); renderPointsHistory(); updatePointsBalance(); }
+function renderPointsCatalog() {
+  var html = '';
+  pointsCatalog.forEach(function(item) {
+    html += '<div style="padding:16px;border:1px solid var(--border);border-radius:10px;background:white;display:flex;flex-direction:column;gap:8px;">';
+    html += '<div style="font-size:14px;font-weight:600;">' + item.name + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);">' + item.desc + '</div>';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;">';
+    html += '<span style="font-size:16px;font-weight:700;color:var(--orange);">' + item.points + ' <span style="font-size:11px;font-weight:400;color:var(--text-muted);">积分</span></span>';
+    html += '<span style="font-size:10px;color:' + (item.stock < 15 ? 'var(--red)' : 'var(--text-muted)') + ';">剩余 ' + item.stock + ' 份</span>';
+    html += '</div>';
+    html += '<button class="action-btn small ' + (currentMemberPoints >= item.points ? 'primary' : '') + '" onclick="redeemPointsItem(\'' + item.id + '\')" ' + (currentMemberPoints < item.points ? 'disabled style="opacity:0.5;"' : '') + ' style="width:100%;padding:6px;">' + (currentMemberPoints >= item.points ? '立即兑换' : '积分不足') + '</button>';
+    html += '</div>';
+  });
+  document.getElementById('pm-catalog-grid').innerHTML = html;
+}
+function renderPointsHistory() {
+  var html = '';
+  pointsHistoryData.forEach(function(r) {
+    var isEarn = r.type === 'earn';
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--border);">';
+    html += '<div style="font-size:20px;">' + (isEarn ? '💰' : '🎁') + '</div>';
+    html += '<div style="flex:1;">';
+    html += '<div style="font-size:12px;font-weight:500;">' + r.desc + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);">' + r.date + '</div>';
+    html += '</div>';
+    html += '<div style="text-align:right;">';
+    html += '<div style="font-size:13px;font-weight:700;color:' + (isEarn ? 'var(--green)' : 'var(--orange)') + ';">' + (isEarn ? '+' : '') + r.amount + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);">余额 ' + r.balance + '</div>';
+    html += '</div>';
+    html += '</div>';
+  });
+  document.getElementById('pm-history-list').innerHTML = html;
+}
+function updatePointsBalance() {
+  document.getElementById('pm-total-points').textContent = currentMemberPoints;
+  document.getElementById('pm-points-value').textContent = '≈ ¥' + (currentMemberPoints / 100).toFixed(0);
+}
+function redeemPointsItem(id) {
+  var item = pointsCatalog.find(function(i){ return i.id === id; });
+  if (!item) return;
+  if (currentMemberPoints < item.points) { showToast('积分不足，无法兑换', 'error'); return; }
+  currentMemberPoints -= item.points;
+  pointsHistoryData.unshift({date:new Date().toISOString().slice(0,10), type:'redeem', amount:-item.points, desc:'兑换' + item.name, balance:currentMemberPoints});
+  renderPointsCatalog();
+  renderPointsHistory();
+  updatePointsBalance();
+  showToast('✅ 成功兑换「' + item.name + '」！', 'success');
+}
+
+// ======= v3 改进5: 服务工单满意度评价闭环 =======
+var workorderRatings = [
+  {woId:'WO-2026032701', room:'301', type:'送物服务', handler:'郑强', rating:5, comment:'响应很快，服务态度很好！', date:'2026-03-27', response:''},
+  {woId:'WO-2026032603', room:'201', type:'设备报修', handler:'王工', rating:4, comment:'修好了，但是等得有点久', date:'2026-03-26', response:'已反馈给工程部，优化响应流程'},
+  {woId:'WO-2026032601', room:'303', type:'客户投诉', handler:'赵飞', rating:3, comment:'处理结果一般，没有实质性解决', date:'2026-03-26', response:''},
+  {woId:'WO-2026032505', room:'202', type:'送物服务', handler:'郑强', rating:5, comment:'非常满意！', date:'2026-03-25', response:''}
+];
+function openWorkorderRatingPage() { showPage('worating'); renderWorkorderRatingTable(); updateRatingStats(); }
+function renderWorkorderRatingTable() {
+  var avgRatingEl = document.getElementById('wor-avg-rating');
+  if (avgRatingEl) {
+    var avg = workorderRatings.reduce(function(s,r){ return s + r.rating; }, 0) / workorderRatings.length;
+    avgRatingEl.textContent = avg.toFixed(1);
+    var stars = ''; for (var i=1;i<=5;i++) stars += i <= Math.round(avg) ? '⭐' : '☆'; avgRatingEl.title = stars;
+  }
+  var filterRating = document.getElementById('wor-rating-filter') ? document.getElementById('wor-rating-filter').value : 'all';
+  var filtered = filterRating === 'all' ? workorderRatings : workorderRatings.filter(function(r){ return r.rating === parseInt(filterRating); });
+  var html = '';
+  filtered.forEach(function(r) {
+    var stars = ''; for (var i=1;i<=5;i++) stars += i <= r.rating ? '⭐' : '☆';
+    var ratingColor = r.rating >= 4 ? 'var(--green)' : r.rating >= 3 ? 'var(--orange)' : 'var(--red)';
+    html += '<tr>';
+    html += '<td><span style="font-weight:600;">' + r.woId + '</span></td>';
+    html += '<td>' + r.room + '</td>';
+    html += '<td><span class="tbadge blue">' + r.type + '</span></td>';
+    html += '<td>' + r.handler + '</td>';
+    html += '<td><span style="font-size:16px;color:' + ratingColor + ';">' + stars + '</span> <span style="font-weight:700;color:' + ratingColor + ';">' + r.rating + '</span></td>';
+    html += '<td style="font-size:12px;color:var(--text-muted);max-width:180px;">' + r.comment + '</td>';
+    html += '<td>' + r.date + '</td>';
+    html += '<td>' + (r.response ? '<span style="font-size:11px;color:var(--green);">✅ ' + r.response + '</span>' : '<button class="action-btn small" onclick="openRatingResponseModal(\'' + r.woId + '\')" style="padding:2px 6px;font-size:10px;">回复</button>') + '</td>';
+    html += '</tr>';
+  });
+  document.getElementById('wor-rating-body').innerHTML = html || '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">暂无评价数据</td></tr>';
+}
+function updateRatingStats() {
+  var total = workorderRatings.length;
+  var avg = workorderRatings.reduce(function(s,r){ return s + r.rating; }, 0) / total;
+  var good = workorderRatings.filter(function(r){ return r.rating >= 4; }).length;
+  var bad = workorderRatings.filter(function(r){ return r.rating <= 2; }).length;
+  var noResponse = workorderRatings.filter(function(r){ return !r.response; }).length;
+  document.getElementById('wor-stat-total').textContent = total;
+  document.getElementById('wor-stat-avg').textContent = avg.toFixed(1);
+  document.getElementById('wor-stat-good').textContent = good;
+  document.getElementById('wor-stat-bad').textContent = bad;
+  document.getElementById('wor-stat-no-response').textContent = noResponse;
+}
+function openRatingResponseModal(woId) {
+  var r = workorderRatings.find(function(w){ return w.woId === woId; });
+  if (!r) return;
+  document.getElementById('rrm-wo-id').textContent = woId;
+  document.getElementById('rrm-comment').textContent = r.comment;
+  document.getElementById('rrm-response-text').value = '';
+  window.currentRatingWoId = woId;
+  openModal('rating-response');
+}
+function submitRatingResponse() {
+  var woId = window.currentRatingWoId;
+  var r = workorderRatings.find(function(w){ return w.woId === woId; });
+  if (!r) return;
+  var responseText = document.getElementById('rrm-response-text').value.trim();
+  if (!responseText) { showToast('请填写回复内容', 'error'); return; }
+  r.response = responseText;
+  renderWorkorderRatingTable();
+  updateRatingStats();
+  closeModal('rating-response');
+  showToast('✅ 回复已提交', 'success');
+}
+function submitWorkorderRating(woId, rating, comment) {
+  var r = workorderRatings.find(function(w){ return w.woId === woId; });
+  if (r) { r.rating = rating; r.comment = comment; }
+  renderWorkorderRatingTable();
+  updateRatingStats();
+  showToast('⭐ 感谢您的评价！', 'success');
 }
 </script>
 </body>
