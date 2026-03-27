@@ -24748,29 +24748,38 @@ function openDeviceDiagnosticFromHome(deviceId) {
           <div style="font-size:22px;font-weight:700;color:var(--orange);" id="cf-deposit-display">¥100</div>
         </div>
       </div>
-      <div style="padding:12px;background:var(--green-bg);border-radius:8px;margin-bottom:14px;text-align:center;">
-        <div style="font-size:11px;color:var(--green);margin-bottom:4px;">实际应缴 / 应退</div>
+      <!-- 【改进4】押金退款计算区 -->
+      <div style="padding:12px;background:var(--green-bg);border-radius:8px;margin-bottom:8px;text-align:center;">
+        <div style="font-size:11px;color:var(--green);margin-bottom:4px;" id="cf-refund-label">应退金额</div>
         <div style="font-size:26px;font-weight:700;color:var(--green);" id="cf-actual-display">¥28</div>
       </div>
       <!-- 支付/退款方式 -->
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">支付方式</label>
-          <select class="form-select" id="cf-pay-method" onchange="cfRecalc()">
-            <option value="wechat">微信支付</option>
-            <option value="alipay">支付宝</option>
-            <option value="cash">现金</option>
-            <option value="card">银行卡</option>
-          </select>
+      <!-- 【改进4】支付方式radio选择 -->
+      <div class="form-group">
+        <label class="form-label">支付方式</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--green-bg);border-radius:6px;cursor:pointer;font-size:12px;border:1px solid var(--green);">
+            <input type="radio" name="cf-pay-radio" value="wechat" checked style="accent-color:var(--green);">微信支付
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--blue-bg);border-radius:6px;cursor:pointer;font-size:12px;border:1px solid var(--blue);">
+            <input type="radio" name="cf-pay-radio" value="alipay" style="accent-color:var(--blue);">支付宝
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--orange-bg);border-radius:6px;cursor:pointer;font-size:12px;border:1px solid var(--orange);">
+            <input type="radio" name="cf-pay-radio" value="cash" style="accent-color:var(--orange);">现金
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--purple-bg);border-radius:6px;cursor:pointer;font-size:12px;border:1px solid var(--purple);">
+            <input type="radio" name="cf-pay-radio" value="card" style="accent-color:var(--purple);">银行卡
+          </label>
         </div>
-        <div class="form-group">
-          <label class="form-label">退款方式</label>
-          <select class="form-select" id="cf-refund-method">
-            <option value="原路退回">原路退回</option>
-            <option value="现金退款">现金退款</option>
-            <option value="转入会员卡">转入会员卡</option>
-          </select>
-        </div>
+      </div>
+      <!-- 【改进4】押金退款方式 -->
+      <div class="form-group">
+        <label class="form-label">押金退款方式</label>
+        <select class="form-select" id="cf-refund-method" onchange="cfRecalc()">
+          <option value="全额退款">全额退款（原押金全额退还）</option>
+          <option value="部分退款">部分退款（扣除损坏/违规费用）</option>
+          <option value="没收押金">没收押金（严重违规）</option>
+        </select>
       </div>
       <div class="form-group">
         <label class="form-label">备注</label>
@@ -25293,6 +25302,7 @@ function cfAddFeeRow() {
   tr.innerHTML = '<td style="padding:7px 10px;border-bottom:1px solid var(--border);"><input type="text" class="form-input" placeholder="输入费用名称" style="padding:5px 8px;font-size:12px;width:100%;"></td><td style="padding:7px 10px;border-bottom:1px solid var(--border);"><input type="number" class="form-input cf-fee-amount" placeholder="0" style="padding:5px 8px;font-size:12px;width:80px;text-align:right;" oninput="cfRecalc()"></td><td style="padding:7px 5px;border-bottom:1px solid var(--border);text-align:center;"><button onclick="this.closest(\'tr\').remove();cfRecalc();" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;">✕</button></td>';
   body.appendChild(tr);
 }
+// 【改进4】cfRecalc增加押金退款计算逻辑
 function cfRecalc() {
   var amounts = document.querySelectorAll('.cf-fee-amount');
   var total = 0;
@@ -25300,10 +25310,31 @@ function cfRecalc() {
   document.getElementById('cf-total-fee').textContent = '¥' + total;
   cfRoomFee = total;
   var deposit = parseFloat(document.getElementById('cf-deposit-display').textContent.replace('¥','')) || 100;
-  var actual = deposit - total;
+  var refundMethod = document.getElementById('cf-refund-method') ? document.getElementById('cf-refund-method').value : '全额退款';
   var actualEl = document.getElementById('cf-actual-display');
-  actualEl.textContent = (actual >= 0 ? '¥' + actual : '-¥' + Math.abs(actual));
-  actualEl.style.color = actual >= 0 ? 'var(--green)' : 'var(--red)';
+  var labelEl = document.getElementById('cf-refund-label');
+  var actual = 0;
+  if (refundMethod === '没收押金') {
+    actual = deposit; // 没收，客人应付全额
+    if (labelEl) labelEl.textContent = '押金没收（不退）';
+    if (actualEl) { actualEl.textContent = '¥' + actual + ' 没收'; actualEl.style.color = 'var(--red)'; }
+  } else if (refundMethod === '部分退款') {
+    actual = deposit - total;
+    if (labelEl) labelEl.textContent = '部分退款（押金 - 消费）';
+    if (actual >= 0) {
+      if (actualEl) { actualEl.textContent = '应退 ¥' + actual; actualEl.style.color = 'var(--green)'; }
+    } else {
+      if (actualEl) { actualEl.textContent = '欠款 ¥' + Math.abs(actual); actualEl.style.color = 'var(--red)'; }
+    }
+  } else {
+    actual = deposit - total;
+    if (labelEl) labelEl.textContent = '应退金额（押金 - 消费）';
+    if (actual >= 0) {
+      if (actualEl) { actualEl.textContent = '应退 ¥' + actual; actualEl.style.color = 'var(--green)'; }
+    } else {
+      if (actualEl) { actualEl.textContent = '欠款 ¥' + Math.abs(actual); actualEl.style.color = 'var(--red)'; }
+    }
+  }
 }
 function cfPreviewReceipt() {
   var room = document.getElementById('cf-room-num').textContent;
@@ -35308,7 +35339,7 @@ function renderScheduleCalendar() {
     html += '</tr>';
   });
   html += '</tbody></table>';
-  document.getElementById('ssp-calendar').innerHTML = html;
+  document.getElementById('ssp-calendar').innerHTML = html + '<div style="display:flex;gap:10px;margin-top:12px;"><button class="action-btn" onclick="openAddStaffToScheduleModal()">+ 新增员工</button><button class="action-btn" onclick="openAddShiftModal()">+ 新增班次</button></div>';
 }
 function updateScheduleStats() {
   var totalStaff = scheduleData.length;
@@ -37792,5 +37823,623 @@ try {
 } catch(e) {}
 
 </script>
+
+<!-- ========== 【改进5】新增会员弹窗 + 会员充值弹窗 ========== -->
+<div class="modal-overlay hidden" id="modal-member-add">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">➕ 新增会员</div>
+      <button class="modal-close" onclick="closeModal('member-add')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">姓名 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="madd-name" placeholder="请输入会员姓名" style="padding:8px 12px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">手机号 <span class="required">*</span></label>
+        <input type="tel" class="form-input" id="madd-phone" placeholder="请输入11位手机号" maxlength="11" style="padding:8px 12px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">会员等级</label>
+        <select class="form-select" id="madd-level" style="padding:8px 12px;">
+          <option value="普通">普通会员</option>
+          <option value="银卡">银卡会员</option>
+          <option value="金卡">金卡会员</option>
+          <option value="钻石">钻石会员</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">身份证号</label>
+        <input type="text" class="form-input" id="madd-idcard" placeholder="选填，18位身份证号" maxlength="18" style="padding:8px 12px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">邮箱</label>
+        <input type="email" class="form-input" id="madd-email" placeholder="选填，电子邮箱" style="padding:8px 12px;">
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="madd-note" placeholder="会员特殊偏好、过敏信息、VIP等级说明等…" style="min-height:60px;padding:8px 12px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('member-add')">取消</button>
+      <button class="modal-btn primary" onclick="submitAddMember()">✅ 确认添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进5】会员充值弹窗 -->
+<div class="modal-overlay hidden" id="modal-member-recharge">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">💰 会员充值</div>
+      <button class="modal-close" onclick="closeModal('member-recharge')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--blue);margin-bottom:4px;">会员姓名</div>
+          <div style="font-size:14px;font-weight:700;" id="mr-member-name">--</div>
+        </div>
+        <div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--orange);margin-bottom:4px;">当前余额</div>
+          <div style="font-size:20px;font-weight:700;color:var(--orange);" id="mr-current-balance">¥0</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">选择充值金额</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <button class="action-btn" onclick="document.getElementById('mr-amount').value='100';updateMrPreview()" style="padding:6px 14px;">¥100</button>
+          <button class="action-btn" onclick="document.getElementById('mr-amount').value='200';updateMrPreview()" style="padding:6px 14px;">¥200</button>
+          <button class="action-btn" onclick="document.getElementById('mr-amount').value='500';updateMrPreview()" style="padding:6px 14px;">¥500</button>
+          <button class="action-btn" onclick="document.getElementById('mr-amount').value='1000';updateMrPreview()" style="padding:6px 14px;">¥1000</button>
+        </div>
+        <input type="number" class="form-input" id="mr-amount" placeholder="或输入自定义金额" min="1" oninput="updateMrPreview()" style="padding:8px 12px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">充值方式</label>
+        <select class="form-select" id="mr-pay-method" style="padding:8px 12px;">
+          <option value="wechat">微信支付</option>
+          <option value="alipay">支付宝</option>
+          <option value="cash">现金</option>
+          <option value="card">银行卡</option>
+        </select>
+      </div>
+      <div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--green);margin-bottom:4px;">充值后余额</div>
+        <div style="font-size:22px;font-weight:700;color:var(--green);" id="mr-new-balance">¥0</div>
+      </div>
+      <div style="padding:10px;background:var(--purple-bg);border-radius:6px;font-size:11px;color:var(--purple);text-align:center;">
+        🎁 充值满500元额外赠送50积分
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('member-recharge')">取消</button>
+      <button class="modal-btn primary" onclick="submitMemberRecharge()">✅ 确认充值</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== 【改进5】新增会员+充值JS函数 ==========
+var currentRechargeMemberIdx = null;
+var currentRechargeMemberBalance = 0;
+
+function openAddMemberModal() {
+  document.getElementById('madd-name').value = '';
+  document.getElementById('madd-phone').value = '';
+  document.getElementById('madd-level').value = '普通';
+  document.getElementById('madd-idcard').value = '';
+  document.getElementById('madd-email').value = '';
+  document.getElementById('madd-note').value = '';
+  openModal('member-add');
+}
+
+function submitAddMember() {
+  var name = document.getElementById('madd-name').value.trim();
+  var phone = document.getElementById('madd-phone').value.trim();
+  if (!name) { showToast('姓名不能为空', 'error'); return; }
+  if (!phone) { showToast('手机号不能为空', 'error'); return; }
+  if (!/^1\d{10}$/.test(phone)) { showToast('手机号格式不正确，需为11位数字', 'error'); return; }
+  var level = document.getElementById('madd-level').value;
+  var idcard = document.getElementById('madd-idcard').value.trim();
+  var email = document.getElementById('madd-email').value.trim();
+  var note = document.getElementById('madd-note').value.trim();
+  // 新增到 memberListData（如果存在）或渲染到表格
+  var cardNum = 'VIP-' + Math.floor(Math.random() * 900000 + 100000);
+  var now = new Date();
+  var joinDate = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  var newRow = '<tr data-level="' + (level === '金卡' ? 'gold' : level === '银卡' ? 'silver' : level === '钻石' ? 'vip' : 'normal') + '">' +
+    '<td><span style="font-weight:600;">' + name + '</span></td>' +
+    '<td>' + phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') + '</td>' +
+    '<td>' + (idcard ? idcard.replace(/(\d{6})\d{8}(\d{4})/, '$1********$2') : '--') + '</td>' +
+    '<td><span class="tbadge" style="background:' + (level === '金卡' ? 'var(--purple-bg);color:var(--purple);' : level === '银卡' ? 'var(--orange-bg);color:var(--orange);' : level === '钻石' ? 'var(--green-bg);color:var(--green);' : 'var(--blue-bg);color:var(--blue);') + '">' +
+    (level === '钻石' ? '💎 钻石' : level === '金卡' ? '🥇 金卡' : level === '银卡' ? '🥈 银卡' : '普通') + '</span></td>' +
+    '<td><span class="tbadge blue">0晚</span></td>' +
+    '<td style="font-weight:600;color:var(--orange);">¥0</td>' +
+    '<td>' + joinDate + '</td>' +
+    '<td><button class="action-btn small" onclick="openMemberDetail(window._memberIdx++)">详情</button> <button class="action-btn small" onclick="openMemberRechargeModal(window._memberIdx++)" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small red" onclick="deleteMember(window._memberIdx++)">删除</button></td></tr>';
+  var tbody = document.getElementById('member-table-body');
+  if (tbody) tbody.insertAdjacentHTML('beforeend', newRow);
+  closeModal('member-add');
+  showToast('✅ 新会员「' + name + '」添加成功！', 'success');
+}
+
+function openMemberRechargeModal(idx) {
+  currentRechargeMemberIdx = idx;
+  var rows = document.querySelectorAll('#member-table-body tr');
+  var row = rows[idx] || null;
+  var name = row ? row.querySelector('td:first-child span').textContent.trim() : '未知会员';
+  // 尝试从 memberListData 获取余额
+  if (typeof memberListData !== 'undefined' && memberListData[idx]) {
+    currentRechargeMemberBalance = parseFloat(memberListData[idx].balance) || 0;
+  } else {
+    // 从表格消费列提取
+    var consumptionText = row ? row.querySelector('td:nth-child(6)').textContent.replace('¥','').replace(',','') : '0';
+    currentRechargeMemberBalance = 0;
+  }
+  document.getElementById('mr-member-name').textContent = name;
+  document.getElementById('mr-current-balance').textContent = '¥' + currentRechargeMemberBalance;
+  document.getElementById('mr-amount').value = '';
+  document.getElementById('mr-new-balance').textContent = '¥' + currentRechargeMemberBalance;
+  openModal('member-recharge');
+}
+
+function updateMrPreview() {
+  var amount = parseFloat(document.getElementById('mr-amount').value) || 0;
+  var bonus = amount >= 500 ? 50 : 0;
+  document.getElementById('mr-new-balance').textContent = '¥' + (currentRechargeMemberBalance + amount) + (bonus > 0 ? ' (+' + bonus + '积分)' : '');
+}
+
+function submitMemberRecharge() {
+  var amount = parseFloat(document.getElementById('mr-amount').value) || 0;
+  if (amount <= 0) { showToast('请输入正确的充值金额', 'error'); return; }
+  var method = document.getElementById('mr-pay-method').value;
+  var methodText = {wechat:'微信', alipay:'支付宝', cash:'现金', card:'银行卡'}[method] || method;
+  var name = document.getElementById('mr-member-name').textContent;
+  closeModal('member-recharge');
+  showToast('💰 会员「' + name + '」充值 ¥' + amount + ' 成功！支付方式：' + methodText, 'success');
+}
+window._memberIdx = 100;
+</script>
+
+<!-- ========== 【改进1】夜审报表分步执行向导 ========== -->
+<div class="modal-overlay hidden" id="modal-nightaudit-wizard">
+  <div class="modal" style="width:640px;max-height:90vh;overflow-y:auto;">
+    <!-- 步骤指示器 -->
+    <div style="display:flex;align-items:center;padding:16px 24px;border-bottom:1px solid var(--border);">
+      <div id="naw-step-1" style="flex:1;text-align:center;padding:8px 0;border-radius:20px;font-size:12px;background:var(--blue);color:white;font-weight:600;">1.房务检查</div>
+      <div style="width:30px;height:1px;background:var(--border);"></div>
+      <div id="naw-step-2" style="flex:1;text-align:center;padding:8px 0;border-radius:20px;font-size:12px;background:var(--bg);color:var(--text-muted);">2.营收结算</div>
+      <div style="width:30px;height:1px;background:var(--border);"></div>
+      <div id="naw-step-3" style="flex:1;text-align:center;padding:8px 0;border-radius:20px;font-size:12px;background:var(--bg);color:var(--text-muted);">3.交接班</div>
+      <div style="width:30px;height:1px;background:var(--border);"></div>
+      <div id="naw-step-4" style="flex:1;text-align:center;padding:8px 0;border-radius:20px;font-size:12px;background:var(--bg);color:var(--text-muted);">4.完成</div>
+    </div>
+    <!-- 步骤内容区域 -->
+    <div id="naw-content" style="padding:20px 24px;min-height:300px;"></div>
+    <!-- 底部按钮 -->
+    <div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <div id="naw-progress-text" style="font-size:12px;color:var(--text-muted);">步骤 1/4</div>
+      <div style="display:flex;gap:10px;">
+        <button id="naw-prev-btn" class="modal-btn secondary" onclick="nawPrevStep()" style="display:none;">← 上一步</button>
+        <button id="naw-next-btn" class="modal-btn primary" onclick="nawNextStep()">下一步 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== 【改进1】夜审报表向导JS函数 ==========
+var nawCurrentStep = 1;
+var nawTotalSteps = 4;
+// 夜审向导8项checklist（独立副本）
+var nawChecklist = [
+  {id:'n1', text:'确认退房已查房', done:false},
+  {id:'n2', text:'确认门锁电量>20%', done:false},
+  {id:'n3', text:'核对营收押金', done:false},
+  {id:'n4', text:'处理工单', done:false},
+  {id:'n5', text:'检查低电量设备', done:false},
+  {id:'n6', text:'确认次日入住', done:false},
+  {id:'n7', text:'核对会员积分', done:false},
+  {id:'n8', text:'值班人签字', done:false}
+];
+// 交接班现金数据
+var nawCashData = {
+  bill100:0, bill50:0, bill20:0, bill10:0, bill5:0, bill1:0, coins:0
+};
+
+function openNightAuditWizard() {
+  nawCurrentStep = 1;
+  nawChecklist.forEach(function(i){ i.done = false; });
+  document.getElementById('naw-100').value = '0';
+  document.getElementById('naw-50').value = '0';
+  document.getElementById('naw-20').value = '0';
+  document.getElementById('naw-10').value = '0';
+  document.getElementById('naw-5').value = '0';
+  document.getElementById('naw-1').value = '0';
+  document.getElementById('naw-coins').value = '0';
+  openModal('nightaudit-wizard');
+  nawRenderContent();
+}
+
+function nawRenderContent() {
+  var content = document.getElementById('naw-content');
+  var prevBtn = document.getElementById('naw-prev-btn');
+  var nextBtn = document.getElementById('naw-next-btn');
+  prevBtn.style.display = nawCurrentStep > 1 ? '' : 'none';
+  nextBtn.textContent = nawCurrentStep === nawTotalSteps ? '✅ 完成夜审' : '下一步 →';
+  document.getElementById('naw-progress-text').textContent = '步骤 ' + nawCurrentStep + '/' + nawTotalSteps;
+
+  // 更新步骤指示器
+  for (var i = 1; i <= 4; i++) {
+    var el = document.getElementById('naw-step-' + i);
+    if (i === nawCurrentStep) {
+      el.style.background = 'var(--blue)';
+      el.style.color = 'white';
+    } else if (i < nawCurrentStep) {
+      el.style.background = 'var(--green)';
+      el.style.color = 'white';
+    } else {
+      el.style.background = 'var(--bg)';
+      el.style.color = 'var(--text-muted)';
+    }
+  }
+
+  var html = '';
+  if (nawCurrentStep === 1) {
+    // Step1: 房务检查checklist
+    var doneCount = nawChecklist.filter(function(i){ return i.done; }).length;
+    html += '<div style="margin-bottom:14px;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
+    html += '<div style="font-size:13px;font-weight:700;">🏠 房务检查清单</div>';
+    html += '<div style="font-size:12px;color:var(--text-muted);">' + doneCount + '/' + nawChecklist.length + ' 已完成</div>';
+    html += '</div>';
+    html += '<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:16px;">';
+    html += '<div id="naw-checklist-bar" style="height:100%;background:var(--blue);border-radius:3px;transition:width 0.3s;width:' + Math.round(doneCount/nawChecklist.length*100) + '%;"></div>';
+    html += '</div>';
+    html += '</div>';
+    nawChecklist.forEach(function(item) {
+      var bg = item.done ? 'var(--green-bg)' : 'white';
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;margin-bottom:6px;' + bg + ';border:1px solid ' + (item.done ? 'var(--green)' : 'var(--border)') + ';">';
+      html += '<input type="checkbox" ' + (item.done ? 'checked' : '') + ' onchange="nawToggleCheck(\'' + item.id + '\')" style="accent-color:var(--green);width:18px;height:18px;cursor:pointer;flex-shrink:0;">';
+      html += '<span style="flex:1;font-size:13px;' + (item.done ? 'color:var(--text-muted);text-decoration:line-through;' : 'font-weight:500;') + '">' + item.text + '</span>';
+      html += '<span style="font-size:11px;color:var(--' + (item.done ? 'green' : 'text-muted') + ');font-weight:600;">' + (item.done ? '✅' : '⬜') + '</span>';
+      html += '</div>';
+    });
+  } else if (nawCurrentStep === 2) {
+    // Step2: 营收结算
+    var todayRevenue = 12860;
+    var todayDeposit = 1200;
+    var otherConsumption = 680;
+    var unlockCount = 18;
+    var checkinCount = 5;
+    var checkoutCount = 3;
+    var inRoomCount = 8;
+    var emptyCount = 8;
+    html += '<div style="font-size:14px;font-weight:700;margin-bottom:14px;">💰 当日营收统计</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">';
+    var stats = [
+      {label:'当日营收', value:'¥' + todayRevenue.toLocaleString(), color:'var(--orange)', bg:'var(--orange-bg)'},
+      {label:'押金收入', value:'¥' + todayDeposit.toLocaleString(), color:'var(--blue)', bg:'var(--blue-bg)'},
+      {label:'其他消费', value:'¥' + otherConsumption.toLocaleString(), color:'var(--purple)', bg:'var(--purple-bg)'},
+      {label:'开锁次数', value:unlockCount + '次', color:'var(--green)', bg:'var(--green-bg)'}
+    ];
+    stats.forEach(function(s) {
+      html += '<div style="padding:14px;text-align:center;background:' + s.bg + ';border-radius:8px;">';
+      html += '<div style="font-size:10px;color:' + s.color + ';margin-bottom:6px;">' + s.label + '</div>';
+      html += '<div style="font-size:20px;font-weight:700;color:' + s.color + ';">' + s.value + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div style="font-size:14px;font-weight:700;margin-bottom:14px;">🏠 房务汇总</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">';
+    var rooms = [
+      {label:'入住', value:checkinCount + '人', color:'var(--green)', bg:'var(--green-bg)'},
+      {label:'退房', value:checkoutCount + '人', color:'var(--blue)', bg:'var(--blue-bg)'},
+      {label:'在住房', value:inRoomCount + '间', color:'var(--orange)', bg:'var(--orange-bg)'},
+      {label:'空房', value:emptyCount + '间', color:'var(--text-muted)', bg:'var(--bg)'}
+    ];
+    rooms.forEach(function(r) {
+      html += '<div style="padding:12px;text-align:center;background:' + r.bg + ';border-radius:8px;">';
+      html += '<div style="font-size:10px;color:' + r.color + ';margin-bottom:4px;">' + r.label + '</div>';
+      html += '<div style="font-size:18px;font-weight:700;color:' + r.color + ';">' + r.value + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  } else if (nawCurrentStep === 3) {
+    // Step3: 交接班确认
+    html += '<div style="font-size:14px;font-weight:700;margin-bottom:14px;">💵 现金清点</div>';
+    html += '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;">';
+    var bills = [
+      {id:'100', label:'100元 ×', count:0},
+      {id:'50', label:'50元 ×', count:0},
+      {id:'20', label:'20元 ×', count:0},
+      {id:'10', label:'10元 ×', count:0},
+      {id:'5', label:'5元 ×', count:0},
+      {id:'1', label:'1元 ×', count:0}
+    ];
+    bills.forEach(function(b) {
+      var amt = parseInt(document.getElementById('naw-' + b.id) ? document.getElementById('naw-' + b.id).value : 0) || 0;
+      html += '<div style="display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);background:white;">';
+      html += '<span style="width:80px;font-size:13px;font-weight:500;">' + b.label + '</span>';
+      html += '<input type="number" id="naw-' + b.id + '" value="' + amt + '" min="0" oninput="nawCalcCash()" placeholder="0" style="width:70px;padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;text-align:center;">';
+      html += '<span style="margin-left:auto;font-size:13px;font-weight:600;color:var(--blue);">= ¥' + (parseInt(b.id) * amt) + '</span>';
+      html += '</div>';
+    });
+    var coinsVal = parseInt(document.getElementById('naw-coins') ? document.getElementById('naw-coins').value : 0) || 0;
+    html += '<div style="display:flex;align-items:center;padding:10px 14px;background:var(--bg);">';
+    html += '<span style="width:80px;font-size:13px;font-weight:500;">硬币合计</span>';
+    html += '<input type="number" id="naw-coins" value="' + coinsVal + '" min="0" oninput="nawCalcCash()" placeholder="0" style="width:70px;padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;text-align:center;">';
+    html += '<span style="margin-left:auto;font-size:13px;font-weight:600;color:var(--blue);">= ¥' + coinsVal + '</span>';
+    html += '</div>';
+    html += '</div>';
+    var total = nawCalcCashTotal();
+    html += '<div style="padding:14px;background:var(--orange-bg);border-radius:8px;text-align:center;margin-bottom:10px;">';
+    html += '<div style="font-size:11px;color:var(--orange);margin-bottom:4px;">应交总额</div>';
+    html += '<div style="font-size:26px;font-weight:700;color:var(--orange);" id="naw-total-display">¥' + total + '</div>';
+    html += '</div>';
+    html += '<div style="padding:10px;background:var(--blue-bg);border-radius:6px;font-size:12px;color:var(--blue);text-align:center;">💡 请确保现金金额与系统记录一致后再提交夜审</div>';
+  } else if (nawCurrentStep === 4) {
+    // Step4: 生成报表
+    var now = new Date();
+    var dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    var auditor = '赵飞';
+    var total = nawCalcCashTotal();
+    html += '<div style="text-align:center;padding:20px 0 24px;">';
+    html += '<div style="font-size:48px;margin-bottom:12px;">🎉</div>';
+    html += '<div style="font-size:18px;font-weight:700;color:var(--green);margin-bottom:6px;">夜审报表已生成</div>';
+    html += '<div style="font-size:12px;color:var(--text-muted);">数据已归档，可打印留存</div>';
+    html += '</div>';
+    html += '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;">';
+    var reportItems = [
+      {label:'审计日期', value:dateStr},
+      {label:'审计人', value:auditor},
+      {label:'当日营收', value:'¥12,860'},
+      {label:'押金收入', value:'¥1,200'},
+      {label:'房间状态', value:'在住房8间 / 空房8间'},
+      {label:'异常事项', value:'3项告警已处理'},
+      {label:'交接现金', value:'¥' + total}
+    ];
+    reportItems.forEach(function(item, idx) {
+      html += '<div style="display:flex;padding:10px 14px;' + (idx < reportItems.length - 1 ? 'border-bottom:1px solid var(--border);' : '') + '">';
+      html += '<span style="width:90px;font-size:12px;color:var(--text-muted);">' + item.label + '</span>';
+      html += '<span style="flex:1;font-size:13px;font-weight:600;">' + item.value + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div style="padding:10px;background:var(--green-bg);border-radius:6px;font-size:12px;color:var(--green);text-align:center;margin-bottom:10px;">✅ 夜审完成后，所有checklist将自动重置</div>';
+  }
+  content.innerHTML = html;
+}
+
+function nawCalcCashTotal() {
+  var v100 = parseInt(document.getElementById('naw-100') ? document.getElementById('naw-100').value : 0) || 0;
+  var v50 = parseInt(document.getElementById('naw-50') ? document.getElementById('naw-50').value : 0) || 0;
+  var v20 = parseInt(document.getElementById('naw-20') ? document.getElementById('naw-20').value : 0) || 0;
+  var v10 = parseInt(document.getElementById('naw-10') ? document.getElementById('naw-10').value : 0) || 0;
+  var v5 = parseInt(document.getElementById('naw-5') ? document.getElementById('naw-5').value : 0) || 0;
+  var v1 = parseInt(document.getElementById('naw-1') ? document.getElementById('naw-1').value : 0) || 0;
+  var coins = parseInt(document.getElementById('naw-coins') ? document.getElementById('naw-coins').value : 0) || 0;
+  return v100*100 + v50*50 + v20*20 + v10*10 + v5*5 + v1*1 + coins;
+}
+
+function nawCalcCash() {
+  var total = nawCalcCashTotal();
+  var el = document.getElementById('naw-total-display');
+  if (el) el.textContent = '¥' + total;
+  // 更新每个面额小计
+  var bills = ['100','50','20','10','5','1'];
+  bills.forEach(function(b) {
+    var inp = document.getElementById('naw-' + b);
+    var row = inp ? inp.closest('div') : null;
+    var subtotalEl = row ? row.querySelector('span:last-child') : null;
+    if (subtotalEl) {
+      subtotalEl.textContent = '= ¥' + (parseInt(b) * (parseInt(inp.value) || 0));
+    }
+  });
+}
+
+function nawToggleCheck(id) {
+  var item = nawChecklist.find(function(i){ return i.id === id; });
+  if (item) { item.done = !item.done; nawRenderContent(); }
+}
+
+function nawNextStep() {
+  if (nawCurrentStep < nawTotalSteps) {
+    nawCurrentStep++;
+    nawRenderContent();
+  } else {
+    // 完成夜审
+    var undone = nawChecklist.filter(function(i){ return !i.done; });
+    if (undone.length > 0) {
+      showToast('⚠️ 仍有 ' + undone.length + ' 项未完成，请先处理后再提交夜审', 'warning');
+      return;
+    }
+    var now = new Date();
+    var auditor = '赵飞';
+    var total = nawCalcCashTotal();
+    var dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    // 添加到auditHistory
+    auditHistory.unshift({
+      date: dateStr,
+      auditor: auditor,
+      revenue: '¥12,860',
+      rooms: '16间/在住房8间',
+      status: '已完成',
+      issues: '无'
+    });
+    // 重置checklist
+    nightAuditChecklist.forEach(function(i){ i.done = false; });
+    // 重置向导checklist
+    nawChecklist.forEach(function(i){ i.done = false; });
+    closeModal('nightaudit-wizard');
+    showToast('🌙 夜审已完成，报表已归档', 'success');
+    if (typeof renderAuditHistory === 'function') renderAuditHistory();
+    if (typeof renderNightAuditChecklist === 'function') renderNightAuditChecklist();
+  }
+}
+
+function nawPrevStep() {
+  if (nawCurrentStep > 1) {
+    nawCurrentStep--;
+    nawRenderContent();
+  }
+}
+</script>
+
+<!-- ========== 【改进2】员工排班新增员工+新增班次弹窗 ========== -->
+<div class="modal-overlay hidden" id="modal-add-staff-schedule">
+  <div class="modal" style="width:440px;">
+    <div class="modal-header">
+      <div class="modal-title">👤 新增排班员工</div>
+      <button class="modal-close" onclick="closeModal('add-staff-schedule')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">姓名 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="sadd-name" placeholder="请输入员工姓名" style="padding:8px 12px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">部门</label>
+        <select class="form-select" id="sadd-dept" style="padding:8px 12px;">
+          <option value="前厅">前厅</option>
+          <option value="客房">客房</option>
+          <option value="工程">工程</option>
+          <option value="保安">保安</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">职位</label>
+        <input type="text" class="form-input" id="sadd-role" placeholder="如：经理、接待、清洁" style="padding:8px 12px;">
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">手机号</label>
+        <input type="tel" class="form-input" id="sadd-phone" placeholder="选填，员工联系电话" maxlength="11" style="padding:8px 12px;">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('add-staff-schedule')">取消</button>
+      <button class="modal-btn primary" onclick="submitAddStaffToSchedule()">✅ 确认添加</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-add-shift">
+  <div class="modal" style="width:440px;">
+    <div class="modal-header">
+      <div class="modal-title">📅 新增班次</div>
+      <button class="modal-close" onclick="closeModal('add-shift')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">选择员工</label>
+        <select class="form-select" id="sft-staff-select" style="padding:8px 12px;">
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">选择日期</label>
+        <select class="form-select" id="sft-day-select" style="padding:8px 12px;">
+          <option value="0">周一</option>
+          <option value="1">周二</option>
+          <option value="2">周三</option>
+          <option value="3">周四</option>
+          <option value="4">周五</option>
+          <option value="5">周六</option>
+          <option value="6">周日</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">班次类型</label>
+        <select class="form-select" id="sft-shift-type" style="padding:8px 12px;">
+          <option value="morning">早班</option>
+          <option value="afternoon">中班</option>
+          <option value="night">夜班</option>
+          <option value="off">休息</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">考勤状态</label>
+        <select class="form-select" id="sft-attend-status" style="padding:8px 12px;">
+          <option value="present">出勤</option>
+          <option value="late">迟到</option>
+          <option value="absent">缺勤</option>
+          <option value="off">休息</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('add-shift')">取消</button>
+      <button class="modal-btn primary" onclick="submitAddShiftToSchedule()">✅ 确认添加</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== 【改进2】员工排班新增员工+新增班次JS函数 ==========
+function openAddStaffToScheduleModal() {
+  document.getElementById('sadd-name').value = '';
+  document.getElementById('sadd-dept').value = '前厅';
+  document.getElementById('sadd-role').value = '';
+  document.getElementById('sadd-phone').value = '';
+  openModal('add-staff-schedule');
+}
+
+function submitAddStaffToSchedule() {
+  var name = document.getElementById('sadd-name').value.trim();
+  if (!name) { showToast('姓名不能为空', 'error'); return; }
+  var dept = document.getElementById('sadd-dept').value;
+  var role = document.getElementById('sadd-role').value.trim() || dept;
+  var phone = document.getElementById('sadd-phone').value.trim();
+  var newStaff = {
+    staff: name,
+    dept: dept,
+    role: role,
+    shifts: [
+      {day:0,shift:'morning',status:'present'},
+      {day:1,shift:'morning',status:'present'},
+      {day:2,shift:'morning',status:'present'},
+      {day:3,shift:'morning',status:'present'},
+      {day:4,shift:'morning',status:'present'},
+      {day:5,shift:'morning',status:'present'},
+      {day:6,shift:'off',status:'off'}
+    ]
+  };
+  scheduleData.push(newStaff);
+  closeModal('add-staff-schedule');
+  if (typeof renderScheduleCalendar === 'function') renderScheduleCalendar();
+  if (typeof updateScheduleStats === 'function') updateScheduleStats();
+  showToast('✅ 员工「' + name + '」已添加到排班表', 'success');
+}
+
+function openAddShiftModal() {
+  // 填充员工选择下拉
+  var select = document.getElementById('sft-staff-select');
+  var html = '';
+  scheduleData.forEach(function(s, idx) {
+    html += '<option value="' + idx + '">' + s.staff + '（' + s.dept + '·' + s.role + '）</option>';
+  });
+  select.innerHTML = html;
+  document.getElementById('sft-day-select').value = '0';
+  document.getElementById('sft-shift-type').value = 'morning';
+  document.getElementById('sft-attend-status').value = 'present';
+  openModal('add-shift');
+}
+
+function submitAddShiftToSchedule() {
+  var staffIdx = parseInt(document.getElementById('sft-staff-select').value);
+  var dayIdx = parseInt(document.getElementById('sft-day-select').value);
+  var shiftType = document.getElementById('sft-shift-type').value;
+  var attendStatus = document.getElementById('sft-attend-status').value;
+  if (isNaN(staffIdx) || !scheduleData[staffIdx]) { showToast('请选择员工', 'error'); return; }
+  scheduleData[staffIdx].shifts[dayIdx] = {day:dayIdx, shift:shiftType, status:attendStatus};
+  closeModal('add-shift');
+  if (typeof renderScheduleCalendar === 'function') renderScheduleCalendar();
+  if (typeof updateScheduleStats === 'function') updateScheduleStats();
+  showToast('✅ 班次已添加', 'success');
+}
+</script>
+
 </body>
 </html>
