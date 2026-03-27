@@ -635,7 +635,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </button>
       </div>
       <!-- 改进3: 首页实时办理记录动态面板 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
         <div class="card" style="margin-bottom:0;">
           <div class="card-header">
             <div class="card-title">🏨 今日入住</div>
@@ -706,6 +706,34 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               </div>
               <div style="font-size:11px;color:var(--green);">¥98</div>
             </div>
+          </div>
+        </div>
+        <!-- 【改进5】首页新增「待入住预登记」队列面板 -->
+        <div class="card" style="margin-bottom:0;border:2px solid var(--purple);">
+          <div class="card-header" style="background:var(--purple-bg);">
+            <div class="card-title" style="color:var(--purple);">⏳ 待入住</div>
+            <span style="font-size:11px;color:var(--purple);font-weight:600;" id="home-pending-count">2人</span>
+          </div>
+          <div class="card-body" style="padding:8px 12px;max-height:180px;overflow-y:auto;" id="home-pending-feed">
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+              <div style="width:28px;height:28px;background:var(--purple-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;">⏳</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:600;">钱一 <span style="font-size:10px;color:var(--orange);background:var(--orange-bg);padding:1px 5px;border-radius:3px;margin-left:4px;">待确认</span></div>
+                <div style="font-size:11px;color:var(--text-muted);">401 · 家庭套房 · 明天 14:00</div>
+              </div>
+              <button class="action-btn small" onclick="confirmPendingCheckin(0)" style="padding:2px 8px;font-size:10px;background:var(--blue);color:white;border:none;">确认</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 0;">
+              <div style="width:28px;height:28px;background:var(--purple-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;">⏳</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:600;">孙二 <span style="font-size:10px;color:var(--text-muted);background:var(--bg);padding:1px 5px;border-radius:3px;margin-left:4px;">预登记</span></div>
+                <div style="font-size:11px;color:var(--text-muted);">402 · 大床房 · 明天 16:00</div>
+              </div>
+              <button class="action-btn small" onclick="confirmPendingCheckin(1)" style="padding:2px 8px;font-size:10px;background:var(--blue);color:white;border:none;">确认</button>
+            </div>
+          </div>
+          <div style="padding:8px 12px;border-top:1px solid var(--border);text-align:center;">
+            <button class="action-btn small" onclick="showPage('records');openAddRecordModal();" style="padding:3px 10px;font-size:11px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">+ 新增预登记</button>
           </div>
         </div>
       </div>
@@ -1935,6 +1963,40 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
       </div>
       <div id="room-content-keys" style="display:none;">
+      <!-- 【改进1】密码水龙头：房间内一键生成临时密码并复制 -->
+      <div class="card" style="margin-bottom:12px;border:2px solid var(--blue);">
+        <div class="card-header" style="background:var(--blue-bg);">
+          <div class="card-title" style="color:var(--blue);">🔑 密码水龙头</div>
+          <button class="action-btn small" onclick="openKeyFaucetPanel()" style="padding:3px 10px;background:var(--blue);color:white;border:none;font-size:11px;">⚡ 生成临时密码</button>
+        </div>
+        <div class="card-body" style="padding:14px;">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;">
+              <input type="text" id="kf-generated-pwd" class="form-input" placeholder="点击「生成密码」自动生成" readonly style="font-family:monospace;font-size:18px;font-weight:700;color:var(--blue);letter-spacing:3px;text-align:center;height:40px;">
+            </div>
+            <div style="display:flex;gap:6px;">
+              <select class="form-select" id="kf-type" style="padding:6px 8px;font-size:12px;width:120px;">
+                <option value="temp">⏰ 临时密码</option>
+                <option value="one-time">🚫 一次性</option>
+                <option value="offline">🏠 离线密码</option>
+              </select>
+              <select class="form-select" id="kf-duration" style="padding:6px 8px;font-size:12px;width:100px;">
+                <option value="1">1小时</option>
+                <option value="2">2小时</option>
+                <option value="4" selected>4小时</option>
+                <option value="8">8小时</option>
+                <option value="24">24小时</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+            <button class="action-btn" onclick="generateRoomTempPassword()" style="background:var(--blue);color:white;border:none;padding:6px 14px;">⚡ 生成密码</button>
+            <button class="action-btn" onclick="copyRoomTempPassword()" id="kf-copy-btn" style="padding:6px 14px;">📋 复制密码</button>
+            <button class="action-btn" onclick="sendRoomTempPassword()" id="kf-send-btn" style="padding:6px 14px;background:var(--green-bg);color:var(--green);border-color:var(--green);display:none;">📱 发送至客人手机</button>
+            <span id="kf-status" style="font-size:12px;color:var(--green);margin-left:8px;display:none;">✅ 已复制到剪贴板</span>
+          </div>
+        </div>
+      </div>
       <div class="card">
         <div class="card-header">
           <div class="card-title">🔑 钥匙列表</div>
@@ -5044,6 +5106,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <div class="form-group" id="rp-custom-pwd-group" style="display:none;">
             <label class="form-label">自定义密码</label>
             <input type="text" class="form-input" id="rp-custom-pwd" placeholder="请输入6位以上密码">
+          </div>
+          <!-- 【改进3】员工密码重置时新增通知渠道配置（短信/邮件/飞书） -->
+          <div class="form-group" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+            <label class="form-label">通知方式</label>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:6px 10px;border:1px solid var(--border);border-radius:6px;">
+                <input type="checkbox" id="rp-notify-sms" checked style="accent-color:var(--blue);"> 📱 短信
+              </label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:6px 10px;border:1px solid var(--border);border-radius:6px;">
+                <input type="checkbox" id="rp-notify-email" style="accent-color:var(--blue);"> 📧 邮件
+              </label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:6px 10px;border:1px solid var(--border);border-radius:6px;">
+                <input type="checkbox" id="rp-notify-feishu" checked style="accent-color:var(--blue);"> 💬 飞书
+              </label>
+            </div>
+            <div id="rp-notify-preview" style="margin-top:8px;padding:8px 12px;background:var(--green-bg);border-radius:6px;font-size:11px;color:var(--green);display:none;">
+              ✅ 通知预览：密码将发送至 138****8888（手机）、admin@lockclub.cn（邮箱）、飞书工作通知
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -8331,13 +8411,49 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div class="countdown-num" id="unlock-countdown">5</div>
         <div class="countdown-label">秒后自动执行开锁</div>
       </div>
+      <!-- 【改进2】远程开锁结果实时反馈（倒计时结束后显示开锁结果动画+设备响应状态） -->
+      <div id="unlock-result-feedback" style="display:none;margin-top:16px;">
+        <div style="text-align:center;padding:16px;background:var(--green-bg);border:2px solid var(--green);border-radius:12px;">
+          <div style="font-size:40px;margin-bottom:8px;">✅</div>
+          <div style="font-size:15px;font-weight:700;color:var(--green);">开锁成功！</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">门锁已开启，设备响应 142ms</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">同步时间：<span id="unlock-sync-time">--</span></div>
+        </div>
+        <div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:8px;font-size:12px;">
+          <div style="font-weight:600;margin-bottom:8px;color:var(--text);">📋 本次开锁记录</div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);">
+            <span style="color:var(--text-muted);">开锁方式</span><span style="font-weight:600;">🔓 远程授权开锁</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);">
+            <span style="color:var(--text-muted);">操作人</span><span style="font-weight:600;" id="unlock-operator">赵飞（当前账号）</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);">
+            <span style="color:var(--text-muted);">设备状态</span><span style="font-weight:600;color:var(--green);">🟢 在线</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;">
+            <span style="color:var(--text-muted);">电池电量</span><span style="font-weight:600;">88%</span>
+          </div>
+        </div>
+      </div>
+      <!-- 开锁失败反馈 -->
+      <div id="unlock-fail-feedback" style="display:none;margin-top:16px;">
+        <div style="text-align:center;padding:16px;background:var(--red-bg);border:2px solid var(--red);border-radius:12px;">
+          <div style="font-size:40px;margin-bottom:8px;">❌</div>
+          <div style="font-size:15px;font-weight:700;color:var(--red);">开锁失败</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:6px;" id="unlock-fail-reason">设备离线，开锁指令无法送达</div>
+          <div style="margin-top:10px;display:flex;gap:8px;justify-content:center;">
+            <button class="action-btn small" onclick="retryUnlock()" style="padding:4px 12px;">🔄 重试</button>
+            <button class="action-btn small" onclick="contactMaintenance()" style="padding:4px 12px;">📞 联系维修</button>
+          </div>
+        </div>
+      </div>
       <div style="text-align:center;margin-top:12px;">
-        <button class="modal-btn secondary" onclick="cancelUnlock()" style="margin:0 auto;">取消开锁</button>
+        <button class="modal-btn secondary" onclick="cancelUnlock()" style="margin:0 auto;" id="unlock-cancel-btn">取消开锁</button>
       </div>
     </div>
     <div class="modal-footer">
       <button class="modal-btn secondary" onclick="closeModal('unlock')">取消</button>
-      <button class="modal-btn primary" onclick="confirmUnlock()">立即开锁</button>
+      <button class="modal-btn primary" onclick="confirmUnlock()" id="unlock-confirm-btn">立即开锁</button>
     </div>
   </div>
 </div>
@@ -12055,7 +12171,23 @@ function cancelUnlock() {
 function confirmUnlock() {
   if (unlockCountdownTimer) clearInterval(unlockCountdownTimer);
   closeModal('unlock');
+  // 【改进2】远程开锁结果反馈：显示结果动画+记录到操作日志
+  var now = new Date();
+  document.getElementById('unlock-sync-time').textContent = now.toLocaleString('zh-CN');
+  document.getElementById('unlock-result-feedback').style.display = 'block';
+  document.getElementById('unlock-fail-feedback').style.display = 'none';
+  // Add to oplog
+  addOpLog('device', '赵飞', '远程开锁：301房间 - 授权开锁', '192.168.1.101');
   showToast('远程开锁成功！301房间门锁已开启', 'success');
+}
+function retryUnlock() {
+  document.getElementById('unlock-result-feedback').style.display = 'none';
+  document.getElementById('unlock-fail-feedback').style.display = 'none';
+  openUnlockModal();
+}
+function contactMaintenance() {
+  showToast('已通知工程部值班人员，预计15分钟内上门处理', 'info');
+  document.getElementById('unlock-fail-feedback').style.display = 'none';
 }
 
 // ======= 改进5: 房型管理 - 新增/编辑 =======
@@ -19319,6 +19451,55 @@ var roomHistoryData = {
   ]
 };
 
+// 【改进1】密码水龙头：房间内一键生成临时密码并复制到剪贴板
+function generateRoomTempPassword() {
+  var type = document.getElementById('kf-type').value;
+  var duration = parseInt(document.getElementById('kf-duration').value);
+  var pwd = '';
+  if (type === 'one-time') {
+    pwd = Math.random().toString().slice(2, 10);
+  } else if (type === 'offline') {
+    pwd = 'L' + Math.random().toString(36).slice(2, 10).toUpperCase();
+  } else {
+    pwd = Math.random().toString().slice(2, 8) + Math.floor(Date.now() / 1000 % 10000);
+  }
+  document.getElementById('kf-generated-pwd').value = pwd;
+  document.getElementById('kf-copy-btn').style.display = 'inline-flex';
+  document.getElementById('kf-send-btn').style.display = 'inline-flex';
+  document.getElementById('kf-status').style.display = 'none';
+  showToast('密码已生成！点击「复制密码」发送给客人', 'success');
+}
+function copyRoomTempPassword() {
+  var pwd = document.getElementById('kf-generated-pwd').value;
+  if (!pwd) { showToast('请先生成密码', 'error'); return; }
+  navigator.clipboard.writeText(pwd).then(function() {
+    document.getElementById('kf-status').textContent = '已复制到剪贴板';
+    document.getElementById('kf-status').style.color = 'var(--green)';
+    document.getElementById('kf-status').style.display = 'inline';
+    showToast('密码已复制到剪贴板，可直接发送给客人！', 'success');
+  }).catch(function() {
+    var ta = document.createElement('textarea');
+    ta.value = pwd;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('密码已复制（兼容模式）', 'success');
+  });
+}
+function sendRoomTempPassword() {
+  var pwd = document.getElementById('kf-generated-pwd').value;
+  if (!pwd) { showToast('请先生成密码', 'error'); return; }
+  showToast('临时密码已发送至客人手机', 'success');
+  addOpLog('key', '赵飞', '生成临时密码（房间301）：' + pwd, '');
+}
+function openKeyFaucetPanel() {
+  document.getElementById('kf-generated-pwd').value = '';
+  document.getElementById('kf-copy-btn').style.display = 'none';
+  document.getElementById('kf-send-btn').style.display = 'none';
+  document.getElementById('kf-status').style.display = 'none';
+}
+
 function switchRoomDetailTab(tab, el) {
   document.querySelectorAll('#room-detail-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
   if (el) el.classList.add('active');
@@ -24003,8 +24184,8 @@ function submitStaffForm() { var name = document.getElementById('sf-name').value
 function deleteStaff(idx) { var name = staffListData[idx].name; if (!confirm('确定删除员工 ' + name + ' 吗？此操作不可撤销。')) return; staffListData.splice(idx, 1); renderStaffTable(); updateStaffStats(); showToast('员工 ' + name + ' 已删除', 'success'); }
 function enableStaff(idx) { staffListData[idx].status = 'enabled'; renderStaffTable(); updateStaffStats(); showToast('员工 ' + staffListData[idx].name + ' 已启用', 'success'); }
 function openStaffDetailModal(idx) { currentStaffIdx = idx; var d = staffListData[idx]; document.getElementById('sd-name').textContent = d.name; document.getElementById('sd-dept-title').textContent = d.dept + '部 · ' + d.position; document.getElementById('sd-phone').textContent = d.phone; document.getElementById('sd-join').textContent = d.join; document.getElementById('sd-login').textContent = d.login; document.getElementById('sd-checkin-count').textContent = d.checkin; document.getElementById('sd-checkout-count').textContent = d.checkout; document.getElementById('sd-status').innerHTML = d.status === 'enabled' ? '<span class="tbadge green">启用</span>' : '<span class="tbadge red">禁用</span>'; openModal('staff-detail'); }
-function openResetPwdModal(idx) { currentStaffIdx = idx; document.getElementById('rp-name').textContent = staffListData[idx].name; document.getElementById('rp-type').value = 'default'; document.getElementById('rp-custom-pwd-group').style.display = 'none'; openModal('reset-pwd'); }
-function submitResetPwd() { var type = document.getElementById('rp-type').value; var pwd = ''; if (type === 'default') pwd = staffListData[currentStaffIdx].phone.slice(-6); else if (type === 'random') pwd = Math.random().toString(36).slice(-6); else { pwd = document.getElementById('rp-custom-pwd').value; if (pwd.length < 6) { showToast('密码长度不能少于6位', 'error'); return; } } showToast('密码已重置为：' + pwd + '（已发送至员工手机）', 'success'); closeModal('reset-pwd'); }
+function openResetPwdModal(idx) { currentStaffIdx = idx; document.getElementById('rp-name').textContent = staffListData[idx].name; document.getElementById('rp-type').value = 'default'; document.getElementById('rp-custom-pwd-group').style.display = 'none'; document.getElementById('rp-notify-preview').style.display = 'none'; openModal('reset-pwd'); // Add event listeners for notify checkboxes ['rp-notify-sms','rp-notify-email','rp-notify-feishu'].forEach(function(id){ var el = document.getElementById(id); if(el){ el.addEventListener('change',function(){ var any = document.getElementById('rp-notify-sms').checked || document.getElementById('rp-notify-email').checked || document.getElementById('rp-notify-feishu').checked; document.getElementById('rp-notify-preview').style.display = any ? 'block' : 'none'; }); } }); }
+function submitResetPwd() { var type = document.getElementById('rp-type').value; var pwd = ''; if (type === 'default') pwd = staffListData[currentStaffIdx].phone.slice(-6); else if (type === 'random') pwd = Math.random().toString(36).slice(-6); else { pwd = document.getElementById('rp-custom-pwd').value; if (pwd.length < 6) { showToast('密码长度不能少于6位', 'error'); return; } } var sms = document.getElementById('rp-notify-sms').checked; var email = document.getElementById('rp-notify-email').checked; var feishu = document.getElementById('rp-notify-feishu').checked; var notifyList = []; if (sms) notifyList.push('短信'); if (email) notifyList.push('邮件'); if (feishu) notifyList.push('飞书'); var notifyStr = notifyList.length > 0 ? '，已通过' + notifyList.join('/') + '发送' : '（未选择通知渠道）'; addOpLog('staff', '赵飞', '重置员工「' + staffListData[currentStaffIdx].name + '」密码为：' + pwd, ''); showToast('密码已重置为：' + pwd + notifyStr, 'success'); closeModal('reset-pwd'); }
 function applyStaffSearch() { var kw = document.getElementById('staff-search-input').value.trim().toLowerCase(); var dept = document.getElementById('staff-dept-filter').value; var status = document.getElementById('staff-status-filter').value; var rows = document.querySelectorAll('#staff-table-body tr'); var count = 0; rows.forEach(function(r) { var name = r.cells[0].textContent.toLowerCase(); var phone = r.cells[3].textContent.toLowerCase(); var matchDept = dept === 'all' || r.dataset.dept === dept; var matchStatus = status === 'all' || r.dataset.status === status; var matchKw = !kw || name.includes(kw) || phone.includes(kw); r.style.display = (matchDept && matchStatus && matchKw) ? '' : 'none'; if (matchDept && matchStatus && matchKw) count++; }); document.getElementById('staff-filter-count').textContent = '共 ' + count + ' 名员工'; }
 // 【改进2】员工页面主Tab切换（列表/排班视图）
 function switchStaffMainTab(tab, el) {
@@ -31441,6 +31622,45 @@ function openEnergyTouConfigModal() {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 function closeEnergyTouConfigModal() { var m = document.getElementById('modal-energy-tou'); if (m) m.remove(); }
+// 【改进5】首页待入住预登记队列确认功能
+var pendingCheckinData = [
+  {name:'钱一', room:'401', type:'家庭套房', time:'明天 14:00', status:'pending'},
+  {name:'孙二', room:'402', type:'大床房', time:'明天 16:00', status:'prereg'},
+];
+function confirmPendingCheckin(idx) {
+  var item = pendingCheckinData[idx];
+  if (!item) return;
+  if (confirm('确认入住：' + item.name + '，房间 ' + item.room + '（' + item.type + '）？\n点击确认将跳转至入住办理页面。')) {
+    showPage('checkin');
+    openModal('checkin');
+    showToast('已加载预登记信息：' + item.name + ' - ' + item.room, 'success');
+    pendingCheckinData.splice(idx, 1);
+    document.getElementById('home-pending-count').textContent = pendingCheckinData.length + '人';
+    renderPendingCheckinFeed();
+    addOpLog('checkin', '赵飞', '预登记确认入住：' + item.name + ' - ' + item.room, '');
+  }
+}
+function renderPendingCheckinFeed() {
+  var feed = document.getElementById('home-pending-feed');
+  if (!feed) return;
+  if (pendingCheckinData.length === 0) {
+    feed.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">暂无待入住记录</div>';
+    return;
+  }
+  var html = '';
+  pendingCheckinData.forEach(function(item, i) {
+    var badge = item.status === 'pending' ? '待确认' : '预登记';
+    var badgeColor = item.status === 'pending' ? 'var(--orange)' : 'var(--text-muted)';
+    var badgeBg = item.status === 'pending' ? 'var(--orange-bg)' : 'var(--bg)';
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">' +
+      '<div style="width:28px;height:28px;background:var(--purple-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;">⏳</div>' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="font-size:12px;font-weight:600;">' + item.name + ' <span style="font-size:10px;color:' + badgeColor + ';background:' + badgeBg + ';padding:1px 5px;border-radius:3px;margin-left:4px;">' + badge + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + item.room + ' · ' + item.type + ' · ' + item.time + '</div></div>' +
+      '<button class="action-btn small" onclick="confirmPendingCheckin(' + i + ')" style="padding:2px 8px;font-size:10px;background:var(--blue);color:white;border:none;">确认</button></div>';
+  });
+  feed.innerHTML = html;
+}
 function calculateTouFee(usageData) {
   var fee = 0;
   usageData.forEach(function(u) {
