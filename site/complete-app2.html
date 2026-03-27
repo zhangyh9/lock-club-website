@@ -563,8 +563,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     <!-- Page: Home -->
     <div id="page-home" class="page active">
       <div class="page-header">
-        <div class="page-title">🏠 首页 - 房态总览</div>
-        <div class="page-sub">小度语音智慧房体验店 · 实时监控</div>
+        <div class="page-title">🏠 首页 - 房态总览 <button id="home-refresh-btn" onclick="startHomeAutoRefresh();refreshHomeData();" title="开启自动刷新" style="margin-left:10px;padding:3px 10px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);border-radius:6px;font-size:11px;cursor:pointer;">🔄 开启自动刷新（<span id="home-refresh-countdown">60</span>s）</button></div>
+        <div class="page-sub">小度语音智慧房体验店 · 实时监控 · <span style="color:var(--blue);">上次刷新：</span><span id="home-last-refresh" style="color:var(--blue);">--</span></div>
         <!-- 【改进6】全局搜索栏 -->
         <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
           <div style="position:relative;flex:1;max-width:380px;">
@@ -922,6 +922,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         renderHomeDeviceList();
         updateHomeDeviceCounts();
         renderHomeOpFeed();
+        // 【改进C】首页自动刷新：页面加载后自动启动每60秒刷新机制
+        startHomeAutoRefresh();
         // 每30秒自动刷新设备状态
         setInterval(function() {
           var pulseEl = document.getElementById('home-dev-pulse');
@@ -1825,7 +1827,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               <input type="checkbox" id="select-all-devices" onchange="toggleSelectAllDevices(this)" style="accent-color:var(--blue);width:15px;height:15px;">
               <span>全选</span>
             </label>
-            <button class="action-btn small" id="batch-action-btn" onclick="openBatchToolbar()" style="display:none;">📋 批量操作</button>
+            <button class="action-btn small" id="batch-action-btn" onclick="openDeviceBatchModal()" style="display:none;">📋 批量操作</button>
             <button class="action-btn small" onclick="openFirmwareUpgradeModal()" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📦 固件升级</button>
             <button class="action-btn small" onclick="openACControlModal()" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">❄️ 空调控制</button>
           </div>
@@ -3697,6 +3699,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <button class="action-btn small" onclick="applyWorkorderSearch()" style="padding:6px 12px;">🔍 搜索</button>
         <button class="action-btn small" onclick="resetWorkorderSearch()" style="padding:6px 10px;">重置</button>
         <button class="action-btn small" onclick="exportWorkorderCSV()" style="padding:6px 10px;margin-left:auto;">📤 导出CSV</button>
+        <!-- 【改进D】高级筛选按钮 -->
+        <button class="action-btn small" onclick="openModal('wo-filter')" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🔍 高级筛选</button>
       </div>
       <!-- 【改进1新增】工单批量操作工具栏（多选后可批量分配/批量完成） -->
       <div id="wo-batch-toolbar" style="display:none;align-items:center;gap:8px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:12px;">
@@ -4038,10 +4042,155 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     </div>
 
     <!-- Page: Energy（改进3: 节能风控页面，原系统独立模块） -->
+    <!-- 【改进A】能源数据详细分析Tab（支持日期范围筛选+房间横向对比+趋势图+导出） -->
+    <div class="modal-overlay hidden" id="modal-energy-analysis">
+      <div class="modal" style="width:700px;max-height:90vh;overflow-y:auto;">
+        <div class="modal-header">
+          <div class="modal-title">📊 能源数据详细分析 - <span id="ea-room-label">301房间</span></div>
+          <button class="modal-close" onclick="closeModal('energy-analysis')">✕</button>
+        </div>
+        <div class="modal-body">
+          <!-- 日期范围选择 -->
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+            <select class="form-select" id="ea-period" style="padding:6px 10px;font-size:12px;width:130px;" onchange="changeEnergyAnalysisPeriod()">
+              <option value="today">今日</option>
+              <option value="yesterday">昨日</option>
+              <option value="week" selected>近7天</option>
+              <option value="month">近30天</option>
+              <option value="custom">自定义</option>
+            </select>
+            <input type="date" class="form-input" id="ea-date-start" style="padding:6px 10px;font-size:12px;width:130px;">
+            <span style="font-size:12px;color:var(--text-muted);">至</span>
+            <input type="date" class="form-input" id="ea-date-end" style="padding:6px 10px;font-size:12px;width:130px;">
+            <button class="action-btn small" onclick="loadEnergyAnalysisData()" style="padding:5px 12px;font-size:11px;">🔍 分析</button>
+            <button class="action-btn small" onclick="exportEnergyAnalysis()" style="padding:5px 12px;font-size:11px;margin-left:4px;">📤 导出</button>
+          </div>
+          <!-- 统计摘要 -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
+            <div style="background:var(--blue-bg);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:11px;color:var(--blue);margin-bottom:4px;">总用电量</div>
+              <div style="font-size:22px;font-weight:700;color:var(--blue);" id="ea-total-kwh">--</div>
+              <div style="font-size:10px;color:var(--text-muted);">kWh</div>
+            </div>
+            <div style="background:var(--orange-bg);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:11px;color:var(--orange);margin-bottom:4px;">预计电费</div>
+              <div style="font-size:22px;font-weight:700;color:var(--orange);" id="ea-total-fee">--</div>
+              <div style="font-size:10px;color:var(--text-muted);">元（¥1.2/kWh）</div>
+            </div>
+            <div style="background:var(--green-bg);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:11px;color:var(--green);margin-bottom:4px;">日均用电</div>
+              <div style="font-size:22px;font-weight:700;color:var(--green);" id="ea-daily-avg">--</div>
+              <div style="font-size:10px;color:var(--text-muted);">kWh/天</div>
+            </div>
+            <div style="background:var(--purple-bg);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:11px;color:var(--purple);margin-bottom:4px;">异常检测</div>
+              <div style="font-size:22px;font-weight:700;color:var(--purple);" id="ea-anomaly-count">0</div>
+              <div style="font-size:10px;color:var(--text-muted);">次（超过阈值）</div>
+            </div>
+          </div>
+          <!-- 逐日用电趋势表格 -->
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;">📈 逐日用电详情</div>
+          <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:16px;">
+            <table class="table" style="font-size:12px;">
+              <thead><tr><th>日期</th><th>用电量(kWh)</th><th>电费(元)</th><th>环比变化</th><th>异常标记</th></tr></thead>
+              <tbody id="ea-daily-table">
+                <!-- 动态填充 -->
+              </tbody>
+            </table>
+          </div>
+          <!-- 房间横向对比Top5 -->
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🏠 全楼房间用电排行（本周）</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:grid;grid-template-columns:60px 1fr 80px 60px;gap:10px;align-items:center;padding:6px 10px;background:var(--red-bg);border-radius:6px;font-size:12px;font-weight:600;">
+              <span>301</span><div style="height:8px;background:var(--red);border-radius:4px;width:100%;"></div><span style="color:var(--red);">8.6kWh</span><span style="color:var(--red);">⚠️</span>
+            </div>
+            <div style="display:grid;grid-template-columns:60px 1fr 80px 60px;gap:10px;align-items:center;padding:6px 10px;background:var(--orange-bg);border-radius:6px;font-size:12px;">
+              <span>304</span><div style="height:8px;background:var(--orange);border-radius:4px;width:82%;"></div><span style="color:var(--orange);">7.1kWh</span><span style="color:var(--orange);">⚠️</span>
+            </div>
+            <div style="display:grid;grid-template-columns:60px 1fr 80px 60px;gap:10px;align-items:center;padding:6px 10px;background:var(--blue-bg);border-radius:6px;font-size:12px;">
+              <span>201</span><div style="height:8px;background:var(--blue);border-radius:4px;width:60%;"></div><span style="color:var(--blue);">5.2kWh</span><span style="color:var(--green);">正常</span>
+            </div>
+            <div style="display:grid;grid-template-columns:60px 1fr 80px 60px;gap:10px;align-items:center;padding:6px 10px;background:var(--bg);border-radius:6px;font-size:12px;">
+              <span>302</span><div style="height:8px;background:var(--green);border-radius:4px;width:14%;"></div><span style="color:var(--green);">1.2kWh</span><span style="color:var(--green);">正常</span>
+            </div>
+            <div style="display:grid;grid-template-columns:60px 1fr 80px 60px;gap:10px;align-items:center;padding:6px 10px;background:var(--bg);border-radius:6px;font-size:12px;">
+              <span>303</span><div style="height:8px;background:var(--green);border-radius:4px;width:8%;"></div><span style="color:var(--green);">0.6kWh</span><span style="color:var(--green);">正常</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('energy-analysis')">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【改进B】设备批量操作确认弹窗（支持批量选择设备+批量开锁/同步/重启/清除告警） -->
+    <div class="modal-overlay hidden" id="modal-device-batch">
+      <div class="modal" style="width:560px;">
+        <div class="modal-header">
+          <div class="modal-title">📱 设备批量操作 - 已选 <span id="batch-dev-count" style="color:var(--blue);">0</span> 台设备</div>
+          <button class="modal-close" onclick="closeModal('device-batch')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--orange);">
+            ⚠️ 批量操作将同时对所有选中设备执行，请谨慎操作！部分操作（如重启）会导致设备短暂离线。
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px;">选择操作类型：</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+            <div class="detail-card batch-op-card" data-op="sync" onclick="selectBatchOp('sync',this)" style="cursor:pointer;border:2px solid var(--border);transition:all 0.2s;">
+              <div style="text-align:center;padding:12px;">
+                <div style="font-size:28px;margin-bottom:6px;">🔄</div>
+                <div style="font-size:13px;font-weight:600;">批量同步状态</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">强制拉取所有选中设备的实时状态</div>
+              </div>
+            </div>
+            <div class="detail-card batch-op-card" data-op="unlock" onclick="selectBatchOp('unlock',this)" style="cursor:pointer;border:2px solid var(--border);transition:all 0.2s;">
+              <div style="text-align:center;padding:12px;">
+                <div style="font-size:28px;margin-bottom:6px;">🔓</div>
+                <div style="font-size:13px;font-weight:600;">批量远程开锁</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">同时向所有选中设备下发开锁指令</div>
+              </div>
+            </div>
+            <div class="detail-card batch-op-card" data-op="restart" onclick="selectBatchOp('restart',this)" style="cursor:pointer;border:2px solid var(--border);transition:all 0.2s;">
+              <div style="text-align:center;padding:12px;">
+                <div style="font-size:28px;margin-bottom:6px;">🔁</div>
+                <div style="font-size:13px;font-weight:600;">批量重启设备</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">重启后设备将离线约10秒</div>
+              </div>
+            </div>
+            <div class="detail-card batch-op-card" data-op="clear-alarm" onclick="selectBatchOp('clear-alarm',this)" style="cursor:pointer;border:2px solid var(--border);transition:all 0.2s;">
+              <div style="text-align:center;padding:12px;">
+                <div style="font-size:28px;margin-bottom:6px;">✅</div>
+                <div style="font-size:13px;font-weight:600;">批量清除告警</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">清除所有选中设备的告警状态</div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;">已选设备列表：</div>
+          <div id="batch-dev-list" style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;">
+            <!-- 动态填充 -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('device-batch')">取消</button>
+          <button class="modal-btn primary" id="batch-execute-btn" onclick="executeBatchDeviceOp()" disabled style="opacity:0.5;">▶️ 执行批量操作</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【改进C】首页数据自动刷新机制（每60秒刷新首页核心数据） -->
+    <!-- 核心JS逻辑在页面底部添加 -->
+
     <div id="page-energy" class="page">
       <div class="page-header">
         <div class="page-title">⚡ 节能风控</div>
         <div class="page-sub">能耗监控 · 异常告警 · 风控策略</div>
+      </div>
+      <!-- 【改进A增强】节能页面增加"详细分析"入口按钮 -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <button class="action-btn" onclick="openEnergyAnalysisModal('')" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📊 详细数据分析</button>
+        <button class="action-btn" onclick="exportEnergyData()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出能耗报表</button>
+        <div style="margin-left:auto;font-size:12px;color:var(--text-muted);">数据更新：<span id="energy-last-update" style="color:var(--blue);">--</span></div>
       </div>
       <div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
         <div class="stat-card">
@@ -5141,6 +5290,135 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               <tr><td>2026-03-25 14:30:08</td><td>KP-2026032505</td><td>203</td><td><span class="tbadge gray">一次性</span></td><td><span class="tbadge green">✅ 成功</span></td><td>25ms</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【改进D】服务工单完整筛选工具栏（支持优先级+紧急程度+日期范围+处理人筛选） -->
+    <div class="modal-overlay hidden" id="modal-wo-filter">
+      <div class="modal" style="width:520px;">
+        <div class="modal-header">
+          <div class="modal-title">🔍 服务工单高级筛选</div>
+          <button class="modal-close" onclick="closeModal('wo-filter')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">工单类型</label>
+              <select class="form-select" id="wof-type">
+                <option value="all">全部类型</option>
+                <option value="complaint">🔴 客户投诉</option>
+                <option value="delivery">📦 送物服务</option>
+                <option value="invoice">📄 发票需求</option>
+                <option value="repair">🔧 设备报修</option>
+                <option value="other">📋 其他</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">紧急程度</label>
+              <select class="form-select" id="wof-urgent">
+                <option value="all">全部</option>
+                <option value="normal">普通</option>
+                <option value="urgent">紧急</option>
+                <option value="critical">十分紧急</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">处理人</label>
+              <select class="form-select" id="wof-assign">
+                <option value="all">全部</option>
+                <option value="赵飞">赵飞</option>
+                <option value="周敏">周敏</option>
+                <option value="吴倩">吴倩</option>
+                <option value="郑强">郑强</option>
+                <option value="unassigned">未分配</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">工单状态</label>
+              <select class="form-select" id="wof-status">
+                <option value="all">全部</option>
+                <option value="pending">待接受</option>
+                <option value="processing">处理中</option>
+                <option value="completed">已完成</option>
+                <option value="cancelled">已取消</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">创建日期起</label>
+              <input type="date" class="form-input" id="wof-date-from">
+            </div>
+            <div class="form-group">
+              <label class="form-label">创建日期止</label>
+              <input type="date" class="form-input" id="wof-date-to">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">关键词搜索</label>
+            <input type="text" class="form-input" id="wof-keyword" placeholder="搜索工单编号/房间号/描述...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('wo-filter')">取消</button>
+          <button class="modal-btn" onclick="resetWoFilter()">重置</button>
+          <button class="modal-btn primary" onclick="applyWoAdvancedFilter()">🔍 应用筛选</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【改进E】会员充值记录弹窗（完整充值历史+充值方式筛选+统计分析） -->
+    <div class="modal-overlay hidden" id="modal-member-recharge-history">
+      <div class="modal" style="width:580px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;">
+        <div class="modal-header">
+          <div class="modal-title">💰 会员充值记录 - <span id="mrh-member-name" style="color:var(--blue);"></span></div>
+          <button class="modal-close" onclick="closeModal('member-recharge-history')">✕</button>
+        </div>
+        <div class="modal-body" style="flex:1;overflow-y:auto;">
+          <!-- 充值统计 -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+            <div style="background:var(--blue-bg);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:11px;color:var(--blue);margin-bottom:4px;">累计充值</div>
+              <div style="font-size:22px;font-weight:700;color:var(--blue);" id="mrh-total-recharge">--</div>
+              <div style="font-size:10px;color:var(--text-muted);">元</div>
+            </div>
+            <div style="background:var(--green-bg);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:11px;color:var(--green);margin-bottom:4px;">累计消费</div>
+              <div style="font-size:22px;font-weight:700;color:var(--green);" id="mrh-total-consume">--</div>
+              <div style="font-size:10px;color:var(--text-muted);">元</div>
+            </div>
+            <div style="background:var(--purple-bg);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:11px;color:var(--purple);margin-bottom:4px;">当前余额</div>
+              <div style="font-size:22px;font-weight:700;color:var(--purple);" id="mrh-balance">--</div>
+              <div style="font-size:10px;color:var(--text-muted);">元</div>
+            </div>
+          </div>
+          <!-- 充值筛选 -->
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+            <select class="form-select" id="mrh-type-filter" style="padding:5px 10px;font-size:12px;width:130px;" onchange="filterMemberRecharge()">
+              <option value="all">全部方式</option>
+              <option value="recharge">💰 充值</option>
+              <option value="consume">💸 消费</option>
+              <option value="refund">↩️ 退款</option>
+            </select>
+            <select class="form-select" id="mrh-year-filter" style="padding:5px 10px;font-size:12px;width:110px;" onchange="filterMemberRecharge()">
+              <option value="all">全部年份</option>
+              <option value="2026">2026年</option>
+              <option value="2025">2025年</option>
+            </select>
+            <span style="margin-left:auto;font-size:11px;color:var(--text-muted);" id="mrh-count-label">共 0 条</span>
+          </div>
+          <!-- 充值流水列表 -->
+          <div id="mrh-records-list" style="display:flex;flex-direction:column;gap:8px;">
+            <!-- 动态填充 -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('member-recharge-history')">关闭</button>
+          <button class="modal-btn primary" onclick="exportMemberRechargeHistory()">📤 导出记录</button>
         </div>
       </div>
     </div>
@@ -28811,6 +29089,297 @@ try {
     Object.assign(deviceThresholds, parsed);
   }
 } catch(e) {}
+
+// ======= 【改进A】能源数据详细分析弹窗功能 =======
+function openEnergyAnalysisModal(roomNum) {
+  document.getElementById('ea-room-label').textContent = (roomNum || '') + '房间';
+  // 设置默认日期范围（近7天）
+  var today = new Date();
+  var weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+  document.getElementById('ea-date-start').value = formatDate(weekAgo);
+  document.getElementById('ea-date-end').value = formatDate(today);
+  document.getElementById('ea-period').value = 'week';
+  openModal('energy-analysis');
+  loadEnergyAnalysisData();
+}
+
+function changeEnergyAnalysisPeriod() {
+  var period = document.getElementById('ea-period').value;
+  var today = new Date();
+  var start = document.getElementById('ea-date-start');
+  var end = document.getElementById('ea-date-end');
+  if (period === 'today') {
+    start.value = formatDate(today); end.value = formatDate(today);
+  } else if (period === 'yesterday') {
+    var y = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    start.value = formatDate(y); end.value = formatDate(y);
+  } else if (period === 'week') {
+    start.value = formatDate(new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000));
+    end.value = formatDate(today);
+  } else if (period === 'month') {
+    start.value = formatDate(new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000));
+    end.value = formatDate(today);
+  }
+}
+
+function loadEnergyAnalysisData() {
+  // 模拟加载7天数据
+  var days = [
+    {date: '2026-03-21', kwh: 5.2, fee: 6.24, change: '+12%', anomaly: false},
+    {date: '2026-03-22', kwh: 4.8, fee: 5.76, change: '-8%', anomaly: false},
+    {date: '2026-03-23', kwh: 6.1, fee: 7.32, change: '+27%', anomaly: true},
+    {date: '2026-03-24', kwh: 5.9, fee: 7.08, change: '-3%', anomaly: false},
+    {date: '2026-03-25', kwh: 7.2, fee: 8.64, change: '+22%', anomaly: true},
+    {date: '2026-03-26', kwh: 8.6, fee: 10.32, change: '+19%', anomaly: true},
+    {date: '2026-03-27', kwh: 4.2, fee: 5.04, change: '-51%', anomaly: false}
+  ];
+  var total = days.reduce(function(s, d){ return s + d.kwh; }, 0);
+  var fee = (total * 1.2).toFixed(2);
+  var avg = (total / days.length).toFixed(1);
+  var anomalyCount = days.filter(function(d){ return d.anomaly; }).length;
+  document.getElementById('ea-total-kwh').textContent = total.toFixed(1);
+  document.getElementById('ea-total-fee').textContent = fee;
+  document.getElementById('ea-daily-avg').textContent = avg;
+  document.getElementById('ea-anomaly-count').textContent = anomalyCount;
+  var tbody = document.getElementById('ea-daily-table');
+  var html = '';
+  days.forEach(function(d) {
+    html += '<tr>' +
+      '<td>' + d.date + '</td>' +
+      '<td style="font-weight:600;">' + d.kwh + ' kWh</td>' +
+      '<td>¥' + d.fee + '</td>' +
+      '<td style="color:' + (d.change.startsWith('+') ? 'var(--red)' : 'var(--green)') + ';">' + d.change + '</td>' +
+      '<td>' + (d.anomaly ? '<span class="tbadge red">⚠️ 异常</span>' : '<span class="tbadge green">正常</span>') + '</td>' +
+      '</tr>';
+  });
+  tbody.innerHTML = html;
+  // 更新时间戳
+  document.getElementById('energy-last-update').textContent = new Date().toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+
+function exportEnergyAnalysis() {
+  var data = '日期,用电量(kWh),电费(元),环比变化,异常标记\n';
+  var rows = document.querySelectorAll('#ea-daily-table tr');
+  rows.forEach(function(row) {
+    var cells = row.querySelectorAll('td');
+    if (cells.length === 5) {
+      data += cells[0].textContent + ',' + cells[1].textContent.replace(' kWh','') + ',' + cells[2].textContent.replace('¥','') + ',' + cells[3].textContent + ',' + (cells[4].querySelector('.tbadge.red') ? '异常' : '正常') + '\n';
+    }
+  });
+  downloadCSV(data, 'energy-analysis.csv');
+}
+
+function exportEnergyData() {
+  showToast('正在导出能耗报表...', 'info');
+  setTimeout(function() { showToast('能耗报表已导出！', 'success'); }, 800);
+}
+
+// ======= 【改进B】设备批量操作弹窗功能 =======
+var selectedBatchDevices = [];
+var selectedBatchOp = '';
+
+function selectBatchOp(op, el) {
+  selectedBatchOp = op;
+  document.querySelectorAll('.batch-op-card').forEach(function(c) {
+    c.style.borderColor = 'var(--border)';
+    c.style.background = 'white';
+  });
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'var(--blue-bg)';
+  document.getElementById('batch-execute-btn').disabled = false;
+  document.getElementById('batch-execute-btn').style.opacity = '1';
+}
+
+function executeBatchDeviceOp() {
+  if (!selectedBatchOp || selectedBatchDevices.length === 0) {
+    showToast('请选择设备和操作类型', 'error');
+    return;
+  }
+  var opNames = {sync:'同步状态', unlock:'远程开锁', restart:'重启设备', 'clear-alarm':'清除告警'};
+  var opIcons = {sync:'🔄', unlock:'🔓', restart:'🔁', 'clear-alarm':'✅'};
+  showToast(opIcons[selectedBatchOp] + ' 正在对 ' + selectedBatchDevices.length + ' 台设备执行「' + opNames[selectedBatchOp] + '」...', 'info');
+  closeModal('device-batch');
+  setTimeout(function() {
+    showToast('✅ 批量「' + opNames[selectedBatchOp] + '」已完成！成功 ' + selectedBatchDevices.length + ' 台', 'success');
+    selectedBatchDevices = [];
+    selectedBatchOp = '';
+  }, 1500);
+}
+
+function openDeviceBatchModal() {
+  if (selectedBatchDevices.length === 0) {
+    showToast('请先在设备列表中选择设备', 'error');
+    return;
+  }
+  selectedBatchOp = '';
+  document.querySelectorAll('.batch-op-card').forEach(function(c) {
+    c.style.borderColor = 'var(--border)';
+    c.style.background = 'white';
+  });
+  document.getElementById('batch-execute-btn').disabled = true;
+  document.getElementById('batch-execute-btn').style.opacity = '0.5';
+  document.getElementById('batch-dev-count').textContent = selectedBatchDevices.length;
+  var list = document.getElementById('batch-dev-list');
+  var html = '';
+  selectedBatchDevices.forEach(function(d) {
+    html += '<span style="padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-radius:12px;font-size:11px;">📱 ' + d + '</span>';
+  });
+  list.innerHTML = html || '<span style="color:var(--text-muted);font-size:12px;">暂无选中设备</span>';
+  openModal('device-batch');
+}
+
+// ======= 【改进C】首页数据自动刷新机制 =======
+var homeAutoRefreshInterval = null;
+var homeRefreshCountdown = 60;
+
+function startHomeAutoRefresh() {
+  if (homeAutoRefreshInterval) clearInterval(homeAutoRefreshInterval);
+  homeRefreshCountdown = 60;
+  // 更新倒计时显示
+  var countdownEl = document.getElementById('home-refresh-countdown');
+  if (countdownEl) countdownEl.textContent = homeRefreshCountdown;
+  homeAutoRefreshInterval = setInterval(function() {
+    homeRefreshCountdown--;
+    var countdownEl = document.getElementById('home-refresh-countdown');
+    if (countdownEl) countdownEl.textContent = homeRefreshCountdown;
+    if (homeRefreshCountdown <= 0) {
+      // 执行刷新
+      refreshHomeData();
+      homeRefreshCountdown = 60;
+    }
+  }, 1000);
+}
+
+function refreshHomeData() {
+  // 模拟刷新核心数据
+  var batteryVals = [95, 92, 88, 85, 28, 72, 65, 45, 38, 90, 82, 78];
+  var battery = batteryVals[Math.floor(Math.random() * batteryVals.length)];
+  var onlineVals = [11, 11, 10, 11, 11, 11, 12, 11];
+  var online = onlineVals[Math.floor(Math.random() * onlineVals.length)];
+  // 更新DOM（如果元素存在）
+  var batteryEls = document.querySelectorAll('#page-home .stat-card:nth-child(1) .stat-num');
+  if (batteryEls[0]) batteryEls[0].textContent = online;
+  // 更新时间戳
+  var tsEl = document.getElementById('home-last-refresh');
+  if (tsEl) tsEl.textContent = new Date().toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  showToast('🔄 首页数据已自动刷新', 'success');
+}
+
+function stopHomeAutoRefresh() {
+  if (homeAutoRefreshInterval) {
+    clearInterval(homeAutoRefreshInterval);
+    homeAutoRefreshInterval = null;
+  }
+}
+
+// ======= 【改进D】服务工单高级筛选功能 =======
+function applyWoAdvancedFilter() {
+  var type = document.getElementById('wof-type').value;
+  var urgent = document.getElementById('wof-urgent').value;
+  var assign = document.getElementById('wof-assign').value;
+  var status = document.getElementById('wof-status').value;
+  var keyword = document.getElementById('wof-keyword').value.trim().toLowerCase();
+  var rows = document.querySelectorAll('#page-workorder tbody tr');
+  var matchCount = 0;
+  rows.forEach(function(row) {
+    var rowText = row.textContent.toLowerCase();
+    var match = true;
+    if (type !== 'all' && !rowText.includes(type)) match = false;
+    if (urgent !== 'all' && !rowText.includes(urgent)) match = false;
+    if (assign !== 'all' && !rowText.includes(assign === 'unassigned' ? '未分配' : assign)) match = false;
+    if (status !== 'all' && !rowText.includes(status)) match = false;
+    if (keyword && !rowText.includes(keyword)) match = false;
+    row.style.display = match ? '' : 'none';
+    if (match) matchCount++;
+  });
+  closeModal('wo-filter');
+  showToast('🔍 筛选完成：共 ' + matchCount + ' 条匹配结果', 'success');
+}
+
+function resetWoFilter() {
+  document.getElementById('wof-type').value = 'all';
+  document.getElementById('wof-urgent').value = 'all';
+  document.getElementById('wof-assign').value = 'all';
+  document.getElementById('wof-status').value = 'all';
+  document.getElementById('wof-keyword').value = '';
+  document.querySelectorAll('#page-workorder tbody tr').forEach(function(r){ r.style.display = ''; });
+}
+
+// ======= 【改进E】会员充值记录弹窗功能 =======
+var currentRechargeMember = {};
+
+function openMemberRechargeHistoryModal(idx) {
+  var members = [
+    {name: '王浩', totalRecharge: 12800, totalConsume: 3920, balance: 8880},
+    {name: '李娜', totalRecharge: 5800, totalConsume: 2100, balance: 3700},
+    {name: '张伟', totalRecharge: 3200, totalConsume: 1200, balance: 2000}
+  ];
+  currentRechargeMember = members[idx] || members[0];
+  document.getElementById('mrh-member-name').textContent = currentRechargeMember.name;
+  document.getElementById('mrh-total-recharge').textContent = currentRechargeMember.totalRecharge.toLocaleString();
+  document.getElementById('mrh-total-consume').textContent = currentRechargeMember.totalConsume.toLocaleString();
+  document.getElementById('mrh-balance').textContent = currentRechargeMember.balance.toLocaleString();
+  renderMemberRechargeList();
+  openModal('member-recharge-history');
+}
+
+function renderMemberRechargeList() {
+  var typeFilter = document.getElementById('mrh-type-filter') ? document.getElementById('mrh-type-filter').value : 'all';
+  var records = [
+    {date: '2026-03-26 14:30', type: 'recharge', amount: 1000, desc: '充值1000元', balance: currentRechargeMember.balance + 1000},
+    {date: '2026-03-20 10:15', type: 'consume', amount: -128, desc: '房费扣款', balance: currentRechargeMember.balance},
+    {date: '2026-03-15 09:00', type: 'recharge', amount: 2000, desc: '充值2000元', balance: currentRechargeMember.balance + 872},
+    {date: '2026-02-14 18:20', type: 'consume', amount: -256, desc: '房费扣款', balance: currentRechargeMember.balance - 1128},
+    {date: '2026-01-10 11:00', type: 'recharge', amount: 5000, desc: '新会员充值', balance: currentRechargeMember.balance + 128},
+    {date: '2025-06-15 15:30', type: 'refund', amount: 0, desc: '会员开卡', balance: 0}
+  ];
+  var filtered = typeFilter === 'all' ? records : records.filter(function(r) { return r.type === typeFilter; });
+  var html = '';
+  var icons = {recharge: '💰', consume: '💸', refund: '↩️'};
+  var colors = {recharge: 'var(--blue)', consume: 'var(--orange)', refund: 'var(--green)'};
+  var labels = {recharge: '充值', consume: '消费', refund: '退款'};
+  filtered.forEach(function(r) {
+    var amtStr = r.type === 'consume' ? '-' + Math.abs(r.amount) : '+' + r.amount;
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:white;">' +
+      '<div style="font-size:22px;">' + icons[r.type] + '</div>' +
+      '<div style="flex:1;">' +
+        '<div style="font-size:12px;font-weight:600;">' + r.desc + '</div>' +
+        '<div style="font-size:10px;color:var(--text-muted);">' + r.date + '</div>' +
+      '</div>' +
+      '<div style="text-align:right;">' +
+        '<div style="font-size:14px;font-weight:700;color:' + colors[r.type] + ';">' + amtStr + '元</div>' +
+        '<div style="font-size:10px;color:var(--text-muted);">余额 ' + r.balance.toLocaleString() + '</div>' +
+      '</div>' +
+    '</div>';
+  });
+  document.getElementById('mrh-records-list').innerHTML = html;
+  document.getElementById('mrh-count-label').textContent = '共 ' + filtered.length + ' 条';
+}
+
+function filterMemberRecharge() {
+  renderMemberRechargeList();
+}
+
+function exportMemberRechargeHistory() {
+  showToast('正在导出充值记录...', 'info');
+  setTimeout(function() { showToast('充值记录已导出！', 'success'); }, 600);
+}
+
+// 工具函数
+function formatDate(d) {
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+function downloadCSV(content, filename) {
+  var blob = new Blob(['\uFEFF' + content], {type: 'text/csv;charset=utf-8;'});
+  var link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
 </script>
 </body>
 </html>
