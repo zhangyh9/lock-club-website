@@ -621,6 +621,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <span style="font-size:20px;">🚪</span>
           <span>退房办理</span>
         </button>
+        <!-- 【改进2新增】首页快捷离店提醒按钮：到期未退房时一键发送提醒 -->
+        <button class="quick-btn" onclick="openCheckoutReminderModal()" style="flex:1;padding:16px;background:linear-gradient(135deg,#ff4d4f,#ff7875);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(255,77,79,0.3);transition:all 0.2s;">
+          <span style="font-size:20px;">📢</span>
+          <span>离店提醒</span>
+        </button>
         <button class="quick-btn" onclick="dispatchHousekeepingTask()" style="flex:1;padding:16px;background:linear-gradient(135deg,#52c41a,#95de64);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(82,196,26,0.3);transition:all 0.2s;">
           <span style="font-size:20px;">🧹</span>
           <span>清洁任务</span>
@@ -2383,6 +2388,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             <button class="action-btn orange" style="width:100%;margin-bottom:8px;" onclick="openClearCardModal()">🗑️ 清除门卡</button>
             <button class="action-btn" style="width:100%;margin-bottom:8px;" onclick="openSyncModal()">🔄 立即同步</button>
             <button class="action-btn" style="width:100%;margin-bottom:8px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);" onclick="openDeviceDiagnosticModal()">🔧 设备诊断</button>
+            <button class="action-btn" style="width:100%;margin-bottom:8px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);" onclick="openDeviceHealthReportModal('301')">🏥 健康度报告</button>
             <button class="action-btn" style="width:100%;background:var(--red-bg);color:var(--red);border-color:var(--red);" onclick="openAlertModal(0)">⚠️ 设备告警</button>
           </div>
         </div>
@@ -2941,6 +2947,125 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
       </div>
     </div>
+
+    <!-- 【改进4新增】服务工单超时自动升级规则配置弹窗 -->
+    <div class="modal-overlay hidden" id="modal-wo-escalation-rules">
+      <div class="modal" style="width:640px;">
+        <div class="modal-header">
+          <div class="modal-title">⚙️ 工单超时自动升级规则配置</div>
+          <button class="modal-close" onclick="closeModal('wo-escalation-rules')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--orange);">
+            💡 配置工单超时后自动升级给更高级别管理人员处理，支持按工单类型单独配置超时时间、升级层级和通知方式
+          </div>
+          <!-- 全局开关 -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;">
+            <div>
+              <div style="font-size:14px;font-weight:600;">🔔 全局超时升级开关</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">开启后，所有工单类型将按配置的规则自动升级</div>
+            </div>
+            <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer;">
+              <input type="checkbox" id="escalation-global-enabled" checked style="opacity:0;width:0;height:0;">
+              <span id="escalation-global-slider" style="position:absolute;top:0;left:0;right:0;bottom:0;background:var(--green);border-radius:26px;transition:0.3s;" onclick="toggleEscalationGlobal()">
+                <span style="position:absolute;content:'';width:22px;height:22px;background:white;border-radius:50%;top:2px;right:2px;transition:0.3s;" id="escalation-global-knob"></span>
+              </span>
+            </label>
+          </div>
+          <!-- 规则列表 -->
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px;">📋 按类型配置升级规则</div>
+          <div id="escalation-rules-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;"></div>
+          <!-- 新增规则 -->
+          <div style="margin-top:12px;padding:12px;background:var(--blue-bg);border:1px dashed var(--blue);border-radius:8px;">
+            <div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:10px;">+ 新增升级规则</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:11px;">工单类型</label>
+                <select class="form-select" id="escalation-new-type" style="padding:6px 8px;font-size:12px;">
+                  <option value="complaint">🔴 客户投诉</option>
+                  <option value="repair">🔧 设备报修</option>
+                  <option value="delivery">📦 送物服务</option>
+                  <option value="invoice">📄 发票需求</option>
+                  <option value="other">📋 其他</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:11px;">超时时间</label>
+                <select class="form-select" id="escalation-new-time" style="padding:6px 8px;font-size:12px;">
+                  <option value="15">15分钟</option>
+                  <option value="30">30分钟</option>
+                  <option value="60">1小时</option>
+                  <option value="120">2小时</option>
+                  <option value="240">4小时</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:11px;">升级给</label>
+                <select class="form-select" id="escalation-new-to" style="padding:6px 8px;font-size:12px;">
+                  <option value="supervisor">客房主管</option>
+                  <option value="manager">前厅经理</option>
+                  <option value="admin">管理员</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:11px;">通知方式</label>
+                <select class="form-select" id="escalation-new-notify" style="padding:6px 8px;font-size:12px;">
+                  <option value="all">全部</option>
+                  <option value="sms">仅短信</option>
+                  <option value="feishu">仅飞书</option>
+                </select>
+              </div>
+            </div>
+            <button class="action-btn" onclick="addEscalationRule()" style="margin-top:10px;background:var(--blue);color:white;border:none;padding:6px 14px;font-size:12px;">+ 添加规则</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('wo-escalation-rules')">取消</button>
+          <button class="modal-btn primary" onclick="saveEscalationRules()" style="background:var(--orange);border-color:var(--orange);">💾 保存配置</button>
+        </div>
+      </div>
+    </div>
+    <script>
+    var escalationRules = [
+      {type:'complaint',typeLabel:'🔴 客户投诉',time:30,timeLabel:'30分钟',to:'manager',toLabel:'前厅经理',notify:'all'},
+      {type:'repair',typeLabel:'🔧 设备报修',time:60,timeLabel:'1小时',to:'supervisor',toLabel:'客房主管',notify:'all'},
+      {type:'delivery',typeLabel:'📦 送物服务',time:15,timeLabel:'15分钟',to:'staff',toLabel:'前厅员工',notify:'feishu'}
+    ];
+    function openEscalationRulesModal(){renderEscalationRulesList();openModal('wo-escalation-rules');}
+    function renderEscalationRulesList(){
+      var el=document.getElementById('escalation-rules-list');
+      if(!el)return;
+      var html='';
+      escalationRules.forEach(function(rule,i){
+        html+='<div style="display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--border);">'+
+          '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+rule.typeLabel+'</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">超时<span style="color:var(--orange);font-weight:700;">'+rule.timeLabel+'</span> → 升级给<span style="color:var(--blue);font-weight:700;">'+rule.toLabel+'</span> · '+rule.notify+'</div></div>'+
+          '<button class="action-btn small red" onclick="removeEscalationRule('+i+')" style="padding:3px 8px;font-size:11px;">删除</button></div>';
+      });
+      el.innerHTML=html||'<div style="padding:30px;text-align:center;color:var(--text-muted);">暂无配置规则，请添加</div>';
+    }
+    function removeEscalationRule(idx){escalationRules.splice(idx,1);renderEscalationRulesList();showToast('规则已删除','info');}
+    function addEscalationRule(){
+      var type=document.getElementById('escalation-new-type').value;
+      var time=parseInt(document.getElementById('escalation-new-time').value);
+      var to=document.getElementById('escalation-new-to').value;
+      var notify=document.getElementById('escalation-new-notify').value;
+      var typeLabels={complaint:'🔴 客户投诉',repair:'🔧 设备报修',delivery:'📦 送物服务',invoice:'📄 发票需求',other:'📋 其他'};
+      var toLabels={supervisor:'客房主管',manager:'前厅经理',admin:'管理员',staff:'前厅员工'};
+      var timeLabels={15:'15分钟',30:'30分钟',60:'1小时',120:'2小时',240:'4小时'};
+      escalationRules.push({type:type,typeLabel:typeLabels[type],time:time,timeLabel:timeLabels[time],to:to,toLabel:toLabels[to],notify:notify});
+      renderEscalationRulesList();
+      showToast('规则已添加：'+typeLabels[type]+' 超时'+timeLabels[time]+'升级','success');
+    }
+    function saveEscalationRules(){closeModal('wo-escalation-rules');showToast('✅ 升级规则配置已保存！共'+escalationRules.length+'条规则','success');}
+    function toggleEscalationGlobal(){
+      var cb=document.getElementById('escalation-global-enabled');
+      cb.checked=!cb.checked;
+      var slider=document.getElementById('escalation-global-slider');
+      var knob=document.getElementById('escalation-global-knob');
+      if(cb.checked){slider.style.background='var(--green)';knob.style.right='2px';knob.style.left='auto';}
+      else{slider.style.background='#ccc';knob.style.left='2px';knob.style.right='auto';}
+    }
+    </script>
 
     <!-- 【改进3】楼层管理快速添房间弹窗 -->
     <div class="modal-overlay hidden" id="modal-quick-add-room">
@@ -5657,7 +5782,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </select>
         <button class="action-btn small" onclick="applyWorkorderSearch()" style="padding:6px 12px;">🔍 搜索</button>
         <button class="action-btn small" onclick="resetWorkorderSearch()" style="padding:6px 10px;">重置</button>
-        <button class="action-btn small" onclick="exportWorkorderCSV()" style="padding:6px 10px;margin-left:auto;">📤 导出CSV</button>
+        <button class="action-btn small" onclick="exportWorkorderCSV()" style="padding:6px 10px;">📤 导出CSV</button>
+        <button class="action-btn small" onclick="openEscalationRulesModal()" style="padding:6px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">⚙️ 升级规则</button>
         <!-- 【改进D】高级筛选按钮 -->
         <button class="action-btn small" onclick="openModal('wo-filter')" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🔍 高级筛选</button>
       </div>
@@ -6591,6 +6717,100 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
     </div>
 
+    <!-- 【改进5新增】智能入住推荐弹窗：根据会员历史入住记录/消费/偏好自动推荐最优房型和价格 -->
+    <div class="modal-overlay hidden" id="modal-smart-checkin-recommend">
+      <div class="modal" style="width:600px;">
+        <div class="modal-header">
+          <div class="modal-title">🤖 智能入住推荐</div>
+          <button class="modal-close" onclick="closeModal('smart-checkin-recommend')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">
+            💡 基于客人历史入住记录、消费习惯、会员等级，智能推荐最适合的房型和价格方案
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">客人手机号/姓名 <span class="required">*</span></label>
+              <input type="text" class="form-input" id="scr-guest-input" placeholder="输入手机号或姓名" style="height:38px;">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">入住天数</label>
+              <select class="form-select" id="scr-nights" style="height:38px;">
+                <option value="1">1晚</option><option value="2">2晚</option><option value="3">3晚</option>
+                <option value="5">5晚</option><option value="7">7晚+</option>
+              </select>
+            </div>
+          </div>
+          <button class="action-btn primary" onclick="generateSmartRecommend()" style="background:var(--blue);color:white;border:none;width:100%;padding:8px;margin-bottom:16px;">🔍 生成推荐方案</button>
+          <div id="scr-result" style="display:none;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div style="padding:12px;background:var(--bg);border-radius:8px;">
+                <div style="font-size:11px;color:var(--text-muted);">推荐房型</div>
+                <div style="font-size:18px;font-weight:700;color:var(--blue);" id="scr-room-type">亲子间</div>
+                <div style="font-size:11px;color:var(--text-muted);">匹配度 92%</div>
+              </div>
+              <div style="padding:12px;background:var(--bg);border-radius:8px;">
+                <div style="font-size:11px;color:var(--text-muted);">推荐理由</div>
+                <div style="font-size:13px;font-weight:600;color:var(--text);" id="scr-reason">历史偏好</div>
+              </div>
+            </div>
+            <div style="font-size:13px;font-weight:600;margin-bottom:8px;">📋 推荐方案</div>
+            <div id="scr-plans" style="display:flex;flex-direction:column;gap:10px;max-height:280px;overflow-y:auto;"></div>
+            <div style="display:flex;gap:8px;margin-top:14px;">
+              <button class="action-btn primary" onclick="confirmSmartRecommend()" style="flex:1;background:var(--blue);color:white;border:none;padding:8px;">✅ 确认推荐方案</button>
+              <button class="action-btn" onclick="showToast('已记录偏好','info')" style="flex:1;padding:8px;">🔄 重新推荐</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+    var smartRecommendPlans=[
+      {rank:1,roomType:'亲子间',price:128,originalPrice:158,discount:'8折',matchScore:92,reason:'历史3次入住亲子间，满意度最高',perNight:128,benefits:['含双早','免费停车','延迟退房']},
+      {rank:2,roomType:'大床房',price:98,originalPrice:128,discount:'77折',matchScore:78,reason:'常住房型，性价比优',perNight:98,benefits:['含单早','免费停车']},
+      {rank:3,roomType:'家庭套房',price:258,originalPrice:358,discount:'72折',matchScore:65,reason:'会员专属折扣套房',perNight:258,benefits:['含双早','免费停车','欢迎水果','延迟退房2小时']}
+    ];
+    var selectedRecommendPlan=0;
+    function openSmartCheckinRecommendModal(){document.getElementById('scr-result').style.display='none';document.getElementById('scr-guest-input').value='';openModal('smart-checkin-recommend');}
+    function generateSmartRecommend(){
+      var guest=document.getElementById('scr-guest-input').value.trim();
+      if(!guest){showToast('请输入客人手机号或姓名','error');return;}
+      document.getElementById('scr-result').style.display='block';
+      document.getElementById('scr-room-type').textContent=smartRecommendPlans[0].roomType;
+      document.getElementById('scr-reason').textContent=smartRecommendPlans[0].reason;
+      var plansEl=document.getElementById('scr-plans');
+      var html='';
+      smartRecommendPlans.forEach(function(plan,i){
+        var isTop=i===0;
+        html+='<div onclick="selectRecommendPlan('+i+')" id="scr-plan-'+i+'" style="padding:12px;border:2px solid '+(isTop?'var(--blue)':'var(--border)')+';border-radius:10px;cursor:pointer;background:'+(isTop?'var(--blue-bg)':'white')+';">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'+
+          '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:16px;font-weight:700;color:var(--blue);">'+(i+1)+'.</span><span style="font-size:14px;font-weight:700;">'+plan.roomType+'</span></div>'+
+          '<span style="font-size:11px;background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:10px;">匹配度 '+plan.matchScore+'%</span></div>'+
+          '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">'+
+          '<span style="font-size:20px;font-weight:700;color:var(--orange);">¥'+plan.price+'</span>'+
+          '<span style="font-size:12px;color:var(--text-muted);text-decoration:line-through;margin-left:4px;">¥'+plan.originalPrice+'</span>'+
+          '<span style="font-size:11px;padding:2px 8px;background:var(--green-bg);color:var(--green);border-radius:10px;">'+plan.discount+'</span>'+
+          '<span style="font-size:11px;color:var(--text-muted);">¥'+plan.perNight+'/晚</span></div>'+
+          '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">📝 '+plan.reason+'</div>'+
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+plan.benefits.map(function(b){return '<span style="font-size:11px;padding:2px 8px;background:var(--bg);border-radius:6px;">'+b+'</span>';}).join('')+'</div></div>';
+      });
+      plansEl.innerHTML=html;
+      selectedRecommendPlan=0;
+    }
+    function selectRecommendPlan(idx){
+      selectedRecommendPlan=idx;
+      document.querySelectorAll('[id^="scr-plan-"]').forEach(function(el,i){
+        el.style.borderColor=i===idx?'var(--blue)':'var(--border)';
+        el.style.background=i===idx?'var(--blue-bg)':'white';
+      });
+    }
+    function confirmSmartRecommend(){
+      var plan=smartRecommendPlans[selectedRecommendPlan];
+      closeModal('smart-checkin-recommend');
+      showToast('✅ 已确认：'+plan.roomType+' ¥'+plan.price+'/晚，系统将自动办理入住','success');
+    }
+    </script>
+
     <!-- Page: Member Management (改进1: 新增会员管理页面) -->
     <!-- Page: Staff Management (改进1: 员工管理独立完整页面) -->
     <div id="page-staff" class="page">
@@ -7084,6 +7304,424 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
     </div>
 
+    <!-- 【改进3新增】设备健康度评估报告弹窗：综合电量/信号/固件/离线时长/开锁失败率计算健康评分和建议 -->
+    <div class="modal-overlay hidden" id="modal-device-health-report">
+      <div class="modal" style="width:580px;">
+        <div class="modal-header">
+          <div class="modal-title">🏥 设备健康度评估报告 - <span id="dhr-room" style="color:var(--blue);">301</span></div>
+          <button class="modal-close" onclick="closeModal('device-health-report')">✕</button>
+        </div>
+        <div class="modal-body" style="padding:0;">
+          <!-- 综合评分 -->
+          <div style="display:flex;align-items:center;padding:20px;background:linear-gradient(135deg,#1890ff,#69c0ff);color:white;">
+            <div style="flex:0 0 90px;text-align:center;">
+              <div style="font-size:42px;font-weight:700;line-height:1;" id="dhr-score">72</div>
+              <div style="font-size:11px;opacity:0.8;margin-top:4px;">综合评分</div>
+            </div>
+            <div style="flex:1;padding-left:20px;">
+              <div style="font-size:14px;font-weight:600;margin-bottom:6px;" id="dhr-level">良好</div>
+              <div style="font-size:12px;opacity:0.9;" id="dhr-desc">设备运行基本正常，但存在一定隐患，建议关注电量消耗和固件更新</div>
+            </div>
+          </div>
+          <!-- 五维评分雷达 -->
+          <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
+            <div style="font-size:13px;font-weight:600;margin-bottom:12px;">📊 五维健康评估</div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
+              <div style="text-align:center;" id="dhr-dim-battery">
+                <div style="width:50px;height:50px;border-radius:50%;background:var(--orange-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:20px;font-weight:700;color:var(--orange);" id="dhr-battery-score">65</div>
+                <div style="font-size:11px;color:var(--text-muted);">电量</div>
+                <div style="font-size:10px;color:var(--orange);">偏低</div>
+              </div>
+              <div style="text-align:center;" id="dhr-dim-signal">
+                <div style="width:50px;height:50px;border-radius:50%;background:var(--green-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:20px;font-weight:700;color:var(--green);" id="dhr-signal-score">98</div>
+                <div style="font-size:11px;color:var(--text-muted);">信号</div>
+                <div style="font-size:10px;color:var(--green);">优秀</div>
+              </div>
+              <div style="text-align:center;" id="dhr-dim-firmware">
+                <div style="width:50px;height:50px;border-radius:50%;background:var(--green-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:20px;font-weight:700;color:var(--green);" id="dhr-firmware-score">95</div>
+                <div style="font-size:11px;color:var(--text-muted);">固件</div>
+                <div style="font-size:10px;color:var(--green);">正常</div>
+              </div>
+              <div style="text-align:center;" id="dhr-dim-uptime">
+                <div style="width:50px;height:50px;border-radius:50%;background:var(--red-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:20px;font-weight:700;color:var(--red);" id="dhr-uptime-score">40</div>
+                <div style="font-size:11px;color:var(--text-muted);">稳定性</div>
+                <div style="font-size:10px;color:var(--red);">差</div>
+              </div>
+              <div style="text-align:center;" id="dhr-dim-security">
+                <div style="width:50px;height:50px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:20px;font-weight:700;color:var(--blue);" id="dhr-security-score">88</div>
+                <div style="font-size:11px;color:var(--text-muted);">安全</div>
+                <div style="font-size:10px;color:var(--blue);">良好</div>
+              </div>
+            </div>
+          </div>
+          <!-- 问题与建议 -->
+          <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
+            <div style="font-size:13px;font-weight:600;margin-bottom:10px;">⚠️ 发现问题</div>
+            <div id="dhr-issues-list">
+              <!-- JS渲染 -->
+            </div>
+          </div>
+          <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
+            <div style="font-size:13px;font-weight:600;margin-bottom:10px;">💡 优化建议</div>
+            <div id="dhr-suggestions-list">
+              <!-- JS渲染 -->
+            </div>
+          </div>
+          <!-- 关键指标详情 -->
+          <div style="padding:16px 20px;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:10px;">📈 关键指标</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div style="padding:10px;background:var(--bg);border-radius:8px;">
+                <div style="font-size:11px;color:var(--text-muted);">7天电量下降</div>
+                <div style="font-size:18px;font-weight:700;color:var(--red);" id="dhr-battery-drop">70%</div>
+              </div>
+              <div style="padding:10px;background:var(--bg);border-radius:8px;">
+                <div style="font-size:11px;color:var(--text-muted);">累计离线次数</div>
+                <div style="font-size:18px;font-weight:700;color:var(--orange);" id="dhr-offline-count">3次</div>
+              </div>
+              <div style="padding:10px;background:var(--bg);border-radius:8px;">
+                <div style="font-size:11px;color:var(--text-muted);">开锁成功率</div>
+                <div style="font-size:18px;font-weight:700;color:var(--green);" id="dhr-unlock-rate">96.5%</div>
+              </div>
+              <div style="padding:10px;background:var(--bg);border-radius:8px;">
+                <div style="font-size:11px;color:var(--text-muted);">最后固件更新</div>
+                <div style="font-size:18px;font-weight:700;color:var(--blue);" id="dhr-last-fw">15天前</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('device-health-report')">关闭</button>
+          <button class="modal-btn primary" onclick="exportDeviceHealthReport()" style="background:var(--purple);border-color:var(--purple);">📤 导出报告</button>
+        </div>
+      </div>
+    </div>
+    <script>
+    var currentHealthReportDevice = {room:'301',battery:28,batteryDrop:70,signal:98,firmware:'v2.3.1',firmwareOld:15,offlineCount:3,unlockRate:96.5,unlockFail:3};
+    function openDeviceHealthReportModal(room) {
+      currentHealthReportDevice.room = room || '301';
+      var d = currentHealthReportDevice;
+      // Calculate scores
+      var batteryScore = d.battery >= 50 ? 90 + Math.floor((d.battery - 50) / 5) : d.battery >= 20 ? 60 + Math.floor((d.battery - 20) / 3) : Math.floor(d.battery * 2);
+      var signalScore = d.signal >= 90 ? 95 : d.signal >= 70 ? 80 : 60;
+      var firmwareScore = d.firmwareOld <= 7 ? 100 : d.firmwareOld <= 30 ? 80 : 60;
+      var uptimeScore = d.offlineCount === 0 ? 100 : d.offlineCount <= 2 ? 70 : 40;
+      var securityScore = d.unlockRate >= 99 ? 95 : d.unlockRate >= 95 ? 85 : 70;
+      var totalScore = Math.round((batteryScore * 0.25 + signalScore * 0.2 + firmwareScore * 0.2 + uptimeScore * 0.2 + securityScore * 0.15));
+      var level = totalScore >= 80 ? '优秀' : totalScore >= 60 ? '良好' : totalScore >= 40 ? '一般' : '较差';
+      var desc = {
+        '优秀': '设备运行状态极佳，各项指标正常，继续保持',
+        '良好': '设备运行基本正常，但存在一定隐患，建议关注电量消耗和固件更新',
+        '一般': '设备存在明显问题，建议尽快处理以避免影响正常使用',
+        '较差': '设备健康状况较差，建议立即检查或更换'
+      }[level];
+      document.getElementById('dhr-room').textContent = d.room;
+      document.getElementById('dhr-score').textContent = totalScore;
+      document.getElementById('dhr-level').textContent = level;
+      document.getElementById('dhr-desc').textContent = desc;
+      document.getElementById('dhr-battery-score').textContent = batteryScore;
+      document.getElementById('dhr-signal-score').textContent = signalScore;
+      document.getElementById('dhr-firmware-score').textContent = firmwareScore;
+      document.getElementById('dhr-uptime-score').textContent = uptimeScore;
+      document.getElementById('dhr-security-score').textContent = securityScore;
+      var batColor = d.battery >= 50 ? 'var(--green)' : d.battery >= 20 ? 'var(--orange)' : 'var(--red)';
+      var batBg = d.battery >= 50 ? 'var(--green-bg)' : d.battery >= 20 ? 'var(--orange-bg)' : 'var(--red-bg)';
+      document.getElementById('dhr-battery-score').style.color = batColor;
+      document.getElementById('dhr-battery-score').style.background = batBg;
+      var batLabel = d.battery >= 50 ? '正常' : d.battery >= 20 ? '偏低' : '严重不足';
+      document.querySelector('#dhr-dim-battery div:last-child').textContent = batLabel;
+      document.querySelector('#dhr-dim-battery div:last-child').style.color = batColor;
+      var upColor = uptimeScore >= 70 ? 'var(--green)' : uptimeScore >= 40 ? 'var(--orange)' : 'var(--red)';
+      var upBg = uptimeScore >= 70 ? 'var(--green-bg)' : uptimeScore >= 40 ? 'var(--orange-bg)' : 'var(--red-bg)';
+      document.getElementById('dhr-uptime-score').style.color = upColor;
+      document.getElementById('dhr-uptime-score').style.background = upBg;
+      document.querySelector('#dhr-dim-uptime div:last-child').style.color = upColor;
+      var upLabel = uptimeScore >= 70 ? '良好' : uptimeScore >= 40 ? '一般' : '差';
+      document.querySelector('#dhr-dim-uptime div:last-child').textContent = upLabel;
+      document.getElementById('dhr-battery-drop').textContent = d.batteryDrop + '%';
+      document.getElementById('dhr-offline-count').textContent = d.offlineCount + '次';
+      document.getElementById('dhr-unlock-rate').textContent = d.unlockRate.toFixed(1) + '%';
+      document.getElementById('dhr-last-fw').textContent = d.firmwareOld + '天前';
+      // Issues
+      var issues = [];
+      if (d.battery < 30) issues.push({level:'high', text:'电池电量严重不足（' + d.battery + '%），需立即更换电池'});
+      if (d.batteryDrop > 50) issues.push({level:'medium', text:'电量消耗过快（7天下降' + d.batteryDrop + '%），建议检查门锁异常'});
+      if (d.offlineCount > 2) issues.push({level:'medium', text:'近7天离线' + d.offlineCount + '次，可能存在网络问题'});
+      if (d.firmwareOld > 30) issues.push({level:'low', text:'固件版本较旧（' + d.firmwareOld + '天前更新），建议升级至最新版'});
+      if (d.unlockFail > 0) issues.push({level:'medium', text:'存在' + d.unlockFail + '次开锁失败记录，可能是电量低导致'});
+      var issuesEl = document.getElementById('dhr-issues-list');
+      if (issues.length === 0) {
+        issuesEl.innerHTML = '<div style="padding:10px;text-align:center;color:var(--green);font-size:13px;">✅ 暂未发现明显问题</div>';
+      } else {
+        var issueHtml = '';
+        issues.forEach(function(iss) {
+          var color = iss.level === 'high' ? 'var(--red)' : iss.level === 'medium' ? 'var(--orange)' : 'var(--blue)';
+          var bg = iss.level === 'high' ? 'var(--red-bg)' : iss.level === 'medium' ? 'var(--orange-bg)' : 'var(--blue-bg)';
+          var icon = iss.level === 'high' ? '🔴' : iss.level === 'medium' ? '🟡' : '🔵';
+          issueHtml += '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px;background:' + bg + ';border-radius:6px;margin-bottom:8px;">' +
+            '<div style="font-size:14px;flex:0 0 20px;">' + icon + '</div>' +
+            '<div style="font-size:12px;color:' + color + ';line-height:1.5;">' + iss.text + '</div></div>';
+        });
+        issuesEl.innerHTML = issueHtml;
+      }
+      // Suggestions
+      var suggestions = [
+        {icon:'🔋', text:'立即更换电池，建议使用正规品牌碱性电池'},
+        {icon:'📡', text:'检查设备安装位置，确保信号接收正常'},
+        {icon:'📦', text:'固件已是最新版本（v2.3.1），暂无需升级'}
+      ];
+      var sugEl = document.getElementById('dhr-suggestions-list');
+      var sugHtml = '';
+      suggestions.forEach(function(s) {
+        sugHtml += '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">' +
+          '<div style="font-size:14px;flex:0 0 20px;">' + s.icon + '</div>' +
+          '<div style="font-size:12px;color:var(--text);line-height:1.5;">' + s.text + '</div></div>';
+      });
+      sugEl.innerHTML = sugHtml;
+      openModal('device-health-report');
+    }
+    function exportDeviceHealthReport() {
+      showToast('📤 设备健康度报告已导出至桌面', 'success');
+    }
+    </script>
+
+    <!-- 【改进2新增】离店提醒弹窗：到期未退房时一键发送短信/微信/飞书提醒给客人 -->
+    <div class="modal-overlay hidden" id="modal-checkout-reminder">
+      <div class="modal" style="width:520px;">
+        <div class="modal-header">
+          <div class="modal-title">📢 离店提醒</div>
+          <button class="modal-close" onclick="closeModal('checkout-reminder')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="padding:12px 14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--red);">
+            ⚠️ 以下房间已超过退房时间但仍未退房，请选择客人发送离店提醒
+          </div>
+          <!-- 到期未退房列表 -->
+          <div class="form-group">
+            <label class="form-label">⏰ 到期未退房间（<span id="ocr-overdue-count">2</span>间）</label>
+            <div id="ocr-overdue-list" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:240px;overflow-y:auto;">
+              <!-- JS动态渲染 -->
+            </div>
+          </div>
+          <!-- 全选+发送方式 -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+              <input type="checkbox" id="ocr-select-all" onchange="toggleOcrSelectAll(this.checked)" style="accent-color:var(--red);width:15px;height:15px;">
+              <span>全选</span>
+            </label>
+            <span style="font-size:12px;color:var(--text-muted);">已选 <span id="ocr-selected-count" style="color:var(--red);font-weight:700;">0</span> 间</span>
+          </div>
+          <!-- 提醒方式 -->
+          <div class="form-group">
+            <label class="form-label">📱 提醒方式</label>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+              <label id="ocr-method-sms" onclick="selectOcrMethod('sms')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:2px solid var(--red);border-radius:8px;cursor:pointer;background:var(--red-bg);">
+                <input type="radio" name="ocr-method" value="sms" checked style="display:none;">
+                <div style="font-size:24px;">💬</div>
+                <div style="font-size:12px;font-weight:600;color:var(--red);">短信</div>
+              </label>
+              <label id="ocr-method-wechat" onclick="selectOcrMethod('wechat')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:white;">
+                <input type="radio" name="ocr-method" value="wechat" style="display:none;">
+                <div style="font-size:24px;">💚</div>
+                <div style="font-size:12px;font-weight:600;">微信</div>
+              </label>
+              <label id="ocr-method-feishu" onclick="selectOcrMethod('feishu')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:white;">
+                <input type="radio" name="ocr-method" value="feishu" style="display:none;">
+                <div style="font-size:24px;">💬</div>
+                <div style="font-size:12px;font-weight:600;">飞书</div>
+              </label>
+            </div>
+          </div>
+          <!-- 提醒模板预览 -->
+          <div class="form-group">
+            <label class="form-label">📝 提醒内容预览</label>
+            <div style="padding:12px;background:var(--bg);border-radius:8px;font-size:13px;line-height:1.6;color:var(--text);" id="ocr-preview-text">
+              【领锁智慧酒店】尊敬的客人，您的房间将于30分钟后到期，如需续住请致电前台。如已离开请忽略此消息。
+            </div>
+          </div>
+          <!-- 发送按钮 -->
+          <button class="modal-btn primary" id="ocr-send-btn" onclick="sendCheckoutReminders()" style="width:100%;background:var(--red);border-color:var(--red);padding:10px;font-size:15px;">
+            📢 发送离店提醒（<span id="ocr-send-count">0</span>间）
+          </button>
+        </div>
+      </div>
+    </div>
+    <script>
+    var overdueCheckouts = [
+      {room:'301',name:'张三',phone:'138****8888',dueTime:'12:00',overdueMinutes:30,type:'亲子间'},
+      {room:'302',name:'李四',phone:'139****6666',dueTime:'12:00',overdueMinutes:90,type:'大床房'}
+    ];
+    var selectedOcrRooms = {};
+    var currentOcrMethod = 'sms';
+    function openCheckoutReminderModal() {
+      selectedOcrRooms = {};
+      document.getElementById('ocr-overdue-count').textContent = overdueCheckouts.length;
+      document.getElementById('ocr-selected-count').textContent = '0';
+      document.getElementById('ocr-send-count').textContent = '0';
+      var listEl = document.getElementById('ocr-overdue-list');
+      var html = '';
+      overdueCheckouts.forEach(function(g, i) {
+        selectedOcrRooms[i] = true;
+        var urgency = g.overdueMinutes >= 60 ? 'var(--red)' : 'var(--orange)';
+        var urgencyBg = g.overdueMinutes >= 60 ? 'var(--red-bg)' : 'var(--orange-bg)';
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--border);' + (g.overdueMinutes >= 60 ? 'background:#fff5f5;' : '') + '">' +
+          '<input type="checkbox" class="ocr-check" data-idx="' + i + '" checked style="accent-color:var(--red);width:15px;height:15px;cursor:pointer;" onclick="updateOcrSelected()">' +
+          '<div style="flex:1;">' +
+          '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:15px;font-weight:700;color:var(--blue);">' + g.room + '</span><span style="font-size:12px;color:var(--text);">' + g.name + '</span></div>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + g.type + ' · ' + g.phone + '</div></div>' +
+          '<div style="text-align:right;"><div style="padding:3px 8px;background:' + urgencyBg + ';border-radius:6px;font-size:11px;font-weight:700;color:' + urgency + ';">超时' + g.overdueMinutes + '分钟</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px;">应退' + g.dueTime + '</div></div></div>';
+      });
+      listEl.innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无到期未退房</div>';
+      updateOcrSelected();
+      openModal('checkout-reminder');
+    }
+    function toggleOcrSelectAll(checked) {
+      document.querySelectorAll('.ocr-check').forEach(function(cb) { cb.checked = checked; });
+      for (var i = 0; i < overdueCheckouts.length; i++) selectedOcrRooms[i] = checked;
+      updateOcrSelected();
+    }
+    function updateOcrSelected() {
+      var count = 0;
+      document.querySelectorAll('.ocr-check').forEach(function(cb) {
+        if (cb.checked) { selectedOcrRooms[parseInt(cb.dataset.idx)] = true; count++; }
+        else { selectedOcrRooms[parseInt(cb.dataset.idx)] = false; }
+      });
+      document.getElementById('ocr-selected-count').textContent = count;
+      document.getElementById('ocr-send-count').textContent = count;
+    }
+    function selectOcrMethod(method) {
+      currentOcrMethod = method;
+      document.getElementById('ocr-method-sms').style.border = method === 'sms' ? '2px solid var(--red)' : '1px solid var(--border)';
+      document.getElementById('ocr-method-sms').style.background = method === 'sms' ? 'var(--red-bg)' : 'white';
+      document.getElementById('ocr-method-wechat').style.border = method === 'wechat' ? '2px solid var(--green)' : '1px solid var(--border)';
+      document.getElementById('ocr-method-wechat').style.background = method === 'wechat' ? 'var(--green-bg)' : 'white';
+      document.getElementById('ocr-method-feishu').style.border = method === 'feishu' ? '2px solid var(--blue)' : '1px solid var(--border)';
+      document.getElementById('ocr-method-feishu').style.background = method === 'feishu' ? 'var(--blue-bg)' : 'white';
+      var templates = {
+        sms: '【领锁智慧酒店】尊敬的客人，您的房间将于30分钟后到期，如需续住请致电前台。如已离开请忽略此消息。',
+        wechat: '亲爱的' + overdueCheckouts.map(function(g,i){ if(selectedOcrRooms[i]) return g.name; }).filter(Boolean).join('、') + '，您入住的房间已超过退房时间，请及时处理～',
+        feishu: '【离店提醒】以下房间已超过退房时间：' + overdueCheckouts.filter(function(g,i){ return selectedOcrRooms[i]; }).map(function(g){ return g.room + '(' + g.name + ')'; }).join('、')
+      };
+      document.getElementById('ocr-preview-text').textContent = templates[method];
+    }
+    function sendCheckoutReminders() {
+      var count = parseInt(document.getElementById('ocr-selected-count').textContent) || 0;
+      if (count === 0) { showToast('请先选择要发送提醒的房间', 'error'); return; }
+      var methodLabel = {sms:'短信', wechat:'微信推送', feishu:'飞书通知'}[currentOcrMethod];
+      closeModal('checkout-reminder');
+      showToast('✅ 离店提醒已发送！' + count + '间房已通过' + methodLabel + '发送提醒', 'success');
+    }
+    </script>
+
+    <!-- 【改进1新增】自动清算欠款弹窗：一键扫描所有入住记录，自动计算所有欠款（房费+加床+赔偿+罚款等）并一次性结算 -->
+    <div class="modal-overlay hidden" id="modal-auto-debt-settlement">
+      <div class="modal" style="width:560px;">
+        <div class="modal-header">
+          <div class="modal-title">⚡ 自动清算欠款</div>
+          <button class="modal-close" onclick="closeModal('auto-debt-settlement')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="padding:12px 14px;background:var(--purple-bg);border:1px solid var(--purple);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--purple);">
+            💡 系统将自动扫描当前所有入住记录，汇总所有房间的房费、加床/加物、损坏赔偿、延时费等欠款项目，一键完成统一结算
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+            <div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;">
+              <div style="font-size:22px;font-weight:700;color:var(--blue);" id="ads-total-rooms">3</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">入住房间</div>
+            </div>
+            <div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;">
+              <div style="font-size:22px;font-weight:700;color:var(--orange);" id="ads-total-amount">¥644</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">欠款总额</div>
+            </div>
+            <div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;">
+              <div style="font-size:22px;font-weight:700;color:var(--red);" id="ads-total-deposit">¥300</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">押金待退</div>
+            </div>
+          </div>
+          <!-- 欠款明细列表 -->
+          <div class="form-group">
+            <label class="form-label">📋 欠款明细清单</label>
+            <div id="ads-debt-list" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--bg);">
+              <!-- JS动态渲染 -->
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;">
+            <input type="checkbox" id="ads-auto-deduct-deposit" checked style="accent-color:var(--orange);width:16px;height:16px;">
+            <div style="flex:1;">
+              <div style="font-size:12px;font-weight:600;color:var(--orange);">自动抵扣押金</div>
+              <div style="font-size:11px;color:var(--text-muted);">从押金中扣除欠款，余额原路退回</div>
+            </div>
+            <div style="font-size:14px;font-weight:700;color:var(--orange);" id="ads-final-pay">¥344</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">💳 结算方式</label>
+            <select class="form-select" id="ads-pay-method" style="padding:7px 10px;">
+              <option value="mixed">混合结算（优先押金抵扣）</option>
+              <option value="wechat">微信支付</option>
+              <option value="alipay">支付宝</option>
+              <option value="cash">现金</option>
+              <option value="card">银行卡</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">📝 备注</label>
+            <textarea class="form-textarea" id="ads-remark" placeholder="批量结算备注（选填）" style="min-height:50px;"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('auto-debt-settlement')">取消</button>
+          <button class="modal-btn primary" onclick="confirmAutoDebtSettlement()" style="background:var(--purple);border-color:var(--purple);">⚡ 确认一键清算</button>
+        </div>
+      </div>
+    </div>
+    <script>
+    var autoDebtData = [
+      {room:'301',name:'张三',phone:'138****8888',type:'亲子间',roomFee:128,extras:0,damage:0,lateFee:0,deposit:100,status:'待退押金'},
+      {room:'302',name:'李四',phone:'139****6666',type:'大床房',roomFee:168,extras:50,damage:0,lateFee:20,deposit:100,status:'待退押金'},
+      {room:'305',name:'王五',phone:'137****5555',type:'标准间',roomFee:148,extras:30,damage:100,lateFee:0,deposit:100,status:'待退押金'}
+    ];
+    function openAutoDebtSettlementModal() {
+      var totalRooms = autoDebtData.length;
+      var totalDebt = autoDebtData.reduce(function(s,d){ return s + d.roomFee + d.extras + d.damage + d.lateFee; }, 0);
+      var totalDeposit = autoDebtData.reduce(function(s,d){ return s + d.deposit; }, 0);
+      document.getElementById('ads-total-rooms').textContent = totalRooms;
+      document.getElementById('ads-total-amount').textContent = '¥' + totalDebt;
+      document.getElementById('ads-total-deposit').textContent = '¥' + totalDeposit;
+      var finalPay = Math.max(0, totalDebt - totalDeposit);
+      document.getElementById('ads-final-pay').textContent = '¥' + finalPay;
+      // Render debt list
+      var listEl = document.getElementById('ads-debt-list');
+      var html = '';
+      autoDebtData.forEach(function(d) {
+        var total = d.roomFee + d.extras + d.damage + d.lateFee;
+        var items = [];
+        items.push('房费¥' + d.roomFee);
+        if (d.extras > 0) items.push('加物¥' + d.extras);
+        if (d.damage > 0) items.push('赔偿¥' + d.damage);
+        if (d.lateFee > 0) items.push('延时费¥' + d.lateFee);
+        html += '<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+          '<div style="flex:0 0 40px;font-size:16px;font-weight:700;color:var(--blue);">' + d.room + '</div>' +
+          '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">' + d.name + '</div><div style="font-size:11px;color:var(--text-muted);">' + items.join(' + ') + '</div></div>' +
+          '<div style="text-align:right;"><div style="font-size:14px;font-weight:700;color:var(--orange);">¥' + total + '</div><div style="font-size:10px;color:var(--text-muted);">押金¥' + d.deposit + '</div></div>' +
+          '</div>';
+      });
+      html += '<div style="padding:10px 0;display:flex;justify-content:space-between;font-weight:700;color:var(--text);">' +
+        '<span>合计</span><span style="color:var(--orange);font-size:15px;">¥' + totalDebt + '</span></div>';
+      listEl.innerHTML = html;
+      openModal('auto-debt-settlement');
+    }
+    function confirmAutoDebtSettlement() {
+      var method = document.getElementById('ads-pay-method').value;
+      var deductDeposit = document.getElementById('ads-auto-deduct-deposit').checked;
+      var remark = document.getElementById('ads-remark').value;
+      var totalDebt = autoDebtData.reduce(function(s,d){ return s + d.roomFee + d.extras + d.damage + d.lateFee; }, 0);
+      var totalDeposit = autoDebtData.reduce(function(s,d){ return s + d.deposit; }, 0);
+      var finalPay = deductDeposit ? Math.max(0, totalDebt - totalDeposit) : totalDebt;
+      closeModal('auto-debt-settlement');
+      showToast('✅ 自动清算完成！' + autoDebtData.length + '间房共欠¥' + totalDebt + '，扣除押金¥' + (deductDeposit ? totalDeposit : 0) + '，实收¥' + finalPay + '，结算方式：' + method, 'success');
+    }
+    </script>
+
     <!-- 重置密码确认弹窗 -->
     <div class="modal-overlay hidden" id="modal-reset-pwd">
       <div class="modal" style="width:400px;">
@@ -7169,6 +7807,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <div class="card-title">👥 会员列表</div>
           <div style="display:flex;gap:6px;">
             <button class="action-btn" onclick="openAddMemberModal()" style="padding:4px 12px;">+ 新增会员</button>
+            <!-- 【改进5新增】智能入住推荐按钮 -->
+            <button class="action-btn small" onclick="openSmartCheckinRecommendModal()" style="padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🤖 智能入住推荐</button>
             <!-- 【改进4】客户档案/偏好管理入口 -->
             <button class="action-btn small" onclick="openGuestPreferenceModal('张三')" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">👤 客户档案</button>
             <!-- 【改进v3-3】会员消费充值记录Tab切换 -->
@@ -8647,6 +9287,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div class="card-header">
           <div class="card-title">⏳ 待结算房间</div>
           <div style="display:flex;gap:8px;">
+            <button class="action-btn" onclick="openAutoDebtSettlementModal()" style="padding:4px 12px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⚡ 自动清算欠款</button>
             <button class="action-btn" onclick="openBatchSettlementModal()" style="padding:4px 12px;">🔄 批量结算</button>
             <button class="action-btn" onclick="openSettlementHistoryModal()" style="padding:4px 12px;">📋 结算历史</button>
           </div>
