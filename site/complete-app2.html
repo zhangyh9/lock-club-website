@@ -56131,6 +56131,650 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
+// ============================================================
+// 改进1: 黑名单管理完整 JS 逻辑实现
+// 理由：黑名单页面HTML弹窗已存在，但所有交互函数未实现，点击按钮无任何响应。
+//       本改进实现：详情查看、解除封禁、添加、搜索筛选、导出功能。
+// ============================================================
+
+var blacklistData = [
+  {id:0, name:'张三丰', phone:'13812341234', idCard:'110101199001011234', reason:'多次恶意破坏门锁设备', type:'active', startDate:'2026-03-20', expireDate:'2027-03-20', status:'active', room:'301'},
+  {id:1, name:'李四',   phone:'13956785678', idCard:'120101199002022234', reason:'触发异常开锁告警（1小时内开锁30次）', type:'system', startDate:'2026-03-27', expireDate:'永久', status:'banned', room:'-'},
+  {id:2, name:'王五',  phone:'13799999999', idCard:'130101199003031234', reason:'房间冲突纠纷', type:'active', startDate:'2026-02-01', expireDate:'2026-03-31', status:'expiring', room:'205'}
+];
+
+function openAddBlacklistModal() { openModal('blacklist-add'); }
+
+function toggleBlPermanent(val) {
+  var expGroup = document.getElementById('bl-add-expire-group');
+  if (!expGroup) return;
+  expGroup.style.display = val === 'permanent' ? 'none' : 'block';
+}
+
+function submitAddBlacklist() {
+  var name = document.getElementById('bl-add-name').value.trim();
+  var phone = document.getElementById('bl-add-phone').value.trim();
+  var idCard = document.getElementById('bl-add-idcard').value.trim();
+  var type = document.getElementById('bl-add-type').value;
+  var reason = document.getElementById('bl-add-reason').value.trim();
+  var duration = document.getElementById('bl-add-duration').value;
+  var expireDate = document.getElementById('bl-add-expire-date').value;
+  var room = document.getElementById('bl-add-room').value.trim();
+  if (!name || !phone || !reason) { showToast('请填写必填项（姓名、手机号、原因）', 'error'); return; }
+  var now = new Date();
+  var expire = duration === 'permanent' ? '永久' : expireDate || new Date(now.setDate(now.getDate() + parseInt(duration))).toISOString().slice(0,10);
+  var newEntry = {
+    id: blacklistData.length,
+    name: name, phone: phone, idCard: idCard, reason: reason,
+    type: type, startDate: new Date().toISOString().slice(0,10),
+    expireDate: expire, status: 'active', room: room || '-'
+  };
+  blacklistData.push(newEntry);
+  showToast('✅ ' + name + ' 已加入黑名单', 'success');
+  closeModal('blacklist-add');
+  renderBlacklistTable();
+  updateBlacklistStats();
+}
+
+function openBlacklistDetailModal(idx) {
+  var person = blacklistData[idx];
+  if (!person) return;
+  var statusLabel = person.status === 'active' ? '🔒 封禁中' : person.status === 'expiring' ? '⏳ 即将解封' : '🚫 永久封禁';
+  var statusColor = person.status === 'active' ? 'var(--red)' : person.status === 'expiring' ? 'var(--orange)' : 'var(--purple)';
+  var actionBtn = person.status !== 'banned' ? '<button class="modal-btn primary" onclick="unblacklistPerson(' + idx + ')" style="background:var(--green);border-color:var(--green);">✅ 解除封禁</button>' : '';
+  var extendBtn = person.status === 'expiring' ? '<button class="modal-btn" onclick="extendBlacklistPeriod(' + idx + ')" style="background:var(--orange);color:white;border-color:var(--orange);">⏰ 延长封禁</button>' : '';
+  var content = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">姓名</div><div style="font-size:14px;font-weight:600;">' + person.name + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">手机号</div><div style="font-size:14px;font-weight:600;">' + person.phone + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">证件号</div><div style="font-size:13px;font-weight:600;">' + (person.idCard || '-') + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">关联房间</div><div style="font-size:14px;font-weight:600;">' + person.room + '</div></div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;margin-bottom:14px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">封禁原因</div><div style="font-size:13px;line-height:1.5;">' + person.reason + '</div></div>' +
+    '<div style="display:flex;gap:8px;font-size:12px;color:var(--text-muted);margin-bottom:14px;">' +
+    '<div>📅 封禁日期：' + person.startDate + '</div><div>⏰ 到期：' + person.expireDate + '</div></div>' +
+    '<div style="padding:10px 14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:14px;text-align:center;">' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">当前状态</div>' +
+    '<div style="font-size:18px;font-weight:700;color:' + statusColor + ';">' + statusLabel + '</div></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + actionBtn + extendBtn + '</div>';
+  document.getElementById('bld-content').innerHTML = content;
+  openModal('blacklist-detail');
+}
+
+function unblacklistPerson(idx) {
+  var person = blacklistData[idx];
+  if (!person) return;
+  if (!confirm('确定要解除 ' + person.name + ' 的封禁吗？解除后该人员可正常开锁。')) return;
+  person.status = 'removed';
+  person.expireDate = new Date().toISOString().slice(0,10);
+  showToast('✅ ' + person.name + ' 已解除封禁', 'success');
+  closeModal('blacklist-detail');
+  renderBlacklistTable();
+  updateBlacklistStats();
+}
+
+function extendBlacklistPeriod(idx) {
+  var person = blacklistData[idx];
+  if (!person) return;
+  var newDate = prompt('请输入新的到期日期（格式：YYYY-MM-DD）', new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0,10));
+  if (!newDate) return;
+  person.expireDate = newDate;
+  person.status = 'active';
+  showToast('✅ ' + person.name + ' 封禁已延长至 ' + newDate, 'success');
+  closeModal('blacklist-detail');
+  renderBlacklistTable();
+  updateBlacklistStats();
+}
+
+function filterBlacklistTab(tab, el) {
+  document.querySelectorAll('#blacklist-table-body tr').forEach(function(row) {
+    var type = row.dataset.type;
+    if (tab === 'all') { row.style.display = ''; }
+    else if (tab === 'active') { row.style.display = type === 'active' ? '' : 'none'; }
+    else if (tab === 'system') { row.style.display = type === 'system' ? '' : 'none'; }
+  });
+  document.querySelectorAll('#page-blacklist .card-tabs .card-tab').forEach(function(t) { t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+}
+
+function applyBlacklistSearch() {
+  var q = document.getElementById('bl-search-input').value.trim().toLowerCase();
+  var type = document.getElementById('bl-type-filter').value;
+  document.querySelectorAll('#blacklist-table-body tr').forEach(function(row) {
+    var matchQ = !q || row.textContent.toLowerCase().includes(q);
+    var matchType = type === 'all' || row.dataset.type === type || (type === 'expiring' && row.dataset.expiring === 'true');
+    row.style.display = (matchQ && matchType) ? '' : 'none';
+  });
+}
+
+function exportBlacklistCSV() {
+  var csv = '\uFEFF姓名,手机号,证件号,封禁原因,类型,封禁日期,到期时间,状态\n';
+  blacklistData.forEach(function(p) {
+    var typeLabel = p.type === 'active' ? '主动封禁' : '系统拦截';
+    var statusLabel = p.status === 'active' ? '封禁中' : p.status === 'expiring' ? '即将解封' : p.status === 'banned' ? '永久封禁' : '已解除';
+    csv += p.name + ',' + p.phone + ',' + (p.idCard || '') + ',' + p.reason + ',' + typeLabel + ',' + p.startDate + ',' + p.expireDate + ',' + statusLabel + '\n';
+  });
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '黑名单_' + new Date().toISOString().slice(0,10) + '.csv'; a.click();
+  showToast('黑名单已导出', 'success');
+}
+
+function renderBlacklistTable() {
+  var tbody = document.getElementById('blacklist-table-body');
+  if (!tbody) return;
+  var html = '';
+  blacklistData.forEach(function(p, idx) {
+    var typeLabel = p.type === 'active' ? '<span class="tbadge red">主动封禁</span>' : '<span class="tbadge orange">系统拦截</span>';
+    var statusLabel, statusClass;
+    if (p.status === 'active') { statusLabel = '🔒 封禁中'; statusClass = 'tbadge red'; }
+    else if (p.status === 'expiring') { statusLabel = '⏳ 即将解封'; statusClass = 'tbadge orange'; }
+    else if (p.status === 'banned') { statusLabel = '🚫 永久封禁'; statusClass = 'tbadge red'; }
+    else { statusLabel = '✅ 已解除'; statusClass = 'tbadge green'; }
+    var phoneMask = p.phone.slice(0,3) + '****' + p.phone.slice(-4);
+    html += '<tr data-type="' + p.type + '" data-expiring="' + (p.status === 'expiring') + '">' +
+      '<td><span style="font-weight:600;">' + p.name + '</span></td>' +
+      '<td>' + phoneMask + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + (p.idCard ? p.idCard.slice(0,3) + '***********' + p.idCard.slice(-4) : '-') + '</td>' +
+      '<td style="font-size:12px;">' + p.reason + '</td>' +
+      '<td>' + typeLabel + '</td>' +
+      '<td>' + p.startDate + '</td>' +
+      '<td>' + p.expireDate + '</td>' +
+      '<td><span class="' + statusClass + '">' + statusLabel + '</span></td>' +
+      '<td><button class="action-btn small" onclick="openBlacklistDetailModal(' + idx + ')">详情</button> ' +
+      (p.status !== 'banned' && p.status !== 'removed' ? '<button class="action-btn small green" onclick="unblacklistPerson(' + idx + ')">解除</button>' : '') + '</td></tr>';
+  });
+  tbody.innerHTML = html || '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:20px;">暂无数据</td></tr>';
+  document.getElementById('bl-count-label').textContent = '共 ' + blacklistData.filter(function(p){return p.status !== 'removed';}).length + ' 人';
+}
+
+function updateBlacklistStats() {
+  var active = blacklistData.filter(function(p){return p.status === 'active';}).length;
+  var expiring = blacklistData.filter(function(p){return p.status === 'expiring';}).length;
+  var total = blacklistData.filter(function(p){return p.status !== 'removed';}).length;
+  var systemCount = blacklistData.filter(function(p){return p.type === 'system';}).length;
+  var el = document.getElementById('bl-stat-total');
+  if (el) el.textContent = total;
+}
+
+
+// ============================================================
+// 改进2: 发票管理完整 JS 逻辑实现
+// 理由：发票详情弹窗已实现，但 approveInvoice / rejectInvoice / issueInvoice / shipInvoice 未实现
+//       点击审核通过/驳回/开具/邮寄按钮无任何响应。
+// ============================================================
+
+if (typeof invoiceDB === 'undefined') {
+  var invoiceDB = [
+    {id:'INV-20260327-001', type:'增值税普通发票', amount:'380.00', guest:'张三', room:'301', title:'个人', taxNo:'-', status:'pending', applyDate:'2026-03-27', operator:'周敏'},
+    {id:'INV-20260326-002', type:'增值税专用发票', amount:'1,280.00', guest:'李四', room:'-', title:'北京某科技有限公司', taxNo:'110100000000000', status:'approved', applyDate:'2026-03-26', operator:'赵飞'},
+    {id:'INV-20260325-003', type:'增值税普通发票', amount:'156.00', guest:'王五', room:'205', title:'个人', taxNo:'-', status:'issued', applyDate:'2026-03-25', operator:'周敏'}
+  ];
+}
+
+function approveInvoice(invId) {
+  var inv = invoiceDB.find(function(x){ return x.id === invId; });
+  if (!inv) return;
+  inv.status = 'approved';
+  showToast('✅ 发票 ' + invId + ' 已审核通过', 'success');
+  var modal = document.getElementById('modal-invoice-detail');
+  if (modal) modal.remove();
+  if (typeof renderInvoiceListV3 === 'function') renderInvoiceListV3();
+}
+
+function rejectInvoice(invId) {
+  var inv = invoiceDB.find(function(x){ return x.id === invId; });
+  if (!inv) return;
+  var reason = prompt('请输入驳回原因：');
+  if (!reason) return;
+  inv.status = 'rejected';
+  inv.rejectReason = reason;
+  showToast('❌ 发票 ' + invId + ' 已驳回，原因：' + reason, 'info');
+  var modal = document.getElementById('modal-invoice-detail');
+  if (modal) modal.remove();
+  if (typeof renderInvoiceListV3 === 'function') renderInvoiceListV3();
+}
+
+function issueInvoice(invId) {
+  var inv = invoiceDB.find(function(x){ return x.id === invId; });
+  if (!inv) return;
+  inv.status = 'issued';
+  inv.issueDate = new Date().toISOString().slice(0,10);
+  showToast('🧾 发票 ' + invId + ' 已开具完成', 'success');
+  var modal = document.getElementById('modal-invoice-detail');
+  if (modal) modal.remove();
+  if (typeof renderInvoiceListV3 === 'function') renderInvoiceListV3();
+}
+
+function shipInvoice(invId) {
+  var inv = invoiceDB.find(function(x){ return x.id === invId; });
+  if (!inv) return;
+  var method = confirm('确认邮寄？（取消则改为客户自取）') ? '邮寄' : '自取';
+  inv.shipMethod = method;
+  inv.shipDate = new Date().toISOString().slice(0,10);
+  inv.status = 'shipped';
+  showToast('📦 发票 ' + invId + ' 已标记为' + method + '，' + (method === '邮寄' ? '等待快递揽收' : '客户可随时自取'), 'success');
+  var modal = document.getElementById('modal-invoice-detail');
+  if (modal) modal.remove();
+  if (typeof renderInvoiceListV3 === 'function') renderInvoiceListV3();
+}
+
+
+// ============================================================
+// 改进3: 退房完整结算历史记录弹窗
+// 理由：当前系统退房只有"预结算"弹窗，没有完整的退房历史记录和详细账单查看功能。
+//       本改进增加退房历史列表 + 点击查看完整账单（房费明细+杂项+优惠券+押金）。
+// ============================================================
+
+var checkoutHistoryData = [
+  {id:'CO-20260327-001', room:'301', guest:'张三', checkinTime:'2026-03-24 14:00', checkoutTime:'2026-03-27 11:30', nights:3, roomRate:138, totalRoom:414, extras:{bed:0, meal:0, phone:0, minibar:38,损伤:0}, discount:0, coupon:'不使用', deposit:300, totalAmount:452, actualPaid:452, paymentMethod:'微信支付', status:'已完成', operator:'周敏'},
+  {id:'CO-20260326-002', room:'203', guest:'李四', checkinTime:'2026-03-22 15:30', checkoutTime:'2026-03-26 13:00', nights:4, roomRate:118, totalRoom:472, extras:{bed:0, meal:0, phone:0, minibar:56,损伤:0}, discount:30, coupon:'满200减30元', deposit:200, totalAmount:498, actualPaid:498, paymentMethod:'支付宝', status:'已完成', operator:'赵飞'},
+  {id:'CO-20260325-003', room:'205', guest:'王五', checkinTime:'2026-03-20 16:00', checkoutTime:'2026-03-25 14:30', nights:5, roomRate:98, totalRoom:490, extras:{bed:50, meal:0, phone:0, minibar:28,损伤:100}, discount:0, coupon:'不使用', deposit:200, totalAmount:668, actualPaid:668, paymentMethod:'现金', status:'已完成', operator:'周敏'},
+  {id:'CO-20260324-004', room:'102', guest:'赵六', checkinTime:'2026-03-21 14:00', checkoutTime:'2026-03-24 10:00', nights:3, roomRate:88, totalRoom:264, extras:{bed:0, meal:80, phone:0, minibar:0,损伤:0}, discount:20, coupon:'新客立减20元', deposit:200, totalAmount:324, actualPaid:324, paymentMethod:'微信支付', status:'已完成', operator:'吴倩'}
+];
+
+function openCheckoutHistoryModal() {
+  var old = document.getElementById('modal-checkout-history');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-checkout-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:800px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">';
+  html += '<div><div style="font-size:16px;font-weight:700;">📋 退房历史记录</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">共 ' + checkoutHistoryData.length + ' 条退房记录</div></div>';
+  html += '<div style="display:flex;gap:8px;"><button class="action-btn small" onclick="exportCheckoutHistoryCSV()" style="padding:5px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);font-size:12px;">📤 导出CSV</button>';
+  html += '<button onclick="document.getElementById(\'modal-checkout-history\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div></div>';
+  html += '<div style="padding:0;overflow-y:auto;flex:1;">';
+  html += '<table class="table" style="margin:0;"><thead><tr><th>退房单号</th><th>房间</th><th>客人</th><th>入住时间</th><th>退房时间</th><th>入住天数</th><th>合计金额</th><th>实收</th><th>支付方式</th><th>操作员</th><th>操作</th></tr></thead><tbody>';
+  checkoutHistoryData.forEach(function(r, idx) {
+    var nights = Math.ceil((new Date(r.checkoutTime) - new Date(r.checkinTime)) / 86400000);
+    html += '<tr>' +
+      '<td style="font-size:11px;font-family:monospace;color:var(--blue);">' + r.id + '</td>' +
+      '<td><b>' + r.room + '</b></td>' +
+      '<td style="font-size:12px;">' + r.guest + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + r.checkinTime + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + r.checkoutTime + '</td>' +
+      '<td style="text-align:center;"><span class="tbadge blue">' + nights + '晚</span></td>' +
+      '<td style="font-weight:600;">¥' + r.totalAmount + '</td>' +
+      '<td style="font-weight:700;color:var(--green);">¥' + r.actualPaid + '</td>' +
+      '<td style="font-size:11px;">' + r.paymentMethod + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + r.operator + '</td>' +
+      '<td><button class="action-btn small" onclick="openCheckoutBillDetail(' + idx + ')" style="padding:3px 8px;font-size:11px;">📄 账单详情</button></td></tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-checkout-history\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openCheckoutBillDetail(idx) {
+  var r = checkoutHistoryData[idx];
+  if (!r) return;
+  var extraTotal = Object.values(r.extras).reduce(function(s,v){return s+v;},0);
+  var html = '<div class="modal-overlay" id="modal-checkout-bill-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999;padding:20px;">';
+  html += '<div class="modal" style="width:560px;max-height:85vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;margin-bottom:20px;">';
+  html += '<div style="font-size:28px;">📄</div><div style="flex:1;"><div style="font-size:16px;font-weight:700;">退房账单详情</div><div style="font-size:11px;color:var(--text-muted);font-family:monospace;">' + r.id + '</div></div>';
+  html += '<span class="tbadge green" style="padding:4px 10px;font-size:12px;">已完成</span>';
+  html += '<button onclick="document.getElementById(\'modal-checkout-bill-detail\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:0 24px 20px;">';
+  // 基本信息
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">';
+  html += '<div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">房间</div><div style="font-size:18px;font-weight:700;color:var(--blue);">' + r.room + '</div></div>';
+  html += '<div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">入住天数</div><div style="font-size:18px;font-weight:700;">' + r.nights + '晚</div></div>';
+  html += '<div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">入住时间</div><div style="font-size:13px;font-weight:600;">' + r.checkinTime + '</div></div></div>';
+  // 房费明细
+  html += '<div style="margin-bottom:14px;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">💰 房费明细</div>';
+  html += '<div style="padding:12px;background:var(--bg);border-radius:8px;">';
+  html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span>房型单价 × ' + r.nights + '晚</span><span>¥' + r.roomRate + ' × ' + r.nights + ' = <b>¥' + r.totalRoom + '</b></span></div>';
+  if (r.extras.bed > 0) html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span>加床费</span><span>¥' + r.extras.bed + '</span></div>';
+  if (r.extras.meal > 0) html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span>餐费</span><span>¥' + r.extras.meal + '</span></div>';
+  if (r.extras.minibar > 0) html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span>迷你吧消费</span><span>¥' + r.extras.minibar + '</span></div>';
+  if (r.extras.损伤 > 0) html += '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px;"><span>房损赔偿</span><span style="color:var(--red);">¥' + r.extras.损伤 + '</span></div>';
+  html += '</div></div>';
+  // 优惠
+  html += '<div style="margin-bottom:14px;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">🎫 优惠抵扣</div>';
+  html += '<div style="padding:12px;background:var(--bg);border-radius:8px;">' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span>房价合计</span><span>¥' + r.totalRoom + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span>杂项费</span><span>¥' + extraTotal + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px;"><span>优惠券 (' + r.coupon + ')</span><span style="color:var(--green);">-¥' + r.discount + '</span></div></div></div>';
+  // 结算汇总
+  var gross = r.totalRoom + extraTotal;
+  html += '<div style="margin-bottom:14px;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">💵 结算汇总</div>';
+  html += '<div style="padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">';
+  html += '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;"><span>应收总额</span><span>¥' + gross + '</span></div>';
+  html += '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;color:var(--green);"><span>优惠减免</span><span>-¥' + r.discount + '</span></div>';
+  html += '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;"><span>押金抵扣</span><span>¥' + r.deposit + '</span></div>';
+  html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--blue);font-size:15px;font-weight:700;margin-top:4px;"><span>实际应缴</span><span style="color:var(--blue);">¥' + r.actualPaid + '</span></div></div></div>';
+  // 支付信息
+  html += '<div style="padding:12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-muted);margin-bottom:14px;">';
+  html += '<div style="display:flex;gap:16px;"><span>💳 支付方式：<b style="color:var(--text);">' + r.paymentMethod + '</b></span><span>👤 操作员：' + r.operator + '</span><span>📅 退房时间：' + r.checkoutTime + '</span></div></div>';
+  html += '<div style="display:flex;gap:8px;"><button class="action-btn" onclick="printCheckoutBill(\'' + r.id + '\')" style="padding:6px 14px;background:var(--blue);color:white;border:none;font-size:12px;">🖨️ 打印账单</button>';
+  html += '<button class="action-btn" onclick="reissueCheckoutReceipt(\'' + r.id + '\')" style="padding:6px 14px;font-size:12px;">📧 重发收据</button></div>';
+  html += '</div>';
+  html += '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-checkout-bill-detail\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function printCheckoutBill(id) { showToast('🖨️ 正在连接打印机...', 'info'); setTimeout(function(){ showToast('✅ 账单已发送至打印机', 'success'); }, 1000); }
+function reissueCheckoutReceipt(id) { showToast('📧 收据已发送至客人手机', 'success'); }
+
+function exportCheckoutHistoryCSV() {
+  var csv = '\uFEFF退房单号,房间,客人,入住时间,退房时间,入住天数,房费合计,杂项费,优惠,实收金额,支付方式,操作员\n';
+  checkoutHistoryData.forEach(function(r) {
+    var extra = Object.values(r.extras).reduce(function(s,v){return s+v;},0);
+    csv += r.id + ',' + r.room + ',' + r.guest + ',' + r.checkinTime + ',' + r.checkoutTime + ',' + r.nights + ',' + r.totalRoom + ',' + extra + ',' + r.discount + ',' + r.actualPaid + ',' + r.paymentMethod + ',' + r.operator + '\n';
+  });
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '退房历史_' + new Date().toISOString().slice(0,10) + '.csv'; a.click();
+  showToast('退房历史已导出', 'success');
+}
+
+
+// ============================================================
+// 改进4: 房务质量评分可编辑 + 历史趋势图表
+// 理由：查房质量评分目前是只读展示，无法修改评分；无法查看特定房间的历史评分趋势。
+//       本改进：1)每项检查可点击修改评分 2)新增7日/30日历史趋势迷你图
+// ============================================================
+
+var inspectScoreHistory = {
+  '301': [
+    {date:'2026-03-21', scores:[5,4,5,3,4,5], avg:4.3},
+    {date:'2026-03-23', scores:[5,5,5,4,5,5], avg:4.8},
+    {date:'2026-03-25', scores:[4,4,5,4,4,5], avg:4.3},
+    {date:'2026-03-27', scores:[5,4,5,3,4,5], avg:4.3}
+  ],
+  '203': [
+    {date:'2026-03-20', scores:[3,3,4,2,3,4], avg:3.2},
+    {date:'2026-03-27', scores:[2,3,3,2,2,3], avg:2.5}
+  ]
+};
+
+function openInspectQualityModal(roomNum) {
+  var old = document.getElementById('modal-inspect-quality');
+  if (old) old.remove();
+  var history = inspectScoreHistory[roomNum] || [];
+  var items = [
+    {name:'卧室整洁', icon:'🛏️'},
+    {name:'卫生间清洁', icon:'🚿'},
+    {name:'地面干净', icon:'🧹'},
+    {name:'家电完好', icon:'📺'},
+    {name:'床上用品', icon:'🛌'},
+    {name:'门窗检查', icon:'🚪'}
+  ];
+  var latest = history.length > 0 ? history[history.length - 1] : null;
+  var currentScores = latest ? latest.scores : [5,4,5,3,4,5];
+  var roomRate = latest ? latest.avg : 4.3;
+  var rateColor = roomRate >= 4.5 ? 'var(--green)' : roomRate >= 3.5 ? 'var(--orange)' : 'var(--red)';
+
+  var html = '<div class="modal-overlay" id="modal-inspect-quality" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:560px;max-height:85vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">';
+  html += '<div style="font-size:16px;font-weight:700;">📊 房务质量评分 - 房间 ' + roomNum + '</div>';
+  html += '<button onclick="document.getElementById(\'modal-inspect-quality\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:0 24px 20px;">';
+  // 综合评分
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">';
+  html += '<div style="padding:14px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">综合评分</div><div style="font-size:28px;font-weight:700;color:' + rateColor + ';">' + roomRate.toFixed(1) + '</div><div style="font-size:10px;color:var(--text-muted);">满分5.0</div></div>';
+  html += '<div style="padding:14px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">检查项数</div><div style="font-size:28px;font-weight:700;color:var(--green);">' + items.length + '</div><div style="font-size:10px;color:var(--text-muted);">项</div></div>';
+  html += '<div style="padding:14px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">历史记录</div><div style="font-size:28px;font-weight:700;">' + history.length + '</div><div style="font-size:10px;color:var(--text-muted);">次</div></div></div>';
+  // 可编辑检查项
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">✏️ 检查项评分（点击星星修改）</div>';
+  items.forEach(function(item, i) {
+    var score = currentScores[i] || 5;
+    var itemColor = score >= 5 ? 'var(--green)' : score >= 3 ? 'var(--orange)' : 'var(--red)';
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg);border-radius:8px;margin-bottom:8px;" id="inspect-item-' + i + '">';
+    html += '<span style="font-size:16px;">' + item.icon + '</span>';
+    html += '<span style="flex:1;font-size:13px;">' + item.name + '</span>';
+    html += '<div class="star-rating" id="star-row-' + i + '" data-item="' + i + '" data-score="' + score + '">';
+    for (var s = 1; s <= 5; s++) {
+      var star = s <= score ? '⭐' : '☆';
+      html += '<span onclick="setInspectScore(' + i + ',' + s + ')" style="cursor:pointer;font-size:18px;color:' + (s <= score ? 'var(--orange)' : 'var(--border)') + ';">' + star + '</span>';
+    }
+    html += '</div>';
+    html += '<span style="font-size:13px;font-weight:700;color:' + itemColor + ';min-width:20px;text-align:center;" id="score-val-' + i + '">' + score + '</span>';
+    html += '</div>';
+  });
+  html += '<div style="display:flex;gap:8px;margin-top:16px;margin-bottom:14px;">';
+  html += '<button class="action-btn primary" onclick="saveInspectQuality(\'' + roomNum + '\')" style="padding:8px 16px;background:var(--blue);color:white;border:none;font-size:13px;">💾 保存评分</button>';
+  html += '<button class="action-btn" onclick="openInspectTrendModal(\'' + roomNum + '\')" style="padding:8px 16px;font-size:13px;">📈 历史趋势</button>';
+  html += '</div>';
+  html += '<div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">💡 点击星星即可修改该项评分，保存后自动更新综合评分和历史记录</div>';
+  html += '</div>';
+  html += '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-inspect-quality\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function setInspectScore(itemIdx, newScore) {
+  var starRow = document.getElementById('star-row-' + itemIdx);
+  if (!starRow) return;
+  starRow.dataset.score = newScore;
+  var stars = starRow.querySelectorAll('span');
+  stars.forEach(function(star, s) {
+    star.textContent = s < newScore ? '⭐' : '☆';
+    star.style.color = s < newScore ? 'var(--orange)' : 'var(--border)';
+  });
+  var scoreVal = document.getElementById('score-val-' + itemIdx);
+  if (scoreVal) {
+    scoreVal.textContent = newScore;
+    var itemColor = newScore >= 5 ? 'var(--green)' : newScore >= 3 ? 'var(--orange)' : 'var(--red)';
+    scoreVal.style.color = itemColor;
+  }
+}
+
+function saveInspectQuality(roomNum) {
+  var items = ['卧室整洁','卫生间清洁','地面干净','家电完好','床上用品','门窗检查'];
+  var scores = [];
+  items.forEach(function(_, i) {
+    var starRow = document.getElementById('star-row-' + i);
+    scores.push(starRow ? parseInt(starRow.dataset.score) : 5);
+  });
+  var avg = (scores.reduce(function(s,v){return s+v;},0) / scores.length).toFixed(1);
+  var today = new Date().toISOString().slice(0,10);
+  if (!inspectScoreHistory[roomNum]) inspectScoreHistory[roomNum] = [];
+  inspectScoreHistory[roomNum].push({date:today, scores:scores, avg:parseFloat(avg)});
+  var newAvg = parseFloat(avg);
+  var rateColor = newAvg >= 4.5 ? 'var(--green)' : newAvg >= 3.5 ? 'var(--orange)' : 'var(--red)';
+  showToast('✅ 房间 ' + roomNum + ' 评分已保存（综合：' + avg + '分）', 'success');
+  var modal = document.getElementById('modal-inspect-quality');
+  if (modal) modal.remove();
+  if (typeof renderHousekeepingGrid === 'function') renderHousekeepingGrid();
+}
+
+function openInspectTrendModal(roomNum) {
+  var old = document.getElementById('modal-inspect-trend');
+  if (old) old.remove();
+  var history = inspectScoreHistory[roomNum] || [];
+  if (history.length === 0) {
+    showToast('房间 ' + roomNum + ' 暂无历史评分记录', 'info');
+    return;
+  }
+  var items = ['卧室整洁','卫生间清洁','地面干净','家电完好','床上用品','门窗检查'];
+  var maxAvg = Math.max.apply(null, history.map(function(h){return h.avg;}));
+  var minAvg = Math.min.apply(null, history.map(function(h){return h.avg;}));
+  var avgAll = (history.reduce(function(s,h){return s+h.avg;},0) / history.length).toFixed(1);
+
+  var html = '<div class="modal-overlay" id="modal-inspect-trend" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999;padding:20px;">';
+  html += '<div class="modal" style="width:580px;max-height:85vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">';
+  html += '<div style="font-size:16px;font-weight:700;">📈 评分历史趋势 - 房间 ' + roomNum + '</div>';
+  html += '<button onclick="document.getElementById(\'modal-inspect-trend\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:0 24px 20px;">';
+  // 统计摘要
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">';
+  html += '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">平均分</div><div style="font-size:20px;font-weight:700;color:var(--blue);">' + avgAll + '</div></div>';
+  html += '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">最高分</div><div style="font-size:20px;font-weight:700;color:var(--green);">' + maxAvg.toFixed(1) + '</div></div>';
+  html += '<div style="padding:10px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">最低分</div><div style="font-size:20px;font-weight:700;color:var(--red);">' + minAvg.toFixed(1) + '</div></div></div>';
+  // 迷你趋势图
+  var chartHeight = 100;
+  var maxH = 5;
+  html += '<div style="margin-bottom:16px;"><div style="font-size:13px;font-weight:600;margin-bottom:10px;">📊 ' + history.length + '次检查综合评分趋势</div>';
+  html += '<div style="display:flex;align-items:flex-end;gap:12px;height:' + chartHeight + 'px;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">';
+  history.forEach(function(h, i) {
+    var barH = Math.round((h.avg / maxH) * chartHeight * 0.85);
+    var barColor = h.avg >= 4.5 ? 'var(--green)' : h.avg >= 3.5 ? 'var(--orange)' : 'var(--red)';
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">';
+    html += '<div style="font-size:11px;font-weight:700;color:' + barColor + ';">' + h.avg + '</div>';
+    html += '<div style="width:100%;height:' + barH + 'px;background:' + barColor + ';border-radius:4px 4px 0 0;min-height:4px;"></div>';
+    html += '<div style="font-size:9px;color:var(--text-muted);">' + h.date.slice(5) + '</div></div>';
+  });
+  html += '</div></div>';
+  // 历史明细
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">📋 历史评分明细</div>';
+  html += '<div style="max-height:200px;overflow-y:auto;">';
+  history.slice().reverse().forEach(function(h, i) {
+    var rateColor = h.avg >= 4.5 ? 'var(--green)' : h.avg >= 3.5 ? 'var(--orange)' : 'var(--red)';
+    html += '<div style="padding:10px 12px;background:var(--bg);border-radius:8px;margin-bottom:8px;">';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;font-weight:600;">📅 ' + h.date + '</span><span style="font-size:14px;font-weight:700;color:' + rateColor + ';">' + h.avg + ' 分</span></div>';
+    html += '<div style="display:flex;gap:4px;flex-wrap:wrap;">';
+    items.forEach(function(item, si) {
+      var sc = h.scores[si] || 5;
+      var scColor = sc >= 5 ? 'var(--green)' : sc >= 3 ? 'var(--orange)' : 'var(--red)';
+      html += '<span style="font-size:10px;padding:2px 6px;background:white;border:1px solid var(--border);border-radius:4px;color:' + scColor + ';">' + sc + '</span>';
+    });
+    html += '</div></div>';
+  });
+  html += '</div></div>';
+  html += '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-inspect-trend\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+
+// ============================================================
+// 改进5: 报表订阅功能完整实现
+// 理由：报表页面"报表订阅"按钮已存在，但 openReportSubscribeModal 函数缺失，点击无任何响应。
+//       本改进实现：订阅配置弹窗（周期/格式/推送方式/接收人）+ 订阅列表管理（增删改查）
+// ============================================================
+
+var reportSubscriptionList = [
+  {id:'SUB-001', name:'每日经营日报', period:'daily', time:'09:00', format:'pdf', methods:['feishu','email'], recipients:'hugo@company.com', enabled:true, lastRun:'2026-03-27 09:00', nextRun:'2026-03-28 09:00'},
+  {id:'SUB-002', name:'每周营收汇总', period:'weekly', time:'周一 08:00', format:'excel', methods:['email'], recipients:'manager@company.com', enabled:true, lastRun:'2026-03-24 08:00', nextRun:'2026-03-31 08:00'},
+  {id:'SUB-003', name:'月度报表（自动）', period:'monthly', time:'每月1日 09:00', format:'pdf', methods:['email'], recipients:'finance@company.com', enabled:false, lastRun:'2026-03-01 09:00', nextRun:'-'}
+];
+
+function openReportSubscribeModal() {
+  var old = document.getElementById('modal-report-subscribe');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-report-subscribe" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">';
+  html += '<div><div style="font-size:16px;font-weight:700;">📬 报表订阅管理</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">配置定期报表推送计划，自动推送到飞书/邮箱</div></div>';
+  html += '<button onclick="document.getElementById(\'modal-report-subscribe\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  // 新增订阅表单
+  html += '<div style="padding:16px 24px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">➕ 新增订阅任务</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">';
+  html += '<div class="form-group" style="margin:0;"><label class="form-label" style="font-size:11px;">订阅名称</label><input type="text" class="form-input" id="sub-name" placeholder="如：每日经营日报" style="padding:6px 10px;font-size:12px;"></div>';
+  html += '<div class="form-group" style="margin:0;"><label class="form-label" style="font-size:11px;">发送周期</label><select class="form-select" id="sub-period" style="padding:6px 10px;font-size:12px;"><option value="daily">每日</option><option value="weekly">每周</option><option value="monthly">每月</option></select></div>';
+  html += '<div class="form-group" style="margin:0;"><label class="form-label" style="font-size:11px;">发送时间</label><input type="time" class="form-input" id="sub-time" value="09:00" style="padding:6px 10px;font-size:12px;"></div>';
+  html += '<div class="form-group" style="margin:0;"><label class="form-label" style="font-size:11px;">报告格式</label><select class="form-select" id="sub-format" style="padding:6px 10px;font-size:12px;"><option value="pdf">PDF</option><option value="excel">Excel</option><option value="both">PDF+Excel</option></select></div>';
+  html += '<div class="form-group" style="margin:0;"><label class="form-label" style="font-size:11px;">推送方式</label><select class="form-select" id="sub-methods" style="padding:6px 10px;font-size:12px;"><option value="feishu">飞书消息</option><option value="email">邮件</option><option value="both">飞书+邮件</option></select></div>';
+  html += '<div class="form-group" style="margin:0;"><label class="form-label" style="font-size:11px;">接收人</label><input type="text" class="form-input" id="sub-recipients" placeholder="邮箱或飞书账号" style="padding:6px 10px;font-size:12px;"></div>';
+  html += '</div>';
+  html += '<div style="display:flex;align-items:center;gap:8px;"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;"><input type="checkbox" id="sub-enabled" checked style="accent-color:var(--blue);width:15px;height:15px;">立即启用</label>';
+  html += '<button class="action-btn primary" onclick="addReportSubscription()" style="padding:6px 14px;background:var(--blue);color:white;border:none;font-size:12px;margin-left:auto;">➕ 添加订阅</button></div>';
+  html += '</div>';
+  // 订阅列表
+  html += '<div style="padding:0;overflow-y:auto;flex:1;">';
+  html += '<table class="table" style="margin:0;"><thead><tr><th>订阅名称</th><th>周期</th><th>时间</th><th>格式</th><th>推送方式</th><th>接收人</th><th>上次发送</th><th>下次发送</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+  reportSubscriptionList.forEach(function(sub, idx) {
+    var methodLabels = sub.methods.map(function(m){return m === 'feishu' ? '飞书' : '邮件';}).join('+');
+    var statusBadge = sub.enabled ? '<span class="tbadge green">启用</span>' : '<span class="tbadge gray">已暂停</span>';
+    html += '<tr>' +
+      '<td style="font-weight:600;font-size:12px;">' + sub.name + '</td>' +
+      '<td style="font-size:11px;">' + (sub.period === 'daily' ? '每日' : sub.period === 'weekly' ? '每周' : '每月') + '</td>' +
+      '<td style="font-size:11px;">' + sub.time + '</td>' +
+      '<td style="font-size:11px;">' + sub.format.toUpperCase() + '</td>' +
+      '<td style="font-size:11px;">' + methodLabels + '</td>' +
+      '<td style="font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + sub.recipients + '">' + sub.recipients + '</td>' +
+      '<td style="font-size:10px;color:var(--text-muted);">' + sub.lastRun + '</td>' +
+      '<td style="font-size:10px;color:var(--blue);">' + sub.nextRun + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td><button class="action-btn small" onclick="toggleReportSubscription(' + idx + ')" style="padding:2px 6px;font-size:10px;">' + (sub.enabled ? '⏸ 暂停' : '▶ 启用') + '</button> ' +
+      '<button class="action-btn small red" onclick="deleteReportSubscription(' + idx + ')" style="padding:2px 6px;font-size:10px;">🗑 删除</button></td></tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">';
+  html += '<div style="font-size:11px;color:var(--text-muted);">共 ' + reportSubscriptionList.length + ' 个订阅任务 · ' + reportSubscriptionList.filter(function(s){return s.enabled;}).length + ' 个启用中</div>';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-report-subscribe\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function addReportSubscription() {
+  var name = document.getElementById('sub-name').value.trim();
+  var period = document.getElementById('sub-period').value;
+  var time = document.getElementById('sub-time').value;
+  var format = document.getElementById('sub-format').value;
+  var methods = document.getElementById('sub-methods').value;
+  var recipients = document.getElementById('sub-recipients').value.trim();
+  var enabled = document.getElementById('sub-enabled').checked;
+  if (!name || !recipients) { showToast('请填写订阅名称和接收人', 'error'); return; }
+  var methodList = methods === 'both' ? ['feishu','email'] : [methods];
+  var now = new Date();
+  var next;
+  if (period === 'daily') { var d = new Date(now); d.setDate(d.getDate()+1); next = d.toISOString().slice(0,10) + ' ' + time; }
+  else if (period === 'weekly') { var d = new Date(now); d.setDate(d.getDate()+7); next = d.toISOString().slice(0,10) + ' ' + time; }
+  else { var d = new Date(now); d.setMonth(d.getMonth()+1); d.setDate(1); next = d.toISOString().slice(0,10) + ' ' + time; }
+  var newSub = {
+    id: 'SUB-' + String(reportSubscriptionList.length + 1).padStart(3,'0'),
+    name: name, period: period, time: time, format: format,
+    methods: methodList, recipients: recipients, enabled: enabled,
+    lastRun: '-', nextRun: next
+  };
+  reportSubscriptionList.push(newSub);
+  showToast('✅ 订阅任务「' + name + '」已添加', 'success');
+  openReportSubscribeModal();
+}
+
+function toggleReportSubscription(idx) {
+  var sub = reportSubscriptionList[idx];
+  if (!sub) return;
+  sub.enabled = !sub.enabled;
+  showToast(sub.enabled ? '✅ 订阅「' + sub.name + '」已启用' : '⏸ 订阅「' + sub.name + '」已暂停', 'info');
+  openReportSubscribeModal();
+}
+
+function deleteReportSubscription(idx) {
+  var sub = reportSubscriptionList[idx];
+  if (!sub) return;
+  if (!confirm('确定删除订阅「' + sub.name + '」？')) return;
+  reportSubscriptionList.splice(idx, 1);
+  showToast('🗑 订阅已删除', 'info');
+  openReportSubscribeModal();
+}
+
+
+// ============================================================
+// 【增强】在退房相关页面添加入口：退房历史记录按钮
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    // 在退房页面添加入口
+    var checkoutPageHeader = document.querySelector('#page-checkout .page-header, #page-settlement .page-header');
+    if (checkoutPageHeader && !document.getElementById('checkout-history-btn')) {
+      var btn = document.createElement('button');
+      btn.id = 'checkout-history-btn';
+      btn.className = 'action-btn';
+      btn.style.cssText = 'padding:6px 14px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);font-size:12px;margin-left:8px;';
+      btn.textContent = '📋 退房历史';
+      btn.onclick = function() { openCheckoutHistoryModal(); };
+      checkoutPageHeader.appendChild(btn);
+    }
+    // 在报表页面确认订阅按钮已连接
+    var rptHeader = document.querySelector('#page-report .page-header');
+    if (rptHeader) {
+      var subBtn = rptHeader.querySelector('[onclick*="ReportSubscribe"]');
+      if (subBtn) subBtn.setAttribute('onclick', 'openReportSubscribeModal()');
+    }
+  }, 800);
+});
+
+
 </script>
 </body>
 </html>
