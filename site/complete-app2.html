@@ -2158,8 +2158,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     <!-- Page: Room Detail -->
     <div id="page-room-detail" class="page">
       <div class="page-header">
-        <div class="page-title">🚪 房间详情 - 301</div>
-        <div class="page-sub">亲子间 · 2层 · 入住中</div>
+        <div class="page-title" id="rd-page-title">🚪 房间详情 - --</div>
+        <div class="page-sub" id="rd-page-sub">--</div>
       </div>
       <div class="tabs" style="margin-bottom:16px;" id="room-detail-tabs">
         <div class="tab active" id="room-tab-info" onclick="switchRoomDetailTab('info', this)">房间信息</div>
@@ -15231,7 +15231,114 @@ function showPage(name) {
   if (name === 'building') {
     setTimeout(function() { initBuilding3D(); renderBldOccupancyTrend(); }, 100);
   }
+  // 【改进1】切换到房间详情页时，如果指定了房间号则加载对应数据
+  if (name === 'room-detail' && window._targetRoom) {
+    setTimeout(function() { loadRoomDetailData(window._targetRoom); }, 50);
+  }
 }
+
+// 【改进1】全局房间详情数据加载函数（支持从首页/楼层平面图/设备页等任意入口点击房间卡片进入）
+window._targetRoom = null;
+var currentRoomDetailData = null; // 当前房间详情数据缓存
+
+// 房间基础数据池（从首页房间卡片中提取的关键数据）
+var roomDetailPool = {
+  '301': { type: '亲子间', floor: '3层', status: '入住', lockStatus: '已反锁', power: '空调开启', keys: '2张', guest: '张三', device: '领握LH-807', uuid: 'A84F1AF2-xxxx-xxxx-xxxx-xxx', battery: '88%', signal: '满格', lastSync: '2026-03-26 10:32:08' },
+  '302': { type: '亲子间', floor: '3层', status: '空房', lockStatus: '已反锁', power: '未取电', keys: '0张', guest: null, device: '领握LH-807', uuid: 'B95G2BG3-yyyy-yyyy-yyyy-yyy', battery: '75%', signal: '满格', lastSync: '2026-03-26 09:15:00' },
+  '303': { type: '亲子间', floor: '3层', status: '离线', lockStatus: '设备离线', power: '未知', keys: '离线10h+', guest: null, device: '领握LH-807', uuid: 'C06H3CH4-zzzz-zzzz-zzzz-zzz', battery: '12%', signal: '无', lastSync: '2026-03-26 11:05:36' },
+  '304': { type: '亲子间', floor: '3层', status: '入住', lockStatus: '已反锁', power: '空调节能', keys: '3张', guest: '李四', device: '领握LH-807', uuid: 'D17I4DI5-aaaa-aaaa-aaaa-aaa', battery: '92%', signal: '满格', lastSync: '2026-03-27 08:00:00' },
+  '305': { type: '大床房', floor: '3层', status: '低电量', lockStatus: '电量28%', power: '未取电', keys: '请换电池', guest: null, device: '领握LH-807', uuid: 'E28J5EJ6-bbbb-bbbb-bbbb-bbb', battery: '28%', signal: '良', lastSync: '2026-03-27 07:30:00' },
+  '201': { type: '大床房', floor: '2层', status: '入住', lockStatus: '已反锁', power: '空调开启', keys: '2张', guest: '王五', device: '领握LH-807', uuid: 'F39K6FK7-cccc-cccc-cccc-ccc', battery: '81%', signal: '满格', lastSync: '2026-03-27 06:45:00' },
+  '202': { type: '大床房', floor: '2层', status: '空房', lockStatus: '已反锁', power: '未取电', keys: '0张', guest: null, device: '领握LH-807', uuid: 'G40L7GL8-dddd-dddd-dddd-ddd', battery: '65%', signal: '满格', lastSync: '2026-03-26 20:00:00' },
+  '203': { type: '大床房', floor: '2层', status: '入住', lockStatus: '已反锁', power: '空调节能', keys: '1张', guest: '赵六', device: '领握LH-807', uuid: 'H51M8HM9-eeee-eeee-eeee-eee', battery: '55%', signal: '良', lastSync: '2026-03-27 05:30:00' }
+};
+
+function loadRoomDetailData(roomNum) {
+  if (!roomNum) return;
+  window._targetRoom = roomNum;
+  var data = roomDetailPool[roomNum];
+  if (!data) {
+    // 尝试从首页房间卡片动态获取
+    var roomCards = document.querySelectorAll('.room-card');
+    roomCards.forEach(function(card) {
+      var roomEl = card.querySelector('.room-num');
+      if (roomEl && roomEl.textContent.trim() === roomNum) {
+        var typeEl = card.querySelector('.room-type');
+        var badgeEl = card.querySelector('.room-badge');
+        data = {
+          type: typeEl ? typeEl.textContent.trim() : '标准间',
+          floor: roomNum.charAt(0) + '层',
+          status: badgeEl ? badgeEl.textContent.trim() : '空房',
+          lockStatus: '已反锁',
+          power: '未知',
+          keys: '0张',
+          guest: null,
+          device: '领握LH-807',
+          uuid: 'xxxx-xxxx-xxxx-xxxx',
+          battery: '50%',
+          signal: '良',
+          lastSync: new Date().toLocaleString('zh-CN')
+        };
+      }
+    });
+    if (!data) data = { type: '标准间', floor: roomNum.charAt(0) + '层', status: '空房', lockStatus: '已反锁', power: '未知', keys: '0张', guest: null, device: '领握LH-807', uuid: 'xxxx-xxxx-xxxx-xxxx', battery: '50%', signal: '良', lastSync: new Date().toLocaleString('zh-CN') };
+  }
+  currentRoomDetailData = data;
+  
+  // 更新页面标题
+  var titleEl = document.getElementById('rd-page-title');
+  var subEl = document.getElementById('rd-page-sub');
+  if (titleEl) titleEl.textContent = '🚪 房间详情 - ' + roomNum;
+  if (subEl) subEl.textContent = data.type + ' · ' + data.floor + ' · ' + (data.guest ? '入住中' : data.status);
+  
+  // 更新房间信息Tab
+  var infoItems = document.querySelectorAll('#room-content-info .info-item .value');
+  // 房间信息
+  if (infoItems[0]) infoItems[0].textContent = roomNum;
+  if (infoItems[1]) infoItems[1].textContent = data.type;
+  if (infoItems[2]) infoItems[2].textContent = data.floor;
+  if (infoItems[3]) {
+    infoItems[3].textContent = data.guest ? '入住中 - ' + data.guest : data.status;
+    infoItems[3].style.color = data.guest ? 'var(--blue)' : data.status === '空房' ? 'var(--green)' : data.status === '离线' ? 'var(--red)' : 'var(--orange)';
+  }
+  
+  // 更新门锁信息Tab
+  var lockItems = document.querySelectorAll('#room-content-info .detail-card:nth-child(2) .info-item .value');
+  if (lockItems[0]) lockItems[0].textContent = data.device;
+  if (lockItems[1]) lockItems[1].textContent = data.uuid;
+  if (lockItems[2]) {
+    var isOnline = data.status !== '离线' && data.status !== '低电量';
+    lockItems[2].textContent = isOnline ? '🟢 在线' : '🔴 ' + data.status;
+    lockItems[2].className = 'value ' + (isOnline ? 'green' : 'red');
+  }
+  if (lockItems[3]) {
+    var bat = parseInt(data.battery) || 50;
+    lockItems[3].textContent = data.battery;
+    lockItems[3].className = 'value ' + (bat > 50 ? 'green' : bat > 20 ? 'orange' : 'red');
+  }
+  if (lockItems[4]) {
+    lockItems[4].textContent = data.signal;
+    lockItems[4].className = 'value ' + (data.signal === '满格' ? 'green' : data.signal === '良' ? '' : 'orange');
+  }
+  if (lockItems[5]) lockItems[5].textContent = data.lastSync;
+  
+  // 更新钥匙信息Tab的入住人
+  var keyInfoItems = document.querySelectorAll('#room-content-keys .detail-card .info-grid');
+  if (data.guest) {
+    // 有入住人时显示钥匙信息
+  }
+  
+  showToast('已加载房间 ' + roomNum + ' 的详情', 'info');
+}
+
+// 修改showPage支持传入参数：showPage('room-detail', '301')
+var _origShowPage = showPage;
+showPage = function(name, param) {
+  if (name === 'room-detail') {
+    window._targetRoom = param || window._targetRoom || '301';
+  }
+  return _origShowPage.apply(this, arguments);
+};
 
 // ======= 【改进v3-5】全局键盘快捷键（提升操作效率） =======
 document.addEventListener('keydown', function(e) {
@@ -17907,7 +18014,8 @@ function doQuickClean() {
 }
 function goToRoomDetail() {
   closeModal('room-quick');
-  showPage('room-detail');
+  var roomNum = currentRoomData ? currentRoomData.room : (window._currentRoomNum || '301');
+  showPage('room-detail', roomNum);
 }
 
 // ======= 【改进5】房间快速操作面板：生成临时密码功能 =======
@@ -40035,6 +40143,460 @@ function submitAddShiftToSchedule() {
   if (typeof renderScheduleCalendar === 'function') renderScheduleCalendar();
   if (typeof updateScheduleStats === 'function') updateScheduleStats();
   showToast('✅ 班次已添加', 'success');
+}
+
+// ============================================================
+// 【物联后台V4迭代】5项功能性改进
+// ============================================================
+
+// ========== 【改进1】房间详情页动态化（从任意入口点击房间卡片进入对应房间） ==========
+// 更新首页房间卡片的onclick，传递房间号参数
+var _origShowPage_v4 = showPage;
+// 首页房间卡片点击时将房间号存入全局变量
+window._currentRoomNum = '301';
+
+// 修改openRoomQuickPanel使其支持传入房间号
+var _origOpenRoomQuickPanel = openRoomQuickPanel;
+openRoomQuickPanel = function(room, type, status, lock, power, keys) {
+  window._currentRoomNum = room;
+  window._targetRoom = room;
+  // 如果有钥匙信息面板，更新其"查看详情"按钮
+  if (typeof loadRoomDetailData === 'function') {
+    var detailBtn = document.getElementById('rqp-detail-btn');
+    if (detailBtn) {
+      detailBtn.setAttribute('onclick', 'closeModal("room-quick");showPage("room-detail","' + room + '");');
+    }
+  }
+  if (_origOpenRoomQuickPanel) _origOpenRoomQuickPanel(room, type, status, lock, power, keys);
+};
+
+// 修改showPage支持showPage('room-detail', '302')方式调用
+showPage = function(name, roomNum) {
+  if (name === 'room-detail') {
+    window._targetRoom = roomNum || window._targetRoom || '301';
+    window._currentRoomNum = window._targetRoom;
+  }
+  return _origShowPage_v4.apply(this, [name]);
+};
+
+// 为首页房间卡片添加data-room属性，便于动态查找
+document.addEventListener('DOMContentLoaded', function() {
+  // 给首页房间快速操作面板的"查看详情"按钮添加跳转功能
+  var existingBtn = document.getElementById('rqp-detail-btn-raw');
+  if (!existingBtn && document.querySelector('#modal-room-quick .detail-card')) {
+    var cards = document.querySelectorAll('#modal-room-quick .detail-card');
+    cards.forEach(function(card) {
+      var existing = card.querySelector('button[onclick*="showPage"]');
+      if (!existing) {
+        var detailBtn = document.createElement('button');
+        detailBtn.className = 'action-btn';
+        detailBtn.style.marginTop = '8px';
+        detailBtn.style.width = '100%';
+        detailBtn.textContent = '🏠 查看房间详情';
+        detailBtn.id = 'rqp-detail-btn-raw';
+        detailBtn.onclick = function() {
+          closeModal('room-quick');
+          showPage('room-detail', window._currentRoomNum || '301');
+        };
+        card.appendChild(detailBtn);
+      }
+    });
+  }
+});
+
+// ========== 【改进2】工单状态完整流转（接受→处理中→完成/转交，含状态机校验） ==========
+// 工单状态机：pending -> accepted -> processing -> done | transferred | rejected
+var woStateFlow = {
+  'pending': { next: ['accepted'], label: '待接受', color: 'var(--orange)' },
+  'accepted': { next: ['processing', 'transferred'], label: '已接受', color: 'var(--blue)' },
+  'processing': { next: ['done', 'rejected', 'transferred'], label: '处理中', color: 'var(--purple)' },
+  'done': { next: [], label: '已完成', color: 'var(--green)' },
+  'rejected': { next: [], label: '已拒单', color: 'var(--red)' },
+  'transferred': { next: ['accepted'], label: '已转交', color: 'var(--orange)' }
+};
+
+// 工单状态流转函数（状态机）
+function canTransitionWoStatus(from, to) {
+  var flow = woStateFlow[from];
+  if (!flow) return false;
+  return flow.next.includes(to);
+}
+
+function transitionWoStatus(woIdx, newStatus, handler, remark) {
+  var w = workorderList[woIdx];
+  if (!w) return false;
+  var oldStatus = w.status;
+  // 状态机校验
+  if (oldStatus === 'done' || oldStatus === 'rejected') {
+    showToast('⚠️ 工单[' + w.id + ']已[' + woStateFlow[oldStatus].label + ']，不能再变更状态', 'error');
+    return false;
+  }
+  if (!canTransitionWoStatus(oldStatus, newStatus)) {
+    var allowed = woStateFlow[oldStatus].next.map(function(s){ return woStateFlow[s].label; }).join('、');
+    showToast('⚠️ 工单[' + w.id + ']当前为[' + woStateFlow[oldStatus].label + ']，可转换状态：' + allowed, 'error');
+    return false;
+  }
+  w.status = newStatus;
+  if (handler) w.handler = handler;
+  if (remark) w.remark = remark;
+  w.updateTime = '今天 ' + new Date().toTimeString().slice(0,5);
+  if (newStatus === 'done') w.completeTime = '今天 ' + new Date().toTimeString().slice(0,5);
+  var statusLabels = {pending:'待接受', accepted:'已接受', processing:'处理中', done:'已完成', rejected:'已拒单', transferred:'已转交'};
+  showToast('✅ 工单[' + w.id + ']状态已更新：' + woStateFlow[oldStatus].label + ' → ' + statusLabels[newStatus], 'success');
+  renderWorkorderTable();
+  return true;
+}
+
+// 工单接受函数
+function acceptWorkorder(woIdx) {
+  var w = workorderList[woIdx];
+  if (w.status !== 'pending') {
+    showToast('⚠️ 只有[待接受]状态的工单才能接受', 'error');
+    return;
+  }
+  // 弹出接受确认（可选择处理人）
+  var html = '<div class="modal-overlay" id="modal-wo-accept" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:400px;"><div class="modal-header"><div class="modal-title">✅ 接受工单</div><button class="modal-close" onclick="document.getElementById(\'modal-wo-accept\').remove()">✕</button></div>' +
+    '<div class="modal-body"><div style="background:var(--blue-bg);border-radius:8px;padding:12px;margin-bottom:16px;"><div style="font-size:13px;font-weight:600;">' + w.id + '</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + w.content + '</div></div>' +
+    '<div class="form-group"><label class="form-label">指定处理人</label><select class="form-select" id="wos-assign"><option value="赵飞">赵飞（前厅经理）</option><option value="周敏">周敏（前厅接待）</option><option value="吴倩">吴倩（客房主管）</option><option value="郑强">郑强（清洁人员）</option><option value="王工">王工（工程师）</option></select></div>' +
+    '<div class="form-group"><label class="form-label">备注</label><input type="text" class="form-input" id="wos-remark" placeholder="接受工单备注（选填）"></div></div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-accept\').remove()">取消</button><button class="modal-btn primary" onclick="doAcceptWorkorder(' + woIdx + ')">✅ 确认接受</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doAcceptWorkorder(woIdx) {
+  var handler = document.getElementById('wos-assign').value;
+  var remark = document.getElementById('wos-remark').value;
+  var w = workorderList[woIdx];
+  w.handler = handler;
+  w.status = 'accepted';
+  w.acceptTime = '今天 ' + new Date().toTimeString().slice(0,5);
+  if (remark) w.remark = remark;
+  showToast('✅ 工单[' + w.id + ']已被[' + handler + ']接受', 'success');
+  renderWorkorderTable();
+  var modal = document.getElementById('modal-wo-accept');
+  if (modal) modal.remove();
+}
+
+// 工单转交函数
+function transferWorkorder(woIdx) {
+  var w = workorderList[woIdx];
+  if (w.status === 'done' || w.status === 'rejected') {
+    showToast('⚠️ 已完成的工单不能转交', 'error');
+    return;
+  }
+  var html = '<div class="modal-overlay" id="modal-wo-transfer" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:400px;"><div class="modal-header"><div class="modal-title">↪️ 转交工单</div><button class="modal-close" onclick="document.getElementById(\'modal-wo-transfer\').remove()">✕</button></div>' +
+    '<div class="modal-body"><div style="background:var(--orange-bg);border-radius:8px;padding:12px;margin-bottom:16px;"><div style="font-size:13px;font-weight:600;">' + w.id + '</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + w.content + '</div><div style="font-size:11px;color:var(--orange);margin-top:4px;">当前处理人：' + (w.handler || '未分配') + '</div></div>' +
+    '<div class="form-group"><label class="form-label">转交给</label><select class="form-select" id="wot-target"><option value="赵飞">赵飞（前厅经理）</option><option value="周敏">周敏（前厅接待）</option><option value="吴倩">吴倩（客房主管）</option><option value="郑强">郑强（清洁人员）</option><option value="王工">王工（工程师）</option></select></div>' +
+    '<div class="form-group"><label class="form-label">转交原因</label><textarea class="form-textarea" id="wot-reason" placeholder="请说明转交原因..."></textarea></div></div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-transfer\').remove()">取消</button><button class="modal-btn primary" onclick="doTransferWorkorder(' + woIdx + ')">✅ 确认转交</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doTransferWorkorder(woIdx) {
+  var target = document.getElementById('wot-target').value;
+  var reason = document.getElementById('wot-reason').value;
+  var w = workorderList[woIdx];
+  var oldHandler = w.handler || '未分配';
+  w.status = 'transferred';
+  w.transferTo = target;
+  w.transferReason = reason;
+  w.transferTime = '今天 ' + new Date().toTimeString().slice(0,5);
+  w.handler = target;
+  showToast('↪️ 工单[' + w.id + ']已从[' + oldHandler + ']转交给[' + target + ']', 'success');
+  renderWorkorderTable();
+  var modal = document.getElementById('modal-wo-transfer');
+  if (modal) modal.remove();
+}
+
+// 工单拒单函数
+function rejectWorkorder(woIdx) {
+  var w = workorderList[woIdx];
+  if (w.status === 'done' || w.status === 'rejected') {
+    showToast('⚠️ 工单已处理完毕，不能拒单', 'error');
+    return;
+  }
+  var html = '<div class="modal-overlay" id="modal-wo-reject" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:400px;"><div class="modal-header" style="background:var(--red-bg);"><div class="modal-title" style="color:var(--red);">❌ 拒单</div><button class="modal-close" onclick="document.getElementById(\'modal-wo-reject\').remove()">✕</button></div>' +
+    '<div class="modal-body"><div style="background:var(--red-bg);border-radius:8px;padding:12px;margin-bottom:16px;"><div style="font-size:13px;font-weight:600;color:var(--red);">' + w.id + '</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + w.content + '</div></div>' +
+    '<div class="form-group"><label class="form-label">拒单原因 <span class="required">*</span></label><textarea class="form-textarea" id="wor-reason" placeholder="请说明拒单原因（必填）..." style="min-height:80px;"></textarea></div>' +
+    '<div class="form-group"><label class="form-label">后续处理建议</label><input type="text" class="form-input" id="wor-suggest" placeholder="建议转交哪个部门/人员处理"></div></div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-reject\').remove()">取消</button><button class="modal-btn primary" style="background:var(--red);border-color:var(--red);" onclick="doRejectWorkorder(' + woIdx + ')">❌ 确认拒单</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doRejectWorkorder(woIdx) {
+  var reason = document.getElementById('wor-reason').value.trim();
+  if (!reason) { showToast('⚠️ 拒单原因不能为空', 'error'); return; }
+  var w = workorderList[woIdx];
+  w.status = 'rejected';
+  w.rejectReason = reason;
+  w.rejectTime = '今天 ' + new Date().toTimeString().slice(0,5);
+  w.rejectSuggest = document.getElementById('wor-suggest').value;
+  showToast('❌ 工单[' + w.id + ']已被拒单', 'success');
+  renderWorkorderTable();
+  var modal = document.getElementById('modal-wo-reject');
+  if (modal) modal.remove();
+}
+
+// 工单完整状态展示面板（在工单列表每行操作按钮旁显示当前状态流程）
+function getWoActionButtons(woIdx) {
+  var w = workorderList[woIdx];
+  var statusLabels = {pending:'待接受', accepted:'已接受', processing:'处理中', done:'已完成', rejected:'已拒单', transferred:'已转交'};
+  var html = '<span class="tbadge" style="background:' + woStateFlow[w.status].color.replace('var(--', '').replace(')', '-bg;').split(';')[0] + ';color:' + woStateFlow[w.status].color + ';">' + statusLabels[w.status] + '</span>';
+  if (w.status === 'pending') {
+    html += '<button class="action-btn small green" onclick="acceptWorkorder(' + woIdx + ')" style="margin-left:4px;padding:2px 6px;font-size:10px;">接受</button>';
+    html += '<button class="action-btn small red" onclick="rejectWorkorder(' + woIdx + ')" style="margin-left:2px;padding:2px 6px;font-size:10px;">拒单</button>';
+  } else if (w.status === 'accepted' || w.status === 'processing') {
+    html += '<button class="action-btn small orange" onclick="transferWorkorder(' + woIdx + ')" style="margin-left:4px;padding:2px 6px;font-size:10px;">转交</button>';
+    if (w.status === 'accepted') {
+      html += '<button class="action-btn small" onclick="transitionWoStatus(' + woIdx + ', \'processing\')" style="margin-left:2px;padding:2px 6px;font-size:10px;">开始处理</button>';
+    }
+    if (w.status === 'processing') {
+      html += '<button class="action-btn small green" onclick="transitionWoStatus(' + woIdx + ', \'done\')" style="margin-left:2px;padding:2px 6px;font-size:10px;">完成</button>';
+    }
+  } else if (w.status === 'transferred') {
+    html += '<button class="action-btn small" onclick="acceptWorkorder(' + woIdx + ')" style="margin-left:4px;padding:2px 6px;font-size:10px;">接受</button>';
+  }
+  return html;
+}
+
+// ========== 【改进3】会员新增/编辑完整表单（支持编辑+完整字段+手机号脱敏） ==========
+// 增强版会员表单弹窗（新增+编辑合并）
+var _editingMemberIdx = -1;
+
+function openMemberFormModalV3(idx) {
+  _editingMemberIdx = typeof idx === 'number' ? idx : -1;
+  var modal = document.getElementById('modal-member-form-v3');
+  if (!modal) {
+    var html = '<div class="modal-overlay hidden" id="modal-member-form-v3">' +
+      '<div class="modal" style="width:520px;max-height:90vh;overflow-y:auto;">' +
+      '<div class="modal-header"><div class="modal-title" id="mf3-title">👤 新增会员</div><button class="modal-close" onclick="closeModal(\'member-form-v3\')">✕</button></div>' +
+      '<div class="modal-body">' +
+      '<input type="hidden" id="mf3-idx" value="-1">' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+      '<div class="form-group"><label class="form-label">姓名 <span class="required">*</span></label><input type="text" class="form-input" id="mf3-name" placeholder="会员姓名"></div>' +
+      '<div class="form-group"><label class="form-label">手机号 <span class="required">*</span></label><input type="tel" class="form-input" id="mf3-phone" placeholder="11位手机号" maxlength="11"></div></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+      '<div class="form-group"><label class="form-label">会员等级</label><select class="form-select" id="mf3-level"><option value="normal">普通会员</option><option value="silver">银卡会员</option><option value="gold">金卡会员</option><option value="vip">VIP钻石</option></select></div>' +
+      '<div class="form-group"><label class="form-label">初始积分</label><input type="number" class="form-input" id="mf3-points" value="0" min="0"></div></div>' +
+      '<div class="form-group"><label class="form-label">身份证号</label><input type="text" class="form-input" id="mf3-idcard" placeholder="18位身份证（选填）" maxlength="18"></div>' +
+      '<div class="form-group"><label class="form-label">生日</label><input type="date" class="form-input" id="mf3-birthday"></div>' +
+      '<div class="form-group"><label class="form-label">邮箱</label><input type="email" class="form-input" id="mf3-email" placeholder="example@domain.com"></div>' +
+      '<div class="form-group"><label class="form-label">地址</label><input type="text" class="form-input" id="mf3-address" placeholder="详细地址（选填）"></div>' +
+      '<div class="form-group" style="grid-column:1/-1;"><label class="form-label">备注</label><textarea class="form-textarea" id="mf3-note" placeholder="会员偏好/特殊需求（选填）" style="min-height:60px;"></textarea></div>' +
+      '<div style="grid-column:1/-1;padding:10px 12px;background:var(--blue-bg);border-radius:8px;font-size:12px;color:var(--blue);">💡 会员积分可抵扣消费，100积分=1元；生日会员可自动收到生日祝福</div>' +
+      '</div>' +
+      '<div class="modal-footer"><button class="modal-btn secondary" onclick="closeModal(\'member-form-v3\')">取消</button><button class="modal-btn primary" onclick="submitMemberFormV3()">💾 保存会员</button></div>' +
+      '</div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+  }
+  // 填充数据
+  if (_editingMemberIdx >= 0 && memberListData && memberListData[_editingMemberIdx]) {
+    var m = memberListData[_editingMemberIdx];
+    document.getElementById('mf3-title').textContent = '✏️ 编辑会员资料';
+    document.getElementById('mf3-idx').value = _editingMemberIdx;
+    document.getElementById('mf3-name').value = m.name || '';
+    document.getElementById('mf3-phone').value = m.phone || '';
+    document.getElementById('mf3-level').value = m.level || 'normal';
+    document.getElementById('mf3-points').value = m.points || 0;
+    document.getElementById('mf3-idcard').value = m.idcard || '';
+    document.getElementById('mf3-birthday').value = m.birthday || '';
+    document.getElementById('mf3-email').value = m.email || '';
+    document.getElementById('mf3-address').value = m.address || '';
+    document.getElementById('mf3-note').value = m.note || '';
+  } else {
+    document.getElementById('mf3-title').textContent = '👤 新增会员';
+    document.getElementById('mf3-idx').value = '-1';
+    ['mf3-name','mf3-phone','mf3-idcard','mf3-birthday','mf3-email','mf3-address','mf3-note'].forEach(function(id){ document.getElementById(id).value = ''; });
+    document.getElementById('mf3-level').value = 'normal';
+    document.getElementById('mf3-points').value = '0';
+  }
+  openModal('member-form-v3');
+}
+
+function submitMemberFormV3() {
+  var name = document.getElementById('mf3-name').value.trim();
+  var phone = document.getElementById('mf3-phone').value.trim();
+  if (!name) { showToast('⚠️ 姓名不能为空', 'error'); return; }
+  if (!phone || !/^1\d{10}$/.test(phone)) { showToast('⚠️ 手机号格式不正确', 'error'); return; }
+  var level = document.getElementById('mf3-level').value;
+  var points = parseInt(document.getElementById('mf3-points').value) || 0;
+  var idcard = document.getElementById('mf3-idcard').value.trim();
+  var birthday = document.getElementById('mf3-birthday').value;
+  var email = document.getElementById('mf3-email').value.trim();
+  var address = document.getElementById('mf3-address').value.trim();
+  var note = document.getElementById('mf3-note').value.trim();
+  var idx = parseInt(document.getElementById('mf3-idx').value);
+  var levelLabels = {normal:'普通', silver:'银卡', gold:'金卡', vip:'VIP钻石'};
+  if (idx >= 0 && memberListData) {
+    memberListData[idx] = {name:name, phone:phone, level:level, points:points, idcard:idcard, birthday:birthday, email:email, address:address, note:note};
+    showToast('✅ 会员[' + name + ']资料已更新', 'success');
+  } else {
+    if (!memberListData) window.memberListData = [];
+    memberListData.push({name:name, phone:phone, level:level, points:points, idcard:idcard, birthday:birthday, email:email, address:address, note:note, joinDate:new Date().toLocaleDateString('zh-CN')});
+    showToast('✅ 新会员[' + name + ']添加成功！手机号：' + phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2'), 'success');
+  }
+  closeModal('member-form-v3');
+  if (typeof renderMemberTable === 'function') renderMemberTable();
+}
+
+// ========== 【改进4】退房结算费用明细完整表单（支持费用拆分+支付方式+优惠抵扣） ==========
+// 退房结算费用明细弹窗（增强）
+var _checkoutRoomData = null;
+
+function openCheckoutFeeDetailModal(room, guest, totalFee, deposit) {
+  _checkoutRoomData = {room: room, guest: guest, totalFee: parseFloat(totalFee) || 0, deposit: parseFloat(deposit) || 0};
+  var html = '<div class="modal-overlay" id="modal-checkout-fee-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:500px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">💰 退房结算费用明细</div><button class="modal-close" onclick="document.getElementById(\'modal-checkout-fee-detail\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="background:var(--blue-bg);border-radius:8px;padding:12px;margin-bottom:16px;text-align:center;">' +
+    '<div style="font-size:12px;color:var(--text-muted);">房间号</div><div style="font-size:24px;font-weight:700;color:var(--blue);">' + room + '</div>' +
+    '<div style="font-size:13px;color:var(--text-light);margin-top:4px;">' + (guest || '访客') + '</div></div>' +
+    '<div style="margin-bottom:16px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;padding-bottom:8px;border-bottom:2px solid var(--border);">📋 费用明细</div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">房费</span><span id="cfd-room-fee">¥' + _checkoutRoomData.totalFee + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">加床费</span><span><input type="number" id="cfd-extrabed" value="0" min="0" style="width:60px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;text-align:right;" onchange="cfdUpdateTotal()"> 元</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">迷你吧消费</span><span><input type="number" id="cfd-minibar" value="0" min="0" style="width:60px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;text-align:right;" onchange="cfdUpdateTotal()"> 元</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">赔偿/损耗</span><span><input type="number" id="cfd-damage" value="0" min="0" style="width:60px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;text-align:right;" onchange="cfdUpdateTotal()"> 元</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">超时费</span><span><input type="number" id="cfd-overtime" value="0" min="0" style="width:60px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;text-align:right;" onchange="cfdUpdateTotal()"> 元</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">其他费用</span><span><input type="number" id="cfd-other" value="0" min="0" style="width:60px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;text-align:right;" onchange="cfdUpdateTotal()"> 元</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">押金（已付）</span><span style="color:var(--green);">-¥' + _checkoutRoomData.deposit + '</span></div>' +
+    '</div>' +
+    '<div style="margin-bottom:16px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;padding-bottom:8px;border-bottom:2px solid var(--border);">💳 优惠与抵扣</div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">会员积分抵扣</span><span><input type="number" id="cfd-points" value="0" min="0" style="width:60px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;text-align:right;" onchange="cfdUpdateTotal()"> 分</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">优惠券抵扣</span><span><input type="number" id="cfd-coupon" value="0" min="0" style="width:60px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;text-align:right;" onchange="cfdUpdateTotal()"> 元</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;"><span style="color:var(--text-muted);">折扣</span><span><select id="cfd-discount" style="padding:2px 6px;border:1px solid var(--border);border-radius:4px;" onchange="cfdUpdateTotal()"><option value="0">无折扣</option><option value="0.9">9折</option><option value="0.8">8折</option><option value="0.7">7折</option></select></span></div>' +
+    '</div>' +
+    '<div style="background:var(--green-bg);border-radius:8px;padding:12px;text-align:center;margin-bottom:12px;">' +
+    '<div style="font-size:12px;color:var(--green);margin-bottom:4px;">应退金额（押金 - 费用 + 优惠）</div>' +
+    '<div style="font-size:28px;font-weight:700;color:var(--green);" id="cfd-final-refund">¥' + (_checkoutRoomData.deposit - _checkoutRoomData.totalFee) + '</div>' +
+    '</div>' +
+    '<div class="form-group"><label class="form-label">支付方式</label><select class="form-select" id="cfd-pay-method"><option value="wechat">微信支付</option><option value="alipay">支付宝</option><option value="cash">现金</option><option value="card">银行卡</option></select></div>' +
+    '<div class="form-group"><label class="form-label">结算备注</label><input type="text" class="form-input" id="cfd-remark" placeholder="备注信息（选填）"></div>' +
+    '</div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-checkout-fee-detail\').remove()">取消</button><button class="modal-btn primary" onclick="submitCheckoutFeeDetail()">💰 确认结算</button></div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function cfdUpdateTotal() {
+  if (!_checkoutRoomData) return;
+  var roomFee = _checkoutRoomData.totalFee;
+  var deposit = _checkoutRoomData.deposit;
+  var extrabed = parseFloat(document.getElementById('cfd-extrabed').value) || 0;
+  var minibar = parseFloat(document.getElementById('cfd-minibar').value) || 0;
+  var damage = parseFloat(document.getElementById('cfd-damage').value) || 0;
+  var overtime = parseFloat(document.getElementById('cfd-overtime').value) || 0;
+  var other = parseFloat(document.getElementById('cfd-other').value) || 0;
+  var points = parseFloat(document.getElementById('cfd-points').value) || 0;
+  var coupon = parseFloat(document.getElementById('cfd-coupon').value) || 0;
+  var discount = parseFloat(document.getElementById('cfd-discount').value) || 1;
+  var totalCost = (roomFee + extrabed + minibar + damage + overtime + other) * discount;
+  var totalDeduct = points / 100 + coupon;
+  var finalRefund = deposit - totalCost + totalDeduct;
+  var refundEl = document.getElementById('cfd-final-refund');
+  if (refundEl) {
+    refundEl.textContent = '¥' + (finalRefund >= 0 ? '+' : '') + finalRefund.toFixed(2);
+    refundEl.style.color = finalRefund >= 0 ? 'var(--green)' : 'var(--red)';
+  }
+}
+
+function submitCheckoutFeeDetail() {
+  if (!_checkoutRoomData) return;
+  var payMethod = document.getElementById('cfd-pay-method').value;
+  var remark = document.getElementById('cfd-remark').value;
+  var refundText = document.getElementById('cfd-final-refund').textContent;
+  var methodLabels = {wechat:'微信支付', alipay:'支付宝', cash:'现金', card:'银行卡'};
+  showToast('💰 结算完成！房间[' + _checkoutRoomData.room + ']退房结算' + refundText + '，支付方式：' + methodLabels[payMethod], 'success');
+  if (remark) showToast('📝 备注：' + remark, 'info');
+  var modal = document.getElementById('modal-checkout-fee-detail');
+  if (modal) modal.remove();
+  // 触发退房成功后刷新首页
+  if (typeof refreshHomeData === 'function') refreshHomeData();
+}
+
+// ========== 【改进5】楼栋管理完整CRUD（新增/编辑/删除楼栋+楼层数+房间数） ==========
+var buildingListData = [
+  {id:'B01', name:'1号楼', floors:3, rooms:8, status:'active', addr:'北京市朝阳区某路1号'},
+  {id:'B02', name:'2号楼', floors:2, rooms:5, status:'active', addr:'北京市朝阳区某路2号'},
+  {id:'B03', name:'3号楼', floors:1, rooms:3, status:'inactive', addr:'北京市朝阳区某路3号'}
+];
+
+function openBuildingFormModalV2(idx) {
+  var isEdit = typeof idx === 'number' && idx >= 0;
+  var b = isEdit ? buildingListData[idx] : {name:'', floors:1, rooms:4, status:'active', addr:''};
+  var html = '<div class="modal-overlay" id="modal-building-form-v3" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:460px;"><div class="modal-header"><div class="modal-title">' + (isEdit ? '✏️ 编辑楼栋' : '🏢 新增楼栋') + '</div><button class="modal-close" onclick="document.getElementById(\'modal-building-form-v3\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<input type="hidden" id="bld3-idx" value="' + (isEdit ? idx : -1) + '">' +
+    '<div class="form-group"><label class="form-label">楼栋名称 <span class="required">*</span></label><input type="text" class="form-input" id="bld3-name" value="' + b.name + '" placeholder="如：1号楼/主楼"></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">楼层数</label><input type="number" class="form-input" id="bld3-floors" value="' + b.floors + '" min="1" max="99"></div>' +
+    '<div class="form-group"><label class="form-label">每层房间数</label><input type="number" class="form-input" id="bld3-rooms" value="' + b.rooms + '" min="1" max="50"></div></div>' +
+    '<div class="form-group"><label class="form-label">地址</label><input type="text" class="form-input" id="bld3-addr" value="' + b.addr + '" placeholder="楼栋详细地址"></div>' +
+    '<div class="form-group"><label class="form-label">状态</label><select class="form-select" id="bld3-status"><option value="active"' + (b.status==='active'?' selected':'') + '>🟢 营业中</option><option value="inactive"' + (b.status==='inactive'?' selected':'') + '>🔴 停业装修</option></select></div>' +
+    '<div style="padding:10px 12px;background:var(--blue-bg);border-radius:8px;font-size:12px;color:var(--blue);">💡 新增楼栋后，系统将自动生成楼层和房间基础数据</div>' +
+    '</div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-building-form-v3\').remove()">取消</button><button class="modal-btn primary" onclick="submitBuildingFormV3()">' + (isEdit ? '💾 保存修改' : '✅ 确认创建') + '</button></div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitBuildingFormV3() {
+  var name = document.getElementById('bld3-name').value.trim();
+  var floors = parseInt(document.getElementById('bld3-floors').value) || 1;
+  var rooms = parseInt(document.getElementById('bld3-rooms').value) || 4;
+  var addr = document.getElementById('bld3-addr').value.trim();
+  var status = document.getElementById('bld3-status').value;
+  if (!name) { showToast('⚠️ 楼栋名称不能为空', 'error'); return; }
+  var idx = parseInt(document.getElementById('bld3-idx').value);
+  if (idx >= 0) {
+    buildingListData[idx] = {id:buildingListData[idx].id, name:name, floors:floors, rooms:rooms, status:status, addr:addr};
+    showToast('✅ 楼栋[' + name + ']信息已更新', 'success');
+  } else {
+    var newId = 'B' + String(buildingListData.length + 1).padStart(2, '0');
+    buildingListData.push({id:newId, name:name, floors:floors, rooms:rooms, status:status, addr:addr});
+    showToast('✅ 新楼栋[' + name + ']创建成功！共' + floors + '层，约' + (floors * rooms) + '间房', 'success');
+  }
+  if (typeof renderBuildingTable === 'function') renderBuildingTable();
+  var modal = document.getElementById('modal-building-form-v3');
+  if (modal) modal.remove();
+}
+
+function deleteBuilding(idx) {
+  var b = buildingListData[idx];
+  if (!b) return;
+  if (!confirm('确定要删除楼栋[' + b.name + ']吗？\n注意：此楼栋下的所有房间数据也将一并删除，且无法恢复！')) return;
+  buildingListData.splice(idx, 1);
+  showToast('🗑️ 楼栋[' + b.name + ']已删除', 'success');
+  if (typeof renderBuildingTable === 'function') renderBuildingTable();
+}
+
+// 渲染楼栋管理表格（完整CRUD）
+function renderBuildingTable() {
+  var tbody = document.getElementById('building-table-body') || document.querySelector('#page-building table tbody');
+  if (!tbody) return;
+  var html = '';
+  buildingListData.forEach(function(b, i) {
+    var statusBg = b.status === 'active' ? 'var(--green-bg)' : 'var(--red-bg)';
+    var statusColor = b.status === 'active' ? 'var(--green)' : 'var(--red)';
+    var statusText = b.status === 'active' ? '营业中' : '停业装修';
+    html += '<tr>' +
+      '<td style="font-weight:600;">' + b.id + '</td>' +
+      '<td><span style="font-weight:600;">' + b.name + '</span></td>' +
+      '<td>' + b.floors + '层</td>' +
+      '<td>' + (b.floors * b.rooms) + '间</td>' +
+      '<td><span class="tbadge" style="background:' + statusBg + ';color:' + statusColor + ';">' + statusText + '</span></td>' +
+      '<td>' + (b.addr || '--') + '</td>' +
+      '<td>' +
+      '<button class="action-btn small" onclick="openBuildingFormModalV2(' + i + ')" style="padding:2px 8px;font-size:11px;">编辑</button>' +
+      '<button class="action-btn small red" onclick="deleteBuilding(' + i + ')" style="margin-left:4px;padding:2px 8px;font-size:11px;">删除</button>' +
+      '</td></tr>';
+  });
+  tbody.innerHTML = html;
 }
 </script>
 
