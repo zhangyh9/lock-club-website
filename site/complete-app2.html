@@ -1854,6 +1854,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             <button class="action-btn small" id="batch-action-btn" onclick="openDeviceBatchModal()" style="display:none;">📋 批量操作</button>
             <button class="action-btn small" onclick="openFirmwareUpgradeModal()" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📦 固件升级</button>
             <button class="action-btn small" onclick="openACControlModal()" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">❄️ 空调控制</button>
+            <!-- 【改进2】预防性维护计划入口 -->
+            <button class="action-btn small" onclick="openMaintenancePlanModal()" style="padding:4px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔧 维护计划</button>
           </div>
           <table class="table">
             <thead><tr><th style="width:30px;"></th><th>房间号</th><th>房型</th><th>状态</th><th>电量</th><th>信号</th><th>最后同步</th><th>操作</th></tr></thead>
@@ -4234,6 +4236,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
         <button class="action-btn" onclick="openEnergyAnalysisModal('')" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📊 详细数据分析</button>
         <button class="action-btn" onclick="exportEnergyData()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出能耗报表</button>
+        <!-- 【改进5】分时电价配置入口 -->
+        <button class="action-btn small" onclick="openEnergyTouConfigModal()" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⏰ 分时电价</button>
         <div style="margin-left:auto;font-size:12px;color:var(--text-muted);">数据更新：<span id="energy-last-update" style="color:var(--blue);">--</span></div>
       </div>
       <div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
@@ -4534,6 +4538,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <div style="display:flex;gap:6px;">
             <button class="action-btn small" onclick="exportStaffCSV()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出</button>
             <button class="action-btn small" onclick="openNewStaffForm()" style="padding:4px 10px;">+ 新增员工</button>
+            <!-- 【改进3】员工考勤打卡入口 -->
+            <button class="action-btn small" onclick="openAttendanceModal()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📋 考勤打卡</button>
           </div>
         </div>
         <!-- 【改进2】员工页面Tab切换：列表 / 排班视图 -->
@@ -5032,6 +5038,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div class="card-header">
           <div class="card-title">👥 会员列表</div>
           <button class="action-btn" onclick="openAddMemberModal()" style="padding:4px 12px;">+ 新增会员</button>
+          <!-- 【改进4】客户档案/偏好管理入口 -->
+          <button class="action-btn small" onclick="openGuestPreferenceModal('张三')" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">👤 客户档案</button>
         </div>
         <div class="card-header" style="border-top:1px solid var(--border);padding-top:12px;">
           <div class="card-tabs">
@@ -30641,6 +30649,564 @@ function submitWorkorderRating(woId, rating, comment) {
   renderWorkorderRatingTable();
   updateRatingStats();
   showToast('⭐ 感谢您的评价！', 'success');
+}
+
+// ============================================================
+// 【改进1】设备分组管理：支持创建/编辑/删除自定义分组，设备可归属多个分组
+// ============================================================
+var deviceGroupData = [
+  {id:'main', name:'🏢 主楼', color:'var(--blue)', rooms:['301','302','303','304','305']},
+  {id:'east', name:'🏢 东配楼', color:'var(--orange)', rooms:['201','202','203']},
+  {id:'vip', name:'⭐ VIP房', color:'var(--purple)', rooms:['301','304']},
+  {id:'lowbat', name:'🔋 低电量', color:'var(--red)', rooms:['305','204']}
+];
+
+function openDeviceGroupManageModal() {
+  var html = '<div class="modal-overlay" id="modal-device-group-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:520px;max-height:80vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">🏷️ 设备分组管理</div>';
+  html += '<button onclick="closeDeviceGroupManageModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">';
+  html += '<button class="action-btn small" onclick="openAddDeviceGroupForm()" style="padding:5px 12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">+ 新增分组</button></div>';
+  html += '<div id="dg-group-list">';
+  deviceGroupData.forEach(function(g, i) {
+    html += '<div style="padding:12px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;background:var(--bg);">';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">';
+    html += '<span style="width:12px;height:12px;border-radius:50%;background:' + g.color + ';flex-shrink:0;"></span>';
+    html += '<span style="font-weight:700;font-size:14px;flex:1;">' + g.name + '</span>';
+    html += '<span style="font-size:11px;color:var(--text-muted);">' + g.rooms.length + ' 台设备</span>';
+    html += '</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">';
+    g.rooms.forEach(function(r){ html += '<span style="padding:2px 8px;background:var(--blue-bg);color:var(--blue);border-radius:10px;font-size:11px;">' + r + '</span>'; });
+    html += '</div>';
+    html += '<div style="display:flex;gap:8px;justify-content:flex-end;">';
+    html += '<button class="action-btn small" onclick="openEditDeviceGroupForm(' + i + ')" style="padding:3px 10px;">编辑</button>';
+    html += '<button class="action-btn small red" onclick="deleteDeviceGroup(' + i + ')" style="padding:3px 10px;">删除</button></div></div>';
+  });
+  html += '</div>';
+  html += '<div id="dg-add-form" style="display:none;padding:14px;border:2px dashed var(--blue);border-radius:8px;margin-top:12px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">➕ 新增/编辑分组</div>';
+  html += '<input type="hidden" id="dg-edit-idx" value="-1">';
+  html += '<div class="form-row"><div class="form-group"><label class="form-label">分组名称 <span class="required">*</span></label>';
+  html += '<input type="text" class="form-input" id="dg-new-name" placeholder="如：VIP房、低电量设备"></div>';
+  html += '<div class="form-group"><label class="form-label">标识颜色</label>';
+  html += '<select class="form-select" id="dg-new-color" style="font-size:13px;">';
+  html += '<option value="var(--blue)">🔵 蓝色</option>';
+  html += '<option value="var(--orange)">🟠 橙色</option>';
+  html += '<option value="var(--green)">🟢 绿色</option>';
+  html += '<option value="var(--purple)">🟣 紫色</option>';
+  html += '<option value="var(--red)">🔴 红色</option></select></div></div>';
+  html += '<div class="form-group"><label class="form-label">包含设备（房间号）</label>';
+  html += '<input type="text" class="form-input" id="dg-new-rooms" placeholder="如：301,302,303（逗号分隔）"></div>';
+  html += '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">';
+  html += '<button class="action-btn small" onclick="closeAddDeviceGroupForm()">取消</button>';
+  html += '<button class="action-btn small primary" onclick="saveDeviceGroup()" style="background:var(--blue);color:white;border:none;padding:5px 12px;">保存</button></div></div></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeDeviceGroupManageModal() { var m = document.getElementById('modal-device-group-manage'); if (m) m.remove(); }
+function openAddDeviceGroupForm() { document.getElementById('dg-add-form').style.display = 'block'; document.getElementById('dg-edit-idx').value = '-1'; document.getElementById('dg-new-name').value = ''; document.getElementById('dg-new-rooms').value = ''; }
+function closeAddDeviceGroupForm() { document.getElementById('dg-add-form').style.display = 'none'; }
+function openEditDeviceGroupForm(idx) {
+  var g = deviceGroupData[idx];
+  if (!g) return;
+  document.getElementById('dg-add-form').style.display = 'block';
+  document.getElementById('dg-edit-idx').value = idx;
+  document.getElementById('dg-new-name').value = g.name.replace(/^[^\s]+\s/, '');
+  document.getElementById('dg-new-rooms').value = g.rooms.join(',');
+  document.getElementById('dg-new-color').value = g.color;
+}
+function saveDeviceGroup() {
+  var name = document.getElementById('dg-new-name').value.trim();
+  var color = document.getElementById('dg-new-color').value;
+  var roomsStr = document.getElementById('dg-new-rooms').value.trim();
+  if (!name) { showToast('请输入分组名称', 'error'); return; }
+  var rooms = roomsStr ? roomsStr.split(',').map(function(r){return r.trim();}).filter(function(r){return r;}) : [];
+  var idx = parseInt(document.getElementById('dg-edit-idx').value);
+  if (idx >= 0) {
+    deviceGroupData[idx] = {id: deviceGroupData[idx].id, name: name, color: color, rooms: rooms};
+    showToast('分组已更新', 'success');
+  } else {
+    deviceGroupData.push({id: 'g_' + Date.now(), name: name, color: color, rooms: rooms});
+    showToast('分组已创建', 'success');
+  }
+  closeAddDeviceGroupForm();
+  closeDeviceGroupManageModal();
+  openDeviceGroupManageModal();
+  // 更新设备页面分组标签
+  renderDeviceGroupTags();
+}
+function deleteDeviceGroup(idx) {
+  if (!confirm('确定删除该分组？设备不会被删除。')) return;
+  deviceGroupData.splice(idx, 1);
+  closeDeviceGroupManageModal();
+  openDeviceGroupManageModal();
+  renderDeviceGroupTags();
+}
+function renderDeviceGroupTags() {
+  var container = document.getElementById('device-group-tags');
+  if (!container) return;
+  var html = '<span style="font-size:11px;color:var(--text-muted);margin-right:2px;">分组：</span>';
+  html += '<button class="dg-tag-btn active" data-group="all" onclick="filterDeviceByGroup(\'all\',this)" style="padding:3px 10px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);border-radius:12px;font-size:11px;cursor:pointer;font-weight:600;">全部</button>';
+  deviceGroupData.forEach(function(g) {
+    html += '<button class="dg-tag-btn" data-group="' + g.id + '" onclick="filterDeviceByGroup(\'' + g.id + '\',this)" style="padding:3px 10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:12px;font-size:11px;cursor:pointer;">' + g.name + '</button>';
+  });
+  html += '<button class="action-btn small" onclick="openDeviceGroupManageModal()" style="padding:2px 8px;font-size:10px;">⚙️ 管理分组</button>';
+  // 替换原有标签（保留搜索、重置按钮所在行）
+  var existing = container.querySelector('.dg-tag-btn');
+  if (existing) {
+    var parent = container;
+    parent.innerHTML = html;
+    parent.querySelector('[data-group="all"]').classList.add('active');
+  }
+}
+function filterDeviceByGroup(group, btn) {
+  if (!btn) return;
+  document.querySelectorAll('.dg-tag-btn').forEach(function(b){ b.classList.remove('active'); b.style.background='var(--bg)'; b.style.color='var(--text)'; b.style.borderColor='var(--border)'; b.style.fontWeight='400'; });
+  btn.classList.add('active');
+  btn.style.background = 'var(--blue-bg)';
+  btn.style.color = 'var(--blue)';
+  btn.style.borderColor = 'var(--blue)';
+  btn.style.fontWeight = '600';
+  // 获取当前显示的设备行，过滤
+  var statusFilter = document.getElementById('device-status-filter') ? document.getElementById('device-status-filter').value : 'all';
+  var searchText = document.getElementById('device-search-input') ? document.getElementById('device-search-input').value.toLowerCase() : '';
+  var rows = document.querySelectorAll('#page-device .device-row');
+  rows.forEach(function(row) {
+    var roomNum = row.dataset.room || '';
+    var status = row.dataset.status || '';
+    var matchGroup = group === 'all' || (row.dataset.group && row.dataset.group.indexOf(group) !== -1);
+    var matchStatus = statusFilter === 'all' || status === statusFilter;
+    var matchSearch = !searchText || roomNum.indexOf(searchText) !== -1 || (row.dataset.uuid && row.dataset.uuid.toLowerCase().indexOf(searchText) !== -1);
+    row.style.display = (matchGroup && matchStatus && matchSearch) ? '' : 'none';
+  });
+  var visibleCount = Array.from(rows).filter(function(r){ return r.style.display !== 'none'; }).length;
+  var cntEl = document.getElementById('device-filter-count');
+  if (cntEl) cntEl.textContent = '共 ' + visibleCount + ' 台设备';
+}
+function openDeviceGroupManageModal_fromFilter() { openDeviceGroupManageModal(); }
+
+// ============================================================
+// 【改进2】客房预防性维护计划：支持创建/查看/执行定期维护任务
+// ============================================================
+var maintenancePlanData = [
+  {id:'mp001', room:'301', type:'lock_check', title:'门锁功能检测', desc:'检测门锁电机、指纹识别、密码键盘', frequency:'每月', nextDate:'2026-04-01', lastDate:'2026-03-01', status:'scheduled', assignee:'王工'},
+  {id:'mp002', room:'304', type:'ac_clean', title:'空调滤网清洗', desc:'拆洗空调滤网，检查排水管路', frequency:'每季度', nextDate:'2026-05-15', lastDate:'2026-02-15', status:'scheduled', assignee:'郑强'},
+  {id:'mp003', room:'201', type:'battery_replace', title:'门锁电池更换', desc:'更换门锁电池，检查低电量告警', frequency:'每半年', nextDate:'2026-06-01', lastDate:'2025-12-01', status:'overdue', assignee:'王工'},
+  {id:'mp004', room:'302', type:'lock_check', title:'门锁功能检测', desc:'检测门锁电机、指纹识别、密码键盘', frequency:'每月', nextDate:'2026-03-15', lastDate:'2026-02-15', status:'done', assignee:'王工'}
+];
+var maintenanceStats = {scheduled:2, overdue:1, done:1};
+
+function openMaintenancePlanModal() {
+  var html = '<div class="modal-overlay" id="modal-maintenance-plan" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;overflow-y:auto;padding:20px;">';
+  html += '<div class="modal" style="width:700px;max-height:85vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">🔧 预防性维护计划</div>';
+  html += '<button onclick="closeMaintenancePlanModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">';
+  html += '<div style="text-align:center;padding:12px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:24px;font-weight:700;color:var(--blue);">' + maintenanceStats.scheduled + '</div><div style="font-size:11px;color:var(--text-muted);">待执行</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--red-bg);border-radius:8px;"><div style="font-size:24px;font-weight:700;color:var(--red);">' + maintenanceStats.overdue + '</div><div style="font-size:11px;color:var(--text-muted);">已逾期</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--green-bg);border-radius:8px;"><div style="font-size:24px;font-weight:700;color:var(--green);">' + maintenanceStats.done + '</div><div style="font-size:11px;color:var(--text-muted);">已完成</div></div></div>';
+  html += '<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">';
+  html += '<button class="action-btn small primary" onclick="openAddMaintenancePlanForm()" style="background:var(--blue);color:white;border:none;padding:5px 12px;">+ 新建维护计划</button></div>';
+  html += '<div id="mp-filter-tabs" style="display:flex;gap:6px;margin-bottom:12px;">';
+  html += '<button class="action-btn small" onclick="filterMaintenancePlan(\'all\',this)" style="padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">全部</button>';
+  html += '<button class="action-btn small" onclick="filterMaintenancePlan(\'scheduled\',this)" style="padding:4px 10px;">待执行</button>';
+  html += '<button class="action-btn small" onclick="filterMaintenancePlan(\'overdue\',this)" style="padding:4px 10px;">已逾期</button>';
+  html += '<button class="action-btn small" onclick="filterMaintenancePlan(\'done\',this)" style="padding:4px 10px;">已完成</button></div>';
+  html += '<div id="mp-list">';
+  maintenancePlanData.forEach(function(p, i) {
+    var statusColor = {scheduled:'var(--blue)', overdue:'var(--red)', done:'var(--green)'}[p.status] || 'var(--text)';
+    var statusText = {scheduled:'⏳ 待执行', overdue:'⚠️ 已逾期', done:'✅ 已完成'}[p.status] || p.status;
+    var typeIcon = {lock_check:'🔐', ac_clean:'❄️', battery_replace:'🔋'}[p.type] || '🔧';
+    html += '<div data-mp-status="' + p.status + '" style="padding:12px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--bg);cursor:pointer;" onclick="openMaintenancePlanDetail(' + i + ')">';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">';
+    html += '<span style="font-size:16px;">' + typeIcon + '</span>';
+    html += '<span style="font-weight:700;font-size:14px;">' + p.title + '</span>';
+    html += '<span style="font-size:11px;padding:2px 8px;background:var(--blue-bg);color:var(--blue);border-radius:10px;">' + p.room + '</span>';
+    html += '<span style="margin-left:auto;font-size:11px;color:' + statusColor + ';font-weight:600;">' + statusText + '</span></div>';
+    html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">' + p.desc + '</div>';
+    html += '<div style="display:flex;gap:16px;font-size:11px;color:var(--text-muted);">';
+    html += '<span>📅 周期：' + p.frequency + '</span>';
+    html += '<span>➡️ 下次：' + p.nextDate + '</span>';
+    html += '<span>👤 负责人：' + p.assignee + '</span></div></div>';
+  });
+  html += '</div></div>';
+  html += '<div id="mp-add-form" style="display:none;padding:14px;border:2px dashed var(--blue);border-radius:8px;margin-top:12px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">➕ 新建维护计划</div>';
+  html += '<div class="form-row"><div class="form-group"><label class="form-label">房间号 <span class="required">*</span></label>';
+  html += '<select class="form-select" id="mp-new-room"><option value="">请选择</option>';
+  ['301','302','303','304','305','201','202','203'].forEach(function(r){ html += '<option value="' + r + '">' + r + '</option>'; });
+  html += '</select></div>';
+  html += '<div class="form-group"><label class="form-label">维护类型</label>';
+  html += '<select class="form-select" id="mp-new-type"><option value="lock_check">🔐 门锁功能检测</option><option value="ac_clean">❄️ 空调滤网清洗</option><option value="battery_replace">🔋 电池更换</option><option value="network_check">📡 网络检测</option></select></div></div>';
+  html += '<div class="form-row"><div class="form-group"><label class="form-label">计划名称 <span class="required">*</span></label>';
+  html += '<input type="text" class="form-input" id="mp-new-title" placeholder="如：门锁功能检测"></div>';
+  html += '<div class="form-group"><label class="form-label">执行周期</label>';
+  html += '<select class="form-select" id="mp-new-freq"><option value="每周">每周</option><option value="每月" selected>每月</option><option value="每季度">每季度</option><option value="每半年">每半年</option><option value="每年">每年</option></select></div></div>';
+  html += '<div class="form-row"><div class="form-group"><label class="form-label">下次执行日期</label>';
+  html += '<input type="date" class="form-input" id="mp-new-next"></div>';
+  html += '<div class="form-group"><label class="form-label">负责人</label>';
+  html += '<select class="form-select" id="mp-new-assignee"><option value="王工">王工（工程师）</option><option value="郑强">郑强（清洁人员）</option><option value="赵飞">赵飞（前厅经理）</option></select></div></div>';
+  html += '<div class="form-group"><label class="form-label">维护描述</label>';
+  html += '<textarea class="form-textarea" id="mp-new-desc" placeholder="详细描述维护内容和标准" style="min-height:60px;font-size:12px;"></textarea></div>';
+  html += '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">';
+  html += '<button class="action-btn small" onclick="closeAddMaintenancePlanForm()">取消</button>';
+  html += '<button class="action-btn small primary" onclick="saveMaintenancePlan()" style="background:var(--blue);color:white;border:none;padding:5px 12px;">保存计划</button></div></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeMaintenancePlanModal() { var m = document.getElementById('modal-maintenance-plan'); if (m) m.remove(); }
+function openAddMaintenancePlanForm() { document.getElementById('mp-add-form').style.display = 'block'; }
+function closeAddMaintenancePlanForm() { document.getElementById('mp-add-form').style.display = 'none'; }
+function saveMaintenancePlan() {
+  var room = document.getElementById('mp-new-room').value;
+  var title = document.getElementById('mp-new-title').value.trim();
+  var type = document.getElementById('mp-new-type').value;
+  var freq = document.getElementById('mp-new-freq').value;
+  var nextDate = document.getElementById('mp-new-next').value;
+  var assignee = document.getElementById('mp-new-assignee').value;
+  var desc = document.getElementById('mp-new-desc').value.trim();
+  if (!room || !title) { showToast('请填写房间号和计划名称', 'error'); return; }
+  maintenancePlanData.push({id:'mp_' + Date.now(), room:room, type:type, title:title, desc:desc, frequency:freq, nextDate:nextDate, lastDate:'-', status:'scheduled', assignee:assignee});
+  maintenanceStats.scheduled++;
+  closeAddMaintenancePlanForm();
+  closeMaintenancePlanModal();
+  showToast('维护计划已创建！', 'success');
+}
+function filterMaintenancePlan(filter, btn) {
+  if (!btn) return;
+  document.querySelectorAll('#mp-filter-tabs .action-btn').forEach(function(b){ b.style.background='var(--bg)'; b.style.color='var(--text)'; b.style.borderColor='var(--border)'; });
+  btn.style.background = 'var(--blue-bg)';
+  btn.style.color = 'var(--blue)';
+  btn.style.borderColor = 'var(--blue)';
+  document.querySelectorAll('#mp-list > div').forEach(function(el) {
+    el.style.display = filter === 'all' || el.dataset.mpStatus === filter ? '' : 'none';
+  });
+}
+function openMaintenancePlanDetail(idx) {
+  var p = maintenancePlanData[idx];
+  if (!p) return;
+  showToast('🔧 ' + p.title + ' - ' + p.room + '，负责人：' + p.assignee + '，下次：' + p.nextDate, 'info');
+}
+
+// ============================================================
+// 【改进3】员工考勤打卡：支持上班打卡、下班打卡、查看考勤记录
+// ============================================================
+var attendanceData = [
+  {staff:'赵飞', dept:'前厅部', date:'2026-03-27', checkin:'09:30', checkout:'18:45', status:'normal', overtime:0},
+  {staff:'周敏', dept:'前厅部', date:'2026-03-27', checkin:'09:15', checkout:'18:30', status:'normal', overtime:0},
+  {staff:'吴倩', dept:'客房部', date:'2026-03-27', checkin:'08:00', checkout:'17:00', status:'normal', overtime:0},
+  {staff:'郑强', dept:'客房部', date:'2026-03-27', checkin:'08:05', checkout:'-', status:'on_duty', overtime:0},
+  {staff:'王工', dept:'工程部', date:'2026-03-27', checkin:'09:00', checkout:'-', status:'late', overtime:0}
+];
+var currentStaffAttendance = {staff:'赵飞', checkin:null, checkout:null, date:null};
+
+function openAttendanceModal() {
+  var now = new Date();
+  var dateStr = now.toISOString().slice(0,10);
+  var timeStr = now.toTimeString().slice(0,5);
+  var checkedIn = attendanceData.some(function(a){ return a.staff === currentStaffAttendance.staff && a.date === dateStr; });
+  var todayRecord = attendanceData.find(function(a){ return a.staff === currentStaffAttendance.staff && a.date === dateStr; });
+  var html = '<div class="modal-overlay" id="modal-attendance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:480px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">📋 员工考勤打卡</div>';
+  html += '<button onclick="closeAttendanceModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="text-align:center;margin-bottom:20px;">';
+  html += '<div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;">' + dateStr + ' ' + ['周日','周一','周二','周三','周四','周五','周六'][now.getDay()] + '</div>';
+  html += '<div style="font-size:36px;font-weight:700;color:var(--blue);" id="att-clock">' + timeStr + '</div>';
+  html += '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">当前账号：<strong>' + currentStaffAttendance.staff + '</strong></div></div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
+  html += '<div style="text-align:center;padding:14px;background:var(--green-bg);border-radius:8px;">';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">上班打卡</div>';
+  html += '<div style="font-size:20px;font-weight:700;color:var(--green);" id="att-checkin-time">' + (todayRecord ? todayRecord.checkin : '--:--') + '</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">' + (todayRecord && todayRecord.status === 'late' ? '⚠️ 迟到' : todayRecord ? '✅ 正常' : '尚未打卡') + '</div></div>';
+  html += '<div style="text-align:center;padding:14px;background:var(--orange-bg);border-radius:8px;">';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">下班打卡</div>';
+  html += '<div style="font-size:20px;font-weight:700;color:var(--orange);" id="att-checkout-time">' + (todayRecord && todayRecord.checkout ? todayRecord.checkout : '--:--') + '</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">' + (todayRecord && todayRecord.checkout ? '✅ 已签退' : '尚未打卡') + '</div></div></div>';
+  if (!todayRecord || !todayRecord.checkout) {
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
+    if (!todayRecord || !todayRecord.checkin) {
+      html += '<button class="modal-btn primary" onclick="doCheckin()" style="background:var(--green);color:white;border:none;padding:12px;font-size:14px;font-weight:600;border-radius:8px;">🏃 上班打卡</button>';
+    }
+    if (todayRecord && todayRecord.checkin && !todayRecord.checkout) {
+      html += '<button class="modal-btn primary" onclick="doCheckout()" style="background:var(--orange);color:white;border:none;padding:12px;font-size:14px;font-weight:600;border-radius:8px;">🏠 下班打卡</button>';
+    }
+    html += '</div>';
+  }
+  html += '<div style="margin-top:16px;padding:12px;background:var(--bg);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text);">📅 今日考勤记录</div>';
+  html += '<div style="max-height:160px;overflow-y:auto;">';
+  var todayRecords = attendanceData.filter(function(a){ return a.date === dateStr; });
+  if (todayRecords.length === 0) {
+    html += '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">今日暂无打卡记录</div>';
+  } else {
+    todayRecords.forEach(function(a) {
+      var statusTag = {normal:'✅ 正常', late:'⚠️ 迟到', on_duty:'🔵 在岗', absent:'❌ 缺勤'}[a.status] || a.status;
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">';
+      html += '<span style="font-weight:600;width:50px;">' + a.staff + '</span>';
+      html += '<span style="color:var(--text-muted);width:50px;">' + a.dept + '</span>';
+      html += '<span style="color:var(--green);">' + (a.checkin || '-') + '</span>';
+      html += '<span style="color:var(--orange);">' + (a.checkout || '-') + '</span>';
+      html += '<span style="margin-left:auto;font-size:11px;">' + statusTag + '</span></div>';
+    });
+  }
+  html += '</div></div></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  // 实时时钟
+  window.attClockInterval = setInterval(function() {
+    var el = document.getElementById('att-clock');
+    if (el) el.textContent = new Date().toTimeString().slice(0,5);
+  }, 1000);
+}
+function closeAttendanceModal() {
+  if (window.attClockInterval) { clearInterval(window.attClockInterval); window.attClockInterval = null; }
+  var m = document.getElementById('modal-attendance'); if (m) m.remove();
+}
+function doCheckin() {
+  var now = new Date();
+  var dateStr = now.toISOString().slice(0,10);
+  var timeStr = now.toTimeString().slice(0,5);
+  var isLate = timeStr > '09:30';
+  attendanceData.push({staff:currentStaffAttendance.staff, dept:'前厅部', date:dateStr, checkin:timeStr, checkout:'-', status:isLate ? 'late' : 'normal', overtime:0});
+  showToast('🏃 上班打卡成功！' + timeStr + (isLate ? '（迟到）' : ''), 'success');
+  closeAttendanceModal();
+  openAttendanceModal();
+}
+function doCheckout() {
+  var now = new Date();
+  var dateStr = now.toISOString().slice(0,10);
+  var timeStr = now.toTimeString().slice(0,5);
+  var record = attendanceData.find(function(a){ return a.staff === currentStaffAttendance.staff && a.date === dateStr && !a.checkout || a.checkout === '-'; });
+  if (record) { record.checkout = timeStr; record.status = 'normal'; }
+  showToast('🏠 下班打卡成功！' + timeStr, 'success');
+  closeAttendanceModal();
+  openAttendanceModal();
+}
+
+// ============================================================
+// 【改进4】客户偏好与黑名单：存储客户特殊偏好，支持黑名单拦截
+// ============================================================
+var guestPreferenceData = {
+  '张三': {prefer:'无烟房、高楼层、靠近电梯', allergy:'花粉过敏', vip:true, note:'每次入住需准备鲜花但注意花粉', blacklist:false, visitCount:5, totalConsume:'¥2,860'},
+  '李四': {prefer:'大床房、最好有浴缸', allergy:'', vip:false, note:'', blacklist:false, visitCount:2, totalConsume:'¥980'},
+  '王五': {prefer:'标准间、靠近停车场', allergy:'芒果', vip:false, note:'', blacklist:true, blockReason:'上次损坏房间设施，拒绝接待'}
+};
+var guestBlacklistCount = 1;
+
+function openGuestPreferenceModal(guestName) {
+  var p = guestPreferenceData[guestName] || {prefer:'', allergy:'', vip:false, note:'', blacklist:false, visitCount:0, totalConsume:'¥0'};
+  var html = '<div class="modal-overlay" id="modal-guest-pref" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:520px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">👤 客户档案 - ' + guestName + '</div>';
+  html += '<button onclick="closeGuestPreferenceModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  if (p.blacklist) {
+    html += '<div style="padding:12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:16px;text-align:center;">';
+    html += '<div style="font-size:28px;margin-bottom:4px;">🚫</div>';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--red);">该客户已被列入黑名单</div>';
+    html += '<div style="font-size:12px;color:var(--red);margin-top:4px;">原因：' + (p.blockReason || '严重违规') + '</div>';
+    html += '<button class="action-btn small" onclick="removeFromBlacklist(\'' + guestName + '\')" style="margin-top:10px;padding:5px 12px;">✅ 申请移出黑名单</button></div>';
+  } else {
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">';
+    html += '<div style="text-align:center;padding:10px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:18px;font-weight:700;color:var(--blue);">' + p.visitCount + '</div><div style="font-size:11px;color:var(--text-muted);">入住次数</div></div>';
+    html += '<div style="text-align:center;padding:10px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:18px;font-weight:700;color:var(--orange);">' + p.totalConsume + '</div><div style="font-size:11px;color:var(--text-muted);">累计消费</div></div>';
+    html += '<div style="text-align:center;padding:10px;background:' + (p.vip ? 'var(--purple-bg)' : 'var(--bg)') + ';border-radius:8px;"><div style="font-size:18px;font-weight:700;color:' + (p.vip ? 'var(--purple)' : 'var(--text-muted)') + ';">' + (p.vip ? '⭐ VIP' : '普通') + '</div><div style="font-size:11px;color:var(--text-muted);">客户等级</div></div></div>';
+  }
+  html += '<div class="form-group"><label class="form-label">房间偏好</label>';
+  html += '<input type="text" class="form-input" id="gp-prefer" value="' + p.prefer + '" placeholder="如：无烟房、高楼层" style="font-size:13px;"></div>';
+  html += '<div class="form-group"><label class="form-label">过敏/特殊注意</label>';
+  html += '<input type="text" class="form-input" id="gp-allergy" value="' + p.allergy + '" placeholder="如：花粉过敏、芒果过敏" style="font-size:13px;"></div>';
+  html += '<div class="form-row"><div class="form-group"><label class="form-label">VIP标识</label>';
+  html += '<select class="form-select" id="gp-vip" style="font-size:13px;"><option value="false"' + (!p.vip ? ' selected' : '') + '>普通客户</option><option value="true"' + (p.vip ? ' selected' : '') + '>⭐ VIP客户</option></select></div>';
+  html += '<div class="form-group"><label class="form-label">黑名单</label>';
+  html += '<select class="form-select" id="gp-blacklist" style="font-size:13px;"><option value="false"' + (!p.blacklist ? ' selected' : '') + '>正常客户</option><option value="true"' + (p.blacklist ? ' selected' : '') + '>🚫 加入黑名单</option></select></div></div>';
+  html += '<div class="form-group"><label class="form-label">备注说明</label>';
+  html += '<textarea class="form-textarea" id="gp-note" placeholder="客户特殊要求或历史记录" style="min-height:70px;font-size:13px;">' + p.note + '</textarea></div>';
+  html += '<div id="gp-blacklist-reason" style="' + (p.blacklist ? '' : 'display:none;') + 'margin-bottom:12px;">';
+  html += '<div class="form-group"><label class="form-label">拉黑原因 <span class="required">*</span></label>';
+  html += '<input type="text" class="form-input" id="gp-block-reason" value="' + (p.blockReason || '') + '" placeholder="请填写拉黑原因" style="font-size:13px;"></div></div>';
+  html += '</div>';
+  html += '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:12px;font-size:12px;color:var(--blue);">💡 客户档案将帮助前台提供个性化服务，黑名单客户在入住时将弹出警告</div>';
+  html += '<div style="display:flex;gap:10px;justify-content:flex-end;">';
+  if (!p.blacklist) {
+    html += '<button class="action-btn small red" onclick="addToBlacklist(\'' + guestName + '\')" style="padding:5px 12px;">🚫 加入黑名单</button>';
+  }
+  html += '<button class="action-btn small" onclick="closeGuestPreferenceModal()" style="padding:5px 12px;">取消</button>';
+  html += '<button class="action-btn small primary" onclick="saveGuestPreference(\'' + guestName + '\')" style="background:var(--blue);color:white;border:none;padding:5px 12px;">💾 保存</button></div>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  // 联动黑名单原因显示
+  document.getElementById('gp-blacklist').addEventListener('change', function() {
+    document.getElementById('gp-blacklist-reason').style.display = this.value === 'true' ? 'block' : 'none';
+  });
+}
+function closeGuestPreferenceModal() { var m = document.getElementById('modal-guest-pref'); if (m) m.remove(); }
+function saveGuestPreference(guestName) {
+  var prefer = document.getElementById('gp-prefer').value.trim();
+  var allergy = document.getElementById('gp-allergy').value.trim();
+  var vip = document.getElementById('gp-vip').value === 'true';
+  var blacklist = document.getElementById('gp-blacklist').value === 'true';
+  var note = document.getElementById('gp-note').value.trim();
+  var blockReason = blacklist ? document.getElementById('gp-block-reason').value.trim() : '';
+  if (!guestPreferenceData[guestName]) {
+    guestPreferenceData[guestName] = {visitCount:1, totalConsume:'¥0'};
+  }
+  guestPreferenceData[guestName].prefer = prefer;
+  guestPreferenceData[guestName].allergy = allergy;
+  guestPreferenceData[guestName].vip = vip;
+  guestPreferenceData[guestName].blacklist = blacklist;
+  guestPreferenceData[guestName].note = note;
+  if (blacklist) guestPreferenceData[guestName].blockReason = blockReason;
+  closeGuestPreferenceModal();
+  showToast('客户档案已保存！', 'success');
+}
+function addToBlacklist(guestName) {
+  var reason = prompt('请输入拉黑原因：');
+  if (!reason) return;
+  if (!guestPreferenceData[guestName]) guestPreferenceData[guestName] = {};
+  guestPreferenceData[guestName].blacklist = true;
+  guestPreferenceData[guestName].blockReason = reason;
+  guestBlacklistCount++;
+  closeGuestPreferenceModal();
+  showToast('🚫 ' + guestName + ' 已加入黑名单', 'warn');
+}
+function removeFromBlacklist(guestName) {
+  if (!confirm('确认要将 ' + guestName + ' 从黑名单移出吗？')) return;
+  if (guestPreferenceData[guestName]) {
+    guestPreferenceData[guestName].blacklist = false;
+    guestPreferenceData[guestName].blockReason = '';
+  }
+  guestBlacklistCount = Math.max(0, guestBlacklistCount - 1);
+  closeGuestPreferenceModal();
+  showToast('✅ ' + guestName + ' 已移出黑名单', 'success');
+}
+function checkGuestBlacklist(guestName) {
+  var p = guestPreferenceData[guestName];
+  if (p && p.blacklist) {
+    showToast('⚠️ 警告：' + guestName + ' 在黑名单中！原因：' + (p.blockReason || '严重违规'), 'error');
+    return true;
+  }
+  return false;
+}
+
+// ============================================================
+// 【改进5】能耗分时电价（TOU）配置：峰谷平不同时段不同电价
+// ============================================================
+var touPricingData = {
+  enabled: true,
+  periods: [
+    {name:'尖峰', hours:'11:00-13:00,18:00-21:00', price:1.5, color:'var(--red)', icon:'⚡'},
+    {name:'高峰', hours:'08:00-11:00,13:00-18:00', price:1.2, color:'var(--orange)', icon:'🔶'},
+    {name:'平段', hours:'06:00-08:00,21:00-23:00', price:0.9, color:'var(--blue)', icon:'🔷'},
+    {name:'低谷', hours:'23:00-06:00', price:0.5, color:'var(--green)', icon:'🌙'}
+  ],
+  budgetKwh: 200, // 日均预算 kWh
+  budgetAlertThreshold: 0.85 // 超过85%告警
+};
+var todayTouUsage = [ // 今日模拟分时用电
+  {period:'低谷', hour:0, kwh:0.3}, {period:'低谷', hour:1, kwh:0.2}, {period:'低谷', hour:2, kwh:0.2},
+  {period:'低谷', hour:3, kwh:0.2}, {period:'低谷', hour:4, kwh:0.2}, {period:'低谷', hour:5, kwh:0.3},
+  {period:'平段', hour:6, kwh:0.5}, {period:'平段', hour:7, kwh:0.8},
+  {period:'高峰', hour:8, kwh:0.9}, {period:'高峰', hour:9, kwh:1.1}, {period:'尖峰', hour:10, kwh:1.2},
+  {period:'尖峰', hour:11, kwh:1.5}, {period:'尖峰', hour:12, kwh:1.3},
+  {period:'高峰', hour:13, kwh:1.1}, {period:'高峰', hour:14, kwh:1.0}, {period:'高峰', hour:15, kwh:0.9},
+  {period:'高峰', hour:16, kwh:0.8}, {period:'尖峰', hour:17, kwh:1.2},
+  {period:'尖峰', hour:18, kwh:1.4}, {period:'尖峰', hour:19, kwh:1.6}, {period:'尖峰', hour:20, kwh:1.5},
+  {period:'平段', hour:21, kwh:1.0}, {period:'平段', hour:22, kwh:0.7},
+  {period:'低谷', hour:23, kwh:0.4}
+];
+
+function openEnergyTouConfigModal() {
+  var p = touPricingData;
+  var totalKwh = todayTouUsage.reduce(function(s,u){ return s + u.kwh; }, 0);
+  var totalFee = calculateTouFee(todayTouUsage);
+  var html = '<div class="modal-overlay" id="modal-energy-tou" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;overflow-y:auto;padding:20px;">';
+  html += '<div class="modal" style="width:640px;max-height:85vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">⏰ 能耗分时电价（TOU）配置</div>';
+  html += '<button onclick="closeEnergyTouConfigModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">';
+  html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;">';
+  html += '<input type="checkbox" id="tou-enabled" ' + (p.enabled ? 'checked' : '') + ' style="accent-color:var(--blue);width:18px;height:18px;" onchange="touPricingData.enabled = this.checked;">';
+  html += '启用分时电价</label>';
+  html += '<div style="margin-left:auto;font-size:12px;color:var(--text-muted);">日均预算：<input type="number" id="tou-budget" value="' + p.budgetKwh + '" style="width:60px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;"> kWh</div></div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">';
+  p.periods.forEach(function(pd) {
+    html += '<div style="text-align:center;padding:12px;background:' + pd.color.replace('var(--', 'rgba(').replace(')', ',0.15)') + ';border:1px solid ' + pd.color + ';border-radius:8px;">';
+    html += '<div style="font-size:18px;margin-bottom:4px;">' + pd.icon + '</div>';
+    html += '<div style="font-size:13px;font-weight:700;color:' + pd.color + ';">' + pd.name + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);">' + pd.hours + '</div>';
+    html += '<div style="font-size:18px;font-weight:700;color:' + pd.color + ';margin-top:4px;">¥' + pd.price.toFixed(2) + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);">/kWh</div></div>';
+  });
+  html += '</div>';
+  // 今日分时用电统计
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">📊 今日分时用电（实时）</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">';
+  html += '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);">' + totalKwh.toFixed(1) + ' kWh</div><div style="font-size:11px;color:var(--text-muted);">今日用电量</div></div>';
+  html += '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);">¥' + totalFee.toFixed(2) + '</div><div style="font-size:11px;color:var(--text-muted);">今日电费</div></div></div>';
+  html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">各时段用电量（kWh）：</div>';
+  var periodUsage = {};
+  p.periods.forEach(function(pd){ periodUsage[pd.name] = 0; });
+  todayTouUsage.forEach(function(u){ if(periodUsage[u.period] !== undefined) periodUsage[u.period] += u.kwh; });
+  var periodColors = {尖峰:'var(--red)', 高峰:'var(--orange)', 平段:'var(--blue)', 低谷:'var(--green)'};
+  var periodHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+  p.periods.forEach(function(pd) {
+    var usage = periodUsage[pd.name] || 0;
+    var fee = usage * pd.price;
+    var pct = totalKwh > 0 ? Math.round((usage/totalKwh)*100) : 0;
+    periodHtml += '<div style="padding:6px 12px;background:' + pd.color.replace('var(--', 'rgba(').replace(')', ',0.15)') + ';border-radius:8px;font-size:12px;">';
+    periodHtml += '<span style="font-weight:700;color:' + pd.color + ';">' + pd.icon + ' ' + pd.name + '</span>';
+    periodHtml += '<span style="margin-left:6px;">' + usage.toFixed(1) + 'kWh</span>';
+    periodHtml += '<span style="color:var(--text-muted);margin-left:4px;">¥' + fee.toFixed(2) + '</span>';
+    periodHtml += '<span style="margin-left:4px;color:var(--text-muted);">' + pct + '%</span></div>';
+  });
+  html += periodHtml + '</div>';
+  html += '<div style="margin-top:10px;padding:10px;background:var(--bg);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:6px;">📈 24小时用电曲线</div>';
+  html += '<div style="display:flex;align-items:flex-end;gap:2px;height:60px;">';
+  var maxKwh = Math.max.apply(null, todayTouUsage.map(function(u){ return u.kwh; }));
+  todayTouUsage.forEach(function(u, i) {
+    var h = maxKwh > 0 ? Math.round((u.kwh / maxKwh) * 55) + 5 : 5;
+    var pd = p.periods.find(function(x){ return x.name === u.period; });
+    var color = pd ? pd.color : 'var(--blue)';
+    var isNow = i === new Date().getHours();
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">';
+    html += '<div style="width:100%;height:' + h + 'px;background:' + color + ';border-radius:2px 2px 0 0;' + (isNow ? 'border:2px solid var(--blue);' : '') + '" title="' + u.kwh.toFixed(1) + 'kWh"></div>';
+    html += '<div style="font-size:8px;color:var(--text-muted);">' + (i % 4 === 0 ? i + '时' : '') + '</div></div>';
+  });
+  html += '</div></div></div>';
+  html += '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">';
+  html += '<button class="action-btn small" onclick="closeEnergyTouConfigModal()">关闭</button>';
+  html += '<button class="action-btn small primary" onclick="saveTouPricing()" style="background:var(--blue);color:white;border:none;padding:5px 12px;">💾 保存配置</button></div>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeEnergyTouConfigModal() { var m = document.getElementById('modal-energy-tou'); if (m) m.remove(); }
+function calculateTouFee(usageData) {
+  var fee = 0;
+  usageData.forEach(function(u) {
+    var pd = touPricingData.periods.find(function(p){ return p.name === u.period; });
+    if (pd) fee += u.kwh * pd.price;
+  });
+  return fee;
+}
+function saveTouPricing() {
+  touPricingData.enabled = document.getElementById('tou-enabled').checked;
+  touPricingData.budgetKwh = parseFloat(document.getElementById('tou-budget').value) || 200;
+  closeEnergyTouConfigModal();
+  showToast('分时电价配置已保存！', 'success');
 }
 </script>
 </body>
