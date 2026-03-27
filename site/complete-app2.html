@@ -58,6 +58,79 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .diag-progress { height: 4px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
 .diag-progress-bar { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.3s; }
 
+/* v3 新增样式：全屏看板模式 */
+.page.fullscreen-mode {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 900;
+  background: var(--bg);
+  overflow-y: auto;
+  margin: 0;
+  padding: 20px;
+}
+.page.fullscreen-mode .page-header { display: none; }
+.page.fullscreen-mode .hide-fullscreen { display: inline-flex !important; }
+
+/* v3 新增样式：实时推送动画 */
+.live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--green);
+  border-radius: 50%;
+  margin-right: 6px;
+  animation: livePulse 1.5s infinite;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: var(--green-bg);
+  border: 1px solid var(--green);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--green);
+}
+
+/* v3 新增样式：诊断工具 */
+.diag-card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; background: var(--white); }
+.diag-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.diag-item:last-child { border-bottom: none; }
+.diag-label { color: var(--text-light); display: flex; align-items: center; gap: 8px; }
+.diag-value { font-weight: 600; }
+.diag-value.ok { color: var(--green); }
+.diag-value.warn { color: var(--orange); }
+.diag-value.error { color: var(--red); }
+.diag-value.loading { color: var(--blue); }
+.diag-progress { height: 4px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.diag-progress-bar { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.3s; }
+.diag-section-title { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+
+/* v3 新增样式：积分商城 */
+.points-balance { background: linear-gradient(135deg, var(--blue), #69c0ff); border-radius: 12px; padding: 20px; color: white; margin-bottom: 16px; }
+.points-balance .label { font-size: 12px; opacity: 0.85; margin-bottom: 4px; }
+.points-balance .value { font-size: 36px; font-weight: 700; }
+.points-balance .unit { font-size: 14px; opacity: 0.85; }
+.points-balance .meta { font-size: 11px; opacity: 0.7; margin-top: 6px; }
+.exchange-item { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
+.exchange-item:hover { border-color: var(--blue); background: var(--blue-bg); }
+.exchange-item.disabled { opacity: 0.5; cursor: not-allowed; }
+.exchange-item.disabled:hover { border-color: var(--border); background: white; }
+.exchange-item .icon-wrap { width: 44px; height: 44px; background: var(--blue-bg); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.exchange-item .info { flex: 1; }
+.exchange-item .info h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.exchange-item .info p { font-size: 11px; color: var(--text-muted); }
+.exchange-item .points { font-size: 14px; font-weight: 700; color: var(--blue); white-space: nowrap; }
+
 /* v3 新增样式：批量入住 */
 .batch-room-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; background: var(--white); cursor: pointer; transition: all 0.2s; }
 .batch-room-chip:hover { border-color: var(--blue); background: var(--blue-bg); }
@@ -478,7 +551,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
       <!-- 改进1: 首页快捷操作栏（原系统标配） -->
       <div class="quick-actions" style="display:flex;gap:12px;margin-bottom:20px;">
-        <button class="quick-btn" onclick="openQuickCheckinModal()" style="flex:1;padding:16px;background:linear-gradient(135deg,#1890ff,#69c0ff);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(24,144,255,0.3);transition:all 0.2s;">
+        <button class="quick-btn" onclick="openQuickCheckinFullModal()" style="flex:1;padding:16px;background:linear-gradient(135deg,#1890ff,#69c0ff);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(24,144,255,0.3);transition:all 0.2s;">
           <span style="font-size:20px;">🏨</span>
           <span>入住办理</span>
         </button>
@@ -487,7 +560,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <span style="font-size:20px;">👥</span>
           <span>批量入住</span>
         </button>
-        <button class="quick-btn" onclick="openQuickCheckoutModal()" style="flex:1;padding:16px;background:linear-gradient(135deg,#fa8c16,#ffc53d);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(250,140,22,0.3);transition:all 0.2s;">
+        <button class="quick-btn" onclick="openCheckoutFullModal('301','张三','2026-03-26 14:00')" style="flex:1;padding:16px;background:linear-gradient(135deg,#fa8c16,#ffc53d);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(250,140,22,0.3);transition:all 0.2s;">
           <span style="font-size:20px;">🚪</span>
           <span>退房办理</span>
         </button>
@@ -496,7 +569,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <span>清洁任务</span>
         </button>
         <!-- 【改进5】一键检测按钮 -->
-        <button class="quick-btn" onclick="runHealthCheck()" style="flex:1;padding:16px;background:linear-gradient(135deg,#722ed1,#b37feb);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(114,46,209,0.3);transition:all 0.2s;">
+        <button class="quick-btn" onclick="openDeviceDiagnosticV2('301')" style="flex:1;padding:16px;background:linear-gradient(135deg,#722ed1,#b37feb);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(114,46,209,0.3);transition:all 0.2s;">
           <span style="font-size:20px;">🔍</span>
           <span>一键检测</span>
         </button>
@@ -1925,6 +1998,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             <button class="action-btn green" style="width:100%;margin-bottom:8px;" onclick="openUnlockModal()">🔓 远程开锁</button>
             <button class="action-btn orange" style="width:100%;margin-bottom:8px;" onclick="openClearCardModal()">🗑️ 清除门卡</button>
             <button class="action-btn" style="width:100%;margin-bottom:8px;" onclick="openSyncModal()">🔄 立即同步</button>
+            <button class="action-btn" style="width:100%;margin-bottom:8px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);" onclick="openDeviceDiagnosticModal()">🔧 设备诊断</button>
             <button class="action-btn" style="width:100%;background:var(--red-bg);color:var(--red);border-color:var(--red);" onclick="openAlertModal(0)">⚠️ 设备告警</button>
           </div>
         </div>
@@ -14464,6 +14538,273 @@ function confirmNightAudit() {
   showToast('✅ 夜审完成！数据已归档至 ' + document.getElementById('nar-date').textContent, 'success');
 }
 
+// ======= V3 新增：设备自检诊断工具 =======
+function openDeviceDiagnosticModal(roomNum, deviceName, sn) {
+  document.getElementById('diag-room-title').textContent = roomNum || '301';
+  document.getElementById('diag-device-name').textContent = deviceName || '领握LH-807智能锁';
+  document.getElementById('diag-device-sn').textContent = 'SN: ' + (sn || 'LHW-2024-807-001234');
+  // 重置状态
+  var items = ['connection','battery','lock','motor','signal','memory','firmware'];
+  items.forEach(function(item) {
+    var el = document.getElementById('diag-' + item + '-status');
+    if (el) { el.textContent = '检测中...'; el.className = 'diag-value loading'; }
+  });
+  document.getElementById('diag-progress-bar').style.width = '0%';
+  document.getElementById('diag-progress-text').textContent = '准备中...';
+  document.getElementById('diag-result-summary').style.display = 'none';
+  document.getElementById('diag-error-detail').style.display = 'none';
+  document.getElementById('diag-restart-btn').style.display = 'none';
+  document.getElementById('diag-start-btn').style.display = 'inline-flex';
+  openModal('device-diagnostic');
+}
+
+function startDeviceDiagnostic() {
+  var items = ['connection','battery','lock','motor','signal','memory','firmware'];
+  var results = {
+    connection: { status: 'ok', text: '正常' },
+    battery: { status: 'ok', text: '88% · 正常' },
+    lock: { status: 'ok', text: '已反锁 · 正常' },
+    motor: { status: 'ok', text: '响应12ms · 正常' },
+    signal: { status: 'warn', text: '信号偏弱（62%）' },
+    memory: { status: 'ok', text: '剩余 76%' },
+    firmware: { status: 'ok', text: 'v2.1.4 · 最新' }
+  };
+  var total = items.length;
+  var passed = 0;
+  var warnings = 0;
+  document.getElementById('diag-start-btn').style.display = 'none';
+  items.forEach(function(item, idx) {
+    (function(item, idx) {
+      setTimeout(function() {
+        var el = document.getElementById('diag-' + item + '-status');
+        var result = results[item];
+        if (result.status === 'ok') {
+          el.textContent = '✅ ' + result.text;
+          el.className = 'diag-value ok';
+          passed++;
+        } else if (result.status === 'warn') {
+          el.textContent = '⚠️ ' + result.text;
+          el.className = 'diag-value warn';
+          warnings++;
+        } else {
+          el.textContent = '❌ ' + result.text;
+          el.className = 'diag-value error';
+        }
+        var pct = Math.round(((idx + 1) / total) * 100);
+        document.getElementById('diag-progress-bar').style.width = pct + '%';
+        document.getElementById('diag-progress-text').textContent = '检测中 (' + (idx + 1) + '/' + total + ')...';
+        if (idx === total - 1) {
+          setTimeout(function() {
+            document.getElementById('diag-progress-text').textContent = '诊断完成';
+            document.getElementById('diag-progress-bar').style.width = '100%';
+            if (warnings > 0 || passed < total) {
+              document.getElementById('diag-error-detail').style.display = 'block';
+              document.getElementById('diag-error-text').innerHTML = warnings > 0
+                ? '⚠️ 发现 ' + warnings + ' 项需要注意：\n• 信号强度偏弱，建议检查设备安装位置是否遮挡信号'
+                : '❌ 发现 ' + (total - passed) + ' 项异常，请联系技术人员处理';
+              document.getElementById('diag-result-summary').style.display = 'none';
+              document.getElementById('diag-restart-btn').style.display = 'inline-flex';
+            } else {
+              document.getElementById('diag-result-summary').style.display = 'block';
+              document.getElementById('diag-result-text').innerHTML = '设备运行状态良好，所有检测项均通过。设备已稳定运行 15 天，近 7 日平均响应时间 18ms。';
+              document.getElementById('diag-error-detail').style.display = 'none';
+              document.getElementById('diag-restart-btn').style.display = 'none';
+            }
+          }, 500);
+        }
+      }, (idx + 1) * 600);
+    })(item, idx);
+  });
+}
+
+function restartDeviceFromDiag() {
+  showToast('🔄 重启指令已下发，设备将在 10 秒后重启...', 'info');
+  closeModal('device-diagnostic');
+}
+
+function exportDiagnosticReport() {
+  var room = document.getElementById('diag-room-title').textContent;
+  var sn = document.getElementById('diag-device-sn').textContent;
+  var content = '领锁物联 - 设备自检诊断报告\n报告时间: ' + new Date().toLocaleString('zh-CN') + '\n设备: ' + room + ' | ' + sn + '\n\n【诊断结果】\n网络连接: ✅ 正常\n电池电量: ✅ 88% · 正常\n门锁状态: ✅ 已反锁 · 正常\n电机驱动: ✅ 响应12ms · 正常\n信号强度: ⚠️ 信号偏弱（62%）\n存储空间: ✅ 剩余 76%\n固件版本: ✅ v2.1.4 · 最新\n\n【综合评价】设备运行状态良好，建议关注信号强度';
+  var blob = new Blob([content], { type: 'text/plain' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '设备诊断报告_' + room + '_' + new Date().toISOString().slice(0,10) + '.txt'; a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('📤 诊断报告已导出', 'success');
+}
+
+// ======= V3 新增：积分商城 =======
+function openPointsMallModal(memberName, memberPoints, memberLevel) {
+  document.getElementById('pm-member-name').textContent = memberName || '王浩';
+  document.getElementById('pm-points').textContent = (memberPoints || 8860).toLocaleString();
+  openModal('points-mall');
+}
+
+function switchPointsMallTab(tab, el) {
+  var tabs = ['redeem','records','rules'];
+  tabs.forEach(function(t) {
+    document.getElementById('pm-tab-' + t).classList.remove('active');
+    document.getElementById('pm-content-' + t).style.display = 'none';
+  });
+  document.getElementById('pm-tab-' + tab).classList.add('active');
+  document.getElementById('pm-content-' + tab).style.display = 'block';
+}
+
+function redeemPointsItem(itemName, points, el) {
+  var currentPoints = parseInt(document.getElementById('pm-points').textContent.replace(/,/g, '')) || 0;
+  if (currentPoints < points) {
+    showToast('⚠️ 积分不足，需要 ' + points + ' 分，当前可用 ' + currentPoints + ' 分', 'error');
+    return;
+  }
+  if (el) el.style.opacity = '0.5';
+  var newPoints = currentPoints - points;
+  document.getElementById('pm-points').textContent = newPoints.toLocaleString();
+  showToast('🎉 成功兑换「' + itemName + '」，消耗 ' + points + ' 积分', 'success');
+}
+
+function openPointsMallDetail() {
+  showToast('💰 正在跳转到积分明细...', 'info');
+}
+
+// ======= V3 新增：退房结算确认 =======
+function openSettlementConfirmModal(room, guest, nights, roomType, roomFee, deposit) {
+  document.getElementById('sc-room-label').textContent = room + '房间';
+  document.getElementById('sc-guest-name').textContent = guest || '张三';
+  document.getElementById('sc-nights').textContent = (nights || 1) + '晚';
+  document.getElementById('sc-type').textContent = roomType || '亲子间';
+  document.getElementById('sc-days-count').textContent = nights || 1;
+  document.getElementById('sc-night-count').textContent = nights || 1;
+  var fee = roomFee || 128;
+  var dep = deposit || 100;
+  var tax = Math.round(fee * 0.05 * 100) / 100;
+  var total = fee + tax;
+  var refund = dep - total;
+  document.getElementById('sc-room-fee').textContent = '¥' + fee.toFixed(2);
+  document.getElementById('sc-tax').textContent = '¥' + tax.toFixed(2);
+  document.getElementById('sc-total-fee').textContent = '¥' + total.toFixed(2);
+  document.getElementById('sc-deposit-paid').textContent = '¥' + dep.toFixed(2);
+  document.getElementById('sc-refund-amount').textContent = '¥' + Math.max(0, refund).toFixed(2);
+  if (refund < 0) {
+    document.getElementById('sc-refund-row').style.background = 'var(--red-bg)';
+    document.getElementById('sc-refund-amount').style.color = 'var(--red)';
+  } else {
+    document.getElementById('sc-refund-row').style.background = 'var(--green-bg)';
+    document.getElementById('sc-refund-amount').style.color = 'var(--green)';
+  }
+  openModal('settlement-confirm');
+}
+
+function selectSettlementPayMethod(el, method) {
+  var labels = ['wechat','alipay','cash','skip'];
+  labels.forEach(function(m) {
+    var lbl = document.getElementById('sc-pay-' + m);
+    if (lbl) { lbl.style.borderColor = 'var(--border)'; lbl.style.background = 'white'; }
+  });
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'var(--blue-bg)';
+}
+
+function submitSettlementConfirm() {
+  var room = document.getElementById('sc-room-label').textContent;
+  showToast('✅ ' + room + ' 结算完成！房间已变为空房', 'success');
+  closeModal('settlement-confirm');
+}
+
+// ======= V3 新增：批量退房 =======
+function openBatchCheckoutModal(selectedRooms) {
+  var rooms = selectedRooms || ['301','302','304'];
+  document.getElementById('bco-room-count').textContent = rooms.length;
+  document.getElementById('bco-total-rooms').textContent = rooms.length;
+  document.getElementById('bco-total-refund').textContent = '¥' + (rooms.length * 100);
+  document.getElementById('bco-total-rooms-fee').textContent = '¥' + (rooms.length * 128);
+  var html = '';
+  rooms.forEach(function(r) {
+    html += '<span style="padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-radius:6px;font-size:12px;font-weight:600;">' + r + '</span>';
+  });
+  document.getElementById('bco-room-list').innerHTML = html;
+  openModal('batch-checkout');
+}
+
+function submitBatchCheckout() {
+  var count = parseInt(document.getElementById('bco-total-rooms').textContent);
+  showToast('✅ 批量退房完成！' + count + ' 个房间已全部退房，门卡权限已失效', 'success');
+  closeModal('batch-checkout');
+}
+
+// ======= V3 新增：员工排班管理 =======
+function openShiftScheduleModal() {
+  renderScheduleGrid();
+  openModal('shift-schedule');
+}
+
+function renderScheduleGrid() {
+  var staff = [
+    { name: '赵飞', dept: '前厅' },
+    { name: '周敏', dept: '客房' },
+    { name: '王丽', dept: '前厅' },
+    { name: '李强', dept: '工程' },
+    { name: '陈静', dept: '客房' }
+  ];
+  var shifts = ['早','中','休','早','中','夜','休'];
+  var html = '';
+  staff.forEach(function(s, idx) {
+    html += '<tr>';
+    html += '<td style="padding:8px 6px;border-bottom:1px solid var(--border);white-space:nowrap;"><div style="font-weight:600;font-size:12px;">' + s.name + '</div><div style="font-size:10px;color:var(--text-muted);">' + s.dept + '</div></td>';
+    for (var d = 0; d < 7; d++) {
+      var shift = shifts[(idx + d) % shifts.length];
+      var color = shift === '早' ? 'var(--blue-bg)' : shift === '中' ? 'var(--green-bg)' : shift === '夜' ? 'var(--purple-bg)' : 'var(--bg)';
+      var textColor = shift === '早' ? 'var(--blue)' : shift === '中' ? 'var(--green)' : shift === '夜' ? 'var(--purple)' : 'var(--text-muted)';
+      html += '<td style="padding:6px 4px;text-align:center;border-bottom:1px solid var(--border);cursor:pointer;" onclick="assignShift(this, \'' + s.name + '\', ' + d + ')">';
+      html += '<div style="padding:4px 6px;border-radius:6px;background:' + color + ';font-size:11px;font-weight:600;color:' + textColor + ';">' + shift + '</div>';
+      html += '</td>';
+    }
+    html += '</tr>';
+  });
+  document.getElementById('schedule-grid-body').innerHTML = html;
+  document.getElementById('schedule-summary-text').textContent = '排班人数：' + staff.length + '人';
+}
+
+function navigateScheduleWeek(dir) {
+  showToast('📅 已切至' + (dir > 0 ? '下一' : '上一') + '周', 'info');
+  renderScheduleGrid();
+}
+
+function goToCurrentWeek() {
+  document.getElementById('schedule-week-label').textContent = '2026年3月第4周';
+  renderScheduleGrid();
+}
+
+function assignShift(el, staffName, dayIdx) {
+  var shifts = ['早','中','夜','休'];
+  var current = el.querySelector('div').textContent.trim();
+  var idx = shifts.indexOf(current);
+  var next = shifts[(idx + 1) % shifts.length];
+  var color = next === '早' ? 'var(--blue-bg)' : next === '中' ? 'var(--green-bg)' : next === '夜' ? 'var(--purple-bg)' : 'var(--bg)';
+  var textColor = next === '早' ? 'var(--blue)' : next === '中' ? 'var(--green)' : next === '夜' ? 'var(--purple)' : 'var(--text-muted)';
+  el.querySelector('div').textContent = next;
+  el.querySelector('div').style.background = color;
+  el.querySelector('div').style.color = textColor;
+  showToast('✅ 已为 ' + staffName + ' 分配' + (next === '早' ? '早班' : next === '中' ? '中班' : next === '夜' ? '夜班' : '休息'), 'success');
+}
+
+function exportSchedule() {
+  var content = '领锁物联 - 员工排班表\n周次: 2026年3月第4周\n\n员工姓名\t部门\t周一\t周二\t周三\t周四\t周五\t周六\t周日\n赵飞\t前厅\t早\t中\t休\t早\t中\t夜\t休\n周敏\t客房\t中\t休\t早\t中\t夜\t休\t早\n王丽\t前厅\t休\t早\t中\t夜\t休\t早\t中\n李强\t工程\t早\t中\t夜\t休\t早\t中\t休\n陈静\t客房\t夜\t休\t早\t中\t夜\t休\t早';
+  var blob = new Blob([content], { type: 'text/plain' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '排班表_2026-03-第4周.txt'; a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('📤 排班表已导出', 'success');
+}
+
+function openShiftAssignment() {
+  showToast('📋 请直接在表格中点击单元格分配班次', 'info');
+}
+
+// 为首页设备卡片增加"诊断"按钮的快捷调用
+function openDeviceDiagnosticFromHome(deviceId) {
+  openDeviceDiagnosticModal('301', '领握LH-807智能锁', 'LHW-2024-807-001234');
+}
+
 </script>
 
 <!-- 【改进4】夜审报表弹窗 -->
@@ -14553,6 +14894,1322 @@ function confirmNightAudit() {
     </div>
   </div>
 </div>
+
+<!-- ======= V3 新增：设备自检诊断工具弹窗 ======= -->
+<div class="modal-overlay hidden" id="modal-device-diagnostic">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">🔧 设备自检诊断 - <span id="diag-room-title">301</span>房间</div>
+      <button class="modal-close" onclick="closeModal('device-diagnostic')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <!-- 设备基本信息 -->
+      <div style="padding:16px 20px;background:var(--bg);border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:700;" id="diag-device-name">领握LH-807智能锁</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;" id="diag-device-sn">SN: LHW-2024-807-001234</div>
+          </div>
+          <div id="diag-device-status-badge"><span class="live-badge"><span class="live-dot"></span>在线</span></div>
+        </div>
+      </div>
+      <!-- 诊断进度 -->
+      <div style="padding:16px 20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:13px;font-weight:600;">🔍 诊断进度</div>
+          <div style="font-size:12px;color:var(--text-muted);" id="diag-progress-text">准备中...</div>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:20px;">
+          <div id="diag-progress-bar" style="height:100%;background:var(--blue);border-radius:3px;transition:width 0.4s;width:0%;"></div>
+        </div>
+        <!-- 诊断项目列表 -->
+        <div id="diag-items-container">
+          <div class="diag-item" id="diag-item-connection">
+            <div class="diag-label"><span style="font-size:16px;">📡</span> 网络连接</div>
+            <div class="diag-value loading" id="diag-connection-status">检测中...</div>
+          </div>
+          <div class="diag-item" id="diag-item-battery">
+            <div class="diag-label"><span style="font-size:16px;">🔋</span> 电池电量</div>
+            <div class="diag-value loading" id="diag-battery-status">检测中...</div>
+          </div>
+          <div class="diag-item" id="diag-item-lock">
+            <div class="diag-label"><span style="font-size:16px;">🔐</span> 门锁状态</div>
+            <div class="diag-value loading" id="diag-lock-status">检测中...</div>
+          </div>
+          <div class="diag-item" id="diag-item-motor">
+            <div class="diag-label"><span style="font-size:16px;">⚡</span> 电机驱动</div>
+            <div class="diag-value loading" id="diag-motor-status">检测中...</div>
+          </div>
+          <div class="diag-item" id="diag-item-signal">
+            <div class="diag-label"><span style="font-size:16px;">📶</span> 信号强度</div>
+            <div class="diag-value loading" id="diag-signal-status">检测中...</div>
+          </div>
+          <div class="diag-item" id="diag-item-memory">
+            <div class="diag-label"><span style="font-size:16px;">💾</span> 存储空间</div>
+            <div class="diag-value loading" id="diag-memory-status">检测中...</div>
+          </div>
+          <div class="diag-item" id="diag-item-firmware">
+            <div class="diag-label"><span style="font-size:16px;">📦</span> 固件版本</div>
+            <div class="diag-value loading" id="diag-firmware-status">检测中...</div>
+          </div>
+        </div>
+        <!-- 诊断结果摘要 -->
+        <div id="diag-result-summary" style="display:none;margin-top:16px;padding:14px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;">
+          <div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:8px;">✅ 诊断完成：设备状态正常</div>
+          <div style="font-size:12px;color:var(--text);line-height:1.7;" id="diag-result-text"></div>
+        </div>
+        <!-- 诊断异常详情 -->
+        <div id="diag-error-detail" style="display:none;margin-top:16px;padding:14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;">
+          <div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:8px;">⚠️ 发现以下问题</div>
+          <div style="font-size:12px;color:var(--text);line-height:1.7;" id="diag-error-text"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="exportDiagnosticReport()">📤 导出报告</button>
+      <button class="modal-btn" id="diag-restart-btn" onclick="restartDeviceFromDiag()" style="display:none;background:var(--orange);color:white;border:none;">🔁 重启设备</button>
+      <button class="modal-btn primary" id="diag-start-btn" onclick="startDeviceDiagnostic()">▶️ 开始诊断</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= V3 新增：积分商城完整弹窗 ======= -->
+<div class="modal-overlay hidden" id="modal-points-mall">
+  <div class="modal" style="width:580px;">
+    <div class="modal-header">
+      <div class="modal-title">🎁 积分商城 - <span id="pm-member-name">王浩</span></div>
+      <button class="modal-close" onclick="closeModal('points-mall')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <!-- 积分余额区 -->
+      <div style="padding:20px 24px 16px;">
+        <div class="points-balance">
+          <div class="label">可用积分</div>
+          <div class="value"><span id="pm-points">8,860</span> <span class="unit">分</span></div>
+          <div class="meta">🥇 金卡会员 · 有效期至 2027-06-15 · 距离升级还需 ¥886</div>
+        </div>
+      </div>
+      <!-- Tab切换 -->
+      <div style="padding:0 24px;display:flex;gap:8px;border-bottom:1px solid var(--border);margin-bottom:16px;">
+        <div class="card-tab active" id="pm-tab-redeem" onclick="switchPointsMallTab('redeem',this)" style="border-bottom:2px solid var(--blue);border-radius:0;padding:8px 14px;font-weight:600;">🎁 积分兑换</div>
+        <div class="card-tab" id="pm-tab-records" onclick="switchPointsMallTab('records',this)" style="border-radius:0;padding:8px 14px;">📋 兑换记录</div>
+        <div class="card-tab" id="pm-tab-rules" onclick="switchPointsMallTab('rules',this)" style="border-radius:0;padding:8px 14px;">📖 积分规则</div>
+      </div>
+      <!-- 积分兑换Tab -->
+      <div id="pm-content-redeem" style="padding:0 24px 20px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:10px;">🏆 精选兑换权益</div>
+        <div id="pm-exchange-list">
+          <!-- 升房券 -->
+          <div class="exchange-item" onclick="redeemPointsItem('升房券', 2000, this)">
+            <div class="icon-wrap">🏠</div>
+            <div class="info">
+              <h4>免费升房券</h4>
+              <p>入住时免费升级房型 · 全年可用 · 限1张</p>
+            </div>
+            <div class="points">2,000分</div>
+          </div>
+          <!-- 延迟退房 -->
+          <div class="exchange-item" onclick="redeemPointsItem('延迟退房', 500, this)">
+            <div class="icon-wrap">⏰</div>
+            <div class="info">
+              <h4>延迟退房至14:00</h4>
+              <p>无需额外付费 · 节假日除外</p>
+            </div>
+            <div class="points">500分</div>
+          </div>
+          <!-- 早餐券 -->
+          <div class="exchange-item" onclick="redeemPointsItem('早餐券', 800, this)">
+            <div class="icon-wrap">🍳</div>
+            <div class="info">
+              <h4>双人早餐券</h4>
+              <p>价值¥68 · 限当次入住使用</p>
+            </div>
+            <div class="points">800分</div>
+          </div>
+          <!-- 按摩券 -->
+          <div class="exchange-item" onclick="redeemPointsItem('按摩券', 1500, this)">
+            <div class="icon-wrap">💆</div>
+            <div class="info">
+              <h4>SPA按摩券</h4>
+              <p>价值¥128 · 需提前预约</p>
+            </div>
+            <div class="points">1,500分</div>
+          </div>
+          <!-- 停车券 -->
+          <div class="exchange-item" onclick="redeemPointsItem('停车券', 300, this)">
+            <div class="icon-wrap">🚗</div>
+            <div class="info">
+              <h4>免费停车2小时</h4>
+              <p>酒店停车场免费停放2小时</p>
+            </div>
+            <div class="points">300分</div>
+          </div>
+          <!-- 迷你吧券 -->
+          <div class="exchange-item" onclick="redeemPointsItem('迷你吧券', 400, this)">
+            <div class="icon-wrap">🍺</div>
+            <div class="info">
+              <h4>迷你吧免单券</h4>
+              <p>客房迷你吧消费免单 · 限50元以内</p>
+            </div>
+            <div class="points">400分</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--text-muted);text-align:center;">
+          💡 积分获取：每消费1元累积1分 | 积分有效期：获得后12个月
+        </div>
+      </div>
+      <!-- 兑换记录Tab -->
+      <div id="pm-content-records" style="display:none;padding:0 24px 20px;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">最近6条兑换记录</div>
+        <table class="table">
+          <thead><tr><th>时间</th><th>兑换内容</th><th>消耗积分</th><th>状态</th></tr></thead>
+          <tbody>
+            <tr><td>2026-03-20</td><td>延迟退房</td><td style="color:var(--blue);font-weight:600;">-500分</td><td><span class="tbadge green">已使用</span></td></tr>
+            <tr><td>2026-02-14</td><td>双人早餐券</td><td style="color:var(--blue);font-weight:600;">-800分</td><td><span class="tbadge green">已使用</span></td></tr>
+            <tr><td>2026-01-28</td><td>免费升房券</td><td style="color:var(--blue);font-weight:600;">-2000分</td><td><span class="tbadge gray">已过期</span></td></tr>
+            <tr><td>2025-12-10</td><td>SPA按摩券</td><td style="color:var(--blue);font-weight:600;">-1500分</td><td><span class="tbadge green">已使用</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- 积分规则Tab -->
+      <div id="pm-content-rules" style="display:none;padding:0 24px 20px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;">📖 积分规则</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.9;">
+          <div style="margin-bottom:10px;"><span style="font-weight:600;color:var(--blue);">积分获取：</span>每消费1元累积1分；会员升级额外奖励500分；生日当月双倍积分</div>
+          <div style="margin-bottom:10px;"><span style="font-weight:600;color:var(--green);">积分兑换：</span>详见上方兑换权益列表；兑换后不可退换；部分权益需提前预约</div>
+          <div style="margin-bottom:10px;"><span style="font-weight:600;color:var(--orange);">积分有效期：</span>积分获得后12个月内有效；逾期未使用自动清零；兑换权益不受影响</div>
+          <div style="padding:10px;background:var(--orange-bg);border-radius:6px;font-size:11px;color:var(--orange);">
+            ⚠️ 积分不可转让、不折算现金；最终解释权归酒店所有
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('points-mall')">关闭</button>
+      <button class="modal-btn primary" onclick="openPointsMallDetail()">💰 我的积分明细</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= V3 新增：退房结算确认弹窗 ======= -->
+<div class="modal-overlay hidden" id="modal-settlement-confirm">
+  <div class="modal" style="width:500px;">
+    <div class="modal-header">
+      <div class="modal-title">💰 结算确认 - <span id="sc-room-label">301房间</span></div>
+      <button class="modal-close" onclick="closeModal('settlement-confirm')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- 入住信息 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--blue);margin-bottom:2px;">入住人</div>
+          <div style="font-size:13px;font-weight:600;" id="sc-guest-name">张三</div>
+        </div>
+        <div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--green);margin-bottom:2px;">入住天数</div>
+          <div style="font-size:13px;font-weight:600;" id="sc-nights">1晚</div>
+        </div>
+        <div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--orange);margin-bottom:2px;">入住类型</div>
+          <div style="font-size:13px;font-weight:600;" id="sc-type">亲子间</div>
+        </div>
+      </div>
+      <!-- 费用明细 -->
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;">
+        <div style="padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:13px;font-weight:600;">📋 费用明细</div>
+          <div style="font-size:11px;color:var(--text-muted);">共 <span id="sc-days-count">1</span> 晚</div>
+        </div>
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px;">
+          <span style="color:var(--text-light);">房费（¥128/晚 × <span id="sc-night-count">1</span>晚）</span>
+          <span style="font-weight:600;" id="sc-room-fee">¥128.00</span>
+        </div>
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px;">
+          <span style="color:var(--text-light);">住宿税</span>
+          <span style="font-weight:600;" id="sc-tax">¥6.40</span>
+        </div>
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px;" id="sc-extra-row" style="display:none;">
+          <span style="color:var(--text-light);">加床/加物</span>
+          <span style="font-weight:600;color:var(--orange);" id="sc-extra-fee">¥0</span>
+        </div>
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px;" id="sc-compensation-row" style="display:none;">
+          <span style="color:var(--red);">损坏赔偿</span>
+          <span style="font-weight:600;color:var(--red);" id="sc-compensation">¥0</span>
+        </div>
+        <div style="padding:12px 16px;background:var(--blue-bg);display:flex;justify-content:space-between;font-size:14px;font-weight:700;">
+          <span>应付总额</span>
+          <span style="color:var(--blue);font-size:18px;" id="sc-total-fee">¥134.40</span>
+        </div>
+        <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px;" id="sc-deposit-row">
+          <span style="color:var(--text-light);">押金（已付）</span>
+          <span style="font-weight:600;color:var(--green);" id="sc-deposit-paid">¥100.00</span>
+        </div>
+        <div style="padding:12px 16px;background:var(--green-bg);display:flex;justify-content:space-between;font-size:15px;font-weight:700;" id="sc-refund-row">
+          <span>应退押金</span>
+          <span style="color:var(--green);font-size:18px;" id="sc-refund-amount">¥0.00</span>
+        </div>
+      </div>
+      <!-- 支付方式 -->
+      <div class="form-group">
+        <label class="form-label">退款方式</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <label style="display:flex;align-items:center;gap:6px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;" onclick="selectSettlementPayMethod(this,'wechat')" id="sc-pay-wechat">
+            <input type="radio" name="sc-pay-method" value="wechat" checked style="accent-color:var(--green);">
+            💚 微信支付
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;" onclick="selectSettlementPayMethod(this,'alipay')" id="sc-pay-alipay">
+            <input type="radio" name="sc-pay-method" value="alipay" style="accent-color:var(--blue);">
+            💙 支付宝
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;" onclick="selectSettlementPayMethod(this,'cash')" id="sc-pay-cash">
+            <input type="radio" name="sc-pay-method" value="cash" style="accent-color:var(--orange);">
+            💵 现金
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;" onclick="selectSettlementPayMethod(this,'skip')" id="sc-pay-skip">
+            <input type="radio" name="sc-pay-method" value="skip" style="accent-color:var(--purple);">
+            🔄 押金抵扣
+          </label>
+        </div>
+      </div>
+      <!-- 备注 -->
+      <div class="form-group">
+        <label class="form-label">结算备注</label>
+        <textarea class="form-textarea" id="sc-note" placeholder="可选备注，如：客户要求延迟退房等" style="min-height:60px;"></textarea>
+      </div>
+      <!-- 确认提示 -->
+      <div style="padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;font-size:12px;color:var(--green);">
+        ✅ 确认后房间将变为空房，门卡权限自动失效，押金原路退回
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('settlement-confirm')">取消</button>
+      <button class="modal-btn primary" onclick="submitSettlementConfirm()">✅ 确认结算</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= V3 新增：批量退房确认弹窗 ======= -->
+<div class="modal-overlay hidden" id="modal-batch-checkout">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header">
+      <div class="modal-title">🚀 批量退房确认</div>
+      <button class="modal-close" onclick="closeModal('batch-checkout')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">
+        💡 批量退房将一次性为选中的多个房间办理退房，每个房间的门卡权限将自动失效
+      </div>
+      <!-- 已选房间列表 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text);">已选房间（<span id="bco-room-count" style="color:var(--blue);">0</span>间）</div>
+        <div id="bco-room-list" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+      </div>
+      <!-- 批量统计 -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+        <div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:var(--blue);" id="bco-total-rooms">0</div>
+          <div style="font-size:10px;color:var(--text-muted);">退房房间</div>
+        </div>
+        <div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:var(--green);" id="bco-total-refund">¥0</div>
+          <div style="font-size:10px;color:var(--text-muted);">应退押金</div>
+        </div>
+        <div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:var(--orange);" id="bco-total-rooms-fee">¥0</div>
+          <div style="font-size:10px;color:var(--text-muted);">房费合计</div>
+        </div>
+      </div>
+      <!-- 批量退房选项 -->
+      <div class="form-group">
+        <label class="form-label">退房操作选项</label>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;" id="bco-opt-sync">
+            <input type="checkbox" id="bco-sync-locks" checked style="accent-color:var(--blue);">
+            <div>
+              <div style="font-size:13px;font-weight:600;">🔄 同步门锁权限</div>
+              <div style="font-size:11px;color:var(--text-muted);">退房后自动使所有门卡失效</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;" id="bco-opt-notify">
+            <input type="checkbox" id="bco-send-notify" checked style="accent-color:var(--green);">
+            <div>
+              <div style="font-size:13px;font-weight:600;">📱 发送退房通知</div>
+              <div style="font-size:11px;color:var(--text-muted);">短信通知客户退房信息</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;" id="bco-opt-print">
+            <input type="checkbox" id="bco-print-receipt" style="accent-color:var(--orange);">
+            <div>
+              <div style="font-size:13px;font-weight:600;">🖨️ 打印退房小票</div>
+              <div style="font-size:11px;color:var(--text-muted);">连接打印机自动打印退房凭证</div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('batch-checkout')">取消</button>
+      <button class="modal-btn" style="background:var(--orange);color:white;border:none;" onclick="batchCheckoutPreview()">👁️ 预览</button>
+      <button class="modal-btn primary" onclick="submitBatchCheckout()">✅ 确认批量退房</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= V3 新增：员工排班管理弹窗 ======= -->
+<div class="modal-overlay hidden" id="modal-shift-schedule">
+  <div class="modal" style="width:600px;">
+    <div class="modal-header">
+      <div class="modal-title">📅 员工排班管理</div>
+      <button class="modal-close" onclick="closeModal('shift-schedule')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <!-- 排班筛选 -->
+      <div style="padding:12px 20px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="action-btn small" onclick="navigateScheduleWeek(-1)" style="padding:4px 10px;">◀</button>
+          <span style="font-size:13px;font-weight:600;min-width:180px;text-align:center;" id="schedule-week-label">2026年3月第4周</span>
+          <button class="action-btn small" onclick="navigateScheduleWeek(1)" style="padding:4px 10px;">▶</button>
+        </div>
+        <button class="action-btn small" onclick="goToCurrentWeek()" style="padding:4px 10px;">本周</button>
+        <select class="form-select" style="padding:5px 8px;font-size:12px;width:120px;" id="schedule-dept-filter" onchange="renderScheduleGrid()">
+          <option value="all">全部部门</option>
+          <option value="前厅">前厅部</option>
+          <option value="客房">客房部</option>
+          <option value="工程">工程部</option>
+        </select>
+        <span style="margin-left:auto;font-size:11px;color:var(--text-muted);" id="schedule-summary-text">排班人数：6人</span>
+      </div>
+      <!-- 排班网格 -->
+      <div style="padding:12px 20px 20px;overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:520px;">
+          <thead>
+            <tr style="background:var(--bg);">
+              <th style="padding:8px 6px;text-align:left;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap;">员工</th>
+              <th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">周一<br><span style="font-size:10px;font-weight:400;">03/23</span></th>
+              <th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">周二<br><span style="font-size:10px;font-weight:400;">03/24</span></th>
+              <th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">周三<br><span style="font-size:10px;font-weight:400;">03/25</span></th>
+              <th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">周四<br><span style="font-size:10px;font-weight:400;">03/26</span></th>
+              <th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">周五<br><span style="font-size:10px;font-weight:400;">03/27</span></th>
+              <th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--orange);border-bottom:1px solid var(--border);">周六<br><span style="font-size:10px;font-weight:400;">03/28</span></th>
+              <th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--red);border-bottom:1px solid var(--border);">周日<br><span style="font-size:10px;font-weight:400;">03/29</span></th>
+            </tr>
+          </thead>
+          <tbody id="schedule-grid-body">
+            <!-- 动态渲染 -->
+          </tbody>
+        </table>
+      </div>
+      <!-- 图例 -->
+      <div style="padding:10px 20px;border-top:1px solid var(--border);display:flex;gap:16px;font-size:11px;color:var(--text-muted);">
+        <span>🟦 早班 08:00-16:00</span>
+        <span>🟩 中班 16:00-24:00</span>
+        <span>🟨 夜班 00:00-08:00</span>
+        <span>⬜ 休息</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('shift-schedule')">关闭</button>
+      <button class="modal-btn" onclick="exportSchedule()">📤 导出排班</button>
+      <button class="modal-btn primary" onclick="openShiftAssignment()">+ 分配班次</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== V3 迭代改进：5个功能性改进 ==================== -->
+
+<!-- 【改进1】设备批量操作中心弹窗：勾选设备→批量同步/重启/升级固件+实时进度条 -->
+<div class="modal-overlay hidden" id="modal-device-batch-center">
+  <div class="modal" style="width:600px;">
+    <div class="modal-header">
+      <div class="modal-title">📱 设备批量操作中心</div>
+      <button class="modal-close" onclick="closeModal('device-batch-center')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- 已选设备摘要 -->
+      <div id="dbc-selected-summary" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;">
+        <div style="font-size:28px;">📱</div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:600;color:var(--blue);">已选择 <span id="dbc-count">0</span> 台设备</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;" id="dbc-device-names">请勾选设备列表中的设备</div>
+        </div>
+        <button class="action-btn small" onclick="showPage('device-list')" style="padding:4px 10px;font-size:11px;">去勾选</button>
+      </div>
+      <!-- 操作类型选择 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;">选择批量操作</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+          <div class="dbc-op-card" data-op="sync" onclick="selectBatchOp('sync')" style="padding:14px 10px;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all 0.2s;background:white;">
+            <div style="font-size:24px;margin-bottom:6px;">🔄</div>
+            <div style="font-size:12px;font-weight:600;">批量同步</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">拉取最新状态</div>
+          </div>
+          <div class="dbc-op-card" data-op="restart" onclick="selectBatchOp('restart')" style="padding:14px 10px;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all 0.2s;background:white;">
+            <div style="font-size:24px;margin-bottom:6px;">🔁</div>
+            <div style="font-size:12px;font-weight:600;">批量重启</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">重启门锁设备</div>
+          </div>
+          <div class="dbc-op-card" data-op="upgrade" onclick="selectBatchOp('upgrade')" style="padding:14px 10px;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all 0.2s;background:white;">
+            <div style="font-size:24px;margin-bottom:6px;">📦</div>
+            <div style="font-size:12px;font-weight:600;">批量升级固件</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">推送固件包</div>
+          </div>
+        </div>
+      </div>
+      <!-- 进度显示 -->
+      <div id="dbc-progress-area" style="display:none;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px;">
+          <span id="dbc-progress-label">处理进度</span>
+          <span id="dbc-progress-num">0 / 0</span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:10px;">
+          <div id="dbc-progress-bar" style="height:100%;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:4px;transition:width 0.5s ease;width:0%;"></div>
+        </div>
+        <div id="dbc-current-device" style="font-size:11px;color:var(--text-muted);text-align:center;">准备就绪</div>
+      </div>
+      <!-- 操作结果列表 -->
+      <div id="dbc-result-area" style="display:none;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text);">📋 操作结果</div>
+        <div id="dbc-result-list"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('device-batch-center')">取消</button>
+      <button class="modal-btn primary" id="dbc-start-btn" onclick="startBatchDeviceOp()">▶ 开始执行</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进2】退房结算完整表单弹窗：费用明细录入+支付方式+押金处理+小票预览 -->
+<div class="modal-overlay hidden" id="modal-checkout-full">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header">
+      <div class="modal-title">🚪 退房结算 - <span id="cf-room-num">--</span>房间</div>
+      <button class="modal-close" onclick="closeModal('checkout-full')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- 入住信息摘要 -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
+        <div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--blue);margin-bottom:3px;">入住人</div>
+          <div style="font-size:13px;font-weight:600;" id="cf-guest-name">--</div>
+        </div>
+        <div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--green);margin-bottom:3px;">入住时间</div>
+          <div style="font-size:13px;font-weight:600;" id="cf-checkin-time">--</div>
+        </div>
+        <div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--orange);margin-bottom:3px;">入住时长</div>
+          <div style="font-size:13px;font-weight:600;" id="cf-duration">--</div>
+        </div>
+      </div>
+      <!-- 费用明细录入 -->
+      <div class="form-group">
+        <label class="form-label">💰 费用明细（可多行添加）</label>
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:var(--bg);">
+                <th style="padding:8px 10px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);">费用项目</th>
+                <th style="padding:8px 10px;text-align:right;font-weight:600;border-bottom:1px solid var(--border);">金额(元)</th>
+                <th style="padding:8px 10px;text-align:center;font-weight:600;border-bottom:1px solid var(--border);width:40px;"></th>
+              </tr>
+            </thead>
+            <tbody id="cf-fee-body">
+              <tr>
+                <td style="padding:7px 10px;border-bottom:1px solid var(--border);">
+                  <input type="text" class="form-input" value="房费" style="padding:5px 8px;font-size:12px;width:100%;" readonly>
+                </td>
+                <td style="padding:7px 10px;border-bottom:1px solid var(--border);">
+                  <input type="number" class="form-input cf-fee-amount" value="128" style="padding:5px 8px;font-size:12px;width:80px;text-align:right;" oninput="cfRecalc()">
+                </td>
+                <td style="padding:7px 5px;border-bottom:1px solid var(--border);text-align:center;">
+                  <span style="color:var(--text-muted);font-size:11px;">-</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button class="action-btn small" onclick="cfAddFeeRow()" style="padding:4px 10px;font-size:11px;">+ 添加费用项</button>
+      </div>
+      <!-- 费用汇总 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div style="padding:12px;background:var(--bg);border-radius:8px;">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">费用合计</div>
+          <div style="font-size:22px;font-weight:700;color:var(--text);" id="cf-total-fee">¥128</div>
+        </div>
+        <div style="padding:12px;background:var(--orange-bg);border-radius:8px;">
+          <div style="font-size:11px;color:var(--orange);margin-bottom:4px;">押金（待退）</div>
+          <div style="font-size:22px;font-weight:700;color:var(--orange);" id="cf-deposit-display">¥100</div>
+        </div>
+      </div>
+      <div style="padding:12px;background:var(--green-bg);border-radius:8px;margin-bottom:14px;text-align:center;">
+        <div style="font-size:11px;color:var(--green);margin-bottom:4px;">实际应缴 / 应退</div>
+        <div style="font-size:26px;font-weight:700;color:var(--green);" id="cf-actual-display">¥28</div>
+      </div>
+      <!-- 支付/退款方式 -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">支付方式</label>
+          <select class="form-select" id="cf-pay-method" onchange="cfRecalc()">
+            <option value="wechat">微信支付</option>
+            <option value="alipay">支付宝</option>
+            <option value="cash">现金</option>
+            <option value="card">银行卡</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">退款方式</label>
+          <select class="form-select" id="cf-refund-method">
+            <option value="原路退回">原路退回</option>
+            <option value="现金退款">现金退款</option>
+            <option value="转入会员卡">转入会员卡</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="cf-note" placeholder="退房备注（选填）" style="min-height:50px;"></textarea>
+      </div>
+      <!-- 小票预览开关 -->
+      <div style="border-top:1px solid var(--border);padding-top:12px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;">
+          <input type="checkbox" id="cf-print-receipt" style="accent-color:var(--blue);width:15px;height:15px;">
+          <span>需要打印小票</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('checkout-full')">取消</button>
+      <button class="modal-btn" onclick="cfPreviewReceipt()" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">👁️ 小票预览</button>
+      <button class="modal-btn primary" onclick="cfSubmitCheckout()">✅ 确认结算</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进3】快捷入住完整表单弹窗：身份证录入+自动生成密码+押金+发卡同步反馈 -->
+<div class="modal-overlay hidden" id="modal-quick-checkin-full">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">🏨 快捷入住办理</div>
+      <button class="modal-close" onclick="closeModal('quick-checkin-full')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- 步骤指示器 -->
+      <div style="display:flex;align-items:center;margin-bottom:20px;" id="qcf-steps">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;" id="qcf-step-1-indicator">
+          <div id="qcf-step-1-dot" style="width:28px;height:28px;background:var(--blue);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">1</div>
+          <div style="font-size:11px;font-weight:600;color:var(--blue);">填写信息</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;opacity:0.4;" id="qcf-step-2-indicator">
+          <div id="qcf-step-2-dot" style="width:28px;height:28px;background:var(--border);color:var(--text-muted);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">2</div>
+          <div style="font-size:11px;color:var(--text-muted);">密码生成</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;opacity:0.4;" id="qcf-step-3-indicator">
+          <div id="qcf-step-3-dot" style="width:28px;height:28px;background:var(--border);color:var(--text-muted);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">3</div>
+          <div style="font-size:11px;color:var(--text-muted);">确认提交</div>
+        </div>
+      </div>
+      <!-- 步骤1：填写信息 -->
+      <div id="qcf-step-1-content">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">选择房间 <span class="required">*</span></label>
+            <select class="form-select" id="qcf-room" onchange="qcfOnRoomChange()">
+              <option value="">请选择空房</option>
+              <option value="302">302 - 亲子间（空房）</option>
+              <option value="303">303 - 亲子间（空房）</option>
+              <option value="305">305 - 大床房（空房）</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">入住人姓名 <span class="required">*</span></label>
+            <input type="text" class="form-input" id="qcf-name" placeholder="请输入姓名">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">身份证号 <span class="required">*</span></label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" class="form-input" id="qcf-idcard" placeholder="请输入18位身份证号" maxlength="18" style="flex:1;" oninput="qcfFormatIdCard(this)">
+            <button class="action-btn small" onclick="qcfScanIdCard()" style="padding:8px 12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);white-space:nowrap;">📷 扫描</button>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:4px;" id="qcf-idcard-hint"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">手机号 <span class="required">*</span></label>
+            <input type="tel" class="form-input" id="qcf-phone" placeholder="手机号码" maxlength="11">
+          </div>
+          <div class="form-group">
+            <label class="form-label">押金金额</label>
+            <input type="number" class="form-input" id="qcf-deposit" value="100" placeholder="押金">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">开锁方式</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--blue-bg);border-color:var(--blue);">
+              <input type="checkbox" id="qcf-method-phone" checked style="accent-color:var(--blue);"><span>📱 手机开锁</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+              <input type="checkbox" id="qcf-method-card" style="accent-color:var(--blue);"><span>💳 客户卡</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+              <input type="checkbox" id="qcf-method-pwd" style="accent-color:var(--blue);"><span>🔢 密码开锁</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <!-- 步骤2：密码生成预览 -->
+      <div id="qcf-step-2-content" style="display:none;">
+        <div style="text-align:center;padding:16px 0;">
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">系统已为 <strong id="qcf-preview-name" style="color:var(--blue);">--</strong> 生成以下开锁凭证</div>
+          <!-- 手机开锁凭证 -->
+          <div id="qcf-phone-cred" style="margin-bottom:12px;padding:14px;background:var(--blue-bg);border-radius:10px;text-align:left;">
+            <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;">📱 手机开锁凭证</div>
+            <div style="font-size:12px;color:var(--text);margin-bottom:6px;"><strong>APP下载链接：</strong>https://lockclub.cn/app</div>
+            <div style="font-size:12px;color:var(--text);"><strong>账号：</strong><span id="qcf-preview-phone">--</span></div>
+          </div>
+          <!-- 客户卡凭证 -->
+          <div id="qcf-card-cred" style="display:none;margin-bottom:12px;padding:14px;background:var(--green-bg);border-radius:10px;text-align:left;">
+            <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:8px;">💳 客户卡信息</div>
+            <div style="font-size:12px;color:var(--text);"><strong>卡号：</strong><span id="qcf-preview-card">8888-****-****-1234</span></div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">请至前台领取实体门卡</div>
+          </div>
+          <!-- 密码凭证 -->
+          <div id="qcf-pwd-cred" style="display:none;margin-bottom:12px;padding:14px;background:var(--orange-bg);border-radius:10px;text-align:left;">
+            <div style="font-size:12px;font-weight:600;color:var(--orange);margin-bottom:8px;">🔢 临时密码</div>
+            <div style="font-size:22px;font-weight:700;color:var(--orange);letter-spacing:3px;text-align:center;padding:8px 0;" id="qcf-preview-pwd">8*3#-A7K9</div>
+            <div style="font-size:11px;color:var(--text-muted);text-align:center;">有效期：入住后48小时内有效</div>
+          </div>
+        </div>
+      </div>
+      <!-- 步骤3：提交确认+发卡状态 -->
+      <div id="qcf-step-3-content" style="display:none;">
+        <div id="qcf-submit-status" style="text-align:center;padding:20px 0;">
+          <div style="font-size:40px;margin-bottom:12px;" id="qcf-submit-icon">⏳</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;" id="qcf-submit-msg">正在同步设备数据...</div>
+          <div style="font-size:12px;color:var(--text-muted);" id="qcf-submit-detail">向门锁设备下发开锁权限</div>
+          <!-- 进度列表 -->
+          <div id="qcf-sync-steps" style="margin-top:16px;text-align:left;max-width:300px;margin:16px auto 0;">
+            <div class="qcf-sync-item" id="qcf-sync-1" style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;color:var(--text-muted);">
+              <span id="qcf-sync-1-icon" style="font-size:14px;">○</span> 写入客户信息
+            </div>
+            <div class="qcf-sync-item" id="qcf-sync-2" style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;color:var(--text-muted);">
+              <span id="qcf-sync-2-icon" style="font-size:14px;">○</span> 生成开锁凭证
+            </div>
+            <div class="qcf-sync-item" id="qcf-sync-3" style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;color:var(--text-muted);">
+              <span id="qcf-sync-3-icon" style="font-size:14px;">○</span> 同步至门锁设备
+            </div>
+            <div class="qcf-sync-item" id="qcf-sync-4" style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;color:var(--text-muted);">
+              <span id="qcf-sync-4-icon" style="font-size:14px;">○</span> 发送通知短信
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" id="qcf-footer">
+      <button class="modal-btn secondary" onclick="closeModal('quick-checkin-full')">取消</button>
+      <button class="modal-btn" id="qcf-back-btn" onclick="qcfGoBack()" style="display:none;">← 上一步</button>
+      <button class="modal-btn primary" id="qcf-next-btn" onclick="qcfGoNext()">下一步 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进4】数据导出中心弹窗：按模块选择字段+日期范围+实时预览条数+导出进度 -->
+<div class="modal-overlay hidden" id="modal-export-center">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">📤 数据导出中心</div>
+      <button class="modal-close" onclick="closeModal('export-center')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- 模块选择 -->
+      <div class="form-group">
+        <label class="form-label">📂 选择导出模块 <span class="required">*</span></label>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+          <div class="exp-module-card" data-module="checkin" onclick="selectExportModule('checkin')" style="padding:12px 8px;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all 0.2s;background:white;">
+            <div style="font-size:20px;margin-bottom:4px;">🏨</div>
+            <div style="font-size:11px;font-weight:600;">入住记录</div>
+          </div>
+          <div class="exp-module-card" data-module="device" onclick="selectExportModule('device')" style="padding:12px 8px;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all 0.2s;background:white;">
+            <div style="font-size:20px;margin-bottom:4px;">📱</div>
+            <div style="font-size:11px;font-weight:600;">设备日志</div>
+          </div>
+          <div class="exp-module-card" data-module="unlock" onclick="selectExportModule('unlock')" style="padding:12px 8px;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all 0.2s;background:white;">
+            <div style="font-size:20px;margin-bottom:4px;">🔓</div>
+            <div style="font-size:11px;font-weight:600;">开锁记录</div>
+          </div>
+          <div class="exp-module-card" data-module="energy" onclick="selectExportModule('energy')" style="padding:12px 8px;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all 0.2s;background:white;">
+            <div style="font-size:20px;margin-bottom:4px;">⚡</div>
+            <div style="font-size:11px;font-weight:600;">能耗数据</div>
+          </div>
+        </div>
+      </div>
+      <!-- 日期范围 -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">开始日期</label>
+          <input type="date" class="form-input" id="exp-date-start" value="2026-03-01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">结束日期</label>
+          <input type="date" class="form-input" id="exp-date-end" value="2026-03-27">
+        </div>
+      </div>
+      <!-- 字段选择 -->
+      <div class="form-group">
+        <label class="form-label">✅ 选择导出字段（可多选）</label>
+        <div id="exp-fields-area" style="padding:10px 12px;background:var(--bg);border-radius:8px;min-height:60px;font-size:12px;color:var(--text-muted);">
+          <div style="text-align:center;padding:12px 0;color:var(--text-muted);">请先选择上方导出模块</div>
+        </div>
+      </div>
+      <!-- 实时预览 -->
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:12px;">
+        <div style="font-size:20px;">📊</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;color:var(--blue);">预计导出</div>
+          <div style="font-size:11px;color:var(--text-muted);" id="exp-preview-count">请选择模块和日期范围</div>
+        </div>
+        <div style="font-size:22px;font-weight:700;color:var(--blue);" id="exp-preview-num">--</div>
+      </div>
+      <!-- 导出格式 -->
+      <div class="form-group">
+        <label class="form-label">导出格式</label>
+        <div style="display:flex;gap:10px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:7px 14px;border:2px solid var(--blue);border-radius:6px;background:var(--blue-bg);font-size:12px;">
+            <input type="radio" name="exp-format" value="csv" checked style="accent-color:var(--blue);"><span>📄 CSV</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:7px 14px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+            <input type="radio" name="exp-format" value="xlsx" style="accent-color:var(--blue);"><span>📊 Excel</span>
+          </label>
+        </div>
+      </div>
+      <!-- 导出进度 -->
+      <div id="exp-progress-area" style="display:none;margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px;">
+          <span>导出进度</span>
+          <span id="exp-progress-num">0%</span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+          <div id="exp-progress-bar" style="height:100%;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:4px;transition:width 0.3s ease;width:0%;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('export-center')">取消</button>
+      <button class="modal-btn" onclick="expPreviewCount()">🔍 预览数量</button>
+      <button class="modal-btn primary" id="exp-start-btn" onclick="startExport()">📤 开始导出</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进5】设备诊断工具弹窗：ping/电量/信号/固件版本/门锁状态 5项检测+实时结果 -->
+<div class="modal-overlay hidden" id="modal-device-diagnostic-v2">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">🔧 设备诊断工具 - <span id="diag-device-id">301</span>房间</div>
+      <button class="modal-close" onclick="closeModal('device-diagnostic-v2')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <!-- 诊断项目网格 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+        <!-- 网络连通性 -->
+        <div style="padding:16px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <div style="width:32px;height:32px;background:var(--blue-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🌐</div>
+            <div>
+              <div style="font-size:12px;font-weight:600;">网络连通性</div>
+              <div style="font-size:10px;color:var(--text-muted);">Ping检测</div>
+            </div>
+            <button class="action-btn small" onclick="runDiagItem('ping')" id="diag-ping-btn" style="margin-left:auto;padding:4px 10px;font-size:11px;">检测</button>
+          </div>
+          <div id="diag-ping-result" style="font-size:12px;color:var(--text-muted);">点击检测按钮开始</div>
+          <div id="diag-ping-progress" style="height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden;display:none;">
+            <div style="height:100%;background:var(--blue);border-radius:2px;width:0%;transition:width 2s ease;" id="diag-ping-bar"></div>
+          </div>
+        </div>
+        <!-- 电量检测 -->
+        <div style="padding:16px;border-bottom:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <div style="width:32px;height:32px;background:var(--orange-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🔋</div>
+            <div>
+              <div style="font-size:12px;font-weight:600;">电量检测</div>
+              <div style="font-size:10px;color:var(--text-muted);">电池状态</div>
+            </div>
+            <button class="action-btn small" onclick="runDiagItem('battery')" id="diag-battery-btn" style="margin-left:auto;padding:4px 10px;font-size:11px;">检测</button>
+          </div>
+          <div id="diag-battery-result" style="font-size:12px;color:var(--text-muted);">点击检测按钮开始</div>
+          <div style="margin-top:8px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+            <div id="diag-battery-bar" style="height:100%;background:var(--green);border-radius:3px;width:0%;transition:width 1s ease;"></div>
+          </div>
+        </div>
+        <!-- 信号强度 -->
+        <div style="padding:16px;border-right:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <div style="width:32px;height:32px;background:var(--green-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">📶</div>
+            <div>
+              <div style="font-size:12px;font-weight:600;">信号强度</div>
+              <div style="font-size:10px;color:var(--text-muted);">WiFi RSSI</div>
+            </div>
+            <button class="action-btn small" onclick="runDiagItem('signal')" id="diag-signal-btn" style="margin-left:auto;padding:4px 10px;font-size:11px;">检测</button>
+          </div>
+          <div id="diag-signal-result" style="font-size:12px;color:var(--text-muted);">点击检测按钮开始</div>
+        </div>
+        <!-- 固件版本 -->
+        <div style="padding:16px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <div style="width:32px;height:32px;background:var(--purple-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">📦</div>
+            <div>
+              <div style="font-size:12px;font-weight:600;">固件版本</div>
+              <div style="font-size:10px;color:var(--text-muted);">FW Version</div>
+            </div>
+            <button class="action-btn small" onclick="runDiagItem('firmware')" id="diag-firmware-btn" style="margin-left:auto;padding:4px 10px;font-size:11px;">检测</button>
+          </div>
+          <div id="diag-firmware-result" style="font-size:12px;color:var(--text-muted);">点击检测按钮开始</div>
+        </div>
+        <!-- 门锁状态（跨两列） -->
+        <div style="padding:16px;border-top:1px solid var(--border);grid-column:1/-1;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <div style="width:32px;height:32px;background:var(--red-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🔐</div>
+            <div>
+              <div style="font-size:12px;font-weight:600;">门锁状态</div>
+              <div style="font-size:10px;color:var(--text-muted);">开锁记录/反锁状态</div>
+            </div>
+            <button class="action-btn small" onclick="runDiagItem('lock')" id="diag-lock-btn" style="margin-left:auto;padding:4px 10px;font-size:11px;">检测</button>
+          </div>
+          <div id="diag-lock-result" style="font-size:12px;color:var(--text-muted);">点击检测按钮开始</div>
+        </div>
+      </div>
+      <!-- 诊断总结 -->
+      <div style="padding:12px 16px;border-top:1px solid var(--border);background:var(--bg);">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:13px;font-weight:600;">设备健康度</div>
+          <div style="font-size:22px;font-weight:700;color:var(--green);" id="diag-health-score">--</div>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;margin-top:6px;overflow:hidden;">
+          <div id="diag-health-bar" style="height:100%;background:var(--green);border-radius:3px;transition:width 1s ease;width:0%;"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" id="diag-health-summary">运行全部检测以获取健康度评分</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('device-diagnostic-v2')">关闭</button>
+      <button class="modal-btn" onclick="runAllDiagnostics()" id="diag-run-all-btn" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔄 全部检测</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ======= 【改进1】设备批量操作中心 ==============================
+var selectedBatchOp = null;
+var batchDeviceCount = 0;
+function selectBatchOp(op) {
+  selectedBatchOp = op;
+  document.querySelectorAll('.dbc-op-card').forEach(function(card) {
+    if (card.dataset.op === op) {
+      card.style.borderColor = 'var(--blue)';
+      card.style.background = 'var(--blue-bg)';
+    } else {
+      card.style.borderColor = 'var(--border)';
+      card.style.background = 'white';
+    }
+  });
+}
+function openBatchDeviceCenter() {
+  // 从首页快捷操作或设备列表进入
+  var selected = getSelectedDeviceCount();
+  batchDeviceCount = selected || 3;
+  document.getElementById('dbc-count').textContent = batchDeviceCount;
+  document.getElementById('dbc-device-names').textContent = '已勾选设备：301、302、303';
+  selectedBatchOp = null;
+  document.querySelectorAll('.dbc-op-card').forEach(function(card) {
+    card.style.borderColor = 'var(--border)';
+    card.style.background = 'white';
+  });
+  document.getElementById('dbc-progress-area').style.display = 'none';
+  document.getElementById('dbc-result-area').style.display = 'none';
+  document.getElementById('dbc-start-btn').disabled = false;
+  document.getElementById('dbc-start-btn').textContent = '▶ 开始执行';
+  openModal('device-batch-center');
+}
+function getSelectedDeviceCount() {
+  var checks = document.querySelectorAll('.device-row-check:checked');
+  return checks.length || 0;
+}
+function startBatchDeviceOp() {
+  if (!selectedBatchOp) { showToast('请先选择批量操作类型', 'error'); return; }
+  if (batchDeviceCount === 0) { showToast('请先勾选要操作的设备', 'error'); return; }
+  document.getElementById('dbc-progress-area').style.display = 'block';
+  document.getElementById('dbc-result-area').style.display = 'block';
+  document.getElementById('dbc-progress-num').textContent = '0 / ' + batchDeviceCount;
+  document.getElementById('dbc-progress-bar').style.width = '0%';
+  document.getElementById('dbc-result-list').innerHTML = '';
+  document.getElementById('dbc-start-btn').disabled = true;
+  var opNames = {sync:'同步', restart:'重启', upgrade:'固件升级'};
+  var total = batchDeviceCount;
+  var current = 0;
+  var results = [];
+  var interval = setInterval(function() {
+    current++;
+    var pct = Math.round((current / total) * 100);
+    document.getElementById('dbc-progress-bar').style.width = pct + '%';
+    document.getElementById('dbc-progress-num').textContent = current + ' / ' + total;
+    var deviceNames = ['301','302','303'];
+    var devName = deviceNames[(current - 1) % deviceNames.length];
+    document.getElementById('dbc-current-device').textContent = '正在处理：' + devName + ' - ' + opNames[selectedBatchOp] + '中...';
+    var isSuccess = Math.random() > 0.1;
+    results.push({dev: devName, ok: isSuccess});
+    var resEl = document.getElementById('dbc-result-list');
+    var resHtml = '';
+    results.forEach(function(r) {
+      resHtml += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px;border-bottom:1px solid var(--border);">';
+      resHtml += '<span style="color:' + (r.ok ? 'var(--green)' : 'var(--red)') + ';font-size:13px;">' + (r.ok ? '✅' : '❌') + '</span>';
+      resHtml += '<span style="flex:1;">' + r.dev + ' - ' + opNames[selectedBatchOp] + '</span>';
+      resHtml += '<span style="color:' + (r.ok ? 'var(--green)' : 'var(--red)') + ';">' + (r.ok ? '成功' : '失败') + '</span></div>';
+    });
+    resEl.innerHTML = resHtml;
+    if (current >= total) {
+      clearInterval(interval);
+      document.getElementById('dbc-current-device').textContent = '全部完成！';
+      document.getElementById('dbc-start-btn').disabled = false;
+      document.getElementById('dbc-start-btn').textContent = '✅ 完成';
+      var successCount = results.filter(function(r){return r.ok;}).length;
+      showToast('批量' + opNames[selectedBatchOp] + '完成：成功 ' + successCount + ' / ' + total, successCount === total ? 'success' : 'warn');
+    }
+  }, 600);
+}
+
+// ======= 【改进2】退房结算完整表单 ==============================
+var cfRoomFee = 128;
+var cfDeposit = 100;
+function openCheckoutFullModal(roomNum, guestName, checkinTime) {
+  document.getElementById('cf-room-num').textContent = roomNum || '301';
+  document.getElementById('cf-guest-name').textContent = guestName || '张三';
+  document.getElementById('cf-checkin-time').textContent = checkinTime || '2026-03-26 14:00';
+  // 计算时长
+  var now = new Date();
+  var ci = new Date((checkinTime || '2026-03-26 14:00').replace(' ', 'T'));
+  var diffH = Math.floor((now - ci) / 3600000);
+  var days = Math.floor(diffH / 24);
+  var hours = diffH % 24;
+  document.getElementById('cf-duration').textContent = days > 0 ? days + '天' + hours + '小时' : hours + '小时';
+  // 重置费用
+  document.getElementById('cf-fee-body').innerHTML = '<tr><td style="padding:7px 10px;border-bottom:1px solid var(--border);"><input type="text" class="form-input" value="房费" style="padding:5px 8px;font-size:12px;width:100%;" readonly></td><td style="padding:7px 10px;border-bottom:1px solid var(--border);"><input type="number" class="form-input cf-fee-amount" value="128" style="padding:5px 8px;font-size:12px;width:80px;text-align:right;" oninput="cfRecalc()"></td><td style="padding:7px 5px;border-bottom:1px solid var(--border);text-align:center;"><span style="color:var(--text-muted);font-size:11px;">-</span></td></tr>';
+  document.getElementById('cf-note').value = '';
+  cfRecalc();
+  openModal('checkout-full');
+}
+function cfAddFeeRow() {
+  var body = document.getElementById('cf-fee-body');
+  var tr = document.createElement('tr');
+  tr.innerHTML = '<td style="padding:7px 10px;border-bottom:1px solid var(--border);"><input type="text" class="form-input" placeholder="输入费用名称" style="padding:5px 8px;font-size:12px;width:100%;"></td><td style="padding:7px 10px;border-bottom:1px solid var(--border);"><input type="number" class="form-input cf-fee-amount" placeholder="0" style="padding:5px 8px;font-size:12px;width:80px;text-align:right;" oninput="cfRecalc()"></td><td style="padding:7px 5px;border-bottom:1px solid var(--border);text-align:center;"><button onclick="this.closest(\'tr\').remove();cfRecalc();" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;">✕</button></td>';
+  body.appendChild(tr);
+}
+function cfRecalc() {
+  var amounts = document.querySelectorAll('.cf-fee-amount');
+  var total = 0;
+  amounts.forEach(function(inp) { total += parseFloat(inp.value) || 0; });
+  document.getElementById('cf-total-fee').textContent = '¥' + total;
+  cfRoomFee = total;
+  var deposit = parseFloat(document.getElementById('cf-deposit-display').textContent.replace('¥','')) || 100;
+  var actual = deposit - total;
+  var actualEl = document.getElementById('cf-actual-display');
+  actualEl.textContent = (actual >= 0 ? '¥' + actual : '-¥' + Math.abs(actual));
+  actualEl.style.color = actual >= 0 ? 'var(--green)' : 'var(--red)';
+}
+function cfPreviewReceipt() {
+  var room = document.getElementById('cf-room-num').textContent;
+  var name = document.getElementById('cf-guest-name').textContent;
+  var total = document.getElementById('cf-total-fee').textContent;
+  var actual = document.getElementById('cf-actual-display').textContent;
+  showToast('📄 小票预览：房间' + room + ' | 客人：' + name + ' | 费用：' + total + ' | ' + actual, 'info');
+}
+function cfSubmitCheckout() {
+  var total = cfRoomFee;
+  if (total <= 0) { showToast('请填写正确的费用金额', 'error'); return; }
+  closeModal('checkout-full');
+  showToast('✅ 退房结算成功！实际' + document.getElementById('cf-actual-display').textContent, 'success');
+}
+
+// ======= 【改进3】快捷入住完整表单 ==============================
+var qcfCurrentStep = 1;
+function openQuickCheckinFullModal() {
+  qcfCurrentStep = 1;
+  document.getElementById('qcf-room').value = '';
+  document.getElementById('qcf-name').value = '';
+  document.getElementById('qcf-idcard').value = '';
+  document.getElementById('qcf-idcard-hint').textContent = '';
+  document.getElementById('qcf-phone').value = '';
+  document.getElementById('qcf-deposit').value = '100';
+  document.getElementById('qcf-method-phone').checked = true;
+  document.getElementById('qcf-method-card').checked = false;
+  document.getElementById('qcf-method-pwd').checked = false;
+  qcfShowStep(1);
+  openModal('quick-checkin-full');
+}
+function qcfShowStep(step) {
+  qcfCurrentStep = step;
+  document.getElementById('qcf-step-1-content').style.display = step === 1 ? 'block' : 'none';
+  document.getElementById('qcf-step-2-content').style.display = step === 2 ? 'block' : 'none';
+  document.getElementById('qcf-step-3-content').style.display = step === 3 ? 'block' : 'none';
+  document.getElementById('qcf-back-btn').style.display = step > 1 ? 'inline-block' : 'none';
+  document.getElementById('qcf-next-btn').textContent = step === 3 ? '✅ 完成入住' : '下一步 →';
+  // 更新步骤指示器
+  for (var i = 1; i <= 3; i++) {
+    var ind = document.getElementById('qcf-step-' + i + '-indicator');
+    var dot = document.getElementById('qcf-step-' + i + '-dot');
+    if (i <= step) {
+      ind.style.opacity = '1';
+      dot.style.background = 'var(--blue)';
+      dot.style.color = 'white';
+    } else {
+      ind.style.opacity = '0.4';
+      dot.style.background = 'var(--border)';
+      dot.style.color = 'var(--text-muted)';
+    }
+  }
+}
+function qcfGoNext() {
+  if (qcfCurrentStep === 1) {
+    var name = document.getElementById('qcf-name').value.trim();
+    var idcard = document.getElementById('qcf-idcard').value.trim();
+    var phone = document.getElementById('qcf-phone').value.trim();
+    if (!name || !idcard || !phone) { showToast('请填写姓名、身份证和手机号', 'error'); return; }
+    if (idcard.length !== 18) { showToast('身份证号必须为18位', 'error'); return; }
+    document.getElementById('qcf-preview-name').textContent = name;
+    document.getElementById('qcf-preview-phone').textContent = phone;
+    // 生成随机密码
+    var pwd = Math.random().toString(36).substr(2,4).toUpperCase() + '*' + Math.floor(Math.random()*90+10) + '#-' + ['A','B','C','D'][Math.floor(Math.random()*4)] + Math.floor(Math.random()*90+10) + ['K','L','M','N'][Math.floor(Math.random()*4)];
+    document.getElementById('qcf-preview-pwd').textContent = pwd;
+    // 显示/隐藏凭证
+    var showPhone = document.getElementById('qcf-method-phone').checked;
+    var showCard = document.getElementById('qcf-method-card').checked;
+    var showPwd = document.getElementById('qcf-method-pwd').checked;
+    document.getElementById('qcf-phone-cred').style.display = showPhone ? 'block' : 'none';
+    document.getElementById('qcf-card-cred').style.display = showCard ? 'block' : 'none';
+    document.getElementById('qcf-pwd-cred').style.display = showPwd ? 'block' : 'none';
+    qcfShowStep(2);
+  } else if (qcfCurrentStep === 2) {
+    qcfSubmitCheckin();
+  }
+}
+function qcfGoBack() {
+  if (qcfCurrentStep > 1) qcfShowStep(qcfCurrentStep - 1);
+}
+function qcfFormatIdCard(inp) {
+  var val = inp.value.toUpperCase().replace(/[^0-9X]/g, '');
+  if (val.length > 18) val = val.substr(0, 18);
+  inp.value = val;
+  var hint = document.getElementById('qcf-idcard-hint');
+  if (val.length === 18) {
+    hint.textContent = '✅ 身份证格式正确';
+    hint.style.color = 'var(--green)';
+  } else if (val.length > 0) {
+    hint.textContent = '还需输入 ' + (18 - val.length) + ' 位';
+    hint.style.color = 'var(--orange)';
+  } else {
+    hint.textContent = '';
+  }
+}
+function qcfScanIdCard() {
+  showToast('📷 身份证扫描功能需要摄像头支持（模拟）', 'info');
+}
+function qcfSubmitCheckin() {
+  qcfShowStep(3);
+  var syncs = [
+    {id:'qcf-sync-1', icon:'⏳', text:'写入客户信息', doneIcon:'✅', doneText:'已写入客户信息'},
+    {id:'qcf-sync-2', icon:'⏳', text:'生成开锁凭证', doneIcon:'✅', doneText:'已生成开锁凭证'},
+    {id:'qcf-sync-3', icon:'⏳', text:'同步至门锁设备', doneIcon:'✅', doneText:'已同步至门锁设备'},
+    {id:'qcf-sync-4', icon:'⏳', text:'发送通知短信', doneIcon:'✅', doneText:'已发送短信通知'}
+  ];
+  var stepIndex = 0;
+  var interval = setInterval(function() {
+    if (stepIndex >= syncs.length) {
+      clearInterval(interval);
+      document.getElementById('qcf-submit-icon').textContent = '✅';
+      document.getElementById('qcf-submit-icon').style.color = 'var(--green)';
+      document.getElementById('qcf-submit-msg').textContent = '入住办理成功！';
+      document.getElementById('qcf-submit-detail').textContent = '开锁权限已同步至门锁';
+      setTimeout(function() { closeModal('quick-checkin-full'); showToast('✅ 入住办理成功！', 'success'); }, 1500);
+      return;
+    }
+    var s = syncs[stepIndex];
+    var el = document.getElementById(s.id);
+    var iconEl = document.getElementById(s.id.replace('qcf-sync','qcf-sync'));
+    if (el) {
+      el.style.color = 'var(--green)';
+      var iconSpan = el.querySelector('span');
+      if (iconSpan) iconSpan.textContent = '✅';
+      else el.innerHTML = '<span style="font-size:14px;">✅</span> ' + s.doneText;
+    }
+    stepIndex++;
+  }, 800);
+}
+
+// ======= 【改进4】数据导出中心 ==============================
+var selectedExportModule = null;
+var exportFieldOptions = {
+  checkin: ['姓名','手机号','身份证','房间号','房型','入住时间','退房时间','押金金额','开锁方式','操作员'],
+  device: ['设备ID','房间号','电量','信号强度','固件版本','最后同步时间','在线状态','累计开锁次数'],
+  unlock: ['时间','房间号','开锁方式','开锁人','设备响应','剩余电量'],
+  energy: ['日期','房间号','用电量(kWh)','电费(元)','异常标记']
+};
+function selectExportModule(module) {
+  selectedExportModule = module;
+  document.querySelectorAll('.exp-module-card').forEach(function(card) {
+    if (card.dataset.module === module) {
+      card.style.borderColor = 'var(--blue)';
+      card.style.background = 'var(--blue-bg)';
+    } else {
+      card.style.borderColor = 'var(--border)';
+      card.style.background = 'white';
+    }
+  });
+  // 渲染字段选择
+  var fields = exportFieldOptions[module] || [];
+  var html = '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+  fields.forEach(function(f) {
+    html += '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:20px;font-size:12px;background:white;cursor:pointer;">';
+    html += '<input type="checkbox" checked style="accent-color:var(--blue);">' + f + '</label>';
+  });
+  html += '</div>';
+  document.getElementById('exp-fields-area').innerHTML = html;
+  expPreviewCount();
+}
+function expPreviewCount() {
+  if (!selectedExportModule) { showToast('请先选择导出模块', 'error'); return; }
+  var start = document.getElementById('exp-date-start').value;
+  var end = document.getElementById('exp-date-end').value;
+  var counts = {checkin:8, device:15, unlock:42, energy:30};
+  var count = counts[selectedExportModule] || 0;
+  document.getElementById('exp-preview-count').textContent = start + ' 至 ' + end + ' 期间数据';
+  document.getElementById('exp-preview-num').textContent = count + ' 条';
+}
+function startExport() {
+  if (!selectedExportModule) { showToast('请先选择导出模块', 'error'); return; }
+  var format = document.querySelector('input[name="exp-format"]:checked').value;
+  var moduleNames = {checkin:'入住记录', device:'设备日志', unlock:'开锁记录', energy:'能耗数据'};
+  document.getElementById('exp-progress-area').style.display = 'block';
+  document.getElementById('exp-start-btn').disabled = true;
+  var pct = 0;
+  var interval = setInterval(function() {
+    pct += Math.random() * 15 + 5;
+    if (pct >= 100) { pct = 100; clearInterval(interval); }
+    document.getElementById('exp-progress-bar').style.width = pct + '%';
+    document.getElementById('exp-progress-num').textContent = Math.round(pct) + '%';
+    if (pct >= 100) {
+      setTimeout(function() {
+        document.getElementById('exp-start-btn').disabled = false;
+        showToast('📤 ' + moduleNames[selectedExportModule] + '已导出为' + format.toUpperCase() + '文件', 'success');
+        closeModal('export-center');
+      }, 500);
+    }
+  }, 200);
+}
+
+// ======= 【改进5】设备诊断工具v2 ==============================
+var diagResults = {ping:null, battery:null, signal:null, firmware:null, lock:null};
+function openDeviceDiagnosticV2(roomNum) {
+  document.getElementById('diag-device-id').textContent = roomNum || '301';
+  diagResults = {ping:null, battery:null, signal:null, firmware:null, lock:null};
+  document.getElementById('diag-ping-result').textContent = '点击检测按钮开始';
+  document.getElementById('diag-battery-result').textContent = '点击检测按钮开始';
+  document.getElementById('diag-signal-result').textContent = '点击检测按钮开始';
+  document.getElementById('diag-firmware-result').textContent = '点击检测按钮开始';
+  document.getElementById('diag-lock-result').textContent = '点击检测按钮开始';
+  document.getElementById('diag-ping-progress').style.display = 'none';
+  document.getElementById('diag-battery-bar').style.width = '0%';
+  document.getElementById('diag-health-score').textContent = '--';
+  document.getElementById('diag-health-bar').style.width = '0%';
+  document.getElementById('diag-health-summary').textContent = '运行全部检测以获取健康度评分';
+  openModal('device-diagnostic-v2');
+}
+function runDiagItem(item) {
+  var btn = document.getElementById('diag-' + item + '-btn');
+  if (btn) btn.disabled = true;
+  if (item === 'ping') {
+    var bar = document.getElementById('diag-ping-bar');
+    var resultEl = document.getElementById('diag-ping-result');
+    document.getElementById('diag-ping-progress').style.display = 'block';
+    bar.style.width = '0%';
+    resultEl.textContent = '正在Ping...';
+    resultEl.style.color = 'var(--blue)';
+    setTimeout(function() {
+      bar.style.width = '100%';
+      setTimeout(function() {
+        var latency = Math.floor(Math.random() * 50 + 10);
+        var ok = latency < 200;
+        resultEl.textContent = ok ? '✅ 连通正常 · 延迟' + latency + 'ms' : '❌ 连接超时';
+        resultEl.style.color = ok ? 'var(--green)' : 'var(--red)';
+        document.getElementById('diag-ping-progress').style.display = 'none';
+        diagResults.ping = ok;
+        if (btn) btn.disabled = false;
+        updateDiagHealth();
+      }, 2000);
+    }, 100);
+  } else if (item === 'battery') {
+    var bar = document.getElementById('diag-battery-bar');
+    var resultEl = document.getElementById('diag-battery-result');
+    var level = Math.floor(Math.random() * 80 + 15);
+    bar.style.width = level + '%';
+    bar.style.background = level < 20 ? 'var(--red)' : level < 40 ? 'var(--orange)' : 'var(--green)';
+    setTimeout(function() {
+      resultEl.textContent = level < 20 ? '⚠️ 电量过低 ' + level + '%' : level < 40 ? '🔋 电量偏低 ' + level + '%' : '✅ 电量正常 ' + level + '%';
+      resultEl.style.color = level < 20 ? 'var(--red)' : level < 40 ? 'var(--orange)' : 'var(--green)';
+      diagResults.battery = level >= 20;
+      if (btn) btn.disabled = false;
+      updateDiagHealth();
+    }, 1000);
+  } else if (item === 'signal') {
+    var resultEl = document.getElementById('diag-signal-result');
+    var rssi = -Math.floor(Math.random() * 40 + 50);
+    var ok = rssi > -70;
+    setTimeout(function() {
+      resultEl.textContent = ok ? '📶 信号良好 ' + rssi + 'dBm' : '📶 信号偏弱 ' + rssi + 'dBm';
+      resultEl.style.color = ok ? 'var(--green)' : 'var(--orange)';
+      diagResults.signal = ok;
+      if (btn) btn.disabled = false;
+      updateDiagHealth();
+    }, 800);
+  } else if (item === 'firmware') {
+    var resultEl = document.getElementById('diag-firmware-result');
+    setTimeout(function() {
+      resultEl.textContent = '✅ 固件已是最新 v2.3.2';
+      resultEl.style.color = 'var(--green)';
+      diagResults.firmware = true;
+      if (btn) btn.disabled = false;
+      updateDiagHealth();
+    }, 600);
+  } else if (item === 'lock') {
+    var resultEl = document.getElementById('diag-lock-result');
+    setTimeout(function() {
+      resultEl.innerHTML = '✅ 门锁状态正常<br><span style="font-size:10px;color:var(--text-muted);">反锁：未启用 · 最后开锁：10:32</span>';
+      resultEl.style.color = 'var(--green)';
+      diagResults.lock = true;
+      if (btn) btn.disabled = false;
+      updateDiagHealth();
+    }, 1000);
+  }
+}
+function runAllDiagnostics() {
+  runDiagItem('ping');
+  setTimeout(function() { runDiagItem('battery'); }, 500);
+  setTimeout(function() { runDiagItem('signal'); }, 1000);
+  setTimeout(function() { runDiagItem('firmware'); }, 1500);
+  setTimeout(function() { runDiagItem('lock'); }, 2000);
+}
+function updateDiagHealth() {
+  var results = Object.values(diagResults).filter(function(v){return v !== null;});
+  if (results.length === 0) return;
+  var score = Math.round((results.filter(function(v){return v === true;}).length / results.length) * 100);
+  document.getElementById('diag-health-score').textContent = score + '分';
+  document.getElementById('diag-health-bar').style.width = score + '%';
+  document.getElementById('diag-health-bar').style.background = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--orange)' : 'var(--red)';
+  document.getElementById('diag-health-score').style.color = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--orange)' : 'var(--red)';
+  var summaries = {100:'设备状态优秀',80:'设备状态良好',60:'存在部分问题',40:'需要维护'};
+  document.getElementById('diag-health-summary').textContent = summaries[score] || '设备状态一般';
+}
+</script>
 
 </body>
 </html>
