@@ -52428,6 +52428,547 @@ document.addEventListener('DOMContentLoaded', function() {
     memBtns.forEach(function(b) { b.setAttribute('onclick', 'openAddMemberModalV3()'); });
   }, 300);
 });
+
+// ============================================================
+// 改进1: 设备离线自动重启策略配置
+// 功能：解决Demo中"离线设备需手动重启"的问题，改为可配置自动策略
+// 逻辑：离线超过N分钟自动触发重启命令，配置规则包括：离线时长阈值、重启次数上限、重启冷却时间
+// ============================================================
+var deviceAutoRestartConfig = {
+  enabled: false,
+  offlineThresholdMin: 30,    // 离线超过多少分钟触发
+  maxRestartPerDay: 3,        // 每天最多自动重启次数（防止死循环）
+  cooldownMin: 60,             // 重启后冷却时间（分钟）
+  notifyOnRestart: true,      // 自动重启时是否通知
+  allowedGroups: ['all'],     // 应用的设备分组，all=全部
+  restartLog: []              // 自动重启日志
+};
+
+function openDeviceAutoRestartModal() {
+  var old = document.getElementById('modal-device-auto-restart');
+  if (old) old.remove();
+  var cfg = deviceAutoRestartConfig;
+  var html = '<div class="modal-overlay" id="modal-device-auto-restart" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:520px;">';
+  html += '<div class="modal-header">';
+  html += '<div class="modal-title">⚡ 设备离线自动重启策略</div>';
+  html += '<button class="modal-close" onclick="closeModal(\'device-auto-restart\')">✕</button>';
+  html += '</div>';
+  html += '<div class="modal-body">';
+  html += '<div style="padding:12px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">💡 当设备离线超过设定时间，系统自动下发重启命令，减少人工干预，提升设备在线率。</div>';
+  html += '<div class="form-group">';
+  html += '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:600;">';
+  html += '<input type="checkbox" id="dar-enabled" ' + (cfg.enabled ? 'checked' : '') + ' style="accent-color:var(--blue);width:18px;height:18px;">';
+  html += '启用自动重启策略</label>';
+  html += '</div>';
+  html += '<div class="form-group">';
+  html += '<label class="form-label">离线触发阈值（分钟）</label>';
+  html += '<div style="display:flex;align-items:center;gap:10px;">';
+  html += '<input type="range" id="dar-threshold" min="5" max="120" value="' + cfg.offlineThresholdMin + '" style="flex:1;accent-color:var(--blue);" oninput="document.getElementById(\'dar-threshold-val\').textContent = this.value + \'分钟\'">';
+  html += '<span id="dar-threshold-val" style="font-weight:700;color:var(--blue);min-width:60px;">' + cfg.offlineThresholdMin + '分钟</span>';
+  html += '</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">设备离线超过此时间后自动执行重启</div>';
+  html += '</div>';
+  html += '<div class="form-group">';
+  html += '<label class="form-label">每天最多重启次数</label>';
+  html += '<div style="display:flex;align-items:center;gap:10px;">';
+  html += '<input type="range" id="dar-max" min="1" max="10" value="' + cfg.maxRestartPerDay + '" style="flex:1;accent-color:var(--orange);" oninput="document.getElementById(\'dar-max-val\').textContent = this.value + \'次\'">';
+  html += '<span id="dar-max-val" style="font-weight:700;color:var(--orange);min-width:50px;">' + cfg.maxRestartPerDay + '次</span>';
+  html += '</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">防止同一设备频繁重启（超出后暂停自动重启）</div>';
+  html += '</div>';
+  html += '<div class="form-group">';
+  html += '<label class="form-label">重启后冷却时间（分钟）</label>';
+  html += '<div style="display:flex;align-items:center;gap:10px;">';
+  html += '<input type="range" id="dar-cooldown" min="10" max="180" value="' + cfg.cooldownMin + '" style="flex:1;accent-color:var(--green);" oninput="document.getElementById(\'dar-cooldown-val\').textContent = this.value + \'分钟\'">';
+  html += '<span id="dar-cooldown-val" style="font-weight:700;color:var(--green);min-width:60px;">' + cfg.cooldownMin + '分钟</span>';
+  html += '</div>';
+  html += '</div>';
+  html += '<div class="form-group">';
+  html += '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;">';
+  html += '<input type="checkbox" id="dar-notify" ' + (cfg.notifyOnRestart ? 'checked' : '') + ' style="accent-color:var(--blue);width:16px;height:16px;">';
+  html += '自动重启时通知管理员</label>';
+  html += '</div>';
+  html += '<div style="margin-top:14px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📋 自动重启日志（最近5条）</div>';
+  html += '<div id="dar-log-list" style="max-height:120px;overflow-y:auto;">';
+  if (cfg.restartLog.length === 0) {
+    html += '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px;">暂无重启记录</div>';
+  } else {
+    cfg.restartLog.slice(0, 5).forEach(function(log) {
+      html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;">';
+      html += '<span>' + log.device + '</span>';
+      html += '<span style="color:var(--green);">' + log.action + '</span>';
+      html += '<span style="color:var(--text-muted);">' + log.time + '</span>';
+      html += '</div>';
+    });
+  }
+  html += '</div></div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="closeModal(\'device-auto-restart\')">取消</button>';
+  html += '<button class="modal-btn" onclick="runDeviceAutoRestartNow()" style="background:var(--orange);color:white;border-color:var(--orange);">🧪 立即执行一次检测</button>';
+  html += '<button class="modal-btn primary" onclick="saveDeviceAutoRestartConfig()">💾 保存策略</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function saveDeviceAutoRestartConfig() {
+  deviceAutoRestartConfig.enabled = document.getElementById('dar-enabled').checked;
+  deviceAutoRestartConfig.offlineThresholdMin = parseInt(document.getElementById('dar-threshold').value);
+  deviceAutoRestartConfig.maxRestartPerDay = parseInt(document.getElementById('dar-max').value);
+  deviceAutoRestartConfig.cooldownMin = parseInt(document.getElementById('dar-cooldown').value);
+  deviceAutoRestartConfig.notifyOnRestart = document.getElementById('dar-notify').checked;
+  localStorage.setItem('deviceAutoRestartConfig', JSON.stringify(deviceAutoRestartConfig));
+  showToast('✅ 自动重启策略已保存！' + (deviceAutoRestartConfig.enabled ? '策略已启用' : '策略已暂停'), 'success');
+  closeModal('device-auto-restart');
+}
+
+function runDeviceAutoRestartNow() {
+  // 模拟执行一次检测
+  var cfg = deviceAutoRestartConfig;
+  var offlineDevices = [
+    {name: '305室门锁', id: 'DEV-LK05', offlineMin: 48},
+    {name: '203室门锁', id: 'DEV-LK07', offlineMin: 15}
+  ];
+  var triggered = offlineDevices.filter(function(d) { return d.offlineMin >= cfg.offlineThresholdMin; });
+  if (triggered.length === 0) {
+    showToast('✅ 本次检测完成，无设备触发自动重启条件（阈值：' + cfg.offlineThresholdMin + '分钟）', 'info');
+    return;
+  }
+  var logEntry = {
+    time: new Date().toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}),
+    device: triggered.map(function(d){return d.name;}).join(', '),
+    action: '自动重启已触发（离线>' + cfg.offlineThresholdMin + '分钟）'
+  };
+  deviceAutoRestartConfig.restartLog.unshift(logEntry);
+  if (deviceAutoRestartConfig.restartLog.length > 20) deviceAutoRestartConfig.restartLog.pop();
+  if (cfg.notifyOnRestart) {
+    showToast('⚡ 已自动重启 ' + triggered.length + ' 台设备并通知管理员', 'success');
+  } else {
+    showToast('⚡ 已自动重启 ' + triggered.length + ' 台设备（通知已关闭）', 'success');
+  }
+}
+
+// Wire up the button in device management page toolbar
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    // Add auto-restart button to device management toolbar
+    var batchBar = document.querySelector('#page-device .card-body[style*="display:flex"][style*="gap:10px"]');
+    if (batchBar && !document.getElementById('dar-open-btn')) {
+      var btn = document.createElement('button');
+      btn.id = 'dar-open-btn';
+      btn.className = 'action-btn small';
+      btn.style.cssText = 'padding:5px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);';
+      btn.textContent = '⚡ 自动重启策略';
+      btn.onclick = openDeviceAutoRestartModal;
+      // Insert near the other diagnostic buttons
+      var lastDiagBtn = batchBar.querySelector('[onclick*="battery"], [onclick*="固件"]');
+      if (lastDiagBtn) lastDiagBtn.parentNode.insertBefore(btn, lastDiagBtn.nextSibling);
+      else batchBar.appendChild(btn);
+    }
+  }, 800);
+});
+
+// ============================================================
+// 改进2: 会员入住欢迎语推送功能
+// 功能：办理入住时自动推送个性化欢迎语到客人手机，支持自定义模板
+// 逻辑：入住时弹窗确认是否发送欢迎语，可选择模板（节日/普通/VIP），支持预览
+// ============================================================
+var welcomeTemplates = [
+  {id: 'normal', name: '📋 普通迎宾', icon: '🏨', text: '尊敬的{name}您好！欢迎入住{hotel}，您的房间号{room}，祝您入住愉快！', vars: ['name','hotel','room']},
+  {id: 'vip', name: '⭐ VIP专属', icon: '💎', text: '尊贵的{level}会员{name}，欢迎回家！您专属的{room}已为您准备好，期待为您呈现完美体验～', vars: ['level','name','room']},
+  {id: 'festival', name: '🎉 节日问候', icon: '🎊', text: '{name}您好！{festival}将至，感谢您选择{hotel}，恭祝您节日快乐，住店愉快！', vars: ['name','festival','hotel']},
+  {id: 'biz', name: '💼 商务出差', icon: '💼', text: '{name}您好，欢迎入住{hotel}！您的商务房{room}已准备就绪，高速WiFi密码：88888888，祝工作顺利！', vars: ['name','hotel','room']},
+  {id: 'custom', name: '✏️ 自定义', icon: '✏️', text: '', vars: []}
+];
+
+function openWelcomePushModal(guestName, roomNum, memberLevel) {
+  var old = document.getElementById('modal-welcome-push');
+  if (old) old.remove();
+  var tplOptions = welcomeTemplates.map(function(t) {
+    return '<option value="' + t.id + '">' + t.name + '</option>';
+  }).join('');
+  var defaultTpl = memberLevel === 'VIP会员' || memberLevel === '金卡会员' ? 'vip' : 'normal';
+  var html = '<div class="modal-overlay" id="modal-welcome-push" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:500px;">';
+  html += '<div class="modal-header">';
+  html += '<div class="modal-title">📲 入住欢迎语推送</div>';
+  html += '<button class="modal-close" onclick="closeModal(\'welcome-push\')">✕</button>';
+  html += '</div>';
+  html += '<div class="modal-body">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">';
+  html += '<div style="padding:10px 12px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);">客人姓名</div><div style="font-size:13px;font-weight:700;color:var(--blue);">' + guestName + '</div></div>';
+  html += '<div style="padding:10px 12px;background:var(--green-bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);">入住房间</div><div style="font-size:13px;font-weight:700;color:var(--green);">' + roomNum + '</div></div>';
+  html += '</div>';
+  html += '<div class="form-group">';
+  html += '<label class="form-label">选择消息模板</label>';
+  html += '<select class="form-select" id="wp-template" style="padding:8px 12px;font-size:13px;" onchange="updateWelcomePreview()">';
+  html += tplOptions;
+  html += '</select></div>';
+  html += '<div class="form-group">';
+  html += '<label class="form-label">消息预览</label>';
+  html += '<div id="wp-preview" style="padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;font-size:12px;line-height:1.6;color:var(--green);min-height:80px;">';
+  html += '尊敬的' + guestName + '您好！欢迎入住小度语音智慧房体验店，您的房间号' + roomNum + '，祝您入住愉快！';
+  html += '</div></div>';
+  html += '<div class="form-group">';
+  html += '<label class="form-label">短信签名</label>';
+  html += '<input type="text" class="form-input" id="wp-signature" value="【领锁科技】" style="padding:8px 12px;font-size:13px;">';
+  html += '</div>';
+  html += '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-muted);">';
+  html += '<input type="checkbox" id="wp-save-template" checked style="accent-color:var(--blue);width:15px;height:15px;">';
+  html += '<span>保存为下次默认模板</span>';
+  html += '</div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="closeModal(\'welcome-push\')">暂不发送</button>';
+  html += '<button class="modal-btn primary" onclick="sendWelcomePush(\'' + guestName + '\',\'' + roomNum + '\')" style="background:var(--green);border-color:var(--green);">📱 确认发送</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function updateWelcomePreview() {
+  var tplId = document.getElementById('wp-template').value;
+  var tpl = welcomeTemplates.find(function(t) { return t.id === tplId; });
+  if (!tpl || !tpl.text) return;
+  var preview = tpl.text
+    .replace('{name}', '张三')
+    .replace('{hotel}', '小度语音智慧房体验店')
+    .replace('{room}', '301')
+    .replace('{level}', 'VIP')
+    .replace('{festival}', '中秋节');
+  document.getElementById('wp-preview').textContent = preview;
+}
+
+function sendWelcomePush(guestName, roomNum) {
+  var tplId = document.getElementById('wp-template').value;
+  var tpl = welcomeTemplates.find(function(t) { return t.id === tplId; });
+  var signature = document.getElementById('wp-signature').value;
+  var message = tpl && tpl.text ? tpl.text
+    .replace('{name}', guestName)
+    .replace('{hotel}', '小度语音智慧房体验店')
+    .replace('{room}', roomNum)
+    .replace('{level}', 'VIP')
+    .replace('{festival}', '周末') : '尊敬的' + guestName + '您好，欢迎入住！';
+  showToast('✅ 欢迎语已发送至客人手机：' + message.substring(0, 20) + '...', 'success');
+  addOpLog('checkin', '赵飞', '向住客' + guestName + '发送入住欢迎语', '');
+  closeModal('welcome-push');
+}
+
+// ============================================================
+// 改进3: 入住时段分析报表（优化排班用）
+// 功能：统计每天各时段的入住/退房人数，发现规律帮助优化前台排班
+// 逻辑：按"凌晨(0-6)/上午(6-12)/下午(12-18)/晚上(18-24)"四个时段统计入住/退房
+// ============================================================
+function openCheckinTimeAnalysisModal() {
+  var old = document.getElementById('modal-checkin-analysis');
+  if (old) old.remove();
+  // 模拟时段数据
+  var timeSlots = {
+    '凌晨 0-6时': {checkin: 0, checkout: 2, peak: false},
+    '上午 6-12时': {checkin: 8, checkout: 5, peak: true},
+    '下午 12-18时': {checkin: 6, checkout: 3, peak: false},
+    '晚上 18-24时': {checkin: 3, checkout: 1, peak: false}
+  };
+  var maxVal = Math.max.apply(null, Object.keys(timeSlots).map(function(k){ return Math.max(timeSlots[k].checkin, timeSlots[k].checkout); }));
+  var html = '<div class="modal-overlay" id="modal-checkin-analysis" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:560px;">';
+  html += '<div class="modal-header">';
+  html += '<div class="modal-title">📊 入住时段分析报表</div>';
+  html += '<button class="modal-close" onclick="closeModal(\'checkin-analysis\')">✕</button>';
+  html += '</div>';
+  html += '<div class="modal-body">';
+  html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">';
+  html += '<select class="form-select" id="ca-date-range" style="padding:7px 10px;font-size:12px;">';
+  html += '<option value="today">今日</option><option value="week">近7日</option><option value="month" selected>本月</option>';
+  html += '</select>';
+  html += '<span style="font-size:12px;color:var(--text-muted);">统计维度：入住/退房人数</span>';
+  html += '<button class="action-btn small" onclick="showCheckinTimeAnalysis()" style="padding:5px 10px;margin-left:auto;">🔄 刷新</button>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:16px;margin-bottom:16px;">';
+  html += '<div style="flex:1;padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">总入住</div><div style="font-size:22px;font-weight:700;color:var(--blue);">17</div><div style="font-size:11px;color:var(--text-muted);">人次</div></div>';
+  html += '<div style="flex:1;padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">总退房</div><div style="font-size:22px;font-weight:700;color:var(--green);">11</div><div style="font-size:11px;color:var(--text-muted);">人次</div></div>';
+  html += '<div style="flex:1;padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">高峰时段</div><div style="font-size:14px;font-weight:700;color:var(--orange);">上午 6-12时</div><div style="font-size:11px;color:var(--text-muted);">入住8人</div></div>';
+  html += '</div>';
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div style="display:flex;gap:8px;margin-bottom:8px;font-size:12px;">';
+  html += '<div style="flex:1;text-align:center;"><span style="display:inline-block;width:10px;height:10px;background:var(--blue);border-radius:2px;margin-right:4px;"></span>入住人数</div>';
+  html += '<div style="flex:1;text-align:center;"><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:4px;"></span>退房人数</div>';
+  html += '</div>';
+  var slotKeys = Object.keys(timeSlots);
+  slotKeys.forEach(function(slot) {
+    var data = timeSlots[slot];
+    var inPct = Math.round((data.checkin / maxVal) * 100);
+    var outPct = Math.round((data.checkout / maxVal) * 100);
+    html += '<div style="margin-bottom:10px;">';
+    html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:3px;">';
+    html += '<span>' + slot + (data.peak ? ' ⭐' : '') + '</span>';
+    html += '<span><span style="color:var(--blue);font-weight:600;">' + data.checkin + '</span> 入 / <span style="color:var(--green);font-weight:600;">' + data.checkout + '</span> 退</span>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:4px;align-items:center;">';
+    html += '<div style="flex:1;height:18px;background:var(--blue-bg);border-radius:4px;overflow:hidden;">';
+    html += '<div style="width:' + inPct + '%;height:100%;background:var(--blue);border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;">';
+    html += '<span style="font-size:10px;color:white;font-weight:600;">' + data.checkin + '</span></div></div>';
+    html += '<div style="flex:1;height:18px;background:var(--green-bg);border-radius:4px;overflow:hidden;">';
+    html += '<div style="width:' + outPct + '%;height:100%;background:var(--green);border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;">';
+    html += '<span style="font-size:10px;color:white;font-weight:600;">' + data.checkout + '</span></div></div>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  html += '<div style="padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);">';
+  html += '💡 <strong>排班建议：</strong>上午(6-12时)为入住高峰，建议前台多安排1-2人；凌晨退房需求较少，可安排值班人员。';
+  html += '</div></div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="closeModal(\'checkin-analysis\')">关闭</button>';
+  html += '<button class="modal-btn primary" onclick="exportCheckinTimeAnalysis()" style="background:var(--green);border-color:var(--green);">📤 导出报表</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function showCheckinTimeAnalysis() {
+  showToast('📊 入住时段数据已刷新', 'info');
+}
+
+function exportCheckinTimeAnalysis() {
+  showToast('📤 入住时段分析报表已导出', 'success');
+  closeModal('checkin-analysis');
+}
+
+// ============================================================
+// 改进4: 设备批量指派负责人
+// 功能：解决设备管理中"设备归属不清"的问题，支持批量给设备指定负责人/维护人
+// 逻辑：勾选多个设备 → 选择负责人（员工）→ 批量绑定，支持按楼栋/角色筛选员工
+// ============================================================
+var deviceResponsibilityData = {
+  'DEV-LK01': {name: '301室门锁', responsible: '钱七', dept: '客房部'},
+  'DEV-LK02': {name: '302室门锁', responsible: null, dept: null},
+  'DEV-LK03': {name: '303室门锁', responsible: '孙九', dept: '工程部'}
+};
+
+function openBatchAssignResponsibleModal() {
+  var selectedDevices = [];
+  document.querySelectorAll('#device-table-body input[type="checkbox"]:checked').forEach(function(cb) {
+    var row = cb.closest('tr');
+    if (row) {
+      var room = row.cells[1] ? row.cells[1].textContent.trim() : '';
+      var devId = row.dataset.deviceId || room;
+      selectedDevices.push({id: devId, name: room + '室门锁'});
+    }
+  });
+  if (selectedDevices.length === 0) {
+    showToast('⚠️ 请先在设备列表中勾选要指派的设备', 'warning');
+    return;
+  }
+  var old = document.getElementById('modal-batch-responsible');
+  if (old) old.remove();
+  var staffList = [
+    {name: '赵飞', dept: '前厅部', role: '前厅经理'},
+    {name: '钱七', dept: '客房部', role: '客房主管'},
+    {name: '孙九', dept: '工程部', role: '工程师'},
+    {name: '李十', dept: '前厅部', role: '前厅员工'}
+  ];
+  var deptOptions = '<option value="all">全部部门</option>' + [...new Set(staffList.map(function(s){return s.dept;}))].map(function(d){return '<option value="'+d+'">'+d+'</option>';}).join('');
+  var staffOptions = staffList.map(function(s){return '<option value="'+s.name+'" data-dept="'+s.dept+'">'+s.name+'（'+s.dept+'·'+s.role+'）</option>';}).join('');
+  var html = '<div class="modal-overlay" id="modal-batch-responsible" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:500px;">';
+  html += '<div class="modal-header">';
+  html += '<div class="modal-title">👤 批量指派设备负责人</div>';
+  html += '<button class="modal-close" onclick="closeModal(\'batch-responsible\')">✕</button>';
+  html += '</div>';
+  html += '<div class="modal-body">';
+  html += '<div style="margin-bottom:14px;padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">';
+  html += '已选择 <strong>' + selectedDevices.length + '</strong> 台设备批量指派负责人</div>';
+  html += '<div style="max-height:100px;overflow-y:auto;margin-bottom:14px;padding:8px;background:var(--bg);border-radius:6px;font-size:11px;">';
+  html += selectedDevices.map(function(d){return '· ' + d.name + ' (' + d.id + ')';}).join('<br>');
+  html += '</div>';
+  html += '<div class="form-group">';
+  html += '<label class="form-label">筛选部门</label>';
+  html += '<select class="form-select" id="bar-dept-filter" style="padding:7px 10px;font-size:12px;" onchange="filterStaffForAssign(this.value)">';
+  html += deptOptions + '</select></div>';
+  html += '<div class="form-group">';
+  html += '<label class="form-label">选择负责人 <span class="required">*</span></label>';
+  html += '<select class="form-select" id="bar-staff-select" style="padding:7px 10px;font-size:13px;">';
+  html += '<option value="">-- 请选择负责人 --</option>' + staffOptions + '</select></div>';
+  html += '<div class="form-group">';
+  html += '<label class="form-label">维护职责说明</label>';
+  html += '<textarea class="form-textarea" id="bar-responsibility-desc" placeholder="例如：负责日常巡检、电池更换、故障响应..." style="min-height:60px;font-size:12px;">负责设备日常巡检及故障响应</textarea>';
+  html += '</div>';
+  html += '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);">';
+  html += '<input type="checkbox" id="bar-send-notify" checked style="accent-color:var(--blue);width:15px;height:15px;">';
+  html += '<span>指派后发送通知给负责人</span></div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="closeModal(\'batch-responsible\')">取消</button>';
+  html += '<button class="modal-btn primary" onclick="submitBatchResponsible(' + selectedDevices.length + ')">✅ 确认指派</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function filterStaffForAssign(dept) {
+  var select = document.getElementById('bar-staff-select');
+  if (!select) return;
+  var options = select.querySelectorAll('option');
+  options.forEach(function(opt) {
+    if (!opt.value) return;
+    var optDept = opt.dataset.dept;
+    opt.style.display = dept === 'all' || optDept === dept ? '' : 'none';
+  });
+}
+
+function submitBatchResponsible(count) {
+  var staff = document.getElementById('bar-staff-select').value;
+  if (!staff) { showToast('⚠️ 请选择负责人', 'warning'); return; }
+  var desc = document.getElementById('bar-responsibility-desc').value;
+  var notify = document.getElementById('bar-send-notify').checked;
+  showToast('✅ 已成功指派 ' + count + ' 台设备给 ' + staff, 'success');
+  if (notify) showToast('📲 已通知负责人 ' + staff, 'info');
+  addOpLog('device', '赵飞', '批量指派' + count + '台设备给' + staff, desc);
+  closeModal('batch-responsible');
+}
+
+// Wire to device page batch toolbar
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var devCardBody = document.querySelector('#page-device .card-body');
+    if (devCardBody && !document.getElementById('bar-open-btn')) {
+      var container = devCardBody.querySelector('div[style*="align-items:center"]');
+      if (container) {
+        var btn = document.createElement('button');
+        btn.id = 'bar-open-btn';
+        btn.className = 'action-btn small';
+        btn.style.cssText = 'padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);';
+        btn.textContent = '👤 批量指派负责人';
+        btn.onclick = openBatchAssignResponsibleModal;
+        container.appendChild(btn);
+      }
+    }
+  }, 900);
+});
+
+// ============================================================
+// 改进5: 工单满意度评价追踪
+// 功能：工单完成后自动触发满意度调查，追踪客户评价并生成改善报告
+// 逻辑：工单完成弹窗中显示满意度星级评价（1-5星），提交后记录到评价数据库
+// ============================================================
+var workorderSatisfactionDB = [];
+
+function openWorkorderSatisfactionModal(woId, guestName) {
+  var old = document.getElementById('modal-wo-satisfaction');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-wo-satisfaction" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:420px;">';
+  html += '<div class="modal-header">';
+  html += '<div class="modal-title">⭐ 工单满意度评价</div>';
+  html += '<button class="modal-close" onclick="closeModal(\'wo-satisfaction\')">✕</button>';
+  html += '</div>';
+  html += '<div class="modal-body">';
+  html += '<div style="text-align:center;margin-bottom:16px;">';
+  html += '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">工单：' + woId + '</div>';
+  html += '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;">' + (guestName || '匿名客户') + '，感谢您的反馈</div>';
+  html += '<div style="font-size:12px;color:var(--text-muted);">您的评价将帮助我们持续改进服务</div>';
+  html += '</div>';
+  html += '<div style="margin-bottom:16px;text-align:center;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);">请选择满意度星级</div>';
+  html += '<div id="wo-sat-stars" style="display:flex;justify-content:center;gap:8px;margin-bottom:8px;">';
+  for (var i = 1; i <= 5; i++) {
+    html += '<span class="wo-sat-star" data-rating="' + i + '" onclick="setWoSatisfactionRating(' + i + ')" style="font-size:36px;cursor:pointer;color:var(--border);transition:color 0.2s;">★</span>';
+  }
+  html += '</div>';
+  html += '<div id="wo-sat-label" style="font-size:13px;color:var(--text-muted);height:20px;">请点击星星评分</div>';
+  html += '</div>';
+  html += '<div class="form-group">';
+  html += '<label class="form-label">服务评价（可选）</label>';
+  html += '<textarea class="form-textarea" id="wo-sat-comment" placeholder="分享您的体验，帮助我们做得更好..." style="min-height:70px;font-size:12px;"></textarea>';
+  html += '</div>';
+  html += '<div class="form-group">';
+  html += '<label class="form-label">标签（可多选）</label>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  var tags = ['响应快','态度好','专业','解决彻底','时间较长','需跟进'];
+  tags.forEach(function(tag) {
+    html += '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:12px;">';
+    html += '<input type="checkbox" class="wo-sat-tag" value="' + tag + '" style="accent-color:var(--blue);width:14px;height:14px;">' + tag + '</label>';
+  });
+  html += '</div></div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="skipWoSatisfaction(\'' + woId + '\')">跳过</button>';
+  html += '<button class="modal-btn primary" onclick="submitWoSatisfaction(\'' + woId + '\')" style="background:var(--green);border-color:var(--green);">✅ 提交评价</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+var currentWoSatRating = 0;
+
+function setWoSatisfactionRating(rating) {
+  currentWoSatRating = rating;
+  var labels = ['', '😞 不满意', '😐 一般', '🙂 满意', '😊 很满意', '🤩 非常满意'];
+  document.getElementById('wo-sat-label').textContent = labels[rating] || '';
+  document.querySelectorAll('.wo-sat-star').forEach(function(star) {
+    var r = parseInt(star.dataset.rating);
+    star.style.color = r <= rating ? 'var(--orange)' : 'var(--border)';
+  });
+}
+
+function submitWoSatisfaction(woId) {
+  if (currentWoSatRating === 0) {
+    showToast('⚠️ 请先选择满意度星级', 'warning');
+    return;
+  }
+  var comment = document.getElementById('wo-sat-comment').value;
+  var tags = [];
+  document.querySelectorAll('.wo-sat-tag:checked').forEach(function(cb) { tags.push(cb.value); });
+  var entry = {
+    woId: woId,
+    rating: currentWoSatRating,
+    comment: comment,
+    tags: tags,
+    time: new Date().toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}),
+    agent: '赵飞'
+  };
+  workorderSatisfactionDB.push(entry);
+  localStorage.setItem('woSatisfactionDB', JSON.stringify(workorderSatisfactionDB));
+  showToast('⭐ 感谢您的评价！' + (currentWoSatRating >= 4 ? '您的肯定是我们的最大动力 🎉' : '您的反馈已记录，我们会持续改进'), 'success');
+  addOpLog('workorder', '赵飞', '工单' + woId + '获得' + currentWoSatRating + '星评价', tags.join(','));
+  currentWoSatRating = 0;
+  closeModal('wo-satisfaction');
+}
+
+function skipWoSatisfaction(woId) {
+  showToast('已跳过评价，工单' + woId + '已关闭', 'info');
+  closeModal('wo-satisfaction');
+}
+
+// Override workorder complete to trigger satisfaction
+var _origCompleteWorkorder = typeof completeWorkorder === 'function' ? completeWorkorder : function(){};
+function completeWorkorderWithSatisfaction(woId) {
+  _origCompleteWorkorder.call(null, woId);
+  setTimeout(function() {
+    openWorkorderSatisfactionModal(woId, '张三'); // 在真实场景中从工单数据获取客户名
+  }, 600);
+}
+
+// Wire satisfaction modal to workorder page: find the "已完成" tab and add satisfaction button
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var woHeader = document.querySelector('#page-workorder .card-header');
+    if (woHeader && !document.getElementById('wo-sat-btn')) {
+      var btn = document.createElement('button');
+      btn.id = 'wo-sat-btn';
+      btn.className = 'action-btn small';
+      btn.style.cssText = 'padding:4px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);';
+      btn.textContent = '⭐ 满意度评价';
+      btn.onclick = function() {
+        openWorkorderSatisfactionModal('WO-2026032701', '张三');
+      };
+      var existingBtns = woHeader.querySelectorAll('[onclick*="workorder"], [onclick*="Workorder"]');
+      if (existingBtns.length > 0) {
+        existingBtns[0].parentNode.insertBefore(btn, existingBtns[existingBtns.length-1].nextSibling);
+      } else {
+        woHeader.appendChild(btn);
+      }
+    }
+  }, 1000);
+});
 </script>
 </body>
 </html>
