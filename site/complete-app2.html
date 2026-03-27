@@ -3076,7 +3076,559 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           </div>
         </div>
         </div>
-            <!-- 【改进4】楼层平面图房间卡片增加data-floor属性，支持楼栋→楼层级联筛选 -->
+            <!-- 【改进5新增】角色权限管理完整表单弹窗（新增/编辑角色时配置权限项） -->
+    <div class="modal-overlay hidden" id="modal-role-form">
+      <div class="modal" style="width:560px;">
+        <div class="modal-header">
+          <div class="modal-title" id="role-form-title">🏷️ 新增角色</div>
+          <button class="modal-close" onclick="closeModal('role-form')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">角色名称 <span class="required">*</span></label>
+              <input type="text" class="form-input" id="role-name" placeholder="如：前台接待、客房主管">
+            </div>
+            <div class="form-group">
+              <label class="form-label">角色编码 <span class="required">*</span></label>
+              <input type="text" class="form-input" id="role-code" placeholder="如：RECEPTIONIST、HOUSEKEEPER">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">角色描述</label>
+            <input type="text" class="form-input" id="role-desc" placeholder="角色职责描述（选填）">
+          </div>
+          <div class="form-group">
+            <label class="form-label">状态</label>
+            <select class="form-select" id="role-status">
+              <option value="enabled">启用（可正常使用）</option>
+              <option value="disabled">禁用（不可分配）</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">🔐 菜单权限配置 <span class="required">*</span></label>
+            <div style="border:1px solid var(--border);border-radius:8px;padding:12px;max-height:240px;overflow-y:auto;background:var(--bg);">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">勾选该角色可访问的菜单模块</div>
+              <div id="role-perm-list">
+                <div class="role-perm-item" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+                  <input type="checkbox" class="role-perm-check" data-cat="page" data-perm="首页总览" id="rperm-home" checked>
+                  <label for="rperm-home" style="font-size:12px;font-weight:600;cursor:pointer;">📊 首页总览</label>
+                </div>
+                <div class="role-perm-item" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+                  <input type="checkbox" class="role-perm-check" data-cat="page" data-perm="房态地图" id="rperm-floor">
+                  <label for="rperm-floor" style="font-size:12px;font-weight:600;cursor:pointer;">🏠 房态地图</label>
+                </div>
+                <div class="role-perm-item" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+                  <input type="checkbox" class="role-perm-check" data-cat="page" data-perm="入住管理" id="rperm-checkin" checked>
+                  <label for="rperm-checkin" style="font-size:12px;font-weight:600;cursor:pointer;">🛏️ 入住管理</label>
+                </div>
+                <div class="role-perm-item" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+                  <input type="checkbox" class="role-perm-check" data-cat="page" data-perm="设备管理" id="rperm-device">
+                  <label for="rperm-device" style="font-size:12px;font-weight:600;cursor:pointer;">📱 设备管理</label>
+                </div>
+                <div class="role-perm-item" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+                  <input type="checkbox" class="role-perm-check" data-cat="page" data-perm="密码管理" id="rperm-keypad">
+                  <label for="rperm-keypad" style="font-size:12px;font-weight:600;cursor:pointer;">🔑 密码管理</label>
+                </div>
+                <div class="role-perm-item" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+                  <input type="checkbox" class="role-perm-check" data-cat="page" data-perm="服务工单" id="rperm-workorder" checked>
+                  <label for="rperm-workorder" style="font-size:12px;font-weight:600;cursor:pointer;">📞 服务工单</label>
+                </div>
+                <div class="role-perm-item" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+                  <input type="checkbox" class="role-perm-check" data-cat="page" data-perm="会员管理" id="rperm-member">
+                  <label for="rperm-member" style="font-size:12px;font-weight:600;cursor:pointer;">👑 会员管理</label>
+                </div>
+                <div class="role-perm-item" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+                  <input type="checkbox" class="role-perm-check" data-cat="page" data-perm="员工管理" id="rperm-staff">
+                  <label for="rperm-staff" style="font-size:12px;font-weight:600;cursor:pointer;">👥 员工管理</label>
+                </div>
+                <div class="role-perm-item" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+                  <input type="checkbox" class="role-perm-check" data-cat="page" data-perm="楼栋管理" id="rperm-building">
+                  <label for="rperm-building" style="font-size:12px;font-weight:600;cursor:pointer;">🏢 楼栋管理</label>
+                </div>
+                <div class="role-perm-item" style="display:flex;align-items:center;gap:8px;padding:6px 0;">
+                  <input type="checkbox" class="role-perm-check" data-cat="page" data-perm="系统设置" id="rperm-settings">
+                  <label for="rperm-settings" style="font-size:12px;font-weight:600;cursor:pointer;">⚙️ 系统设置</label>
+                </div>
+              </div>
+              <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="rperm-select-all" onchange="toggleAllRolePerms(this.checked)" style="accent-color:var(--blue);">
+                <label for="rperm-select-all" style="font-size:11px;color:var(--text-muted);cursor:pointer;">全选/取消全选</label>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">⚡ 操作权限</label>
+            <div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg);">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                  <input type="checkbox" class="role-op-check" data-op="remote_unlock" checked> 远程开锁
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                  <input type="checkbox" class="role-op-check" data-op="batch_checkin"> 批量入住
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                  <input type="checkbox" class="role-op-check" data-op="checkin_refund"> 退款操作
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                  <input type="checkbox" class="role-op-check" data-op="device_upgrade" checked> 设备升级
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                  <input type="checkbox" class="role-op-check" data-op="export_data"> 数据导出
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                  <input type="checkbox" class="role-op-check" data-op="night_audit"> 夜审操作
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('role-form')">取消</button>
+          <button class="modal-btn primary" onclick="submitRoleForm()">💾 保存角色</button>
+        </div>
+      </div>
+    </div>
+    <script>
+    function toggleAllRolePerms(checked) {
+      document.querySelectorAll('.role-perm-check').forEach(function(el){ el.checked = checked; });
+    }
+    function submitRoleForm() {
+      var name = document.getElementById('role-name').value.trim();
+      var code = document.getElementById('role-code').value.trim();
+      if (!name || !code) { showToast('请填写角色名称和编码', 'error'); return; }
+      var perms = [];
+      document.querySelectorAll('.role-perm-check:checked').forEach(function(el){ perms.push(el.dataset.perm || el.dataset.cat); });
+      var ops = [];
+      document.querySelectorAll('.role-op-check:checked').forEach(function(el){ ops.push(el.dataset.op); });
+      showToast('✅ 角色保存成功（' + perms.length + '个菜单权限，' + ops.length + '个操作权限）', 'success');
+      closeModal('role-form');
+    }
+    </script>
+
+    <!-- 【改进5新增】会员等级权益完整编辑弹窗 -->
+    <div class="modal-overlay hidden" id="modal-member-level-edit">
+      <div class="modal" style="width:580px;">
+        <div class="modal-header">
+          <div class="modal-title">🏆 编辑会员等级权益 - <span id="mle-level-name" style="color:var(--purple);"></span></div>
+          <button class="modal-close" onclick="closeModal('member-level-edit')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">入住折扣</label>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="number" class="form-input" id="mle-checkin-discount" placeholder="如：85" min="0" max="100" style="width:90px;">
+                <span style="font-size:13px;color:var(--text-muted);">%</span>
+              </div>
+              <div class="form-hint">100表示原价，85表示85折</div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">开卡权益折扣</label>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="number" class="form-input" id="mle-card-discount" placeholder="如：80" min="0" max="100" style="width:90px;">
+                <span style="font-size:13px;color:var(--text-muted);">%</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">生日礼遇</label>
+              <select class="form-select" id="mle-birthday-benefit">
+                <option value="none">无</option>
+                <option value="dessert">赠甜品</option>
+                <option value="cake">赠蛋糕</option>
+                <option value="cake_fruit">赠蛋糕+果篮</option>
+                <option value="suite_dinner">套房+晚宴</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">免费升房</label>
+              <select class="form-select" id="mle-upgrade">
+                <option value="none">无</option>
+                <option value="free">免费升一级</option>
+                <option value="priority">优先升房</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">专属客服</label>
+              <select class="form-select" id="mle-vip-service">
+                <option value="none">无</option>
+                <option value="phone">电话专属客服</option>
+                <option value="wechat">微信专属客服</option>
+                <option value="full">全天候专属</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">积分倍率</label>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="number" class="form-input" id="mle-points-mult" value="1.0" step="0.1" min="1" max="5" style="width:90px;">
+                <span style="font-size:13px;color:var(--text-muted);">倍</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">其他权益（多选）</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:10px;background:var(--bg);border-radius:8px;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                <input type="checkbox" id="mle-benefit-late" value="late_checkout"> 延迟退房
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                <input type="checkbox" id="mle-benefit-early" value="early_checkin"> 提前入住
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                <input type="checkbox" id="mle-benefit-laundry" value="free_laundry"> 免费洗衣
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                <input type="checkbox" id="mle-benefit-breakfast" value="extra_breakfast"> 双份早餐
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                <input type="checkbox" id="mle-benefit-parking" value="free_parking"> 免费停车
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                <input type="checkbox" id="mle-benefit-gym" value="free_gym"> 免费健身
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">升级门槛（成长值）</label>
+            <input type="number" class="form-input" id="mle-upgrade-threshold" placeholder="如：5000" min="0" style="width:140px;">
+            <div class="form-hint">成长值达到此数值时自动升级到此等级</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('member-level-edit')">取消</button>
+          <button class="modal-btn primary" onclick="submitMemberLevelEdit()">💾 保存权益配置</button>
+        </div>
+      </div>
+    </div>
+    <script>
+    var memberLevelData = [
+      { level:'normal', name:'普通会员', discount:100, cardDiscount:100, birthday:'none', upgrade:'none', vip:'none', points:1.0, threshold:0 },
+      { level:'silver', name:'银卡会员', discount:95, cardDiscount:90, birthday:'dessert', upgrade:'none', vip:'none', points:1.2, threshold:2000 },
+      { level:'gold', name:'金卡会员', discount:90, cardDiscount:85, birthday:'cake_fruit', upgrade:'free', vip:'none', points:1.5, threshold:5000 },
+      { level:'vip', name:'VIP会员', discount:85, cardDiscount:80, birthday:'suite_dinner', upgrade:'priority', vip:'full', points:2.0, threshold:10000 }
+    ];
+    function openEditMemberLevelModalV2(idx) {
+      var d = memberLevelData[idx];
+      document.getElementById('mle-level-name').textContent = d.name;
+      document.getElementById('mle-checkin-discount').value = d.discount;
+      document.getElementById('mle-card-discount').value = d.cardDiscount;
+      document.getElementById('mle-birthday-benefit').value = d.birthday;
+      document.getElementById('mle-upgrade').value = d.upgrade;
+      document.getElementById('mle-vip-service').value = d.vip;
+      document.getElementById('mle-points-mult').value = d.points;
+      document.getElementById('mle-upgrade-threshold').value = d.threshold;
+      openModal('member-level-edit');
+    }
+    function submitMemberLevelEdit() {
+      var discount = document.getElementById('mle-checkin-discount').value;
+      var card = document.getElementById('mle-card-discount').value;
+      var bday = document.getElementById('mle-birthday-benefit').value;
+      var upgrade = document.getElementById('mle-upgrade').value;
+      showToast('✅ 会员权益配置已保存', 'success');
+      closeModal('member-level-edit');
+    }
+    </script>
+
+    <!-- 【改进5新增】楼层编辑完整表单弹窗（支持编辑楼层名称/房间数/备注） -->
+    <div class="modal-overlay hidden" id="modal-floor-edit">
+      <div class="modal" style="width:460px;">
+        <div class="modal-header">
+          <div class="modal-title">🏗️ 编辑楼层</div>
+          <button class="modal-close" onclick="closeModal('floor-edit')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">所属楼栋</label>
+            <select class="form-select" id="fle-bld" disabled style="background:var(--bg);color:var(--text-muted);">
+              <option value="main">🏢 主楼</option>
+              <option value="east">🏢 东配楼</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">楼层编号 <span class="required">*</span></label>
+            <input type="number" class="form-input" id="fle-num" placeholder="楼层号，如：1、2、3" min="1" max="99">
+          </div>
+          <div class="form-group">
+            <label class="form-label">楼层名称</label>
+            <input type="text" class="form-input" id="fle-name" placeholder="如：1层、2层、B1层">
+          </div>
+          <div class="form-group">
+            <label class="form-label">房间数量</label>
+            <input type="number" class="form-input" id="fle-room-count" placeholder="该楼层房间数量" min="1" max="100">
+          </div>
+          <div class="form-group">
+            <label class="form-label">楼层状态</label>
+            <select class="form-select" id="fle-status">
+              <option value="enabled">🟢 启用（正常运营）</option>
+              <option value="disabled">🔴 禁用（暂停使用）</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">备注</label>
+            <textarea class="form-textarea" id="fle-remark" placeholder="备注信息（选填）" style="min-height:60px;"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('floor-edit')">取消</button>
+          <button class="modal-btn primary" onclick="submitFloorEdit()">💾 保存</button>
+        </div>
+      </div>
+    </div>
+    <script>
+    var floorEditIdx = -1;
+    function openEditFloorModal(idx) {
+      floorEditIdx = idx;
+      var floors = [{bld:'main',num:3,name:'3层',rooms:8,status:'enabled'},{bld:'main',num:2,name:'2层',rooms:5,status:'enabled'},{bld:'main',num:1,name:'1层',rooms:3,status:'enabled'}];
+      var f = floors[idx] || floors[0];
+      document.getElementById('fle-bld').value = f.bld;
+      document.getElementById('fle-num').value = f.num;
+      document.getElementById('fle-name').value = f.name;
+      document.getElementById('fle-room-count').value = f.rooms;
+      document.getElementById('fle-status').value = f.status;
+      document.getElementById('fle-remark').value = '';
+      openModal('floor-edit');
+    }
+    function submitFloorEdit() {
+      var num = document.getElementById('fle-num').value;
+      var name = document.getElementById('fle-name').value.trim();
+      var rooms = document.getElementById('fle-room-count').value;
+      if (!num) { showToast('请填写楼层编号', 'error'); return; }
+      showToast('✅ 楼层信息已保存', 'success');
+      closeModal('floor-edit');
+    }
+    </script>
+
+    <!-- 【改进5新增】设备批量固件升级完整进度追踪弹窗 -->
+    <div class="modal-overlay hidden" id="modal-batch-firmware-progress">
+      <div class="modal" style="width:560px;">
+        <div class="modal-header">
+          <div class="modal-title">📦 批量固件升级 - 进度追踪</div>
+          <button class="modal-close" onclick="closeModal('batch-firmware-progress')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px;">
+              <span>升级进度</span><span id="bfp-progress-text">0 / 0</span>
+            </div>
+            <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+              <div id="bfp-progress-bar" style="height:100%;background:var(--blue);width:0%;transition:width 0.3s;border-radius:4px;"></div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+            <div style="padding:10px;background:var(--blue-bg);border-radius:6px;text-align:center;">
+              <div style="font-size:20px;font-weight:700;color:var(--blue);" id="bfp-total">0</div>
+              <div style="font-size:10px;color:var(--text-muted);">待升级</div>
+            </div>
+            <div style="padding:10px;background:var(--green-bg);border-radius:6px;text-align:center;">
+              <div style="font-size:20px;font-weight:700;color:var(--green);" id="bfp-success">0</div>
+              <div style="font-size:10px;color:var(--text-muted);">成功</div>
+            </div>
+            <div style="padding:10px;background:var(--red-bg);border-radius:6px;text-align:center;">
+              <div style="font-size:20px;font-weight:700;color:var(--red);" id="bfp-fail">0</div>
+              <div style="font-size:10px;color:var(--text-muted);">失败</div>
+            </div>
+          </div>
+          <div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;" id="bfp-device-list">
+            <!-- 动态生成每个设备的升级状态 -->
+          </div>
+          <div id="bfp-result-area" style="display:none;margin-top:16px;padding:14px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;">
+            <div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:6px;">✅ 批量升级完成</div>
+            <div style="font-size:12px;color:var(--text);" id="bfp-result-summary"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('batch-firmware-progress')" id="bfp-close-btn" disabled>关闭</button>
+          <button class="modal-btn primary" onclick="startBatchFirmwareUpgrade()" id="bfp-start-btn">🚀 开始升级</button>
+        </div>
+      </div>
+    </div>
+    <script>
+    var bfpDevices = [
+      {id:'DEV-301',room:'301',from:'v2.3.0',to:'v2.3.1',status:'pending'},
+      {id:'DEV-302',room:'302',from:'v2.3.0',to:'v2.3.1',status:'pending'},
+      {id:'DEV-303',room:'303',from:'v2.2.9',to:'v2.3.1',status:'pending'},
+      {id:'DEV-201',room:'201',from:'v2.3.0',to:'v2.3.1',status:'pending'},
+      {id:'DEV-101',room:'101',from:'v2.3.0',to:'v2.3.1',status:'pending'}
+    ];
+    var bfpInterval = null;
+    var bfpCurrent = 0;
+    function openBatchFirmwareProgressModal() {
+      bfpDevices.forEach(function(d){ d.status = 'pending'; });
+      bfpCurrent = 0;
+      renderBfpList();
+      document.getElementById('bfp-progress-bar').style.width = '0%';
+      document.getElementById('bfp-progress-text').textContent = '0 / ' + bfpDevices.length;
+      document.getElementById('bfp-total').textContent = bfpDevices.length;
+      document.getElementById('bfp-success').textContent = '0';
+      document.getElementById('bfp-fail').textContent = '0';
+      document.getElementById('bfp-result-area').style.display = 'none';
+      document.getElementById('bfp-close-btn').disabled = true;
+      document.getElementById('bfp-start-btn').disabled = false;
+      openModal('batch-firmware-progress');
+    }
+    function renderBfpList() {
+      var el = document.getElementById('bfp-device-list');
+      var html = '';
+      bfpDevices.forEach(function(d, i){
+        var color = d.status === 'success' ? 'var(--green)' : d.status === 'fail' ? 'var(--red)' : d.status === 'upgrading' ? 'var(--blue)' : 'var(--text-muted)';
+        var icon = d.status === 'success' ? '✅' : d.status === 'fail' ? '❌' : d.status === 'upgrading' ? '🔄' : '⏳';
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;">';
+        html += '<span style="font-size:16px;">' + icon + '</span>';
+        html += '<span style="font-weight:600;">' + d.room + '</span>';
+        html += '<span style="color:var(--text-muted);font-size:11px;">' + d.id + '</span>';
+        html += '<span style="margin-left:auto;font-size:11px;color:' + color + ';">' + d.from + ' → ' + d.to + '</span>';
+        html += '<span id="bfp-status-' + i + '" style="font-size:11px;font-weight:600;color:' + color + ';">' + (d.status === 'pending' ? '待升级' : d.status === 'upgrading' ? '升级中…' : d.status === 'success' ? '成功' : '失败') + '</span></div>';
+      });
+      el.innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无待升级设备</div>';
+    }
+    function startBatchFirmwareUpgrade() {
+      document.getElementById('bfp-start-btn').disabled = true;
+      bfpCurrent = 0;
+      bfpInterval = setInterval(function(){
+        if (bfpCurrent >= bfpDevices.length) {
+          clearInterval(bfpInterval);
+          document.getElementById('bfp-result-area').style.display = '';
+          var success = bfpDevices.filter(function(d){ return d.status === 'success'; }).length;
+          var fail = bfpDevices.filter(function(d){ return d.status === 'fail'; }).length;
+          document.getElementById('bfp-result-summary').textContent = '共 ' + bfpDevices.length + ' 台设备，' + success + ' 台升级成功，' + fail + ' 台失败';
+          document.getElementById('bfp-close-btn').disabled = false;
+          showToast('批量固件升级完成', success === bfpDevices.length ? 'success' : 'warning');
+          return;
+        }
+        var d = bfpDevices[bfpCurrent];
+        d.status = 'upgrading';
+        renderBfpList();
+        var pct = Math.round(((bfpCurrent + 1) / bfpDevices.length) * 100);
+        document.getElementById('bfp-progress-bar').style.width = pct + '%';
+        document.getElementById('bfp-progress-text').textContent = (bfpCurrent + 1) + ' / ' + bfpDevices.length;
+        setTimeout(function(){
+          d.status = Math.random() > 0.1 ? 'success' : 'fail';
+          var s = bfpDevices.filter(function(x){ return x.status === 'success'; }).length;
+          var f = bfpDevices.filter(function(x){ return x.status === 'fail'; }).length;
+          document.getElementById('bfp-success').textContent = s;
+          document.getElementById('bfp-fail').textContent = f;
+          renderBfpList();
+          bfpCurrent++;
+        }, 800);
+      }, 1200);
+    }
+    </script>
+
+    <!-- 【改进5新增】工单自动派发规则完整添加/删除弹窗（支持新增规则并实时预览） -->
+    <div class="modal-overlay hidden" id="modal-wo-rule-add">
+      <div class="modal" style="width:500px;">
+        <div class="modal-header">
+          <div class="modal-title">➕ 添加自动派发规则</div>
+          <button class="modal-close" onclick="closeModal('wo-rule-add')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">
+            💡 设置条件规则后，符合条件的新工单将自动分配给指定员工处理
+          </div>
+          <div class="form-group">
+            <label class="form-label">规则名称 <span class="required">*</span></label>
+            <input type="text" class="form-input" id="wora-name" placeholder="如：紧急投诉→前厅经理">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">触发条件：工单类型 <span class="required">*</span></label>
+              <select class="form-select" id="wora-type">
+                <option value="">请选择</option>
+                <option value="complaint">🔴 客户投诉</option>
+                <option value="delivery">📦 送物服务</option>
+                <option value="invoice">📄 发票需求</option>
+                <option value="praise">⭐ 点评表扬</option>
+                <option value="repair">🔧 设备报修</option>
+                <option value="other">📋 其他</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">紧急程度（可选）</label>
+              <select class="form-select" id="wora-urgent">
+                <option value="">不限</option>
+                <option value="normal">普通</option>
+                <option value="urgent">紧急</option>
+                <option value="critical">十分紧急</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">派发给 <span class="required">*</span></label>
+            <select class="form-select" id="wora-assign">
+              <option value="">请选择员工</option>
+              <option value="赵飞">赵飞（前厅经理）</option>
+              <option value="周敏">周敏（前厅接待）</option>
+              <option value="吴倩">吴倩（客房主管）</option>
+              <option value="郑强">郑强（清洁人员）</option>
+              <option value="王工">王工（工程师）</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">状态</label>
+            <select class="form-select" id="wora-status">
+              <option value="enabled">● 启用</option>
+              <option value="disabled">○ 禁用</option>
+            </select>
+          </div>
+          <!-- 规则预览 -->
+          <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
+            <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">📋 规则预览</div>
+            <div style="font-size:13px;" id="wora-preview">
+              <span style="color:var(--text-muted);">请填写上方条件…</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('wo-rule-add')">取消</button>
+          <button class="modal-btn primary" onclick="submitWoRuleAdd()">💾 确认添加</button>
+        </div>
+      </div>
+    </div>
+    <script>
+    function addWorkorderAutoRule() {
+      // 清空表单
+      document.getElementById('wora-name').value = '';
+      document.getElementById('wora-type').value = '';
+      document.getElementById('wora-urgent').value = '';
+      document.getElementById('wora-assign').value = '';
+      document.getElementById('wora-status').value = 'enabled';
+      document.getElementById('wora-preview').innerHTML = '<span style="color:var(--text-muted);">请填写上方条件…</span>';
+      openModal('wo-rule-add');
+    }
+    // 实时预览规则
+    ['wora-type','wora-urgent','wora-assign'].forEach(function(id){
+      document.getElementById(id).addEventListener('change', updateWoRulePreview);
+    });
+    function updateWoRulePreview() {
+      var type = document.getElementById('wora-type').value;
+      var urgent = document.getElementById('wora-urgent').value;
+      var assign = document.getElementById('wora-assign').value;
+      var typeMap = {complaint:'客户投诉',delivery:'送物服务',invoice:'发票需求',praise:'点评表扬',repair:'设备报修',other:'其他'};
+      var urgentMap = {normal:'普通',urgent:'紧急',critical:'十分紧急'};
+      if (!type && !assign) {
+        document.getElementById('wora-preview').innerHTML = '<span style="color:var(--text-muted);">请填写上方条件…</span>';
+        return;
+      }
+      var html = '新工单：<span style="color:var(--blue);font-weight:600;">' + (typeMap[type] || '（不限类型）') + '</span>';
+      if (urgent) html += ' + <span style="color:var(--orange);font-weight:600;">' + urgentMap[urgent] + '</span>';
+      html += ' → 派给 <span style="color:var(--green);font-weight:600;">' + (assign || '（未选择）') + '</span>';
+      document.getElementById('wora-preview').innerHTML = html;
+    }
+    function submitWoRuleAdd() {
+      var name = document.getElementById('wora-name').value.trim();
+      var type = document.getElementById('wora-type').value;
+      var assign = document.getElementById('wora-assign').value;
+      if (!name || !type || !assign) { showToast('请填写规则名称、类型和派发对象', 'error'); return; }
+      showToast('✅ 自动派发规则已添加', 'success');
+      closeModal('wo-rule-add');
+    }
+    </script>
+
+    <!-- 【改进4】楼层平面图房间卡片增加data-floor属性，支持楼栋→楼层级联筛选 -->
             <div class="room-card" data-floor="3" data-status="in" onclick="showPage('room-detail')" style="cursor:pointer;">
               <div class="room-card-header"><div><div class="room-num">301</div><div class="room-type">亲子间</div></div><div class="room-badge badge-in">入住</div></div>
               <div class="room-info"><div class="room-row"><span class="icon">🚪</span><span class="lbl">门锁：</span><span class="val green">已反锁</span></div><div class="room-row"><span class="icon">⚡</span><span class="lbl">设备：</span><span class="val green">🟢在线</span></div></div>
