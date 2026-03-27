@@ -955,7 +955,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
         <div class="card-body">
           <div class="room-grid" id="room-grid">
-            <div class="room-card" data-status="in" onclick="openRoomQuickPanel('301','亲子间','in','已反锁','空调开启','2张')">
+            <div class="room-card dirty" data-status="in" data-dirty="true" onclick="openRoomQuickPanel('301','亲子间','in','已反锁','空调开启','2张')">
               <div class="room-quick-actions">
                 <button class="room-qa-btn room-qa-checkin" onclick="event.stopPropagation();openQuickCheckinModalForRoom('301')">🏨 入住</button>
                 <button class="room-qa-btn room-qa-history" onclick="event.stopPropagation();showPage('history')">📜 记录</button>
@@ -971,7 +971,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               </div>
               <div class="room-footer"><span>🔑 生效钥匙</span><span class="key-count">2张</span></div>
             </div>
-            <div class="room-card" data-status="empty" onclick="openRoomQuickPanel('302','亲子间','empty','已反锁','未取电','0张')">
+            <div class="room-card maintain" data-status="empty" data-maintain="true" onclick="openRoomQuickPanel('302','亲子间','empty','已反锁','未取电','0张')">
               <div class="room-quick-actions">
                 <button class="room-qa-btn room-qa-checkin" onclick="event.stopPropagation();openQuickCheckinModalForRoom('302')">🏨 入住</button>
                 <button class="room-qa-btn room-qa-history" onclick="event.stopPropagation();showPage('history')">📜 记录</button>
@@ -2520,6 +2520,39 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             <input type="datetime-local" class="form-input" id="wop-complete-time">
           </div>
         </div>
+        <!-- 【改进v3-1】工单处理增强：满意度星级评价+处理时长+通知客人开关 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">
+          <div class="form-group">
+            <label class="form-label">👤 客户满意度</label>
+            <div style="display:flex;gap:4px;align-items:center;padding:6px 0;" id="wo-satisfaction-stars">
+              <span style="font-size:24px;cursor:pointer;color:#ddd;" onclick="setWoSatisfaction(1)" data-val="1">★</span>
+              <span style="font-size:24px;cursor:pointer;color:#ddd;" onclick="setWoSatisfaction(2)" data-val="2">★</span>
+              <span style="font-size:24px;cursor:pointer;color:#ddd;" onclick="setWoSatisfaction(3)" data-val="3">★</span>
+              <span style="font-size:24px;cursor:pointer;color:#ddd;" onclick="setWoSatisfaction(4)" data-val="4">★</span>
+              <span style="font-size:24px;cursor:pointer;color:#ddd;" onclick="setWoSatisfaction(5)" data-val="5">★</span>
+              <span style="font-size:11px;color:var(--text-muted);margin-left:4px;" id="wo-satisfaction-label">未评</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">⏱️ 实际处理时长</label>
+            <select class="form-select" id="wop-duration" style="padding:7px 10px;">
+              <option value="5">5分钟内</option>
+              <option value="15">15分钟内</option>
+              <option value="30" selected>30分钟内</option>
+              <option value="60">1小时内</option>
+              <option value="120">1-2小时</option>
+              <option value="more">超过2小时</option>
+            </select>
+          </div>
+        </div>
+        <!-- 【改进v3-1新增】工单完成后通知客人开关 -->
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-top:4px;">
+          <input type="checkbox" id="wop-notify-guest" checked style="accent-color:var(--blue);width:16px;height:16px;">
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:600;color:var(--blue);">📱 发送处理结果通知</div>
+            <div style="font-size:11px;color:var(--text-muted);">完成后自动短信/推送通知客户</div>
+          </div>
+        </div>
         <div class="modal-footer">
           <button class="modal-btn secondary" onclick="closeModal('wo-process')">取消</button>
           <button class="modal-btn primary" onclick="submitWorkorderProcessV2()">确认处理</button>
@@ -3722,6 +3755,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <option value="processing">🔄 处理中</option>
           <option value="done">✅ 已完成</option>
         </select>
+        <!-- 【改进v3-5】工单优先级筛选 -->
+        <select class="form-select" id="wo-priority-filter" style="padding:6px 8px;font-size:12px;width:120px;" onchange="applyWorkorderSearch()">
+          <option value="all">全部优先级</option>
+          <option value="urgent">🔴 紧急</option>
+          <option value="high">🟠 高</option>
+          <option value="normal">🟡 普通</option>
+          <option value="low">⚪ 低</option>
+          <option value="overdue">⏰ 已超时</option>
+        </select>
         <button class="action-btn small" onclick="applyWorkorderSearch()" style="padding:6px 12px;">🔍 搜索</button>
         <button class="action-btn small" onclick="resetWorkorderSearch()" style="padding:6px 10px;">重置</button>
         <button class="action-btn small" onclick="exportWorkorderCSV()" style="padding:6px 10px;margin-left:auto;">📤 导出CSV</button>
@@ -3753,6 +3795,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div class="stat-card">
           <div class="stat-icon" style="background:var(--green-bg);">✅</div>
           <div><div class="stat-num">8</div><div class="stat-label">已完成</div></div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="document.getElementById('wo-priority-filter').value='overdue';applyWorkorderSearch();">
+          <div class="stat-icon" style="background:var(--red-bg);">⏰</div>
+          <div><div class="stat-num" id="wo-stat-overdue">2</div><div class="stat-label">超时工单</div></div>
         </div>
         <div class="stat-card">
           <div class="stat-icon" style="background:var(--red-bg);">⭐</div>
@@ -3883,12 +3929,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
         <div class="card-body" id="workorder-list">
           <table class="table">
-            <thead><tr><th style="width:32px;"><input type="checkbox" id="wo-select-all" onchange="toggleAllWorkorderSelect(this.checked)" style="accent-color:var(--blue);cursor:pointer;" title="全选"></th><th>工单编号</th><th>类型</th><th>房间</th><th>客户</th><th>内容摘要</th><th>状态</th><th>处理人</th><th>创建时间</th><th>完成时间</th><th>操作</th></tr></thead>
+            <thead><tr><th style="width:32px;"><input type="checkbox" id="wo-select-all" onchange="toggleAllWorkorderSelect(this.checked)" style="accent-color:var(--blue);cursor:pointer;" title="全选"></th><th>工单编号</th><th>类型</th><th>房间</th><th>客户</th><th>内容摘要</th><th>优先级</th><th>状态</th><th>处理人</th><th>创建时间</th><th>完成时间</th><th>操作</th></tr></thead>
             <tbody id="workorder-table-body">
-              <tr data-status="pending"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032601" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032601</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>301</td><td>张三</td><td>房间空调噪音过大，无法休息</td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:32</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(0)">处理</button></td></tr>
-              <tr data-status="pending"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032602" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032602</td><td><span class="tbadge blue">📦 送物服务</span></td><td>203</td><td>李四</td><td>需要添加矿泉水x2</td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:15</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(1)">处理</button></td></tr>
-              <tr data-status="pending"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032603" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032603</td><td><span class="tbadge purple">📄 发票需求</span></td><td>201</td><td>王五</td><td>需要开具增值税普通发票</td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 09:48</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(2)">处理</button></td></tr>
-              <tr data-status="processing"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032528" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032528</td><td><span class="tbadge blue">📦 送物服务</span></td><td>304</td><td>钱七</td><td>需要浴巾一套</td><td><span class="tbadge purple">处理中</span></td><td><span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 周敏</span></td><td>昨天 18:20</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(3)">详情</button></td></tr>
+              <tr data-status="pending" data-priority="urgent" data-overdue="false"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032601" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032601</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>301</td><td>张三</td><td>房间空调噪音过大，无法休息</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--red-bg);color:var(--red);font-size:10px;">🔴紧急</span><span style="font-size:10px;color:var(--text-muted);">今天 10:32</span></div></td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:32</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(0)">处理</button></td></tr>
+              <tr data-status="pending" data-priority="normal" data-overdue="false"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032602" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032602</td><td><span class="tbadge blue">📦 送物服务</span></td><td>203</td><td>李四</td><td>需要添加矿泉水x2</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--blue-bg);color:var(--blue);font-size:10px;">🟡普通</span><span style="font-size:10px;color:var(--text-muted);">今天 10:15</span></div></td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:15</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(1)">处理</button></td></tr>
+              <tr data-status="pending" data-priority="low" data-overdue="false"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032603" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032603</td><td><span class="tbadge purple">📄 发票需求</span></td><td>201</td><td>王五</td><td>需要开具增值税普通发票</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--bg);color:var(--text-muted);font-size:10px;">⚪低</span><span style="font-size:10px;color:var(--text-muted);">今天 09:48</span></div></td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 09:48</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(2)">处理</button></td></tr>
+              <tr data-status="processing" data-priority="normal" data-overdue="false"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032528" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032528</td><td><span class="tbadge blue">📦 送物服务</span></td><td>304</td><td>钱七</td><td>需要浴巾一套</td><td><div style="display:flex;flex-direction:column;gap:2px;"><span class="tbadge" style="background:var(--blue-bg);color:var(--blue);font-size:10px;">🟡普通</span><span style="font-size:10px;color:var(--text-muted);">昨天 18:20</span></div></td><td><span class="tbadge purple">处理中</span></td><td><span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 周敏</span></td><td>昨天 18:20</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(3)">详情</button></td></tr>
               <tr data-status="processing"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032527" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032527</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>202</td><td>赵六</td><td>热水器故障，无热水</td><td><span class="tbadge purple">处理中</span></td><td><span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 赵飞</span></td><td>昨天 17:05</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(4)">详情</button></td></tr>
               <tr data-status="done"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032520" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032520</td><td><span class="tbadge green">⭐ 点评表扬</span></td><td>303</td><td>周八</td><td>服务态度好，点赞！</td><td><span class="tbadge green">已完成</span></td><td><span class="tbadge green" style="font-size:11px;padding:2px 6px;">👤 赵飞</span></td><td>03-25 14:30</td><td><span style="font-size:11px;color:var(--green);">03-25 16:45</span></td><td><button class="action-btn" onclick="openWorkorderDetail(5)">查看</button></td></tr>
             </tbody>
@@ -7570,6 +7616,48 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <label class="form-label">备注</label>
         <textarea class="form-textarea" id="checkout-note" placeholder="退房备注（可选）"></textarea>
       </div>
+      <!-- 【改进v3-3】退房结算实时费用明细：入住天数+房费+押金+加床+早餐+损坏赔偿+合计应退 -->
+      <div style="margin-bottom:12px;padding:14px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;">
+        <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:10px;">💰 退房费用明细</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,0.1);">
+            <span style="color:var(--text-light);">入住天数</span>
+            <span style="font-weight:600;" id="co-detail-days">1 晚</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,0.1);">
+            <span style="color:var(--text-light);">房型</span>
+            <span style="font-weight:600;" id="co-detail-type">亲子间</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,0.1);">
+            <span style="color:var(--text-light);">房费合计</span>
+            <span style="font-weight:600;" id="co-detail-room-fee">¥298</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,0.1);">
+            <span style="color:var(--text-light);">早餐 × <span id="co-detail-breakfast-count">0</span> 份</span>
+            <span style="font-weight:600;" id="co-detail-breakfast-fee">¥0</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,0.1);">
+            <span style="color:var(--text-light);">加床费</span>
+            <span style="font-weight:600;" id="co-detail-extrabed">¥0</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,0.1);">
+            <span style="color:var(--text-light);">物品损坏</span>
+            <span style="font-weight:600;color:var(--red);" id="co-detail-damage">¥0</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,0.1);font-size:13px;">
+            <span style="color:var(--text);font-weight:600;">应付总额</span>
+            <span style="font-weight:700;color:var(--blue);" id="co-detail-total">¥298</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,0.1);font-size:13px;">
+            <span style="color:var(--text);font-weight:600;">押金已付</span>
+            <span style="font-weight:700;color:var(--green);" id="co-detail-deposit-paid">¥100</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px;background:white;border-radius:6px;font-size:14px;">
+          <span style="font-weight:700;color:var(--text);">💵 应退金额</span>
+          <span style="font-weight:900;color:var(--green);font-size:20px;" id="co-detail-refund">¥0</span>
+        </div>
+      </div>
       <div style="padding:12px;background:var(--orange-bg);border-radius:6px;font-size:12px;color:var(--orange);">
         ⚠️ 退房后门卡权限将自动失效，房间状态将更新为空房
       </div>
@@ -7981,6 +8069,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     <!-- 步骤1：填写信息 -->
     <div id="checkin-step-1" class="checkin-step">
     <div class="modal-body">
+      <!-- 【改进v3-4】入住表单完成度进度条 -->
+      <div style="margin-bottom:14px;padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:12px;font-weight:600;color:var(--blue);">📋 表单完成度</span>
+          <span style="font-size:11px;color:var(--text-muted);" id="checkin-progress-label">已填写 0/5 项</span>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+          <div id="checkin-progress-bar" style="height:100%;background:var(--blue);border-radius:3px;transition:width 0.3s;width:0%;"></div>
+        </div>
+      </div>
       <div class="form-group">
         <label class="form-label">客人姓名 <span class="required">*</span></label>
         <input type="text" class="form-input" id="checkin-name" placeholder="请输入客人姓名" oninput="validateCheckinForm()">
@@ -9086,9 +9184,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <div class="form-group">
             <label class="form-label">身份证号 <span class="required">*</span></label>
             <div style="display:flex;gap:8px;align-items:center;">
-              <input type="text" class="form-input" id="ci-idcard" placeholder="请输入18位身份证号" style="flex:1;">
+              <input type="text" class="form-input" id="ci-idcard" placeholder="请输入18位身份证号" style="flex:1;" maxlength="18" oninput="validateCheckinIdCard(this.value)">
               <button type="button" class="action-btn" onclick="simulateIdCardScan()" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);white-space:nowrap;padding:6px 12px;font-size:12px;">🪪 扫描身份证</button>
             </div>
+            <div class="form-hint" id="ci-idcard-hint" style="display:none;color:var(--red);font-size:11px;margin-top:3px;"></div>
           </div>
           <div class="form-group">
             <label class="form-label">入住日期</label>
@@ -11368,23 +11467,42 @@ function initBuilding3D() {
 
 // ======= 改进1: 房间卡片Tab筛选 =======
 // 【改进4】首页房间筛选：支持脏房、维护中状态筛选
+// 【改进v3-2】首页房间筛选增强：支持全部/告警/入住/空房/脏房/维护中完整筛选
 function filterRooms(status, el) {
   document.querySelectorAll('#page-home .card-tabs .card-tab').forEach(t => t.classList.remove('active'));
   if (el) el.classList.add('active');
-  document.querySelectorAll('.room-card').forEach(card => {
+  document.querySelectorAll('#home-occupancy-grid .room-card').forEach(card => {
     var s = card.dataset.status;
-    if (status === 'all' || s === status) {
-      card.classList.remove('hidden');
+    var isDirty = card.classList.contains('dirty') || card.dataset.dirty === 'true';
+    var isMaintain = card.classList.contains('maintain') || card.dataset.maintain === 'true';
+    var show = false;
+    if (status === 'all') {
+      show = true;
     } else if (status === 'dirty') {
-      // 脏房：入住中但需要清洁的（入住状态+dirty class）
-      card.classList.add('hidden');
+      show = (s === 'in' && isDirty);
     } else if (status === 'maintain') {
-      // 维护中：通过单独class或data-maintain属性标记
-      card.classList.add('hidden');
+      show = (s === 'empty' && isMaintain);
+    } else {
+      show = (s === status);
+    }
+    if (show) {
+      card.classList.remove('hidden');
     } else {
       card.classList.add('hidden');
     }
   });
+  // 更新筛选后房间计数
+  updateFilterRoomCounts(status);
+}
+
+function updateFilterRoomCounts(filter) {
+  var cards = document.querySelectorAll('#home-occupancy-grid .room-card');
+  var visible = Array.from(cards).filter(function(c){ return !c.classList.contains('hidden'); });
+  var statEl = document.querySelector('#home-occ-rate');
+  if (statEl && filter === 'all') {
+    var inCount = Array.from(cards).filter(function(c){ return c.dataset.status === 'in'; }).length;
+    statEl.textContent = Math.round(inCount / cards.length * 100) + '%';
+  }
 }
 
 // 入住记录Tab筛选
@@ -11698,12 +11816,46 @@ function resetCheckinForm() {
 function formatPhoneInput(el) {
   el.value = el.value.replace(/\D/g, '').slice(0, 11);
 }
+// 【改进v3-4】入住表单实时校验增强：身份证格式校验+手机号格式+表单完成度进度条
+function validateCheckinIdCard(value) {
+  var hint = document.getElementById('ci-idcard-hint');
+  if (!hint) return;
+  var clean = value.replace(/[^0-9Xx]/g, '');
+  if (clean.length === 0) {
+    hint.style.display = 'none';
+    return;
+  }
+  if (clean.length < 15) {
+    hint.textContent = '身份证号长度不足，请确认为15或18位';
+    hint.style.display = '';
+  } else if (clean.length > 18) {
+    hint.textContent = '身份证号长度超出，请检查是否输入错误';
+    hint.style.display = '';
+  } else if (clean.length === 18) {
+    // 18位身份证校验格式
+    var pattern = /^[1-9]\d{5}(19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[0-9Xx]$/;
+    if (!pattern.test(clean)) {
+      hint.textContent = '身份证号格式不正确，请检查出生日期和校验位';
+      hint.style.display = '';
+    } else {
+      hint.textContent = '✅ 身份证号格式正确';
+      hint.style.color = 'var(--green)';
+      hint.style.display = '';
+    }
+  } else {
+    hint.textContent = '⚠️ 15位身份证，请确保证件真实有效';
+    hint.style.color = 'var(--orange)';
+    hint.style.display = '';
+  }
+}
+
 function validateCheckinForm() {
   var name = document.getElementById('checkin-name').value.trim();
   var phone = document.getElementById('checkin-phone').value.trim();
   var date = document.getElementById('checkin-date').value;
   var room = document.getElementById('checkin-room-select').value;
-  var valid = name.length >= 2 && phone.length === 11 && date && room;
+  var idcard = document.getElementById('ci-idcard') ? document.getElementById('ci-idcard').value.trim().replace(/[^0-9Xx]/g, '') : '';
+  var valid = name.length >= 2 && phone.length === 11 && date && room && idcard.length >= 15;
   // Step 1 button
   var btn1 = document.getElementById('checkin-step1-next');
   if (btn1) btn1.disabled = !valid;
@@ -11717,7 +11869,24 @@ function validateCheckinForm() {
   if (phone && phone.length > 0 && phone.length < 11) {
     hintP.textContent = '手机号必须为11位数字'; hintP.style.display = '';
   } else { hintP.style.display = 'none'; }
+  // Update form completion progress bar
+  updateCheckinProgress(name, phone, date, room, idcard);
   return valid;
+}
+
+function updateCheckinProgress(name, phone, date, room, idcard) {
+  var bar = document.getElementById('checkin-progress-bar');
+  if (!bar) return;
+  var filled = 0;
+  if (name && name.length >= 2) filled++;
+  if (phone && phone.length === 11) filled++;
+  if (date) filled++;
+  if (room) filled++;
+  if (idcard && idcard.length >= 15) filled++;
+  var pct = Math.round(filled / 5 * 100);
+  bar.style.width = pct + '%';
+  var label = document.getElementById('checkin-progress-label');
+  if (label) label.textContent = '已填写 ' + filled + '/5 项';
 }
 function onCheckinRoomChange() {
   var room = document.getElementById('checkin-room-select').value;
@@ -12824,6 +12993,40 @@ function openQuickCheckinModal() {
 // ======= 改进3: 退房办理（消费明细录入 + 动态计算） =======
 var checkoutItems = [];
 var currentCheckoutRoomFee = 0;
+// 【改进v3-3】退房费用明细自动计算（入住天数+房型价格+早餐+加床+押金自动读取）
+function populateCheckoutFeeDetails() {
+  var nights = parseInt(document.getElementById('co-duration') ? document.getElementById('co-duration').textContent.replace(/[^0-9]/g, '') || '1' : '1');
+  var roomFee = nights * 298; // 亲子间标准价
+  var breakfastCount = 0;
+  var breakfastFee = 0;
+  var extrabedFee = 0;
+  var depositPaid = 100;
+  var total = roomFee + breakfastFee + extrabedFee;
+  var refund = Math.max(0, depositPaid - total);
+
+  var nightsEl = document.getElementById('co-detail-days');
+  var typeEl = document.getElementById('co-detail-type');
+  var roomFeeEl = document.getElementById('co-detail-room-fee');
+  var breakfastCountEl = document.getElementById('co-detail-breakfast-count');
+  var breakfastFeeEl = document.getElementById('co-detail-breakfast-fee');
+  var extrabedEl = document.getElementById('co-detail-extrabed');
+  var damageEl = document.getElementById('co-detail-damage');
+  var totalEl = document.getElementById('co-detail-total');
+  var depositEl = document.getElementById('co-detail-deposit-paid');
+  var refundEl = document.getElementById('co-detail-refund');
+
+  if (nightsEl) nightsEl.textContent = nights + ' 晚';
+  if (typeEl) typeEl.textContent = '亲子间';
+  if (roomFeeEl) roomFeeEl.textContent = '¥' + roomFee;
+  if (breakfastCountEl) breakfastCountEl.textContent = breakfastCount;
+  if (breakfastFeeEl) breakfastFeeEl.textContent = '¥' + breakfastFee;
+  if (extrabedEl) extrabedEl.textContent = '¥' + extrabedFee;
+  if (damageEl) damageEl.textContent = '¥0';
+  if (totalEl) totalEl.textContent = '¥' + total;
+  if (depositEl) depositEl.textContent = '¥' + depositPaid;
+  if (refundEl) refundEl.textContent = '¥' + refund;
+}
+
 function openQuickCheckoutModal() {
   // Reset all fields
   document.getElementById('checkout-guest-select').value = '';
@@ -12836,6 +13039,7 @@ function openQuickCheckoutModal() {
   checkoutItems = [];
   renderCheckoutItems();
   updateCheckoutSummary();
+  populateCheckoutFeeDetails();
   openModal('checkout');
 }
 function onCheckoutGuestChange() {
@@ -19298,11 +19502,12 @@ var workorderAutoRules = [
   {type:'maintain', label:'🔧 设施维修', handler:'工程', urgency:'urgent'},
 ];
 
-// ======= 【改进2】服务工单真实多字段搜索（联动工单号+房间+客户名+内容关键词） =======
+// ======= 【改进2+改进v3-5】服务工单真实多字段搜索（联动工单号+房间+客户名+内容关键词+优先级筛选） =======
 function applyWorkorderSearch() {
   var searchText = (document.getElementById('wo-search-input') || document.querySelector('#page-workorder input[type="text"]')).value.trim().toLowerCase();
   var typeFilter = document.getElementById('wo-type-filter') ? document.getElementById('wo-type-filter').value : 'all';
   var statusFilter = document.getElementById('wo-status-filter') ? document.getElementById('wo-status-filter').value : 'all';
+  var priorityFilter = document.getElementById('wo-priority-filter') ? document.getElementById('wo-priority-filter').value : 'all';
   var rows = document.querySelectorAll('#workorder-table-body tr');
   var count = 0;
   rows.forEach(function(row) {
@@ -19313,10 +19518,13 @@ function applyWorkorderSearch() {
     var contentText = row.cells[4].textContent.toLowerCase();
     var statusText = row.dataset.status || '';
     var typeText = row.dataset.type || '';
+    var priorityText = row.dataset.priority || 'normal';
+    var overdueText = row.dataset.overdue || 'false';
     var searchMatch = !searchText || idText.indexOf(searchText) !== -1 || roomText.indexOf(searchText) !== -1 || customerText.indexOf(searchText) !== -1 || contentText.indexOf(searchText) !== -1;
     var typeMatch = typeFilter === 'all' || typeText === typeFilter;
     var statusMatch = statusFilter === 'all' || statusText === statusFilter;
-    var show = searchMatch && typeMatch && statusMatch;
+    var priorityMatch = priorityFilter === 'all' || priorityText === priorityFilter || (priorityFilter === 'overdue' && overdueText === 'true');
+    var show = searchMatch && typeMatch && statusMatch && priorityMatch;
     row.style.display = show ? '' : 'none';
     if (show) count++;
   });
@@ -25249,12 +25457,12 @@ function renderStaffTable() {
 
 // ======= 【改进D】服务工单完整增删改查 =======
 var workorderList = [
-  {id:'WO-2026032701', type:'complaint', room:'301', customer:'张三', content:'房间空调噪音过大，无法休息', status:'pending', handler:'', createTime:'今天 10:32', completeTime:''},
-  {id:'WO-2026032702', type:'delivery', room:'203', customer:'李四', content:'需要添加矿泉水x2', status:'pending', handler:'', createTime:'今天 10:15', completeTime:''},
-  {id:'WO-2026032703', type:'invoice', room:'201', customer:'王五', content:'需要开具增值税普通发票', status:'pending', handler:'', createTime:'今天 09:48', completeTime:''},
-  {id:'WO-2026032528', type:'delivery', room:'304', customer:'钱七', content:'需要浴巾一套', status:'processing', handler:'周敏', createTime:'昨天 18:20', completeTime:''},
-  {id:'WO-2026032527', type:'complaint', room:'202', customer:'赵六', content:'热水器故障，无热水', status:'processing', handler:'赵飞', createTime:'昨天 17:05', completeTime:''},
-  {id:'WO-2026032520', type:'review', room:'303', customer:'周八', content:'服务态度好，点赞！', status:'done', handler:'赵飞', createTime:'03-25 14:30', completeTime:'03-25 16:45'}
+  {id:'WO-2026032701', type:'complaint', room:'301', customer:'张三', content:'房间空调噪音过大，无法休息', status:'pending', priority:'urgent', overdue:false, handler:'', createTime:'今天 10:32', completeTime:''},
+  {id:'WO-2026032702', type:'delivery', room:'203', customer:'李四', content:'需要添加矿泉水x2', status:'pending', priority:'normal', overdue:false, handler:'', createTime:'今天 10:15', completeTime:''},
+  {id:'WO-2026032703', type:'invoice', room:'201', customer:'王五', content:'需要开具增值税普通发票', status:'pending', priority:'low', overdue:false, handler:'', createTime:'今天 09:48', completeTime:''},
+  {id:'WO-2026032528', type:'delivery', room:'304', customer:'钱七', content:'需要浴巾一套', status:'processing', priority:'normal', overdue:false, handler:'周敏', createTime:'昨天 18:20', completeTime:''},
+  {id:'WO-2026032527', type:'complaint', room:'202', customer:'赵六', content:'热水器故障，无热水', status:'processing', priority:'high', overdue:true, handler:'赵飞', createTime:'昨天 17:05', completeTime:''},
+  {id:'WO-2026032520', type:'review', room:'303', customer:'周八', content:'服务态度好，点赞！', status:'done', priority:'normal', overdue:false, handler:'赵飞', createTime:'03-25 14:30', completeTime:'03-25 16:45'}
 ];
 var editingWoIdx = -1;
 var woTypeLabels = {complaint:'🔴 客户投诉', review:'⭐ 差评反馈', invoice:'📄 发票需求', delivery:'📦 送物服务', clean:'🧹 清洁服务', maintain:'🔧 设施维修', other:'📝 其他'};
@@ -25326,6 +25534,15 @@ function completeWorkorder(idx) {
   renderWorkorderTable();
 }
 
+// 【改进v3-5】工单优先级数据（默认优先级映射）
+var woPriorityMap = {};
+function getWoPriorityBadge(priority, overdue) {
+  if (overdue) return '<span class="tbadge" style="background:var(--red-bg);color:var(--red);font-size:10px;">⏰超时</span>';
+  var cfg = {urgent:{bg:'var(--red-bg)',color:'var(--red)',label:'🔴紧急'},high:{bg:'var(--orange-bg)',color:'var(--orange)',label:'🟠高'},normal:{bg:'var(--blue-bg)',color:'var(--blue)',label:'🟡普通'},low:{bg:'var(--bg)',color:'var(--text-muted)',label:'⚪低'}};
+  var c = cfg[priority] || cfg.normal;
+  return '<span class="tbadge" style="background:' + c.bg + ';color:' + c.color + ';font-size:10px;">' + c.label + '</span>';
+}
+
 function renderWorkorderTable() {
   var tbody = document.getElementById('workorder-table-body');
   if (!tbody) return;
@@ -25334,15 +25551,21 @@ function renderWorkorderTable() {
     var statusBg = w.status === 'done' ? 'var(--green-bg)' : w.status === 'processing' ? 'var(--purple-bg)' : 'var(--orange-bg)';
     var statusColor = w.status === 'done' ? 'var(--green)' : w.status === 'processing' ? 'var(--purple)' : 'var(--orange)';
     var typeLabel = woTypeLabels[w.type] || w.type;
-    html += '<tr>' +
+    var priority = w.priority || 'normal';
+    var overdue = w.overdue || false;
+    // Build priority cell with badge + time info
+    var priorityCell = '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start;">' +
+      getWoPriorityBadge(priority, overdue) +
+      '<span style="font-size:10px;color:var(--text-muted);">' + w.createTime + '</span></div>';
+    html += '<tr data-status="' + w.status + '" data-type="' + w.type + '" data-priority="' + priority + '" data-overdue="' + overdue + '">' +
       '<td><span style="font-size:11px;">' + w.id + '</span></td>' +
       '<td><span class="tbadge red" style="font-size:11px;">' + typeLabel + '</span></td>' +
       '<td>' + (w.room||'-') + '</td>' +
       '<td>' + w.customer + '</td>' +
       '<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + w.content + '</td>' +
+      '<td>' + priorityCell + '</td>' +
       '<td><span class="tbadge" style="background:' + statusBg + ';color:' + statusColor + ';font-size:11px;">' + woStatusLabels[w.status] + '</span></td>' +
       '<td>' + (w.handler?'<span class="tbadge blue" style="font-size:11px;">👤 '+w.handler+'</span>':'<span style="font-size:11px;color:var(--text-muted);">未分配</span>') + '</td>' +
-      '<td style="font-size:11px;">' + w.createTime + '</td>' +
       '<td style="font-size:11px;">' + (w.completeTime||'--') + '</td>' +
       '<td>';
     if (w.status === 'pending') {
@@ -25359,10 +25582,13 @@ function renderWorkorderTable() {
   var pending = workorderList.filter(function(w){return w.status==='pending';}).length;
   var processing = workorderList.filter(function(w){return w.status==='processing';}).length;
   var done = workorderList.filter(function(w){return w.status==='done';}).length;
+  var overdue = workorderList.filter(function(w){return w.overdue===true;}).length;
   var cards = document.querySelectorAll('#page-workorder .stats-row .stat-card');
   if (cards[1]) cards[1].querySelector('.stat-num').textContent = pending;
   if (cards[2]) cards[2].querySelector('.stat-num').textContent = processing;
   if (cards[3]) cards[3].querySelector('.stat-num').textContent = done;
+  var overdueEl = document.getElementById('wo-stat-overdue');
+  if (overdueEl) overdueEl.textContent = overdue;
 }
 
 // ======= 【改进E】首页房间入住率热力图 + 实时入住率统计 =======
@@ -26145,21 +26371,42 @@ function submitWorkorderCreateV2() {
   renderWorkorderTable();
 }
 
+// 【改进v3-1】工单满意度星级设置
+var currentWoSatisfaction = 0;
+function setWoSatisfaction(val) {
+  currentWoSatisfaction = val;
+  var stars = document.querySelectorAll('#wo-satisfaction-stars span[data-val]');
+  stars.forEach(function(s, i) {
+    s.style.color = i < val ? '#fadb14' : '#ddd';
+  });
+  var label = document.getElementById('wo-satisfaction-label');
+  var labels = ['未评', '很不满意', '不满意', '一般', '满意', '非常满意'];
+  if (label) label.textContent = labels[val] || '未评';
+}
+
 function submitWorkorderProcessV2() {
   var assign = document.getElementById('wop-assign').value;
   var result = document.getElementById('wop-result').value;
   var completeTime = document.getElementById('wop-complete-time').value;
+  var duration = document.getElementById('wop-duration') ? document.getElementById('wop-duration').value : '';
+  var notifyGuest = document.getElementById('wop-notify-guest') ? document.getElementById('wop-notify-guest').checked : true;
   if (editingWoProcessIdxV2 < 0) return;
   workorderList[editingWoProcessIdxV2].handler = assign;
   if (result === 'solved') {
     workorderList[editingWoProcessIdxV2].status = 'done';
     workorderList[editingWoProcessIdxV2].completeTime = completeTime ? completeTime.replace('T', ' ').slice(0, 16) : '今天 ' + new Date().toTimeString().slice(0,5);
+    workorderList[editingWoProcessIdxV2].satisfaction = currentWoSatisfaction;
+    workorderList[editingWoProcessIdxV2].duration = duration;
+    if (notifyGuest) {
+      workorderList[editingWoProcessIdxV2].notified = true;
+    }
   } else if (result === 'transfer') {
     workorderList[editingWoProcessIdxV2].status = 'processing';
   }
-  showToast('✅ 工单已处理', 'success');
+  showToast('✅ 工单已处理' + (notifyGuest && result === 'solved' ? '，已通知客户' : ''), 'success');
   closeModal('wo-process');
   renderWorkorderTable();
+  currentWoSatisfaction = 0;
 }
 
 // ======= 【改进5】会员管理CRUD V2 =======
