@@ -2318,6 +2318,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div class="card-header">
           <div class="card-title">📋 房间记录 - <span id="rr-room-num">301</span></div>
           <button class="action-btn small" onclick="openAddRoomRecordModal()" style="padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">+ 添加记录</button>
+          <button class="action-btn small" onclick="exportRoomRevenueReport()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);margin-left:4px;">💰 导出入账报告</button>
           <div class="card-tabs">
             <div class="card-tab active" onclick="filterRoomRecords('all',this)" id="rr-tab-all">全部 <span id="rr-count-all">4</span></div>
             <div class="card-tab" onclick="filterRoomRecords('in',this)" id="rr-tab-in">入住 <span id="rr-count-in">1</span></div>
@@ -7150,6 +7151,8 @@ function openEditMemberLevelModalV2(idx) {
               </div>
             </div>
             <button class="action-btn" onclick="openCreateWorkorderModal()" style="padding:4px 12px;">+ 创建工单</button>
+            <button class="action-btn" onclick="batchAcceptWorkorders()" id="wo-batch-accept-btn" style="display:none;padding:4px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);margin-left:8px;">✅ 批量接受 (<span id="wo-batch-count">0</span>)</button>
+            <button class="action-btn" onclick="batchCloseWorkorders()" id="wo-batch-close-btn" style="display:none;padding:4px 12px;background:var(--gray-bg);color:var(--text-muted);border-color:var(--border);margin-left:4px;">🚪 批量关闭</button>
           </div>
         </div>
         <div class="card-header" style="border-top:1px solid var(--border);padding-top:12px;">
@@ -12211,7 +12214,7 @@ function openEditMemberLevelModalV2(idx) {
       <div class="form-row" style="margin-bottom:0;">
         <div class="form-group">
           <label class="form-label">工单类型 <span class="required">*</span></label>
-          <select class="form-select" id="wo-type">
+          <select class="form-select" id="wo-type" onchange="previewAutoDispatch()">
             <option value="complaint">🔴 客户投诉</option>
             <option value="review">⭐ 差评反馈</option>
             <option value="invoice">📄 发票需求</option>
@@ -12223,7 +12226,7 @@ function openEditMemberLevelModalV2(idx) {
         </div>
         <div class="form-group">
           <label class="form-label">房间号 <span class="required">*</span></label>
-          <select class="form-select" id="wo-room">
+          <select class="form-select" id="wo-room" onchange="previewAutoDispatch()">
             <option value="">请选择房间</option>
             <option value="301">301 - 亲子间</option>
             <option value="302">302 - 亲子间</option>
@@ -12234,6 +12237,16 @@ function openEditMemberLevelModalV2(idx) {
             <option value="202">202 - 大床房</option>
             <option value="203">203 - 大床房</option>
           </select>
+        </div>
+      </div>
+      <div id="wo-dispatch-preview" style="display:none;margin-top:10px;padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:14px;">🤖</span>
+          <div style="flex:1;">
+            <div style="font-weight:600;color:var(--blue);margin-bottom:2px;" id="wo-dp-label">自动派发预览</div>
+            <div style="color:var(--text);" id="wo-dp-content">根据工单类型，系统将自动派发给：<strong id="wo-dp-target">前厅经理 赵飞</strong></div>
+          </div>
+          <span class="tbadge blue" id="wo-dp-badge" style="font-size:11px;padding:2px 8px;">自动</span>
         </div>
       </div>
       <div class="form-group">
@@ -17700,6 +17713,207 @@ function filterWorkorder(status, el) {
 
 function openCreateWorkorderModal() { openModal('create-wo'); }
 // ======= 【改进4】服务工单创建完善化：自动插入列表+统计数据更新+工单统计卡实时更新 =======
+
+// ========== 【改进1】工单自动派发预览功能 ==========
+var autoDispatchRules = [
+  { type: 'complaint', urgency: ['urgent', 'critical'], handler: '赵飞', role: '前厅经理', badge: 'red' },
+  { type: 'complaint', urgency: [], handler: '周敏', role: '客房经理', badge: 'blue' },
+  { type: 'delivery', urgency: [], handler: '郑强', role: '清洁人员', badge: 'green' },
+  { type: 'clean', urgency: [], handler: '郑强', role: '清洁人员', badge: 'green' },
+  { type: 'maintain', urgency: [], handler: '王工', role: '工程师', badge: 'orange' },
+  { type: 'invoice', urgency: [], handler: '赵飞', role: '前厅经理', badge: 'red' },
+  { type: 'review', urgency: [], handler: '赵飞', role: '前厅经理', badge: 'red' },
+  { type: 'other', urgency: [], handler: '周敏', role: '客房经理', badge: 'blue' }
+];
+
+function previewAutoDispatch() {
+  var type = document.getElementById('wo-type') ? document.getElementById('wo-type').value : '';
+  var urgency = document.getElementById('wo-urgency') ? document.getElementById('wo-urgency').value : 'normal';
+  var preview = document.getElementById('wo-dispatch-preview');
+  if (!preview) return;
+  if (!type) { preview.style.display = 'none'; return; }
+  var rule = autoDispatchRules.find(function(r) { return r.type === type; });
+  if (!rule) { preview.style.display = 'none'; return; }
+  var isUrgent = urgency === 'urgent' || urgency === 'critical';
+  var target = isUrgent && rule.urgency && rule.urgency.length > 0 ? rule.handler : rule.handler;
+  var role = isUrgent && rule.urgency && rule.urgency.length > 0 ? rule.role : rule.role;
+  document.getElementById('wo-dp-target').textContent = role + ' ' + target;
+  document.getElementById('wo-dp-badge').textContent = isUrgent ? '⚡ 优先处理' : '自动';
+  document.getElementById('wo-dp-badge').style.background = isUrgent ? 'var(--red-bg)' : 'var(--blue-bg)';
+  document.getElementById('wo-dp-badge').style.color = isUrgent ? 'var(--red)' : 'var(--blue)';
+  // Auto-fill handler
+  if (document.getElementById('wo-handler')) {
+    var opts = document.getElementById('wo-handler').options;
+    for (var i = 0; i < opts.length; i++) {
+      if (opts[i].textContent.indexOf(target) !== -1) {
+        document.getElementById('wo-handler').value = opts[i].value;
+        break;
+      }
+    }
+  }
+  preview.style.display = '';
+  preview.style.background = isUrgent ? 'var(--red-bg)' : 'var(--blue-bg)';
+  preview.style.borderColor = isUrgent ? 'var(--red)' : 'var(--blue)';
+}
+
+// ========== 【改进2】房间记录导出入账报告 ==========
+function exportRoomRevenueReport() {
+  var records = [
+    { id: 'rec-001', name: '张三', room: '301', type: 'in', fee: 256, deposit: 100, method: '微信', time: '2026-03-27 10:32', status: '入住中' },
+    { id: 'rec-002', name: '李四', room: '301', type: 'out', fee: 0, deposit: 100, method: '微信', time: '2026-03-26 14:20', status: '已退房' },
+    { id: 'rec-003', name: '钱七', room: '301', type: 'change', fee: 0, deposit: 0, method: '--', time: '2026-03-25 16:00', status: '已换房' },
+    { id: 'rec-004', name: '王五', room: '301', type: 'out', fee: 0, deposit: 100, method: '支付宝', time: '2026-03-24 12:00', status: '已退房' }
+  ];
+  var totalRevenue = records.reduce(function(s, r) { return s + (r.type === 'out' ? (r.fee + r.deposit) : 0); }, 0);
+  var totalDeposit = records.reduce(function(s, r) { return s + r.deposit; }, 0);
+  var html = '<html><head><meta charset="utf-8"><title>房间301入账报告</title></head><body>';
+  html += '<h2>🏠 房间301 入账报告</h2>';
+  html += '<p style="color:#666;">生成时间: ' + new Date().toLocaleString('zh-CN') + '</p>';
+  html += '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:13px;">';
+  html += '<tr style="background:#f0f0f0;"><th>日期时间</th><th>姓名</th><th>类型</th><th>房费(元)</th><th>押金(元)</th><th>支付方式</th><th>状态</th></tr>';
+  records.forEach(function(r) {
+    var bg = r.type === 'out' ? '#f0fff0' : r.type === 'in' ? '#f0f8ff' : '#fff8f0';
+    html += '<tr style="background:' + bg + ';"><td>' + r.time + '</td><td>' + r.name + '</td><td>' + r.status + '</td><td>' + r.fee + '</td><td>' + r.deposit + '</td><td>' + r.method + '</td><td>' + r.status + '</td></tr>';
+  });
+  html += '</table>';
+  html += '<div style="margin-top:20px;padding:16px;background:#f5f5f5;border-radius:8px;">';
+  html += '<h3>📊 汇总统计</h3>';
+  html += '<p>💰 本期收入合计: <strong style="color:red;font-size:18px;">¥' + totalRevenue + '</strong> 元（含押金退款前）</p>';
+  html += '<p>📋 押金收入: ¥' + totalDeposit + ' 元（退房后退还）</p>';
+  html += '<p>🏨 当前入住: 张三（入住中，房间301，亲子间）</p>';
+  html += '</div></body></html>';
+  var blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '房间301_入账报告_' + new Date().toISOString().slice(0, 10) + '.xls';
+  a.click();
+  showToast('✅ 入账报告已导出！本期收入 ¥' + totalRevenue + ' 元', 'success');
+}
+
+// ========== 【改进4】会员积分商城Tab内容渲染 ==========
+function renderMemberPointsTab(memberIdx) {
+  var members = [
+    { name: '王浩', points: 8860, level: 'gold' },
+    { name: '李娜', points: 4520, level: 'silver' },
+    { name: '张伟', points: 15680, level: 'vip' },
+    { name: '赵敏', points: 2240, level: 'silver' },
+    { name: '钱进', points: 860, level: 'normal' }
+  ];
+  var m = members[memberIdx] || members[0];
+  var pointsProducts = [
+    { name: '🧴 客房清洁套装', points: 500, stock: 20, img: '🧴' },
+    { name: '☕ 延迟退房2小时', points: 1000, stock: 10, img: '☕' },
+    { name: '🍳 双人早餐券', points: 800, stock: 15, img: '🍳' },
+    { name: '🛏️ 免费升房券', points: 2000, stock: 5, img: '🛏️' },
+    { name: '🎁 品牌定制礼品', points: 3000, stock: 8, img: '🎁' },
+    { name: '💆 SPA服务券', points: 5000, stock: 3, img: '💆' }
+  ];
+  var container = document.getElementById('md-content-points');
+  if (!container) return;
+  var canExchange = function(p) { return m.points >= p.points && p.stock > 0; };
+  var html = '<div style="padding:4px 0;">';
+  html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px;background:var(--purple-bg);border-radius:8px;">';
+  html += '<div style="font-size:32px;">🎫</div>';
+  html += '<div><div style="font-size:12px;color:var(--text-muted);">可用积分</div><div style="font-size:24px;font-weight:700;color:var(--purple);">' + m.points + ' <span style="font-size:12px;font-weight:400;">分</span></div></div>';
+  html += '<div style="margin-left:auto;text-align:right;"><div style="font-size:12px;color:var(--text-muted);">会员等级</div><div style="font-size:14px;font-weight:600;color:var(--purple);">' + (m.level === 'vip' ? '💎 VIP会员' : m.level === 'gold' ? '🥇 金卡会员' : m.level === 'silver' ? '🥈 银卡会员' : '普通会员') + '</div></div>';
+  html += '</div>';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);">🎁 可兑换礼品（' + pointsProducts.length + ' 件）</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">';
+  pointsProducts.forEach(function(p) {
+    var can = canExchange(p);
+    html += '<div style="padding:12px;background:' + (can ? 'white' : 'var(--bg)') + ';border:1px solid ' + (can ? 'var(--purple)' : 'var(--border)') + ';border-radius:8px;opacity:' + (can ? '1' : '0.6') + ';cursor:' + (can ? 'pointer' : 'not-allowed') + ';" onclick="' + (can ? "exchangePointsProduct('" + p.name + "'," + p.points + ")" : '') + '">';
+    html += '<div style="font-size:28px;margin-bottom:6px;">' + p.img + '</div>';
+    html += '<div style="font-size:12px;font-weight:600;margin-bottom:4px;">' + p.name + '</div>';
+    html += '<div style="font-size:11px;color:var(--purple);font-weight:700;">' + p.points + ' 积分</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">库存 ' + p.stock + ' 件</div>';
+    html += can ? '<div style="margin-top:6px;font-size:10px;color:var(--green);font-weight:600;">✅ 可兑换</div>' : '<div style="margin-top:6px;font-size:10px;color:var(--text-muted);">积分不足</div>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+  container.innerHTML = html;
+}
+
+function exchangePointsProduct(productName, points) {
+  showToast('🎉 兑换成功！' + productName + '（-' + points + ' 积分）已加入您的账户', 'success');
+}
+
+function switchMemberDetailTab(tab, el) {
+  document.querySelectorAll('#modal-member-detail .tab').forEach(function(t) { t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  var tabs = ['info', 'stay', 'consume', 'keys', 'points'];
+  tabs.forEach(function(t) {
+    var content = document.getElementById('md-content-' + t);
+    if (content) content.style.display = t === tab ? 'block' : 'none';
+  });
+  if (tab === 'points') renderMemberPointsTab(0);
+}
+
+// ========== 【改进5】工单批量接受与关闭功能 ==========
+function toggleAllWorkorderSelect(checked) {
+  var checkboxes = document.querySelectorAll('.wo-row-check');
+  checkboxes.forEach(function(cb) { cb.checked = checked; });
+  updateWorkorderBatchUI();
+}
+
+function updateWorkorderBatchUI() {
+  var checked = document.querySelectorAll('.wo-row-check:checked');
+  var count = checked.length;
+  var acceptBtn = document.getElementById('wo-batch-accept-btn');
+  var closeBtn = document.getElementById('wo-batch-close-btn');
+  var countEl = document.getElementById('wo-batch-count');
+  if (acceptBtn) acceptBtn.style.display = count > 0 ? '' : 'none';
+  if (closeBtn) closeBtn.style.display = count > 0 ? '' : 'none';
+  if (countEl) countEl.textContent = count;
+}
+
+function batchAcceptWorkorders() {
+  var checked = document.querySelectorAll('.wo-row-check:checked');
+  if (checked.length === 0) { showToast('请先选择要接受的工单', 'error'); return; }
+  var count = 0;
+  checked.forEach(function(cb) {
+    var row = cb.closest('tr');
+    if (row && row.dataset.status === 'pending') {
+      row.dataset.status = 'processing';
+      var statusEl = row.querySelector('td:nth-child(6) span');
+      if (statusEl) { statusEl.textContent = '处理中'; statusEl.className = 'tbadge purple'; }
+      count++;
+    }
+    cb.checked = false;
+  });
+  updateWorkorderBatchUI();
+  showToast('✅ 成功接受 ' + count + ' 个工单，已分配给当前处理人', 'success');
+}
+
+function batchCloseWorkorders() {
+  var checked = document.querySelectorAll('.wo-row-check:checked');
+  if (checked.length === 0) { showToast('请先选择要关闭的工单', 'error'); return; }
+  var count = 0;
+  checked.forEach(function(cb) {
+    var row = cb.closest('tr');
+    if (row) {
+      row.dataset.status = 'closed';
+      var statusEl = row.querySelector('td:nth-child(6) span');
+      if (statusEl) { statusEl.textContent = '已关闭'; statusEl.className = 'tbadge gray'; }
+      row.style.opacity = '0.5';
+      count++;
+    }
+    cb.checked = false;
+  });
+  updateWorkorderBatchUI();
+  showToast('🚪 已关闭 ' + count + ' 个工单', 'success');
+}
+
+// Hook checkbox change to update batch UI
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    document.querySelectorAll('.wo-row-check').forEach(function(cb) {
+      cb.addEventListener('change', updateWorkorderBatchUI);
+    });
+    var selectAll = document.getElementById('wo-select-all');
+    if (selectAll) selectAll.addEventListener('change', function() { toggleAllWorkorderSelect(this.checked); });
+  }, 500);
+});
+
 function submitCreateWorkorder() {
   var content = document.getElementById('wo-create-content').value.trim();
   var room = document.getElementById('wo-create-room').value.trim();
