@@ -2304,6 +2304,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <button class="action-btn small" onclick="window._userClickedBatchUpgrade=true;openBatchUpgradeModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📦 批量升级固件</button>
         <button class="action-btn small" onclick="openDeviceBatchActionModal('battery')" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔋 电池检测</button>
         <button class="action-btn small" onclick="openDeviceBatchActionModal('sync')" style="padding:5px 10px;background:var(--bg);color:var(--text);border-color:var(--border);">🔍 状态同步</button>
+        <button class="action-btn small" onclick="openBatchDeviceBindingModal()" style="padding:5px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">📡 设备绑定</button>
         <button class="action-btn small" onclick="openFirmwareAnalyzerModal()" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📡 版本分析器</button><button class="action-btn small" onclick="openFirmwareComparisonModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📋 固件对比表</button><button class="action-btn small" onclick="openAlertRuleEngineModal()" style="padding:5px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">⚠️ 告警规则</button><button class="action-btn small" onclick="openDeviceFirmwareOTAModal()" style="padding:5px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📦 OTA升级</button>
         <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">💡 勾选左侧设备列表可精确选择设备</span>
       </div>
@@ -11382,6 +11383,7 @@ function openEditMemberLevelModalV2(idx) {
               <span style="color:var(--blue);">📊 同比 <strong id="bld-occ-yoy">+5%</strong></span>
               <span style="color:var(--orange);">📈 环比 <strong id="bld-occ-mom">+3%</strong></span>
             </div>
+            <button class="action-btn small" onclick="openOccupancyForecastModal(document.getElementById('bld-occ-bld-select').value)" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);font-size:11px;">📊 AI预测</button>
           </div>
         </div>
         <div class="card-body" style="padding:16px;">
@@ -34843,20 +34845,8 @@ function submitWoReview() {
 var currentRoomTypePriceIdx = -1;
 var pricePeriodCount = 1;
 function openRoomTypePriceModal(idx) {
-  currentRoomTypePriceIdx = idx;
-  var roomTypes = [
-    { name: '标准间', bed: '大床1.8m', price: '98' },
-    { name: '大床房', bed: '大床1.5m', price: '108' },
-    { name: '亲子间', bed: '多床（1大+1小）', price: '128' },
-    { name: '家庭套房', bed: '子母床', price: '198' }
-  ];
-  var rt = roomTypes[idx] || roomTypes[1];
-  document.getElementById('rtp-name').textContent = rt.name;
-  document.getElementById('rtp-bed').textContent = rt.bed;
-  document.getElementById('rtp-default-price').value = rt.price;
-  pricePeriodCount = 1;
-  document.getElementById('rtp-period-list').innerHTML = getPricePeriodHTML(0);
-  openModal('roomtype-price');
+  // 调用新的完整价格策略配置
+  openRoomTypePricingModal(idx);
 }
 function getPricePeriodHTML(i) {
   var types = { weekday: '周一至周四', weekend: '周五至周日', holiday: '节假日', peak: '旺季' };
@@ -53233,6 +53223,536 @@ function submitWoSatisfaction(woId) {
 function skipWoSatisfaction(woId) {
   showToast('已跳过评价，工单' + woId + '已关闭', 'info');
   closeModal('wo-satisfaction');
+}
+
+// ============================================================
+// 改进A: 房型动态价格策略配置
+// 功能：为每个房型配置平日/周末/节假日/钟点房多层级价格体系
+// 逻辑：点击"💰价格策略"按钮弹出配置面板，支持设置不同时间段价格系数
+// ============================================================
+var roomTypePricingData = [
+  {type:'亲子间', weekday:298, weekend:358, holiday:428, hourly6h:128, hourly12h:198, peakSeason:498},
+  {type:'大床房', weekday:238, weekend:298, holiday:368, hourly6h:108, hourly12h:168, peakSeason:398},
+  {type:'标准间', weekday:188, weekend:228, holiday:288, hourly6h:88, hourly12h:138, peakSeason:328},
+  {type:'家庭套房', weekday:398, weekend:488, holiday:598, hourly6h:198, hourly12h:298, peakSeason:698}
+];
+
+function openRoomTypePricingModal(rtIdx) {
+  var rt = roomTypePricingData[rtIdx] || roomTypePricingData[0];
+  var old = document.getElementById('modal-roomtype-pricing');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-roomtype-pricing" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:580px;max-height:88vh;overflow-y:auto;">';
+  html += '<div class="modal-header"><div class="modal-title">💰 房型价格策略 - ' + rt.type + '</div>';
+  html += '<button class="modal-close" onclick="document.getElementById(\'modal-roomtype-pricing\').remove()">✕</button></div>';
+  html += '<div class="modal-body">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
+  html += '<div style="padding:14px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--blue);margin-bottom:4px;">平日价</div><div style="font-size:24px;font-weight:700;color:var(--blue);">¥<span id="rtp-weekday-val">' + rt.weekday + '</span></div><div style="font-size:10px;color:var(--text-muted);">周一~周四</div></div>';
+  html += '<div style="padding:14px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--green);margin-bottom:4px;">周末价</div><div style="font-size:24px;font-weight:700;color:var(--green);">¥<span id="rtp-weekend-val">' + rt.weekend + '</span></div><div style="font-size:10px;color:var(--text-muted);">周五~周日</div></div>';
+  html += '<div style="padding:14px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--red);margin-bottom:4px;">节假日价</div><div style="font-size:24px;font-weight:700;color:var(--red);">¥<span id="rtp-holiday-val">' + rt.holiday + '</span></div><div style="font-size:10px;color:var(--text-muted);">法定节假日</div></div>';
+  html += '<div style="padding:14px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--purple);margin-bottom:4px;">旺季价</div><div style="font-size:24px;font-weight:700;color:var(--purple);">¥<span id="rtp-peak-val">' + rt.peakSeason + '</span></div><div style="font-size:10px;color:var(--text-muted);">旅游旺季/展会期</div></div>';
+  html += '</div>';
+  html += '<div style="margin-bottom:16px;padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);">💡 价格系数：周末=平日×1.2，节假日=平日×1.44，旺季=平日×1.67（可在高级设置中自定义）</div>';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">🔢 基础定价（元）</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">';
+  html += '<div class="form-group"><label class="form-label">平日价 <span class="required">*</span></label><input type="number" class="form-input" id="rtp-wd" value="' + rt.weekday + '" min="0" oninput="syncPricingPreview(' + rtIdx + ')"></div>';
+  html += '<div class="form-group"><label class="form-label">周末价 <span class="required">*</span></label><input type="number" class="form-input" id="rtp-we" value="' + rt.weekend + '" min="0" oninput="syncPricingPreview(' + rtIdx + ')"></div>';
+  html += '<div class="form-group"><label class="form-label">节假日价 <span class="required">*</span></label><input type="number" class="form-input" id="rtp-hd" value="' + rt.holiday + '" min="0" oninput="syncPricingPreview(' + rtIdx + ')"></div>';
+  html += '<div class="form-group"><label class="form-label">旺季价 <span class="required">*</span></label><input type="number" class="form-input" id="rtp-ps" value="' + rt.peakSeason + '" min="0"></div>';
+  html += '</div>';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">⏰ 钟点房定价</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">';
+  html += '<div class="form-group"><label class="form-label">6小时钟点房</label><input type="number" class="form-input" id="rtp-h6" value="' + rt.hourly6h + '" min="0"></div>';
+  html += '<div class="form-group"><label class="form-label">12小时钟点房</label><input type="number" class="form-input" id="rtp-h12" value="' + rt.hourly12h + '" min="0"></div>';
+  html += '</div>';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">⚙️ 高级价格系数</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">';
+  html += '<div class="form-group"><label class="form-label">周末系数</label><input type="number" class="form-input" id="rtp-coef-we" value="1.2" step="0.01" min="1" max="3"></div>';
+  html += '<div class="form-group"><label class="form-label">节假日系数</label><input type="number" class="form-input" id="rtp-coef-hd" value="1.44" step="0.01" min="1" max="5"></div>';
+  html += '<div class="form-group"><label class="form-label">旺季系数</label><input type="number" class="form-input" id="rtp-coef-ps" value="1.67" step="0.01" min="1" max="5"></div>';
+  html += '</div>';
+  html += '<div class="form-group"><label class="form-label">备注</label><input type="text" class="form-input" id="rtp-note" placeholder="价格策略说明，如：春节期间不适用优惠券" style="font-size:12px;"></div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-roomtype-pricing\').remove()">取消</button>';
+  html += '<button class="modal-btn" onclick="previewPricingResult(' + rtIdx + ')">👁️ 预览</button>';
+  html += '<button class="modal-btn primary" onclick="saveRoomTypePricing(' + rtIdx + ')">💾 保存策略</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function syncPricingPreview(rtIdx) {
+  var wd = parseFloat(document.getElementById('rtp-wd').value) || 0;
+  var weCoef = parseFloat(document.getElementById('rtp-coef-we').value) || 1.2;
+  var hdCoef = parseFloat(document.getElementById('rtp-coef-hd').value) || 1.44;
+  var psCoef = parseFloat(document.getElementById('rtp-coef-ps').value) || 1.67;
+  document.getElementById('rtp-weekday-val').textContent = wd;
+  document.getElementById('rtp-weekend-val').textContent = Math.round(wd * weCoef);
+  document.getElementById('rtp-holiday-val').textContent = Math.round(wd * hdCoef);
+  document.getElementById('rtp-peak-val').textContent = Math.round(wd * psCoef);
+  document.getElementById('rtp-we').value = Math.round(wd * weCoef);
+  document.getElementById('rtp-hd').value = Math.round(wd * hdCoef);
+  document.getElementById('rtp-ps').value = Math.round(wd * psCoef);
+}
+
+function previewPricingResult(rtIdx) {
+  var rt = roomTypePricingData[rtIdx];
+  var wd = parseFloat(document.getElementById('rtp-wd').value) || 0;
+  var we = parseFloat(document.getElementById('rtp-we').value) || 0;
+  var hd = parseFloat(document.getElementById('rtp-hd').value) || 0;
+  var ps = parseFloat(document.getElementById('rtp-ps').value) || 0;
+  var h6 = parseFloat(document.getElementById('rtp-h6').value) || 0;
+  var h12 = parseFloat(document.getElementById('rtp-h12').value) || 0;
+  var note = document.getElementById('rtp-note').value || '';
+  showToast('📋 ' + rt.type + ' 价格预览：平日¥' + wd + ' | 周末¥' + we + ' | 节假日¥' + hd + ' | 旺季¥' + ps + ' | 钟点6h ¥' + h6 + ' | 钟点12h ¥' + h12, 'info');
+}
+
+function saveRoomTypePricing(rtIdx) {
+  var wd = parseFloat(document.getElementById('rtp-wd').value) || 0;
+  var we = parseFloat(document.getElementById('rtp-we').value) || 0;
+  var hd = parseFloat(document.getElementById('rtp-hd').value) || 0;
+  var ps = parseFloat(document.getElementById('rtp-ps').value) || 0;
+  var h6 = parseFloat(document.getElementById('rtp-h6').value) || 0;
+  var h12 = parseFloat(document.getElementById('rtp-h12').value) || 0;
+  if (wd <= 0) { showToast('平日价必须大于0', 'error'); return; }
+  roomTypePricingData[rtIdx] = Object.assign({}, roomTypePricingData[rtIdx], {
+    weekday: wd, weekend: we, holiday: hd, peakSeason: ps, hourly6h: h6, hourly12h: h12
+  });
+  document.getElementById('modal-roomtype-pricing').remove();
+  showToast('✅ ' + roomTypePricingData[rtIdx].type + ' 价格策略已保存', 'success');
+  addOpLog('config', '赵飞', '修改房型[' + roomTypePricingData[rtIdx].type + ']价格策略', '平日¥' + wd + '/周末¥' + we + '/节假日¥' + hd);
+}
+
+// ============================================================
+// 改进B: 设备参数配置面板
+// 功能：设备灵敏度/音量/自动锁门时间/等参数可配置化
+// 逻辑：点击设备详情的"参数配置"弹出完整配置面板，支持滑块+数值输入+预设方案
+// ============================================================
+var deviceConfigPresets = [
+  {name:'标准模式', sensitivity:70, volume:80, autoLock:30, tamper:50, signalInterval:300},
+  {name:'静音模式', sensitivity:70, volume:10, autoLock:60, tamper:50, signalInterval:300},
+  {name:'高安全模式', sensitivity:95, volume:90, autoLock:15, tamper:80, signalInterval:60},
+  {name:'节能模式', sensitivity:50, volume:50, autoLock:45, tamper:30, signalInterval:600}
+];
+
+function openDeviceConfigPanelModal() {
+  var old = document.getElementById('modal-device-config-panel');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-device-config-panel" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:560px;max-height:88vh;overflow-y:auto;">';
+  html += '<div class="modal-header"><div class="modal-title">⚙️ 设备参数配置</div>';
+  html += '<button class="modal-close" onclick="document.getElementById(\'modal-device-config-panel\').remove()">✕</button></div>';
+  html += '<div class="modal-body">';
+  html += '<div style="margin-bottom:14px;padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">💡 当前配置：301房间 · 领握LH-807智能锁 · 设备在线</div>';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">📋 快速预设方案</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">';
+  deviceConfigPresets.forEach(function(preset, i) {
+    html += '<div onclick="applyDevicePreset(' + i + ')" style="padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'var(--border)\'">';
+    html += '<div style="font-size:11px;font-weight:700;margin-bottom:4px;">' + preset.name + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);">灵敏度' + preset.sensitivity + '%</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);">音量' + preset.volume + '%</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);">自动锁' + preset.autoLock + 's</div></div>';
+  });
+  html += '</div>';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">🔧 自定义参数</div>';
+  // 灵敏度
+  html += '<div style="margin-bottom:14px;padding:12px;background:var(--bg);border-radius:8px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;">🔔 门锁灵敏度</div>';
+  html += '<div style="font-size:14px;font-weight:700;color:var(--blue);"><span id="dc-sens-val">70</span>%</div></div>';
+  html += '<input type="range" id="dc-sens" min="0" max="100" value="70" style="width:100%;accent-color:var(--blue);" oninput="document.getElementById(\'dc-sens-val\').textContent=this.value">';
+  html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:4px;"><span>低（省电）</span><span>高（灵敏）</span></div></div>';
+  // 音量
+  html += '<div style="margin-bottom:14px;padding:12px;background:var(--bg);border-radius:8px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;">🔊 按键音量</div>';
+  html += '<div style="font-size:14px;font-weight:700;color:var(--green);"><span id="dc-vol-val">80</span>%</div></div>';
+  html += '<input type="range" id="dc-vol" min="0" max="100" value="80" style="width:100%;accent-color:var(--green);" oninput="document.getElementById(\'dc-vol-val\').textContent=this.value">';
+  html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:4px;"><span>静音</span><span>最大</span></div></div>';
+  // 自动锁门时间
+  html += '<div style="margin-bottom:14px;padding:12px;background:var(--bg);border-radius:8px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;">⏱️ 自动锁门时间</div>';
+  html += '<div style="font-size:14px;font-weight:700;color:var(--orange);"><span id="dc-al-val">30</span>秒</div></div>';
+  html += '<input type="range" id="dc-al" min="5" max="120" value="30" step="5" style="width:100%;accent-color:var(--orange);" oninput="document.getElementById(\'dc-al-val\').textContent=this.value">';
+  html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:4px;"><span>5秒</span><span>120秒</span></div></div>';
+  // 防撬灵敏度
+  html += '<div style="margin-bottom:14px;padding:12px;background:var(--bg);border-radius:8px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;">🛡️ 防撬报警灵敏度</div>';
+  html += '<div style="font-size:14px;font-weight:700;color:var(--red);"><span id="dc-tamper-val">50</span>%</div></div>';
+  html += '<input type="range" id="dc-tamper" min="0" max="100" value="50" style="width:100%;accent-color:var(--red);" oninput="document.getElementById(\'dc-tamper-val\').textContent=this.value">';
+  html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:4px;"><span>关闭</span><span>最高</span></div></div>';
+  // 心跳间隔
+  html += '<div style="margin-bottom:14px;padding:12px;background:var(--bg);border-radius:8px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;">📡 心跳上报间隔</div>';
+  html += '<div style="font-size:14px;font-weight:700;color:var(--purple);"><span id="dc-sig-val">300</span>秒</div></div>';
+  html += '<input type="range" id="dc-sig" min="30" max="1800" value="300" step="30" style="width:100%;accent-color:var(--purple);" oninput="document.getElementById(\'dc-sig-val\').textContent=this.value">';
+  html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:4px;"><span>30秒</span><span>30分钟</span></div></div>';
+  html += '<div style="margin-bottom:14px;"><div class="form-group"><label class="form-label">配置备注</label><input type="text" class="form-input" id="dc-note" placeholder="如：因门缝较大，调高灵敏度" style="font-size:12px;"></div></div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-config-panel\').remove()">取消</button>';
+  html += '<button class="modal-btn" onclick="resetDeviceConfigToDefaults()">🔄 恢复默认</button>';
+  html += '<button class="modal-btn primary" onclick="submitDeviceConfig()">💾 下发配置</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function applyDevicePreset(idx) {
+  var p = deviceConfigPresets[idx];
+  document.getElementById('dc-sens').value = p.sensitivity;
+  document.getElementById('dc-sens-val').textContent = p.sensitivity;
+  document.getElementById('dc-vol').value = p.volume;
+  document.getElementById('dc-vol-val').textContent = p.volume;
+  document.getElementById('dc-al').value = p.autoLock;
+  document.getElementById('dc-al-val').textContent = p.autoLock;
+  document.getElementById('dc-tamper').value = p.tamper;
+  document.getElementById('dc-tamper-val').textContent = p.tamper;
+  document.getElementById('dc-sig').value = p.signalInterval;
+  document.getElementById('dc-sig-val').textContent = p.signalInterval;
+  showToast('📋 已应用预设方案：' + p.name, 'info');
+}
+
+function resetDeviceConfigToDefaults() {
+  applyDevicePreset(0);
+  showToast('🔄 已恢复为默认参数', 'info');
+}
+
+function submitDeviceConfig() {
+  var sens = document.getElementById('dc-sens').value;
+  var vol = document.getElementById('dc-vol').value;
+  var al = document.getElementById('dc-al').value;
+  var tamper = document.getElementById('dc-tamper').value;
+  var sig = document.getElementById('dc-sig').value;
+  var note = document.getElementById('dc-note').value || '';
+  document.getElementById('modal-device-config-panel').remove();
+  showToast('✅ 设备参数配置已下发，设备将在下次心跳时同步（约' + sig + '秒）', 'success');
+  addOpLog('device', '赵飞', '配置设备参数[301房间]', '灵敏度' + sens + '%，音量' + vol + '%，自动锁' + al + '秒');
+}
+
+// Wire device config button
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var devDetailBtns = document.querySelectorAll('[onclick*="openDeviceConfigModal"]');
+    devDetailBtns.forEach(function(btn) {
+      btn.setAttribute('onclick', 'openDeviceConfigPanelModal()');
+    });
+  }, 800);
+});
+
+// ============================================================
+// 改进C: 批量设备与房间绑定工具
+// 功能：支持CSV式批量绑定设备UUID到房间号，支持解绑和换绑
+// 逻辑：弹出一个表格界面，逐行填写设备UUID和房间号，支持粘贴批量导入
+// ============================================================
+var deviceRoomBindingList = [
+  {devId:'DEV-LK001', uuid:'A84F1AF2-0001-xxxx', room:'301', status:'bound'},
+  {devId:'DEV-LK002', uuid:'A84F1AF2-0002-xxxx', room:'203', status:'bound'},
+  {devId:'DEV-LK003', uuid:'A84F1AF2-0003-xxxx', room:'304', status:'bound'},
+  {devId:'DEV-LK005', uuid:'A84F1AF2-0005-xxxx', room:'305', status:'unbound'},
+  {devId:'DEV-LK007', uuid:'A84F1AF2-0007-xxxx', room:'203', status:'conflict'}
+];
+
+function openBatchDeviceBindingModal() {
+  var old = document.getElementById('modal-batch-binding');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-batch-binding" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:720px;max-height:88vh;overflow-y:auto;">';
+  html += '<div class="modal-header">';
+  html += '<div class="modal-title">📡 批量设备-房间绑定</div>';
+  html += '<button class="modal-close" onclick="document.getElementById(\'modal-batch-binding\').remove()">✕</button></div>';
+  html += '<div class="modal-body">';
+  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">';
+  html += '<div style="padding:8px 12px;background:var(--blue-bg);border-radius:6px;font-size:12px;color:var(--blue);">📋 支持批量粘贴导入，格式：设备UUID,房间号（每行一条）</div>';
+  html += '<button class="action-btn small" onclick="openBindingBulkImport()" style="padding:5px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📥 批量导入</button>';
+  html += '<button class="action-btn small" onclick="openBindingAddRow()" style="padding:5px 12px;">➕ 添加行</button>';
+  html += '<span style="margin-left:auto;font-size:12px;color:var(--text-muted);">共 <strong id="bbl-count">' + deviceRoomBindingList.length + '</strong> 条绑定记录</span>';
+  html += '</div>';
+  html += '<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;">';
+  html += '<table class="table" style="font-size:12px;">';
+  html += '<thead><tr><th style="width:30px;">#</th><th>设备ID</th><th>UUID</th><th>房间号</th><th>状态</th><th>操作</th></tr></thead>';
+  html += '<tbody id="bbl-tbody">';
+  deviceRoomBindingList.forEach(function(item, idx) {
+    var statusColor = {bound:'var(--green)', unbound:'var(--text-muted)', conflict:'var(--red)'}[item.status];
+    var statusText = {bound:'已绑定', unbound:'未绑定', conflict:'冲突'}[item.status];
+    html += '<tr data-idx="' + idx + '">';
+    html += '<td>' + (idx + 1) + '</td>';
+    html += '<td><input type="text" class="form-input" value="' + item.devId + '" style="width:90px;padding:4px 6px;font-size:11px;" onchange="updateBindingRow(' + idx + ',\'devId\',this.value)"></td>';
+    html += '<td><input type="text" class="form-input" value="' + item.uuid + '" style="width:160px;padding:4px 6px;font-size:11px;font-family:monospace;" onchange="updateBindingRow(' + idx + ',\'uuid\',this.value)"></td>';
+    html += '<td><input type="text" class="form-input" value="' + item.room + '" style="width:60px;padding:4px 6px;font-size:11px;text-align:center;" onchange="updateBindingRow(' + idx + ',\'room\',this.value)"></td>';
+    html += '<td><span class="tbadge" style="background:' + statusColor + '20;color:' + statusColor + ';font-size:10px;padding:2px 6px;">' + statusText + '</span></td>';
+    html += '<td><button class="action-btn small red" onclick="removeBindingRow(' + idx + ')" style="padding:2px 6px;font-size:10px;">🗑️</button></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);margin-bottom:10px;">';
+  html += '⚠️ 冲突说明：同一房间绑定多个设备时标记为冲突，请保留正确的绑定关系后删除多余记录</div>';
+  html += '<div class="form-group"><label class="form-label">批量操作备注</label>';
+  html += '<input type="text" class="form-input" id="bbl-note" placeholder="本次批量绑定说明，如：新采购设备统一绑定" style="font-size:12px;"></div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-batch-binding\').remove()">取消</button>';
+  html += '<button class="modal-btn" onclick="validateBindingConflicts()">🔍 冲突检测</button>';
+  html += '<button class="modal-btn primary" onclick="submitBatchBinding()">✅ 确认绑定</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function updateBindingRow(idx, field, val) {
+  if (deviceRoomBindingList[idx]) deviceRoomBindingList[idx][field] = val;
+}
+
+function removeBindingRow(idx) {
+  deviceRoomBindingList.splice(idx, 1);
+  document.getElementById('bbl-count').textContent = deviceRoomBindingList.length;
+  var tbody = document.getElementById('bbl-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  deviceRoomBindingList.forEach(function(item, i) {
+    var statusColor = {bound:'var(--green)', unbound:'var(--text-muted)', conflict:'var(--red)'}[item.status];
+    var statusText = {bound:'已绑定', unbound:'未绑定', conflict:'冲突'}[item.status];
+    tbody.innerHTML += '<tr data-idx="' + i + '"><td>' + (i+1) + '</td>' +
+      '<td><input type="text" class="form-input" value="' + item.devId + '" style="width:90px;padding:4px 6px;font-size:11px;" onchange="updateBindingRow(' + i + ',\'devId\',this.value)"></td>' +
+      '<td><input type="text" class="form-input" value="' + item.uuid + '" style="width:160px;padding:4px 6px;font-size:11px;font-family:monospace;" onchange="updateBindingRow(' + i + ',\'uuid\',this.value)"></td>' +
+      '<td><input type="text" class="form-input" value="' + item.room + '" style="width:60px;padding:4px 6px;font-size:11px;text-align:center;" onchange="updateBindingRow(' + i + ',\'room\',this.value)"></td>' +
+      '<td><span class="tbadge" style="background:' + statusColor + '20;color:' + statusColor + ';font-size:10px;padding:2px 6px;">' + statusText + '</span></td>' +
+      '<td><button class="action-btn small red" onclick="removeBindingRow(' + i + ')" style="padding:2px 6px;font-size:10px;">🗑️</button></td></tr>';
+  });
+}
+
+function openBindingBulkImport() {
+  var txt = prompt('批量粘贴导入（格式：设备UUID,房间号，每行一条）：\n示例：\nA84F1AF2-0001-xxxx,301\nA84F1AF2-0002-xxxx,203\n（直接粘贴多行文本）');
+  if (!txt) return;
+  var lines = txt.trim().split('\n');
+  var added = 0;
+  lines.forEach(function(line) {
+    var parts = line.split(',');
+    if (parts.length >= 2) {
+      var uuid = parts[0].trim();
+      var room = parts[1].trim();
+      if (uuid && room) {
+        deviceRoomBindingList.push({devId:'DEV-' + uuid.substr(0,8).toUpperCase(), uuid:uuid, room:room, status:'unbound'});
+        added++;
+      }
+    }
+  });
+  if (added > 0) {
+    showToast('📥 成功导入 ' + added + ' 条记录', 'success');
+    openBatchDeviceBindingModal();
+  } else {
+    showToast('⚠️ 未识别到有效数据，请检查格式', 'warning');
+  }
+}
+
+function openBindingAddRow() {
+  deviceRoomBindingList.push({devId:'', uuid:'', room:'', status:'unbound'});
+  openBatchDeviceBindingModal();
+}
+
+function validateBindingConflicts() {
+  var conflicts = [];
+  var roomMap = {};
+  deviceRoomBindingList.forEach(function(item, idx) {
+    if (!item.room) return;
+    if (roomMap[item.room]) {
+      conflicts.push({room: item.room, idx1: roomMap[item.room], idx2: idx});
+    } else {
+      roomMap[item.room] = idx;
+    }
+  });
+  if (conflicts.length === 0) {
+    showToast('✅ 未检测到冲突，所有绑定关系正常', 'success');
+  } else {
+    showToast('⚠️ 检测到 ' + conflicts.length + ' 个冲突房间，请先处理', 'warning');
+    conflicts.forEach(function(c) {
+      var rows = document.querySelectorAll('#bbl-tbody tr');
+      if (rows[c.idx1]) rows[c.idx1].style.background = 'var(--red-bg)';
+      if (rows[c.idx2]) rows[c.idx2].style.background = 'var(--red-bg)';
+    });
+  }
+}
+
+function submitBatchBinding() {
+  var unbound = deviceRoomBindingList.filter(function(d){ return d.status === 'unbound' || !d.status; });
+  if (unbound.length > 0) {
+    showToast('⚠️ 仍有 ' + unbound.length + ' 条未绑定记录未处理', 'warning');
+  }
+  var note = document.getElementById('bbl-note').value || '批量绑定';
+  showToast('✅ 批量绑定完成！共 ' + deviceRoomBindingList.length + ' 条记录已同步至设备', 'success');
+  addOpLog('device', '赵飞', '批量设备绑定', note);
+  document.getElementById('modal-batch-binding').remove();
+}
+
+// ============================================================
+// 改进D: 会员入住历史追踪
+// 功能：会员详情页展示完整入住时间线，含房型/金额/开锁方式/特殊需求
+// 逻辑：在会员列表点击"查看详情"按钮弹出，展示该会员所有历史入住记录
+// ============================================================
+var memberStayHistoryDB = {
+  '王浩': [
+    {date:'2026-03-20', room:'301', type:'亲子间', nights:2, amount:'¥596', unlock:'手机开锁', payment:'微信', staff:'赵飞', note:'含加床费¥50'},
+    {date:'2026-02-14', room:'203', type:'大床房', nights:1, amount:'¥238', unlock:'手机开锁', payment:'支付宝', staff:'周敏', note:'情人节特惠'},
+    {date:'2025-12-25', room:'305', type:'亲子间', nights:3, amount:'¥894', unlock:'客户卡', payment:'微信', staff:'赵飞', note:'圣诞活动价'},
+    {date:'2025-10-01', room:'304', type:'亲子间', nights:4, amount:'¥1,192', unlock:'手机开锁', payment:'微信', staff:'吴倩', note:'国庆假期'}
+  ],
+  '李娜': [
+    {date:'2026-03-25', room:'202', type:'大床房', nights:1, amount:'¥238', unlock:'手机开锁', payment:'微信', staff:'赵飞', note:'商务出行'},
+    {date:'2026-03-15', room:'203', type:'大床房', nights:2, amount:'¥476', unlock:'客户卡', payment:'现金', staff:'周敏', note:'老客户优惠'},
+    {date:'2026-01-10', room:'201', type:'大床房', nights:3, amount:'¥714', unlock:'手机开锁', payment:'微信', staff:'赵飞', note:'长住优惠'}
+  ]
+};
+
+function openMemberStayHistoryModal(memberIdx) {
+  var m = memberList[memberIdx];
+  var history = memberStayHistoryDB[m.name] || [];
+  var old = document.getElementById('modal-member-history');
+  if (old) old.remove();
+  var totalConsume = history.reduce(function(s, h) { return s + parseFloat(h.amount.replace('¥','')); }, 0);
+  var html = '<div class="modal-overlay" id="modal-member-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:680px;max-height:88vh;overflow-y:auto;">';
+  html += '<div class="modal-header">';
+  html += '<div class="modal-title">📋 入住历史 - ' + m.name + '</div>';
+  html += '<button class="modal-close" onclick="document.getElementById(\'modal-member-history\').remove()">✕</button></div>';
+  html += '<div class="modal-body">';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">';
+  html += '<div style="text-align:center;padding:12px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--blue);">' + history.length + '</div><div style="font-size:11px;color:var(--text-muted);">入住次数</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--orange);">¥' + totalConsume + '</div><div style="font-size:11px;color:var(--text-muted);">累计消费</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--green-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + history.reduce(function(s,h){return s+h.nights;},0) + '晚</div><div style="font-size:11px;color:var(--text-muted);">累计住宿</div></div>';
+  html += '</div>';
+  if (history.length === 0) {
+    html += '<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px;">暂无入住记录</div>';
+  } else {
+    history.forEach(function(h, idx) {
+      var isRecent = idx === 0;
+      html += '<div style="display:flex;gap:12px;margin-bottom:12px;padding:14px;background:' + (isRecent ? 'var(--blue-bg)' : 'var(--bg)') + ';border-radius:10px;border-left:4px solid ' + (isRecent ? 'var(--blue)' : 'var(--border)') + ';">';
+      html += '<div style="text-align:center;min-width:50px;">';
+      html += '<div style="font-size:18px;font-weight:700;color:var(--blue);">' + h.date.split('-')[1] + '/' + h.date.split('-')[2] + '</div>';
+      html += '<div style="font-size:10px;color:var(--text-muted);">' + h.date.split('-')[0] + '</div></div>';
+      html += '<div style="flex:1;">';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+      html += '<span style="font-size:13px;font-weight:700;">' + h.room + ' · ' + h.type + '</span>';
+      html += '<span class="tbadge blue" style="font-size:10px;">' + h.nights + '晚</span>';
+      html += '<span style="font-size:12px;color:var(--orange);font-weight:700;margin-left:auto;">' + h.amount + '</span></div>';
+      html += '<div style="display:flex;gap:12px;font-size:11px;color:var(--text-muted);flex-wrap:wrap;">';
+      html += '<span>🔓 ' + h.unlock + '</span>';
+      html += '<span>💳 ' + h.payment + '</span>';
+      html += '<span>👤 经办：' + h.staff + '</span>';
+      if (h.note) html += '<span style="color:var(--blue);">📝 ' + h.note + '</span>';
+      html += '</div></div></div>';
+    });
+  }
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-history\').remove()">关闭</button>';
+  html += '<button class="modal-btn" onclick="exportMemberStayHistory(' + memberIdx + ')">📤 导出记录</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function exportMemberStayHistory(memberIdx) {
+  var m = memberList[memberIdx];
+  var history = memberStayHistoryDB[m.name] || [];
+  var csv = '日期,房间号,房型,晚数,金额,开锁方式,支付方式,经办人,备注\n';
+  history.forEach(function(h) {
+    csv += h.date + ',' + h.room + ',' + h.type + ',' + h.nights + ',' + h.amount + ',' + h.unlock + ',' + h.payment + ',' + h.staff + ',' + (h.note||'') + '\n';
+  });
+  var blob = new Blob([csv], {type:'text/csv'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = m.name + '_入住历史_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('📤 入住历史已导出', 'success');
+}
+
+// ============================================================
+// 改进E: 楼栋入住率预测分析
+// 功能：基于历史数据预测未来7天入住率，辅助运营决策
+// 逻辑：楼栋管理页面增加预测面板，用简单线性回归/历史均值展示预测数据
+// ============================================================
+function openOccupancyForecastModal(bldId) {
+  var bldName = {main:'主楼', east:'东配楼', vip:'贵宾楼'}[bldId] || bldId;
+  // 模拟历史数据和预测
+  var historicalOcuu = [62, 65, 71, 68, 75, 78, 82, 79, 76, 83, 87, 85, 80, 77]; // 近14天%
+  var days = ['03-15','03-16','03-17','03-18','03-19','03-20','03-21','03-22','03-23','03-24','03-25','03-26','03-27','03-28'];
+  var forecast = [79, 78, 82, 85, 88, 91, 89]; // 未来7天预测
+  var fDays = ['03-29','03-30','03-31','04-01','04-02','04-03','04-04'];
+  var old = document.getElementById('modal-occupancy-forecast');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-occupancy-forecast" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:700px;max-height:88vh;overflow-y:auto;">';
+  html += '<div class="modal-header">';
+  html += '<div class="modal-title">📊 入住率预测分析 - ' + bldName + '</div>';
+  html += '<button class="modal-close" onclick="document.getElementById(\'modal-occupancy-forecast\').remove()">✕</button></div>';
+  html += '<div class="modal-body">';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">';
+  var avgHist = Math.round(historicalOcuu.reduce(function(s,v){return s+v;},0)/historicalOcuu.length);
+  var avgFc = Math.round(forecast.reduce(function(s,v){return s+v;},0)/forecast.length);
+  var peakFc = Math.max.apply(null, forecast);
+  html += '<div style="text-align:center;padding:12px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--blue);">' + avgHist + '%</div><div style="font-size:11px;color:var(--text-muted);">历史平均入住率</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--green-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + avgFc + '%</div><div style="font-size:11px;color:var(--text-muted);">预测平均入住率</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--orange);">' + peakFc + '%</div><div style="font-size:11px;color:var(--text-muted);">预测峰值</div></div>';
+  html += '</div>';
+  // 历史+预测组合柱状图
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">📈 入住率趋势（历史 + 预测）</div>';
+  html += '<div style="display:flex;align-items:flex-end;gap:4px;height:120px;padding:0 8px;">';
+  historicalOcuu.forEach(function(v, i) {
+    var h = Math.round(v * 1.1);
+    var isWeekend = [5,6].includes(i % 7);
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;">';
+    html += '<div style="width:100%;background:' + (isWeekend ? 'var(--green)' : 'var(--blue)') + ';border-radius:2px 2px 0 0;height:' + h + 'px;max-height:110px;"></div>';
+    html += '<div style="font-size:8px;color:var(--text-muted);text-align:center;">' + days[i] + '</div></div>';
+  });
+  // 预测柱（虚线边框）
+  forecast.forEach(function(v, i) {
+    var h = Math.round(v * 1.1);
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;">';
+    html += '<div style="width:100%;background:var(--purple);opacity:0.7;border-radius:2px 2px 0 0;height:' + h + 'px;max-height:110px;border:2px dashed var(--purple);"></div>';
+    html += '<div style="font-size:8px;color:var(--purple);text-align:center;font-weight:600;">' + fDays[i] + '</div></div>';
+  });
+  html += '</div>';
+  html += '<div style="display:flex;gap:16px;margin-top:8px;font-size:11px;">';
+  html += '<span style="color:var(--blue);">●</span><span>历史平日</span>';
+  html += '<span style="color:var(--green);">●</span><span>历史周末</span>';
+  html += '<span style="color:var(--purple);">●</span><span>预测数据</span>';
+  html += '</div></div>';
+  // 未来7天预测表格
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">📅 未来7天预测明细</div>';
+  html += '<table class="table" style="font-size:12px;">';
+  html += '<thead><tr><th>日期</th><th>预测入住率</th><th>预测房间</th><th>建议房价系数</th><th>运营建议</th></tr></thead>';
+  html += '<tbody>';
+  var suggestPrices = [
+    {rate:'80%', rooms:'13间', coef:'×1.0', tip:'标准定价'},
+    {rate:'85%', rooms:'14间', coef:'×1.1', tip:'适当提价'},
+    {rate:'90%', rooms:'15间', coef:'×1.2', tip:'高峰价格'},
+    {rate:'95%', rooms:'16间', coef:'×1.35', tip:'溢价定价'},
+    {rate:'92%', rooms:'15间', coef:'×1.3', tip:'维持高价'},
+    {rate:'88%', rooms:'14间', coef:'×1.2', tip:'周末溢价'},
+    {rate:'85%', rooms:'14间', coef:'×1.15', tip:'节前促销'}
+  ];
+  fDays.forEach(function(d, i) {
+    var s = suggestPrices[i];
+    var rateColor = forecast[i] >= 90 ? 'var(--red)' : forecast[i] >= 75 ? 'var(--green)' : 'var(--orange)';
+    html += '<tr><td style="font-weight:600;">' + d + '</td>';
+    html += '<td><span style="font-weight:700;color:' + rateColor + ';">' + forecast[i] + '%</span></td>';
+    html += '<td>' + s.rooms + '</td>';
+    html += '<td><span class="tbadge blue" style="font-size:10px;">' + s.coef + '</span></td>';
+    html += '<td style="font-size:11px;color:var(--text-muted);">' + s.tip + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<div style="padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);">💡 预测基于近14天历史数据，节假日/展会/天气等因素需运营者综合判断</div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-occupancy-forecast\').remove()">关闭</button>';
+  html += '<button class="modal-btn" onclick="exportOccupancyForecast()">📤 导出预测报告</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function exportOccupancyForecast() {
+  showToast('📤 入住率预测报告已导出（模拟）', 'success');
 }
 
 // Override workorder complete to trigger satisfaction
