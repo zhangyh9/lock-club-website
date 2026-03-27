@@ -3035,7 +3035,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td><span class="tbadge blue">28晚</span></td>
                 <td style="font-weight:600;color:var(--orange);">¥8,860</td>
                 <td>2025-06-15</td>
-                <td><button class="action-btn small" onclick="openMemberDetail(0)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(0)">编辑</button></td>
+                <td><button class="action-btn small" onclick="openMemberDetail(0)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(0)">编辑</button> <button class="action-btn small red" onclick="deleteMember(0)">删除</button></td>
               </tr>
               <tr data-level="silver">
                 <td><span style="font-weight:600;">李娜</span></td>
@@ -3045,7 +3045,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td><span class="tbadge blue">15晚</span></td>
                 <td style="font-weight:600;">¥4,520</td>
                 <td>2025-09-20</td>
-                <td><button class="action-btn small" onclick="openMemberDetail(1)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(1)">编辑</button></td>
+                <td><button class="action-btn small" onclick="openMemberDetail(1)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(1)">编辑</button> <button class="action-btn small red" onclick="deleteMember(1)">删除</button></td>
               </tr>
               <tr data-level="vip">
                 <td><span style="font-weight:600;">张伟</span></td>
@@ -3055,7 +3055,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td><span class="tbadge blue">52晚</span></td>
                 <td style="font-weight:600;color:var(--red);">¥15,680</td>
                 <td>2024-11-01</td>
-                <td><button class="action-btn small" onclick="openMemberDetail(2)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(2)">编辑</button></td>
+                <td><button class="action-btn small" onclick="openMemberDetail(2)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(2)">编辑</button> <button class="action-btn small red" onclick="deleteMember(2)">删除</button></td>
               </tr>
               <tr data-level="silver">
                 <td><span style="font-weight:600;">赵敏</span></td>
@@ -3065,7 +3065,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td><span class="tbadge blue">8晚</span></td>
                 <td style="font-weight:600;">¥2,240</td>
                 <td>2026-01-10</td>
-                <td><button class="action-btn small" onclick="openMemberDetail(3)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(3)">编辑</button></td>
+                <td><button class="action-btn small" onclick="openMemberDetail(3)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(3)">编辑</button> <button class="action-btn small red" onclick="deleteMember(3)">删除</button></td>
               </tr>
               <tr data-level="normal">
                 <td><span style="font-weight:600;">钱进</span></td>
@@ -3075,7 +3075,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td><span class="tbadge blue">3晚</span></td>
                 <td style="font-weight:600;">¥860</td>
                 <td>2026-02-28</td>
-                <td><button class="action-btn small" onclick="openMemberDetail(4)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(4)">编辑</button></td>
+                <td><button class="action-btn small" onclick="openMemberDetail(4)">详情</button> <button class="action-btn small" onclick="openEditMemberModal(4)">编辑</button> <button class="action-btn small red" onclick="deleteMember(4)">删除</button></td>
               </tr>
             </tbody>
           </table>
@@ -5804,6 +5804,81 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 <div class="toast-container" id="toast-container"></div>
 
 <!-- 工单详情模态框 (NEW) -->
+<!-- 改进2: 服务工单-工单编辑表单弹窗（弥补原系统无工单编辑功能的缺失） -->
+<div class="modal-overlay hidden" id="modal-workorder-edit">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">✏️ 编辑工单</div>
+      <button class="modal-close" onclick="closeModal('workorder-edit')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">工单编号</label>
+        <input type="text" class="form-input" id="woe-id" readonly style="background:var(--bg);color:var(--text-muted);">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">工单类型 <span class="required">*</span></label>
+          <select class="form-select" id="woe-type">
+            <option value="complaint">🔴 客户投诉</option>
+            <option value="review">⭐ 差评反馈</option>
+            <option value="invoice">📄 发票需求</option>
+            <option value="delivery">📦 送物服务</option>
+            <option value="clean">🧹 清洁服务</option>
+            <option value="maintain">🔧 设施维修</option>
+            <option value="other">📝 其他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">房间号 <span class="required">*</span></label>
+          <input type="text" class="form-input" id="woe-room" placeholder="如：301">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">客户姓名</label>
+          <input type="text" class="form-input" id="woe-customer" placeholder="客户姓名">
+        </div>
+        <div class="form-group">
+          <label class="form-label">客户手机</label>
+          <input type="tel" class="form-input" id="woe-phone" placeholder="手机号码">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">工单内容 <span class="required">*</span></label>
+        <textarea class="form-textarea" id="woe-content" placeholder="请详细描述工单内容..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">紧急程度</label>
+          <select class="form-select" id="woe-urgency">
+            <option value="normal">⚪ 普通</option>
+            <option value="urgent">🟡 紧急</option>
+            <option value="critical">🔴 非常紧急</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">处理人</label>
+          <select class="form-select" id="woe-assignee">
+            <option value="">待分配</option>
+            <option value="赵飞">👤 赵飞（前厅经理）</option>
+            <option value="周敏">👤 周敏（客房经理）</option>
+            <option value="王工">👤 王工（工程维修）</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="woe-remark" placeholder="可选备注..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('workorder-edit')">取消</button>
+      <button class="modal-btn primary" onclick="submitWorkorderEdit()">💾 保存修改</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay hidden" id="modal-workorder">
   <div class="modal" style="width:560px;">
     <div class="modal-header">
@@ -7448,7 +7523,8 @@ function showPage(name) {
     device: '设备', 'room-detail': '房间详情', 'device-detail': '设备详情',
     history: '历史记录', config: '管理配置', floor: '楼层管理',
     workorder: '服务工单', energy: '节能风控', roles: '角色权限',
-    member: '会员管理', building: '楼栋管理', oplog: '操作日志'
+    member: '会员管理', building: '楼栋管理', oplog: '操作日志',
+    settlement: '结算中心', report: '数据报表', keypad: '密码管理'
   };
   document.querySelectorAll('.menu-item').forEach(m => {
     if (m.textContent.includes(pageMap[name] || '')) {
@@ -8165,6 +8241,54 @@ function submitWorkorderProcess() {
   if (selectedWoSolution === 'done') {
     setTimeout(function() { openModal('wo-review'); }, 800);
   }
+}
+
+// 【改进2】工单编辑：点击详情弹窗的"编辑"按钮，填充当前工单数据到编辑表单
+var currentEditWoIdx = -1;
+function switchWorkorderToEdit() {
+  var row = document.getElementById('wo-current-row');
+  if (!row) { showToast('无法获取工单行数据', 'error'); return; }
+  var idx = parseInt(row.dataset.idx);
+  var d = workorderData[idx];
+  currentEditWoIdx = idx;
+  document.getElementById('woe-id').value = d ? d.id : (document.getElementById('wo-id') ? document.getElementById('wo-id').textContent : 'WO-NEW');
+  document.getElementById('woe-type').value = d ? d.type : 'other';
+  document.getElementById('woe-room').value = d ? d.room : '';
+  document.getElementById('woe-customer').value = d ? d.customer : '';
+  document.getElementById('woe-phone').value = d ? (d.phone || '') : '';
+  document.getElementById('woe-content').value = d ? d.content : '';
+  document.getElementById('woe-urgency').value = d ? (d.urgency || 'normal') : 'normal';
+  document.getElementById('woe-assignee').value = d ? (d.assignee || '') : '';
+  document.getElementById('woe-remark').value = '';
+  closeModal('workorder');
+  openModal('workorder-edit');
+}
+
+function submitWorkorderEdit() {
+  var id = document.getElementById('woe-id').value;
+  var type = document.getElementById('woe-type').value;
+  var room = document.getElementById('woe-room').value.trim();
+  var customer = document.getElementById('woe-customer').value.trim();
+  var phone = document.getElementById('woe-phone').value.trim();
+  var content = document.getElementById('woe-content').value.trim();
+  var urgency = document.getElementById('woe-urgency').value;
+  var assignee = document.getElementById('woe-assignee').value;
+  if (!room) { showToast('请填写房间号', 'error'); document.getElementById('woe-room').focus(); return; }
+  if (!content) { showToast('请填写工单内容', 'error'); document.getElementById('woe-content').focus(); return; }
+  var typeLabels = { complaint: '🔴 客户投诉', review: '⭐ 差评反馈', invoice: '📄 发票需求', delivery: '📦 送物服务', clean: '🧹 清洁服务', maintain: '🔧 设施维修', other: '📝 其他' };
+  var typeColors = { complaint: 'red', review: 'green', invoice: 'purple', delivery: 'blue', clean: 'blue', maintain: 'blue', other: 'gray' };
+  if (currentEditWoIdx >= 0 && workorderData[currentEditWoIdx]) {
+    workorderData[currentEditWoIdx] = { id: id, type: type, room: room, customer: customer, phone: phone, content: content, urgency: urgency, assignee: assignee, status: workorderData[currentEditWoIdx].status || 'pending' };
+  }
+  var row = document.getElementById('wo-current-row');
+  if (row) {
+    row.cells[1].innerHTML = '<span class="tbadge ' + (typeColors[type] || 'gray') + '">' + (typeLabels[type] || '📝 其他') + '</span>';
+    row.cells[2].textContent = room;
+    row.cells[3].textContent = customer || '--';
+    row.cells[4].textContent = content.substring(0, 20) + (content.length > 20 ? '...' : '');
+  }
+  closeModal('workorder-edit');
+  showToast('工单信息已更新', 'success');
 }
 
 // ======= 房间详情Tab切换 =======
@@ -11046,7 +11170,21 @@ function invalidateKeypad(idx) {
 }
 
 function editKeypad(idx) {
-  showToast('编辑密码功能开发中...', 'info');
+  // 【改进4】编辑密码：打开密码表单弹窗，填充当前密码数据
+  var kpData = [
+    {room:'301',holder:'张三',type:'once',hours:24,code:'8*3#-A7K9'},
+    {room:'302',holder:'李四',type:'cycle',hours:720,code:'7*1$-B2L8'}
+  ];
+  var d = kpData[idx] || {room:'',holder:'',type:'once',hours:24,code:''};
+  document.getElementById('kp-idx').value = idx;
+  document.getElementById('kp-room').value = d.room;
+  document.getElementById('kp-holder').value = d.holder;
+  document.getElementById('kp-type').value = d.type;
+  document.getElementById('kp-valid-hours').value = d.hours;
+  document.getElementById('kp-preview-code').textContent = d.code || '????';
+  document.querySelector('#modal-keypad-form .modal-title').textContent = '✏️ 编辑密码';
+  document.querySelector('#modal-keypad-form .modal-btn.primary').textContent = '💾 保存修改';
+  openModal('keypad-form');
 }
 
 // 【改进4】密码快捷状态筛选（全部/有效/待生效/已失效）
@@ -15981,11 +16119,19 @@ function selectBatchOp(op) {
   });
 }
 function openBatchDeviceCenter() {
-  // 从首页快捷操作或设备列表进入
-  var selected = getSelectedDeviceCount();
-  batchDeviceCount = selected || 3;
+  // 从首页快捷操作或设备列表进入，从设备列表获取真实勾选的设备
+  var checked = document.querySelectorAll('.device-check:checked');
+  batchDeviceCount = checked.length;
+  var deviceNames = [];
+  checked.forEach(function(c) {
+    var tr = c.closest('tr');
+    if (tr) {
+      var name = tr.querySelector('td:nth-child(2)');
+      if (name) deviceNames.push(name.textContent.trim());
+    }
+  });
   document.getElementById('dbc-count').textContent = batchDeviceCount;
-  document.getElementById('dbc-device-names').textContent = '已勾选设备：301、302、303';
+  document.getElementById('dbc-device-names').textContent = batchDeviceCount > 0 ? '已勾选：' + deviceNames.slice(0, 5).join('、') + (deviceNames.length > 5 ? '...' : '') : '请在设备列表中勾选设备';
   selectedBatchOp = null;
   document.querySelectorAll('.dbc-op-card').forEach(function(card) {
     card.style.borderColor = 'var(--border)';
@@ -17551,7 +17697,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (arrow) arrow.textContent = open ? '▶' : '▼';
   };
   document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.menu-group').forEach(function(g){ g.style.display = ''; });
+    document.querySelectorAll('.menu-group').forEach(function(g){ g.style.display = 'none'; });
     var home = document.querySelector('.menu-item[onclick*="home"]');
     if (home) home.classList.add('active');
     var hp = document.getElementById('page-home');
