@@ -17012,6 +17012,514 @@ function downloadFile(filename, content, type) {
   a.click();
 }
 
+
+// ======= 改进1: 会员充值记录弹窗（余额变动轨迹） =======
+var memberRechargeHistory = [
+  {id:1, name:'张三', phone:'138****8888', type:'recharge', amount:500, balance_before:0, balance_after:500, channel:'微信', time:'2026-03-15 10:00:00', operator:'系统'},
+  {id:2, name:'张三', phone:'138****8888', type:'consume', amount:-120, balance_before:500, balance_after:380, channel:'房费', time:'2026-03-16 14:00:00', operator:'系统'},
+  {id:3, name:'张三', phone:'138****8888', type:'recharge', amount:1000, balance_before:380, balance_after:1380, channel:'支付宝', time:'2026-03-18 09:30:00', operator:'赵飞'},
+  {id:4, name:'张三', phone:'138****8888', type:'refund', amount:200, balance_before:1380, balance_after:1580, channel:'押金退款', time:'2026-03-20 16:00:00', operator:'系统'},
+  {id:5, name:'张三', phone:'138****8888', type:'consume', amount:-80, balance_before:1580, balance_after:1500, channel:'加客费用', time:'2026-03-22 11:00:00', operator:'系统'},
+  {id:6, name:'李四', phone:'139****6666', type:'recharge', amount:200, balance_before:0, balance_after:200, channel:'微信', time:'2026-03-10 08:00:00', operator:'周敏'},
+  {id:7, name:'李四', phone:'139****6666', type:'consume', amount:-200, balance_before:200, balance_after:0, channel:'房费', time:'2026-03-12 12:00:00', operator:'系统'},
+];
+
+function openMemberRechargeHistoryModal(idx) {
+  var members = [{name:'张三', phone:'138****8888', level:'金卡', balance:1500, total:1580},{name:'李四', phone:'139****6666', level:'银卡', balance:0, total:200}];
+  var m = members[idx] || members[0];
+  var history = memberRechargeHistory.filter(function(h){ return h.name === m.name; });
+  var maxBal = m.total;
+
+  var html = '<div class="modal-overlay" id="modal-mbr-recharge">' +
+    '<div class="modal" style="width:640px;max-height:85vh;">' +
+    '<div class="modal-header"><div class="modal-title">💰 会员余额明细 - ' + m.name + '</div>' +
+    '<button class="modal-close" onclick="closeMbrRechargeModal()">✕</button></div>' +
+    '<div class="modal-body" style="padding:16px 20px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:14px;background:linear-gradient(135deg,#1890ff,#69c0ff);border-radius:10px;color:white;text-align:center;">' +
+    '<div style="font-size:11px;opacity:0.85;margin-bottom:4px;">当前余额</div>' +
+    '<div style="font-size:26px;font-weight:700;">¥' + m.balance + '</div>' +
+    '<div style="font-size:10px;opacity:0.7;margin-top:2px;">' + m.level + ' · ' + m.phone + '</div></div>' +
+    '<div style="padding:14px;background:var(--green-bg);border-radius:10px;text-align:center;">' +
+    '<div style="font-size:11px;color:var(--green);margin-bottom:4px;">累计充值</div>' +
+    '<div style="font-size:26px;font-weight:700;color:var(--green);">¥' + m.total + '</div>' +
+    '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">充值 ' + history.filter(function(h){return h.type==="recharge";}).length + ' 次</div></div>' +
+    '<div style="padding:14px;background:var(--orange-bg);border-radius:10px;text-align:center;">' +
+    '<div style="font-size:11px;color:var(--orange);margin-bottom:4px;">累计消费</div>' +
+    '<div style="font-size:26px;font-weight:700;color:var(--orange);">¥' + (m.total - m.balance) + '</div>' +
+    '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">消费 ' + history.filter(function(h){return h.type==="consume";}).length + ' 次</div></div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:10px;">📈 余额变动趋势</div>' +
+    '<div style="display:flex;align-items:flex-end;gap:4px;height:60px;">';
+
+  var steps = [0,200,380,500,1380,1580,1500,0];
+  var labels = ['开户','充值500','消费120','充值1k','退款200','消费80','当前'];
+  for (var i = 0; i < steps.length; i++) {
+    var h = Math.round((steps[i] / maxBal) * 55) + 5;
+    var color = steps[i] >= 0 ? 'var(--blue)' : 'var(--orange)';
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;">' +
+      '<div style="width:100%;background:' + color + ';border-radius:3px 3px 0 0;height:' + h + 'px;min-height:4px;"></div>' +
+      '<div style="font-size:8px;color:var(--text-muted);text-align:center;">' + labels[i] + '</div>' +
+      '<div style="font-size:9px;font-weight:600;color:' + color + ';">' + steps[i] + '</div></div>';
+  }
+
+  html += '</div></div>' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📋 余额变动记录（' + history.length + ' 条）</div>' +
+    '<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">' +
+    '<table class="table" style="font-size:12px;">' +
+    '<thead><tr><th>时间</th><th>类型</th><th>金额</th><th>余额</th><th>渠道</th><th>操作人</th></tr></thead><tbody>';
+
+  history.forEach(function(h) {
+    var typeClass = h.type === 'recharge' ? 'green' : (h.type === 'refund' ? 'blue' : 'orange');
+    var typeText = h.type === 'recharge' ? '充值' : (h.type === 'refund' ? '退款' : '消费');
+    var amountStr = h.type === 'consume' || h.type === 'refund' ? '-' : '+';
+    var amountColor = h.type === 'consume' ? 'var(--orange)' : 'var(--green)';
+    html += '<tr><td style="font-size:11px;color:var(--text-muted);">' + h.time.slice(5) + '</td>' +
+      '<td><span class="tbadge ' + typeClass + '">' + typeText + '</span></td>' +
+      '<td style="font-weight:700;color:' + amountColor + ';">' + amountStr + '¥' + Math.abs(h.amount) + '</td>' +
+      '<td style="font-weight:600;">¥' + h.balance_after + '</td>' +
+      '<td style="font-size:11px;">' + h.channel + '</td>' +
+      '<td style="font-size:11px;">' + h.operator + '</td></tr>';
+  });
+
+  html += '</tbody></table></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="closeMbrRechargeModal()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="closeMbrRechargeModal();openMemberRechargeModalV3(0)" style="background:var(--green);border-color:var(--green);">💰 充值</button></div>' +
+    '</div></div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function closeMbrRechargeModal() {
+  var m = document.getElementById('modal-mbr-recharge');
+  if (m) m.remove();
+}
+
+
+// ======= 改进2: 批量入住房间号段快速选择器 =======
+var batchCheckinRoomsData = {
+  main: {name:'主楼',floors:{'3':['301','302','303','304','305','306'],'2':['201','202','203','204','205','206'],'1':['101','102','103','104']}},
+  east: {name:'东配楼',floors:{'2':['E201','E202','E203','E204'],'1':['E101','E102','E103']}}
+};
+
+function openBatchRoomSelector() {
+  var bldHtml = '';
+  Object.keys(batchCheckinRoomsData).forEach(function(bid) {
+    var bld = batchCheckinRoomsData[bid];
+    bldHtml += '<div style="margin-bottom:16px;">' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px;">' +
+      '<input type="checkbox" id="bld-sel-' + bid + '" onchange="toggleBldAll(\'' + bid + '\')" style="accent-color:var(--blue);width:16px;height:16px;">' +
+      '<label for="bld-sel-' + bid + '" style="cursor:pointer;">🏢 ' + bld.name + '</label></div>';
+    Object.keys(bld.floors).sort().reverse().forEach(function(floor) {
+      bldHtml += '<div style="margin-bottom:8px;padding-left:24px;">' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">' +
+        '<input type="checkbox" id="floor-sel-' + bid + '-' + floor + '" onchange="toggleFloorAll(\'' + bid + '\',\'' + floor + '\')" style="accent-color:var(--blue);width:14px;height:14px;vertical-align:middle;"> ' +
+        '<label for="floor-sel-' + bid + '-' + floor + '" style="cursor:pointer;">' + floor + '层</label></div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;padding-left:20px;">';
+      bld.floors[floor].forEach(function(room) {
+        bldHtml += '<div class="batch-room-chip" data-bld="' + bid + '" data-floor="' + floor + '" data-room="' + room + '" onclick="toggleBatchRoom(this)" style="padding:4px 10px;border:1.5px solid var(--border);border-radius:16px;font-size:11px;cursor:pointer;background:var(--white);color:var(--text);">' + room + '</div>';
+      });
+      bldHtml += '</div></div>';
+    });
+    bldHtml += '</div>';
+  });
+
+  var html = '<div class="modal-overlay" id="modal-batch-room-selector">' +
+    '<div class="modal" style="width:560px;">' +
+    '<div class="modal-header"><div class="modal-title">🏠 批量选择房间</div>' +
+    '<button class="modal-close" onclick="closeBatchRoomSelector()">✕</button></div>' +
+    '<div class="modal-body" style="padding:16px 20px;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:8px 12px;background:var(--blue-bg);border-radius:6px;">' +
+    '<span style="font-size:12px;color:var(--blue);">已选 <b id="batch-selected-count">0</b> 间房</span>' +
+    '<button class="action-btn small" onclick="clearBatchSelection()" style="padding:2px 8px;font-size:10px;">清空</button></div>' +
+    '<div style="max-height:380px;overflow-y:auto;padding-right:4px;">' + bldHtml + '</div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="closeBatchRoomSelector()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmBatchRoomSelection()" style="background:var(--blue);border-color:var(--blue);">确认选择 (<span id="batch-confirm-count">0</span>间)</button>' +
+    '</div></div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', html);
+  setTimeout(function() {
+    document.querySelectorAll('.brc-checkbox').forEach(function(cb){ cb.addEventListener('change', updateBatchSelectedCount); });
+  }, 100);
+}
+
+function toggleBatchRoom(el) {
+  el.classList.toggle('selected');
+  updateBatchSelectedCount();
+  var bld = el.getAttribute('data-bld');
+  var floor = el.getAttribute('data-floor');
+  syncBatchCheckState(bld, floor);
+}
+
+function toggleBldAll(bldId) {
+  var checked = document.getElementById('bld-sel-' + bldId).checked;
+  document.querySelectorAll('[data-bld="' + bldId + '"]').forEach(function(el) {
+    if (checked) el.classList.add('selected');
+    else el.classList.remove('selected');
+  });
+  updateBatchSelectedCount();
+}
+
+function toggleFloorAll(bldId, floor) {
+  var checked = document.getElementById('floor-sel-' + bldId + '-' + floor).checked;
+  document.querySelectorAll('[data-bld="' + bldId + '"][data-floor="' + floor + '"]').forEach(function(el) {
+    if (checked) el.classList.add('selected');
+    else el.classList.remove('selected');
+  });
+  updateBatchSelectedCount();
+}
+
+function syncBatchCheckState(bldId, floor) {
+  var rooms = document.querySelectorAll('[data-bld="' + bldId + '"][data-floor="' + floor + '"]');
+  var selected = document.querySelectorAll('[data-bld="' + bldId + '"][data-floor="' + floor + '"].selected');
+  var floorCheck = document.getElementById('floor-sel-' + bldId + '-' + floor);
+  if (floorCheck) floorCheck.checked = rooms.length === selected.length && rooms.length > 0;
+}
+
+function updateBatchSelectedCount() {
+  var selected = document.querySelectorAll('.batch-room-chip.selected');
+  var count = selected.length;
+  var countEl = document.getElementById('batch-selected-count');
+  var confirmEl = document.getElementById('batch-confirm-count');
+  if (countEl) countEl.textContent = count;
+  if (confirmEl) confirmEl.textContent = count;
+}
+
+function clearBatchSelection() {
+  document.querySelectorAll('.batch-room-chip.selected').forEach(function(el){ el.classList.remove('selected'); });
+  document.querySelectorAll('[id^="bld-sel-"], [id^="floor-sel-"]').forEach(function(el){ el.checked = false; });
+  updateBatchSelectedCount();
+}
+
+function confirmBatchRoomSelection() {
+  var selected = document.querySelectorAll('.batch-room-chip.selected');
+  var rooms = [];
+  selected.forEach(function(el){ rooms.push(el.getAttribute('data-room')); });
+  showToast('已选择 ' + rooms.length + ' 间房：' + rooms.join('、'), 'success');
+  closeBatchRoomSelector();
+  // 如果有fillBatchCheckinRooms函数则调用
+  if (typeof fillBatchCheckinRooms === 'function') fillBatchCheckinRooms(rooms);
+}
+
+function closeBatchRoomSelector() {
+  var m = document.getElementById('modal-batch-room-selector');
+  if (m) m.remove();
+}
+
+
+// ======= 改进3: 退房超时加收费用自动计算 =======
+function calculateOvertimeFee(scheduledTime, hourlyRate) {
+  var now = new Date();
+  var scheduled = new Date(scheduledTime.replace(' ', 'T') + ':00');
+  var diffMs = now - scheduled;
+  if (diffMs <= 0) return {overtime:false, hours:0, fee:0};
+  var hours = Math.ceil(diffMs / (1000 * 60 * 60));
+  var fee = 0;
+  if (hours <= 0.5) fee = 0;
+  else if (hours <= 1) fee = hourlyRate * 0.5;
+  else fee = hourlyRate * hours;
+  return {overtime:true, hours:hours, fee:Math.round(fee)};
+}
+
+function openCheckoutSettlementDetail(roomNum, guestName, scheduledTime, dailyRate) {
+  var hourlyRate = Math.round(dailyRate / 24);
+  var calc = calculateOvertimeFee(scheduledTime, hourlyRate);
+  var now = new Date();
+  var nowStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  var overdueStr = calc.overtime ? '<span style="color:var(--red);font-weight:700;">已超时 ' + calc.hours + ' 小时，需加收 ¥' + calc.fee + '</span>' : '<span style="color:var(--green);">在规定时间内退房</span>';
+
+  var html = '<div class="modal-overlay" id="modal-checkout-settlement">' +
+    '<div class="modal" style="width:520px;">' +
+    '<div class="modal-header"><div class="modal-title">💰 退房结算清单 - ' + roomNum + '房间</div>' +
+    '<button class="modal-close" onclick="closeCheckoutSettlement()">✕</button></div>' +
+    '<div class="modal-body" style="padding:20px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;font-size:12px;">' +
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">' +
+    '<span>入住人：<b>' + guestName + '</b></span><span>房型：<b>亲子间</b></span></div>' +
+    '<div style="display:flex;justify-content:space-between;">' +
+    '<span>计划退房：<b style="color:var(--blue);">' + scheduledTime + '</b></span>' +
+    '<span>实际退房：<b style="color:var(--orange);">' + nowStr + '</b></span></div></div>' +
+
+    '<div class="settlement-section-title" style="margin-bottom:12px;">📋 费用明细</div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;">' +
+    '<div class="settlement-row" style="padding:10px 14px;border-bottom:1px solid var(--border);"><span class="label">房费（1天）</span><span class="value">¥' + dailyRate + '</span></div>' +
+    '<div class="settlement-row" style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg);"><span class="label">折扣优惠</span><span class="value green">-¥0</span></div>' +
+    '<div class="settlement-row" style="padding:10px 14px;border-bottom:1px solid var(--border);"><span class="label">押金（已付）</span><span class="value">¥100</span></div>' +
+    '<div class="settlement-row" style="padding:10px 14px;' + (calc.overtime ? 'background:var(--red-bg);' : '') + '">' +
+    '<span class="label">超时费（¥' + hourlyRate + '/小时 × ' + (calc.overtime ? calc.hours : 0) + '小时）</span>' +
+    '<span class="value" style="color:var(--red);">' + (calc.overtime ? '¥' + calc.fee : '¥0') + '</span></div>' +
+    '<div class="settlement-row total" style="padding:12px 14px;">' +
+    '<span class="label">合计应付</span>' +
+    '<span class="value red">¥' + (dailyRate + (calc.overtime ? calc.fee : 0)) + '</span></div></div>' +
+
+    '<div class="settlement-section-title" style="margin-bottom:12px;">💵 退款计算</div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;">' +
+    '<div class="settlement-row" style="padding:10px 14px;border-bottom:1px solid var(--border);"><span class="label">已付押金</span><span class="value">¥100</span></div>' +
+    '<div class="settlement-row" style="padding:10px 14px;border-bottom:1px solid var(--border);"><span class="label">应退押金</span><span class="value green">¥' + Math.max(0, 100 - (calc.overtime ? calc.fee : 0)) + '</span></div>' +
+    '<div class="settlement-row" style="padding:10px 14px;background:var(--blue-bg);">' +
+    '<span class="label">找零金额</span>' +
+    '<span class="value" style="color:var(--blue);font-size:18px;">¥' + Math.max(0, 100 - (dailyRate + (calc.overtime ? calc.fee : 0))) + '</span></div></div>' +
+
+    '<div style="padding:10px 14px;background:' + (calc.overtime ? 'var(--red-bg)' : 'var(--green-bg)') + ';border:1px solid ' + (calc.overtime ? 'var(--red)' : 'var(--green)') + ';border-radius:8px;margin-bottom:16px;font-size:12px;">⏰ ' + overdueStr + '</div>' +
+
+    '<div class="settlement-section-title" style="margin-bottom:12px;">💳 支付方式</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div onclick="selectPaymentMethod(this,\'wechat\')" style="padding:12px;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;font-size:13px;" class="payment-option"><div style="font-size:20px;margin-bottom:4px;">💚</div><div>微信支付</div></div>' +
+    '<div onclick="selectPaymentMethod(this,\'alipay\')" style="padding:12px;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;font-size:13px;" class="payment-option"><div style="font-size:20px;margin-bottom:4px;">💙</div><div>支付宝</div></div>' +
+    '<div onclick="selectPaymentMethod(this,\'cash\')" style="padding:12px;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;font-size:13px;" class="payment-option"><div style="font-size:20px;margin-bottom:4px;">💴</div><div>现金</div></div></div>' +
+    '<div style="padding:10px 14px;background:var(--bg);border-radius:8px;text-align:center;font-size:12px;color:var(--text-muted);">实际到账：<b style="color:var(--green);font-size:16px;">¥' + Math.max(0, 100 - (dailyRate + (calc.overtime ? calc.fee : 0))) + '</b>（微信/支付宝实时到账）</div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="closeCheckoutSettlement()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmCheckoutSettlement(\'' + roomNum + '\',' + (calc.overtime ? calc.fee : 0) + ')" style="background:var(--green);border-color:var(--green);">✅ 确认收款退房</button>' +
+    '</div></div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function selectPaymentMethod(el, method) {
+  document.querySelectorAll('.payment-option').forEach(function(o){ o.style.borderColor = 'var(--border)'; o.style.background = 'white'; });
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'var(--blue-bg)';
+}
+
+function confirmCheckoutSettlement(roomNum, overtimeFee) {
+  showToast('退房成功！' + roomNum + '房间已结算' + (overtimeFee > 0 ? '（含超时费 ¥' + overtimeFee + '）' : ''), 'success');
+  closeCheckoutSettlement();
+}
+
+function closeCheckoutSettlement() {
+  var m = document.getElementById('modal-checkout-settlement');
+  if (m) m.remove();
+}
+
+
+// ======= 改进4: 房间状态批量修改功能 =======
+function openBatchRoomStatusModal() {
+  var rooms = [
+    {num:'301',type:'亲子间',status:'in'},{num:'302',type:'亲子间',status:'empty'},{num:'303',type:'亲子间',status:'in'},
+    {num:'304',type:'亲子间',status:'empty'},{num:'305',type:'大床房',status:'in'},{num:'306',type:'大床房',status:'alert'},
+    {num:'201',type:'大床房',status:'empty'},{num:'202',type:'大床房',status:'in'},{num:'203',type:'标准间',status:'dirty'},
+    {num:'204',type:'标准间',status:'maintain'},
+  ];
+  var statusMap = {in:'入住',empty:'空房',dirty:'脏房',maintain:'维护中',alert:'告警'};
+  var statusColor = {in:'var(--blue)',empty:'var(--green)',dirty:'var(--orange)',maintain:'var(--purple)',alert:'var(--red)'};
+
+  var roomRows = '';
+  rooms.forEach(function(r) {
+    roomRows += '<tr><td><label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" class="brs-room-cb" value="' + r.num + '" style="accent-color:var(--blue);">' + r.num + '</label></td><td>' + r.type + '</td><td><span class="tbadge" style="background:' + statusColor[r.status] + '22;color:' + statusColor[r.status] + ';">' + statusMap[r.status] + '</span></td></tr>';
+  });
+
+  var html = '<div class="modal-overlay" id="modal-batch-room-status">' +
+    '<div class="modal" style="width:600px;">' +
+    '<div class="modal-header"><div class="modal-title">🏠 批量修改房间状态</div>' +
+    '<button class="modal-close" onclick="closeBatchRoomStatus()">✕</button></div>' +
+    '<div class="modal-body" style="padding:16px 20px;">' +
+    '<div style="display:flex;gap:0;margin-bottom:16px;">' +
+    '<div id="brs-step1" style="flex:1;padding:10px;text-align:center;background:var(--blue);color:white;border-radius:6px 0 0 6px;font-size:12px;font-weight:600;">① 选择房间</div>' +
+    '<div id="brs-step2" style="flex:1;padding:10px;text-align:center;background:var(--border);color:var(--text-muted);border-radius:0;font-size:12px;font-weight:600;">② 设置状态</div>' +
+    '<div id="brs-step3" style="flex:1;padding:10px;text-align:center;background:var(--border);color:var(--text-muted);border-radius:0 6px 6px 0;font-size:12px;font-weight:600;">③ 确认执行</div></div>' +
+
+    '<div id="brs-step-content-1">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">' +
+    '<input type="text" id="brs-search" placeholder="🔍 搜索房间号" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;" oninput="filterBatchRoomList()">' +
+    '<button class="action-btn small" onclick="selectAllBatchRooms()" style="padding:5px 10px;font-size:11px;">✓ 全选</button>' +
+    '<button class="action-btn small" onclick="clearAllBatchRooms()" style="padding:5px 10px;font-size:11px;">清空</button></div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">已选 <b id="brs-selected-count">0</b> 间房</div>' +
+    '<div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">' +
+    '<table class="table" style="font-size:12px;"><thead><tr><th style="width:60px;"></th><th>房间号</th><th>房型</th><th>当前状态</th></tr></thead><tbody>' + roomRows + '</tbody></table></div></div>' +
+
+    '<div id="brs-step-content-2" style="display:none;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">将选中的 <b id="brs-step2-count">0</b> 间房设置为：</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+    '<div class="brs-status-opt" data-status="empty" onclick="selectBatchStatus(this)" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">' +
+    '<div style="font-size:24px;margin-bottom:6px;">🟢</div><div style="font-size:14px;font-weight:700;color:var(--green);">空房</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">可入住状态</div></div>' +
+    '<div class="brs-status-opt" data-status="dirty" onclick="selectBatchStatus(this)" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">' +
+    '<div style="font-size:24px;margin-bottom:6px;">🧹</div><div style="font-size:14px;font-weight:700;color:var(--orange);">脏房</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">待保洁清洁</div></div>' +
+    '<div class="brs-status-opt" data-status="maintain" onclick="selectBatchStatus(this)" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">' +
+    '<div style="font-size:24px;margin-bottom:6px;">🔧</div><div style="font-size:14px;font-weight:700;color:var(--purple);">维护中</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">维修/改造中</div></div>' +
+    '<div class="brs-status-opt" data-status="disabled" onclick="selectBatchStatus(this)" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">' +
+    '<div style="font-size:24px;margin-bottom:6px;">⛔</div><div style="font-size:14px;font-weight:700;color:var(--red);">停用</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">暂停使用</div></div></div></div>' +
+
+    '<div id="brs-step-content-3" style="display:none;">' +
+    '<div style="padding:16px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:16px;text-align:center;">' +
+    '<div style="font-size:40px;margin-bottom:8px;">⚠️</div>' +
+    '<div style="font-size:15px;font-weight:700;color:var(--red);margin-bottom:4px;">确认批量修改房间状态？</div>' +
+    '<div style="font-size:13px;color:var(--text-muted);">将修改 <b id="brs-step3-count">0</b> 间房的房间状态</div></div>' +
+    '<div id="brs-confirm-list" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;"></div>' +
+    '<div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--text-muted);">💡 此操作将覆盖房间当前状态，请谨慎确认</div></div>' +
+
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" id="brs-btn-prev" onclick="prevBatchRoomStatusStep()" disabled style="opacity:0.5;">上一步</button>' +
+    '<button class="modal-btn secondary" onclick="closeBatchRoomStatus()">取消</button>' +
+    '<button class="modal-btn primary" id="brs-btn-next" onclick="nextBatchRoomStatusStep()">下一步</button>' +
+    '</div></div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', html);
+  setTimeout(function() {
+    document.querySelectorAll('.brs-room-cb').forEach(function(cb){ cb.addEventListener('change', updateBatchRoomSelectedCount); });
+  }, 100);
+}
+
+var batchRoomStatusStep = 1;
+var batchRoomSelectedStatus = '';
+var batchRoomSelectedRooms = [];
+
+function updateBatchRoomSelectedCount() {
+  var checked = document.querySelectorAll('.brs-room-cb:checked');
+  var countEl = document.getElementById('brs-selected-count');
+  var step2CountEl = document.getElementById('brs-step2-count');
+  var step3CountEl = document.getElementById('brs-step3-count');
+  var count = checked.length;
+  if (countEl) countEl.textContent = count;
+  if (step2CountEl) step2CountEl.textContent = count;
+  if (step3CountEl) step3CountEl.textContent = count;
+  batchRoomSelectedRooms = Array.from(checked).map(function(cb){ return cb.value; });
+}
+
+function selectAllBatchRooms() {
+  document.querySelectorAll('.brs-room-cb').forEach(function(cb){ cb.checked = true; });
+  updateBatchRoomSelectedCount();
+}
+function clearAllBatchRooms() {
+  document.querySelectorAll('.brs-room-cb').forEach(function(cb){ cb.checked = false; });
+  updateBatchRoomSelectedCount();
+}
+function filterBatchRoomList() {
+  var q = (document.getElementById('brs-search') || {value:''}).value;
+  document.querySelectorAll('.brs-room-cb').forEach(function(cb) {
+    var tr = cb.closest('tr');
+    tr.style.display = cb.value.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function selectBatchStatus(el) {
+  document.querySelectorAll('.brs-status-opt').forEach(function(o){ o.style.borderColor = 'var(--border)'; o.style.background = 'white'; });
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'var(--blue-bg)';
+  batchRoomSelectedStatus = el.getAttribute('data-status');
+}
+
+function nextBatchRoomStatusStep() {
+  if (batchRoomStatusStep === 1) {
+    if (batchRoomSelectedRooms.length === 0) { showToast('请先选择房间', 'error'); return; }
+    batchRoomStatusStep = 2;
+  } else if (batchRoomStatusStep === 2) {
+    if (!batchRoomSelectedStatus) { showToast('请选择目标状态', 'error'); return; }
+    batchRoomStatusStep = 3;
+    var listEl = document.getElementById('brs-confirm-list');
+    if (listEl) {
+      var statusText = {empty:'空房',dirty:'脏房',maintain:'维护中',disabled:'停用'}[batchRoomSelectedStatus];
+      listEl.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">批量修改为：<b style="color:var(--blue);">' + statusText + '</b></div>';
+      batchRoomSelectedRooms.forEach(function(r){ listEl.innerHTML += '<div style="padding:4px 0;border-bottom:1px solid var(--border);">🏠 ' + r + ' 房间</div>'; });
+    }
+  } else if (batchRoomStatusStep === 3) {
+    var statusText = {empty:'空房',dirty:'脏房',maintain:'维护中',disabled:'停用'}[batchRoomSelectedStatus];
+    showToast('已成功修改 ' + batchRoomSelectedRooms.length + ' 间房的状态为' + statusText, 'success');
+    closeBatchRoomStatus();
+    return;
+  }
+  updateBatchRoomStatusUI();
+}
+
+function prevBatchRoomStatusStep() {
+  if (batchRoomStatusStep > 1) { batchRoomStatusStep--; updateBatchRoomStatusUI(); }
+}
+
+function updateBatchRoomStatusUI() {
+  for (var i = 1; i <= 3; i++) {
+    var stepEl = document.getElementById('brs-step' + i);
+    var contentEl = document.getElementById('brs-step-content-' + i);
+    if (stepEl) { stepEl.style.background = i <= batchRoomStatusStep ? 'var(--blue)' : 'var(--border)'; stepEl.style.color = i <= batchRoomStatusStep ? 'white' : 'var(--text-muted)'; }
+    if (contentEl) { contentEl.style.display = i === batchRoomStatusStep ? '' : 'none'; }
+  }
+  var prevBtn = document.getElementById('brs-btn-prev');
+  var nextBtn = document.getElementById('brs-btn-next');
+  if (prevBtn) { prevBtn.disabled = batchRoomStatusStep === 1; prevBtn.style.opacity = batchRoomStatusStep === 1 ? '0.5' : '1'; }
+  if (nextBtn) { nextBtn.textContent = batchRoomStatusStep === 3 ? '✅ 确认执行' : '下一步'; nextBtn.style.background = batchRoomStatusStep === 3 ? 'var(--green)' : 'var(--blue)'; }
+}
+
+function closeBatchRoomStatus() {
+  batchRoomStatusStep = 1; batchRoomSelectedStatus = ''; batchRoomSelectedRooms = [];
+  var m = document.getElementById('modal-batch-room-status');
+  if (m) m.remove();
+}
+
+
+// ======= 改进5: 设备远程重启二次确认弹窗（含重启影响说明+预计离线时长） =======
+function openDeviceRestartConfirmModal(uuid, roomNum, model) {
+  roomNum = roomNum || '未知'; model = model || '领握LH-807'; uuid = uuid || 'DEV-UNK';
+  var html = '<div class="modal-overlay" id="modal-dev-restart-confirm">' +
+    '<div class="modal" style="width:480px;">' +
+    '<div class="modal-header"><div class="modal-title">🔄 设备重启确认</div>' +
+    '<button class="modal-close" onclick="closeDevRestartConfirm()">✕</button></div>' +
+    '<div class="modal-body" style="padding:20px;">' +
+    '<div style="display:flex;align-items:center;gap:14px;padding:14px;background:var(--bg);border-radius:10px;margin-bottom:16px;">' +
+    '<div style="font-size:36px;">🔄</div>' +
+    '<div style="flex:1;">' +
+    '<div style="font-size:14px;font-weight:700;">' + roomNum + ' · ' + model + '</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">UUID: ' + uuid + '</div></div></div>' +
+    '<div style="padding:14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:14px;">' +
+    '<div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:8px;">⚠️ 重启影响说明</div>' +
+    '<ul style="font-size:12px;color:var(--text);line-height:1.8;padding-left:18px;margin:0;">' +
+    '<li>设备将在 <b>10秒内</b> 短暂离线后自动恢复</li>' +
+    '<li>离线期间门锁无法远程开锁，需使用物理钥匙</li>' +
+    '<li>正在办理入住的客人需等待设备恢复</li>' +
+    '<li>设备重启后将自动重新连接网络，无需人工干预</li></ul></div>' +
+    '<div style="margin-bottom:14px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📋 预计操作时间线</div>' +
+    '<div style="display:flex;align-items:center;gap:0;">' +
+    '<div style="flex:1;text-align:center;padding:8px;background:var(--blue-bg);border-radius:6px 0 0 6px;"><div style="font-size:11px;color:var(--text-muted);">开始</div><div style="font-size:12px;font-weight:700;color:var(--blue);">0s</div></div>' +
+    '<div style="flex:1;text-align:center;padding:8px;background:var(--orange-bg);"><div style="font-size:11px;color:var(--text-muted);">断开</div><div style="font-size:12px;font-weight:700;color:var(--orange);">~3s</div></div>' +
+    '<div style="flex:1;text-align:center;padding:8px;background:var(--orange-bg);"><div style="font-size:11px;color:var(--text-muted);">重启中</div><div style="font-size:12px;font-weight:700;color:var(--orange);">5~8s</div></div>' +
+    '<div style="flex:1;text-align:center;padding:8px;background:var(--green-bg);border-radius:0 6px 6px 0;"><div style="font-size:11px;color:var(--text-muted);">恢复</div><div style="font-size:12px;font-weight:700;color:var(--green);">~10s</div></div></div></div>' +
+    '<div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;">' +
+    '<input type="checkbox" id="drs-confirm-check" style="accent-color:var(--blue);width:16px;height:16px;margin-top:2px;flex-shrink:0;">' +
+    '<label for="drs-confirm-check" style="font-size:12px;color:var(--text);line-height:1.6;cursor:pointer;">' +
+    '我已了解重启将导致设备短暂离线，并确认需要进行此操作<br>' +
+    '<span style="color:var(--text-muted);">如房间内有客人正在入住，请提前告知客人</span></label></div>' +
+    '<div class="form-group" style="margin-bottom:0;">' +
+    '<label class="form-label">重启原因（选填）</label>' +
+    '<select class="form-select" id="drs-reason" style="font-size:12px;">' +
+    '<option value="">请选择原因</option>' +
+    '<option value="unlock-fail">门锁无响应，需要重启恢复</option>' +
+    '<option value="offline">设备离线，需要重新连接</option>' +
+    '<option value="config">配置变更后需要生效</option>' +
+    '<option value="firmware">固件升级后重启</option>' +
+    '<option value="manual">手动重启排查问题</option></select></div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="closeDevRestartConfirm()">取消</button>' +
+    '<button class="modal-btn primary" id="drs-confirm-btn" onclick="confirmDeviceRestart(\'' + uuid + '\',\'' + roomNum + '\')" style="background:var(--orange);border-color:var(--orange);opacity:0.5;pointer-events:none;">🔄 确认重启</button>' +
+    '</div></div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', html);
+  setTimeout(function() {
+    var check = document.getElementById('drs-confirm-check');
+    var btn = document.getElementById('drs-confirm-btn');
+    if (check && btn) {
+      check.addEventListener('change', function() {
+        btn.style.opacity = check.checked ? '1' : '0.5';
+        btn.style.pointerEvents = check.checked ? 'auto' : 'none';
+      });
+    }
+  }, 100);
+}
+
+function confirmDeviceRestart(uuid, roomNum) {
+  showToast('🔄 正在重启 ' + roomNum + ' 设备，预计10秒内恢复...', 'info');
+  closeDevRestartConfirm();
+  setTimeout(function(){ showToast('✅ ' + roomNum + ' 设备重启成功，已恢复在线', 'success'); }, 3000);
+}
+
+function closeDevRestartConfirm() {
+  var m = document.getElementById('modal-dev-restart-confirm');
+  if (m) m.remove();
+}
+
+
 // ======= 改进5: 楼栋3D楼层可视化 =======
 var building3DData = {
   main: {
