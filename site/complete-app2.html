@@ -215,6 +215,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .room-card.hidden { display: none; }
 .room-card.alert { border-color: var(--red); background: var(--red-bg); }
 .room-card.low { border-color: var(--orange); background: var(--orange-bg); }
+.room-card.disabled { border-color: var(--red); background: var(--red-bg); opacity: 0.75; }
+.room-card.disabled .room-num { text-decoration: line-through; color: var(--red); }
+.badge-disabled { background: var(--red-bg); color: var(--red); }
 .room-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
 .room-num { font-size: 16px; font-weight: 700; }
 .room-type { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
@@ -662,6 +665,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
       <!-- 改进3: 首页实时办理记录动态面板 -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
+        <!-- 【改进v3-4】首页入住/退房日历迷你面板（原系统无此功能） -->
+        <div class="card" style="margin-bottom:0;border:2px solid var(--green);">
+          <div class="card-header" style="background:var(--green-bg);">
+            <div class="card-title" style="color:var(--green);">📅 本周入住日历</div>
+            <span style="font-size:11px;color:var(--green);font-weight:600;" id="home-cal-checkin-count">5人</span>
+          </div>
+          <div class="card-body" style="padding:10px 12px;" id="home-checkin-calendar">
+            <div id="home-checkin-calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:8px;"></div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">本周预计入住：<span style="font-weight:700;color:var(--blue);">5人</span></div>
+            <div style="font-size:11px;color:var(--text-muted);">本周预计退房：<span style="font-weight:700;color:var(--green);">3人</span></div>
+          </div>
+        </div>
         <div class="card" style="margin-bottom:0;">
           <div class="card-header">
             <div class="card-title">🏨 今日入住</div>
@@ -1086,6 +1101,44 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         container.innerHTML = html;
       }
 
+      // 【改进v3-4】首页入住日历迷你面板初始化：渲染本周7天格仔
+      function initHomeCheckinCalendar() {
+        var container = document.getElementById('home-checkin-calendar-grid');
+        if (!container) return;
+        var now = new Date();
+        var dayOfWeek = (now.getDay() + 6) % 7; // Monday=0
+        var weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - dayOfWeek);
+        // Data: day 0=Mon has 1 checkin, day 4=Fri has 2, day 6=Sun has 1
+        var checkinByDay = {0:1, 2:1, 4:2, 6:1};
+        var checkoutByDay = {1:1, 3:1, 5:1};
+        var html = '';
+        for (var i = 0; i < 7; i++) {
+          var d = new Date(weekStart);
+          d.setDate(weekStart.getDate() + i);
+          var isToday = d.toDateString() === now.toDateString();
+          var ciCount = checkinByDay[i] || 0;
+          var coCount = checkoutByDay[i] || 0;
+          var dayLabel = ['一','二','三','四','五','六','日'][i];
+          var bgColor = isToday ? 'var(--blue-bg)' : (i >= 5 ? 'var(--red-bg)' : 'var(--bg)');
+          var textColor = isToday ? 'var(--blue)' : (i >= 5 ? 'var(--red)' : 'var(--text)');
+          var borderStyle = isToday ? 'border:2px solid var(--blue);' : '';
+          html += '<div style="text-align:center;padding:6px 2px;border-radius:6px;background:' + bgColor + ';' + borderStyle + 'cursor:pointer;" onclick="showWeekDayDetail(' + i + ')">';
+          html += '<div style="font-size:9px;color:' + textColor + ';font-weight:' + (isToday ? '700' : '400') + ';">周' + dayLabel + '</div>';
+          html += '<div style="font-size:14px;font-weight:700;color:' + textColor + ';">' + d.getDate() + '</div>';
+          if (ciCount > 0) html += '<div style="font-size:9px;color:var(--blue);font-weight:600;">↑' + ciCount + '</div>';
+          else html += '<div style="font-size:9px;color:var(--border);">-</div>';
+          if (coCount > 0) html += '<div style="font-size:9px;color:var(--green);font-weight:600;">↓' + coCount + '</div>';
+          else html += '<div style="font-size:9px;color:var(--border);">-</div>';
+          html += '</div>';
+        }
+        container.innerHTML = html;
+      }
+      function showWeekDayDetail(dayIdx) {
+        var labels = ['周一','周二','周三','周四','周五','周六','周日'];
+        showToast('查看 ' + labels[dayIdx] + ' 详细入住/退房列表（功能演示）', 'info');
+      }
+
       // 初始化
       document.addEventListener('DOMContentLoaded', function() {
         renderHomeDeviceList();
@@ -1102,6 +1155,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             pulseEl.style.animation = 'onlinePulse 2s ease-in-out infinite';
           }
         }, 30000);
+        // 【改进v3-4】首页入住日历迷你面板初始化
+        initHomeCheckinCalendar();
       });
       </script>
       <div class="card">
@@ -1115,6 +1170,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             <!-- 【改进4】首页增加脏房和维护中快捷筛选按钮 -->
             <div class="card-tab" onclick="filterRooms('dirty', this)" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🧹 脏房 2</div>
             <div class="card-tab" onclick="filterRooms('maintain', this)" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🔧 维护 1</div>
+            <!-- 【改进v3-1】首页增加「停用/维修中」状态筛选Tab（原系统有房间停用状态） -->
+            <div class="card-tab" onclick="filterRooms('disabled', this)" style="background:var(--red-bg);color:var(--red);border-color:var(--red);">⛔ 停用 0</div>
+          </div>
+          <!-- 【改进v3-1】快速状态筛选：按房型筛选（原系统房型管理入口） -->
+          <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap;">
+            <span style="font-size:11px;color:var(--text-muted);">房型：</span>
+            <button class="card-tab active" onclick="filterRoomsByType('all',this)" id="rtype-all-btn" style="padding:2px 8px;font-size:11px;">全部</button>
+            <button class="card-tab" onclick="filterRoomsByType('亲子间',this)" id="rtype-亲子间-btn" style="padding:2px 8px;font-size:11px;">🏠 亲子间</button>
+            <button class="card-tab" onclick="filterRoomsByType('大床房',this)" id="rtype-大床房-btn" style="padding:2px 8px;font-size:11px;">🛏️ 大床房</button>
+            <button class="card-tab" onclick="filterRoomsByType('标准间',this)" id="rtype-标准间-btn" style="padding:2px 8px;font-size:11px;">🛋️ 标准间</button>
           </div>
         </div>
         <div class="card-body">
@@ -1185,6 +1250,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <div class="room-row"><span class="icon">⚡</span><span class="lbl">通电：</span><span class="val">未取电</span></div>
               </div>
               <div class="room-footer"><span>🔑 生效钥匙</span><span class="key-count alert">请换电池</span></div>
+            </div>
+            <!-- 【改进v3-1】停用状态房间卡片（原系统有房间停用功能） -->
+            <div class="room-card disabled" data-status="empty" data-disabled="true" onclick="openRoomQuickPanel('306','标准间','empty','已反锁','未取电','0张')">
+              <div class="room-quick-actions">
+                <button class="room-qa-btn" onclick="event.stopPropagation();openRoomStatusChangeModal('306','标准间','disabled')">🔄 启用</button>
+              </div>
+              <div class="room-card-header">
+                <div><div class="room-num">306</div><div class="room-type">标准间</div></div>
+                <div class="room-badge badge-disabled">停用</div>
+              </div>
+              <div class="room-info">
+                <div class="room-row"><span class="icon">🚪</span><span class="lbl">门锁：</span><span class="val red">⛔ 已停用</span></div>
+                <div class="room-row"><span class="icon">⚡</span><span class="lbl">停用原因：</span><span class="val red">装修中</span></div>
+              </div>
+              <div class="room-footer"><span>⚠️ </span><span class="key-count">房间暂停使用</span></div>
             </div>
             <div class="room-card" data-status="in" onclick="openRoomQuickPanel('201','大床房','in','已反锁','空调开启','2张')">
               <div class="room-card-header">
@@ -3421,6 +3501,56 @@ function saveEscalationEditorRules() {
       else{slider.style.background='#ccc';knob.style.left='2px';knob.style.right='auto';}
     }
     </script>
+
+    <!-- 【改进v3-1】房间状态修改弹窗（停用/启用/维护，原系统有完整房间状态管理） -->
+    <div class="modal-overlay hidden" id="modal-room-status-change">
+      <div class="modal" style="width:440px;">
+        <div class="modal-header">
+          <div class="modal-title" id="rsc-title">🔄 修改房间状态</div>
+          <button class="modal-close" onclick="closeModal('room-status-change')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="padding:14px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;text-align:center;">
+            <div style="font-size:13px;font-weight:700;color:var(--blue);" id="rsc-room">306房间</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;" id="rsc-type">标准间</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">房间状态 <span class="required">*</span></label>
+            <select class="form-select" id="rsc-status" onchange="onRoomStatusChange()">
+              <option value="empty">🏠 空房（可入住）</option>
+              <option value="in">🏨 入住中</option>
+              <option value="maintain">🔧 维修中（不可入住）</option>
+              <option value="disabled">⛔ 停用（不可入住）</option>
+            </select>
+          </div>
+          <div class="form-group" id="rsc-reason-group" style="display:none;">
+            <label class="form-label" id="rsc-reason-label">停用原因</label>
+            <select class="form-select" id="rsc-reason">
+              <option value="装修中">装修中</option>
+              <option value="设施维修">设施维修</option>
+              <option value="安全检查">安全检查</option>
+              <option value="其他原因">其他原因</option>
+            </select>
+          </div>
+          <div class="form-group" id="rsc-remark-group" style="display:none;">
+            <label class="form-label">备注说明</label>
+            <textarea class="form-textarea" id="rsc-remark" placeholder="请输入备注信息（选填）" style="min-height:60px;"></textarea>
+          </div>
+          <div class="form-group" id="rsc-estimate-group" style="display:none;">
+            <label class="form-label">预计恢复日期</label>
+            <input type="date" class="form-input" id="rsc-estimate">
+          </div>
+          <div id="rsc-effect-panel" style="padding:12px;background:var(--bg);border-radius:8px;margin-top:8px;">
+            <div style="font-size:12px;color:var(--text-muted);">状态修改后将：</div>
+            <div style="font-size:12px;margin-top:6px;color:var(--text);" id="rsc-effect-text">此房间将从空房状态变更为停用状态</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('room-status-change')">取消</button>
+          <button class="modal-btn primary" id="rsc-confirm-btn" onclick="confirmRoomStatusChange()" style="background:var(--blue);color:white;border:none;">确认修改</button>
+        </div>
+      </div>
+    </div>
 
     <!-- 【改进3】楼层管理快速添房间弹窗 -->
     <div class="modal-overlay hidden" id="modal-quick-add-room">
@@ -6991,6 +7121,109 @@ function openEditMemberLevelModalV2(idx) {
           <div><div class="stat-num">4.8</div><div class="stat-label">客户评分</div></div>
         </div>
       </div>
+      <!-- 【改进v3-3】工单实时统计面板：7日趋势+分类占比+SLA达标率（原系统无此功能） -->
+      <div id="wo-realtime-stats" style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+        <!-- 7日工单趋势图 -->
+        <div class="card" style="padding:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="font-size:13px;font-weight:700;">📈 近7日工单趋势</div>
+            <div style="font-size:11px;color:var(--text-muted);" id="wo-trend-period">2026-03-21 ~ 2026-03-27</div>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:8px;height:80px;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <div style="width:100%;height:40px;background:var(--blue);border-radius:4px 4px 0 0;min-height:4px;" id="wo-bar-1" style="height:40px;"></div>
+              <div style="font-size:10px;color:var(--text-muted);">03/21</div>
+              <div style="font-size:10px;font-weight:600;" id="wo-bar-val-1">8</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <div style="width:100%;height:56px;background:var(--blue);border-radius:4px 4px 0 0;min-height:4px;" id="wo-bar-2"></div>
+              <div style="font-size:10px;color:var(--text-muted);">03/22</div>
+              <div style="font-size:10px;font-weight:600;" id="wo-bar-val-2">11</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <div style="width:100%;height:32px;background:var(--blue);border-radius:4px 4px 0 0;min-height:4px;" id="wo-bar-3"></div>
+              <div style="font-size:10px;color:var(--text-muted);">03/23</div>
+              <div style="font-size:10px;font-weight:600;" id="wo-bar-val-3">6</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <div style="width:100%;height:64px;background:var(--blue);border-radius:4px 4px 0 0;min-height:4px;" id="wo-bar-4"></div>
+              <div style="font-size:10px;color:var(--text-muted);">03/24</div>
+              <div style="font-size:10px;font-weight:600;" id="wo-bar-val-4">13</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <div style="width:100%;height:72px;background:var(--blue);border-radius:4px 4px 0 0;min-height:4px;" id="wo-bar-5"></div>
+              <div style="font-size:10px;color:var(--text-muted);">03/25</div>
+              <div style="font-size:10px;font-weight:600;" id="wo-bar-val-5">14</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <div style="width:100%;height:48px;background:var(--orange);border-radius:4px 4px 0 0;min-height:4px;" id="wo-bar-6"></div>
+              <div style="font-size:10px;color:var(--text-muted);">03/26</div>
+              <div style="font-size:10px;font-weight:600;" id="wo-bar-val-6">9</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <div style="width:100%;height:80px;background:var(--green);border-radius:4px 4px 0 0;min-height:4px;" id="wo-bar-7"></div>
+              <div style="font-size:10px;color:var(--blue);font-weight:700;">03/27</div>
+              <div style="font-size:10px;font-weight:600;color:var(--blue);" id="wo-bar-val-7">16</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--text-muted);">
+            <span>今日: <span style="color:var(--blue);font-weight:700;">16</span> 条</span>
+            <span>较昨日: <span style="color:var(--green);font-weight:700;">+78%</span></span>
+            <span>7日均值: <span style="font-weight:700;">11</span> 条</span>
+          </div>
+        </div>
+        <!-- 分类占比 -->
+        <div class="card" style="padding:16px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:12px;">🍰 工单分类占比</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;"></div>
+              <div style="flex:1;font-size:11px;">🔴 投诉</div>
+              <div style="font-size:11px;font-weight:700;">5</div>
+              <div style="width:50px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="width:25%;height:100%;background:var(--red);border-radius:3px;"></div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0;"></div>
+              <div style="flex:1;font-size:11px;">📦 送物</div>
+              <div style="font-size:11px;font-weight:700;">4</div>
+              <div style="width:50px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="width:20%;height:100%;background:var(--blue);border-radius:3px;"></div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--purple);flex-shrink:0;"></div>
+              <div style="flex:1;font-size:11px;">📄 发票</div>
+              <div style="font-size:11px;font-weight:700;">2</div>
+              <div style="width:50px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="width:10%;height:100%;background:var(--purple);border-radius:3px;"></div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--orange);flex-shrink:0;"></div>
+              <div style="flex:1;font-size:11px;">🔧 维修</div>
+              <div style="font-size:11px;font-weight:700;">1</div>
+              <div style="width:50px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="width:5%;height:100%;background:var(--orange);border-radius:3px;"></div></div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);">
+            今日共 <span style="font-weight:700;color:var(--blue);">12</span> 条工单
+          </div>
+        </div>
+        <!-- SLA达标率 -->
+        <div class="card" style="padding:16px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:12px;">📏 SLA 达标率</div>
+          <div style="display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+            <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(var(--green) 0deg,var(--green) 252deg,var(--border) 252deg);display:flex;align-items:center;justify-content:center;position:relative;">
+              <div style="width:60px;height:60px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--green);">70%</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;">
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">达标数</span><span style="font-weight:600;color:var(--green);">7 / 10</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">平均处理时长</span><span style="font-weight:600;">28 分钟</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">SLA标准</span><span style="font-weight:600;">30 分钟</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">今日响应率</span><span style="font-weight:600;color:var(--blue);">92%</span></div>
+          </div>
+          <div style="margin-top:10px;padding:8px;background:var(--orange-bg);border-radius:6px;font-size:11px;color:var(--orange);text-align:center;">
+            ⚠️ 2条投诉工单超时
+          </div>
+        </div>
+      </div>
       <div class="card">
         <div class="card-header">
           <div class="card-title">📋 工单列表</div>
@@ -10459,6 +10692,10 @@ function openEditMemberLevelModalV2(idx) {
               <option value="done">📪 已完成</option>
               <option value="cancelled">❌ 已取消</option>
             </select>
+            <!-- 【改进v3-5】办理记录新增日期范围筛选 -->
+            <input type="date" class="form-input" id="record-date-from" style="width:120px;padding:6px 8px;font-size:12px;" onchange="applyRecordFilter()" title="开始日期">
+            <span style="font-size:11px;color:var(--text-muted);">至</span>
+            <input type="date" class="form-input" id="record-date-to" style="width:120px;padding:6px 8px;font-size:12px;" onchange="applyRecordFilter()" title="结束日期">
             <button class="action-btn small" onclick="applyRecordFilter()" style="padding:6px 12px;">🔍 筛选</button>
             <button class="action-btn small" onclick="resetRecordFilter()" style="padding:6px 12px;">重置</button>
             <span style="margin-left:auto;font-size:12px;color:var(--text-muted);" id="record-filter-count">共 6 条记录</span>
@@ -16932,6 +17169,7 @@ function filterRooms(status, el) {
     var s = card.dataset.status;
     var isDirty = card.classList.contains('dirty') || card.dataset.dirty === 'true';
     var isMaintain = card.classList.contains('maintain') || card.dataset.maintain === 'true';
+    var isDisabled = card.classList.contains('disabled') || card.dataset.disabled === 'true';
     var show = false;
     if (status === 'all') {
       show = true;
@@ -16939,6 +17177,8 @@ function filterRooms(status, el) {
       show = (s === 'in' && isDirty);
     } else if (status === 'maintain') {
       show = (s === 'empty' && isMaintain);
+    } else if (status === 'disabled') {
+      show = isDisabled;
     } else {
       show = (s === status);
     }
@@ -16950,6 +17190,168 @@ function filterRooms(status, el) {
   });
   // 更新筛选后房间计数
   updateFilterRoomCounts(status);
+}
+
+// 【改进v3-1】首页按房型筛选（原系统房型管理入口）
+function filterRoomsByType(type, btn) {
+  // Toggle active房型 button
+  document.querySelectorAll('#page-home .card-tabs + div button').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  // Apply both type filter and current status filter
+  var currentStatus = document.querySelector('#page-home .card-tabs .card-tab.active');
+  var statusFilter = currentStatus ? currentStatus.textContent : '全部';
+  var hasStatus = { '全部': 'all', '告警': 'alert', '入住': 'in', '空房': 'empty', '停用': 'disabled' };
+  var effectiveStatus = hasStatus[statusFilter.split(' ')[0]] || 'all';
+  document.querySelectorAll('#home-occupancy-grid .room-card').forEach(function(card) {
+    var cardType = card.querySelector('.room-type') ? card.querySelector('.room-type').textContent : '';
+    var cardStatus = card.dataset.status;
+    var isDirty = card.classList.contains('dirty') || card.dataset.dirty === 'true';
+    var isMaintain = card.classList.contains('maintain') || card.dataset.maintain === 'true';
+    var isDisabled = card.classList.contains('disabled') || card.dataset.disabled === 'true';
+    var typeMatch = type === 'all' || cardType === type;
+    var statusMatch = false;
+    if (effectiveStatus === 'all') {
+      statusMatch = true;
+    } else if (effectiveStatus === 'dirty') {
+      statusMatch = (cardStatus === 'in' && isDirty);
+    } else if (effectiveStatus === 'maintain') {
+      statusMatch = (cardStatus === 'empty' && isMaintain);
+    } else if (effectiveStatus === 'disabled') {
+      statusMatch = isDisabled;
+    } else {
+      statusMatch = (cardStatus === effectiveStatus);
+    }
+    card.classList.toggle('hidden', !(typeMatch && statusMatch));
+  });
+}
+
+// 【改进v3-1】房间状态修改弹窗：打开（原系统完整房间状态管理）
+var _roomStatusTarget = { room: '', type: '', currentStatus: '' };
+function openRoomStatusChangeModal(room, type, currentStatus) {
+  _roomStatusTarget = { room: room, type: type, currentStatus: currentStatus };
+  document.getElementById('rsc-room').textContent = room + '房间';
+  document.getElementById('rsc-type').textContent = type;
+  // Set current status
+  var statusMap = { 'disabled': 'disabled', 'empty': 'empty', 'in': 'in', 'alert': 'empty', 'maintain': 'maintain' };
+  document.getElementById('rsc-status').value = statusMap[currentStatus] || 'empty';
+  onRoomStatusChange();
+  openModal('room-status-change');
+}
+
+function onRoomStatusChange() {
+  var status = document.getElementById('rsc-status').value;
+  var reasonGroup = document.getElementById('rsc-reason-group');
+  var remarkGroup = document.getElementById('rsc-remark-group');
+  var estimateGroup = document.getElementById('rsc-estimate-group');
+  var effectText = document.getElementById('rsc-effect-text');
+  var confirmBtn = document.getElementById('rsc-confirm-btn');
+  var reasonLabel = document.getElementById('rsc-reason-label');
+  if (status === 'disabled') {
+    reasonGroup.style.display = '';
+    remarkGroup.style.display = '';
+    estimateGroup.style.display = '';
+    reasonLabel.textContent = '停用原因';
+    effectText.textContent = '⚠️ 房间将被标记为停用状态，不接受新入住和订单，系统将自动通知前台';
+    confirmBtn.style.background = 'var(--red)';
+    confirmBtn.textContent = '确认停用';
+  } else if (status === 'maintain') {
+    reasonGroup.style.display = '';
+    remarkGroup.style.display = '';
+    estimateGroup.style.display = '';
+    reasonLabel.textContent = '维修原因';
+    effectText.textContent = '⚠️ 房间将被标记为维修中，暂时不开放入住';
+    confirmBtn.style.background = 'var(--orange)';
+    confirmBtn.textContent = '确认设为维修';
+  } else if (status === 'empty') {
+    reasonGroup.style.display = 'none';
+    remarkGroup.style.display = 'none';
+    estimateGroup.style.display = 'none';
+    effectText.textContent = '✅ 房间将恢复为空房状态，可以正常办理入住';
+    confirmBtn.style.background = 'var(--green)';
+    confirmBtn.textContent = '确认启用';
+  } else if (status === 'in') {
+    reasonGroup.style.display = 'none';
+    remarkGroup.style.display = 'none';
+    estimateGroup.style.display = 'none';
+    effectText.textContent = '🏨 房间将被标记为入住中，请确认该房间已有客人入住';
+    confirmBtn.style.background = 'var(--blue)';
+    confirmBtn.textContent = '确认入住';
+  }
+}
+
+function confirmRoomStatusChange() {
+  var status = document.getElementById('rsc-status').value;
+  var reason = document.getElementById('rsc-reason').value;
+  var remark = document.getElementById('rsc-remark').value.trim();
+  var estimate = document.getElementById('rsc-estimate').value;
+  var room = _roomStatusTarget.room;
+  var type = _roomStatusTarget.type;
+  var statusLabels = { disabled: '停用', maintain: '维修中', empty: '空房', in: '入住中' };
+  var badgeClass = { disabled: 'badge-disabled', empty: 'badge-empty', in: 'badge-in', maintain: 'badge-maintain' };
+  // Find the room card in the home grid
+  var cards = document.querySelectorAll('#home-occupancy-grid .room-card');
+  cards.forEach(function(card) {
+    var numEl = card.querySelector('.room-num');
+    if (numEl && numEl.textContent === room) {
+      // Update card status
+      card.dataset.status = status;
+      // Update badge
+      var badgeEl = card.querySelector('.room-badge');
+      if (badgeEl) {
+        badgeEl.textContent = statusLabels[status] || status;
+        badgeEl.className = 'room-badge ' + (badgeClass[status] || '');
+      }
+      // Update disabled class
+      if (status === 'disabled') {
+        card.classList.add('disabled');
+        card.dataset.disabled = 'true';
+      } else {
+        card.classList.remove('disabled');
+        card.dataset.disabled = 'false';
+      }
+      if (status === 'maintain') {
+        card.classList.add('maintain');
+        card.dataset.maintain = 'true';
+      } else {
+        card.classList.remove('maintain');
+        card.dataset.maintain = 'false';
+      }
+    }
+  });
+  addOpLog('room_status', '赵飞', '房间状态修改：' + room + ' → ' + statusLabels[status] + (reason ? '（' + reason + '）' : ''), room);
+  closeModal('room-status-change');
+  showToast('房间 ' + room + ' 已修改为「' + statusLabels[status] + '」', status === 'disabled' || status === 'maintain' ? 'warn' : 'success');
+}
+
+  // Toggle active房型 button
+  document.querySelectorAll('#page-home .card-tabs + div button').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  // Apply both type filter and current status filter
+  var currentStatus = document.querySelector('#page-home .card-tabs .card-tab.active');
+  var statusFilter = currentStatus ? currentStatus.textContent : '全部';
+  var hasStatus = { '全部': 'all', '告警': 'alert', '入住': 'in', '空房': 'empty' };
+  var effectiveStatus = hasStatus[statusFilter.split(' ')[0]] || 'all';
+  document.querySelectorAll('#home-occupancy-grid .room-card').forEach(function(card) {
+    var cardType = card.querySelector('.room-type') ? card.querySelector('.room-type').textContent : '';
+    var cardStatus = card.dataset.status;
+    var isDirty = card.classList.contains('dirty') || card.dataset.dirty === 'true';
+    var isMaintain = card.classList.contains('maintain') || card.dataset.maintain === 'true';
+    var isDisabled = card.classList.contains('disabled') || card.dataset.disabled === 'true';
+    var typeMatch = type === 'all' || cardType === type;
+    var statusMatch = false;
+    if (effectiveStatus === 'all') {
+      statusMatch = true;
+    } else if (effectiveStatus === 'dirty') {
+      statusMatch = (cardStatus === 'in' && isDirty);
+    } else if (effectiveStatus === 'maintain') {
+      statusMatch = (cardStatus === 'empty' && isMaintain);
+    } else if (effectiveStatus === 'disabled') {
+      statusMatch = isDisabled;
+    } else {
+      statusMatch = (cardStatus === effectiveStatus);
+    }
+    card.classList.toggle('hidden', !(typeMatch && statusMatch));
+  });
 }
 
 function updateFilterRoomCounts(filter) {
@@ -25914,13 +26316,28 @@ function applyRecordFilter() {
   var searchVal = document.getElementById('record-search-input') ? document.getElementById('record-search-input').value.trim().toLowerCase() : '';
   var typeVal = document.getElementById('record-type-filter') ? document.getElementById('record-type-filter').value : 'all';
   var statusVal = document.getElementById('record-status-filter') ? document.getElementById('record-status-filter').value : 'all';
+  var dateFrom = document.getElementById('record-date-from') ? document.getElementById('record-date-from').value : '';
+  var dateTo = document.getElementById('record-date-to') ? document.getElementById('record-date-to').value : '';
   var rows = document.querySelectorAll('#records-table-body tr');
   var visibleCount = 0;
   rows.forEach(function(row) {
-    var matchSearch = !searchVal || row.dataset.name.toLowerCase().indexOf(searchVal) !== -1 || row.dataset.room.toLowerCase().indexOf(searchVal) !== -1 || (row.dataset.phone && row.dataset.phone.toLowerCase().indexOf(searchVal) !== -1);
+    var matchSearch = !searchVal || (row.dataset.name && row.dataset.name.toLowerCase().indexOf(searchVal) !== -1) || (row.dataset.room && row.dataset.room.toLowerCase().indexOf(searchVal) !== -1) || (row.dataset.phone && row.dataset.phone.toLowerCase().indexOf(searchVal) !== -1);
     var matchType = typeVal === 'all' || row.dataset.type === typeVal;
     var matchStatus = statusVal === 'all' || row.dataset.status === statusVal;
-    row.style.display = (matchSearch && matchType && matchStatus) ? '' : 'none';
+    // Date range filter: check the first column (time)
+    var matchDate = true;
+    if (dateFrom || dateTo) {
+      var timeCell = row.cells[0];
+      if (timeCell) {
+        var dateText = timeCell.textContent.trim();
+        var rowDate = new Date(dateText);
+        if (!isNaN(rowDate)) {
+          if (dateFrom && rowDate < new Date(dateFrom)) matchDate = false;
+          if (dateTo && rowDate > new Date(dateTo + 'T23:59:59')) matchDate = false;
+        }
+      }
+    }
+    row.style.display = (matchSearch && matchType && matchStatus && matchDate) ? '' : 'none';
     if (row.style.display === '') visibleCount++;
   });
   var countEl = document.getElementById('record-filter-count');
@@ -25934,9 +26351,13 @@ function resetRecordFilter() {
   var searchInput = document.getElementById('record-search-input');
   var typeFilter = document.getElementById('record-type-filter');
   var statusFilter = document.getElementById('record-status-filter');
+  var dateFromInput = document.getElementById('record-date-from');
+  var dateToInput = document.getElementById('record-date-to');
   if (searchInput) searchInput.value = '';
   if (typeFilter) typeFilter.value = 'all';
   if (statusFilter) statusFilter.value = 'all';
+  if (dateFromInput) dateFromInput.value = '';
+  if (dateToInput) dateToInput.value = '';
   applyRecordFilter();
   showToast('筛选条件已重置', 'info');
 }
@@ -45278,6 +45699,13 @@ function openStaffScheduleModal() {
   html += '<button class="action-btn small" onclick="openAddScheduleForm()" style="padding:5px 12px;background:var(--blue);color:white;border:none;font-size:12px;">+ 添加班次</button>';
   html += '<button onclick="closeScheduleModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
   html += '<div style="overflow-x:auto;flex:1;overflow-y:auto;padding:16px 24px;">';
+  // 【改进v3-2】排班视图切换：周视图 / 月视图
+  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">';
+  html += '<button id="sched-view-week-btn" onclick="switchScheduleView(\'week\')" style="padding:5px 14px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">📅 周视图</button>';
+  html += '<button id="sched-view-month-btn" onclick="switchScheduleView(\'month\')" style="padding:5px 14px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">📆 月视图</button>';
+  html += '<div style="margin-left:auto;font-size:12px;color:var(--text-muted);">切换视图模式</div>';
+  html += '</div>';
+  html += '<div id="sched-week-view">';
   html += '<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px;">';
   html += '<thead><tr style="background:var(--bg);">';
   html += '<th style="padding:8px 10px;border:1px solid var(--border);position:sticky;left:0;background:var(--bg);z-index:2;">员工</th>';
@@ -45306,6 +45734,69 @@ function openStaffScheduleModal() {
     html += '</tr>';
   });
   html += '</tbody></table></div>';
+  // 【改进v3-2】月视图：日历网格显示所有员工排班
+  html += '<div id="sched-month-view" style="display:none;">';
+  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:16px;">';
+  ['周一','周二','周三','周四','周五','周六','周日'].forEach(function(day,idx){
+    var isWeekend = idx >= 5;
+    html += '<div style="text-align:center;padding:8px;font-size:11px;font-weight:700;color:' + (isWeekend?'var(--red)':'var(--text)') + ';background:var(--bg);border-radius:6px;">' + day + '</div>';
+  });
+  html += '</div>';
+  var monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  var monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  var startDay = (monthStart.getDay() + 6) % 7; // Monday-based offset
+  var totalCells = startDay + monthEnd.getDate();
+  var totalRows = Math.ceil(totalCells / 7);
+  var dayCounter = 1;
+  var nextMonthDay = 1;
+  for (var row = 0; row < totalRows; row++) {
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;">';
+    for (var col = 0; col < 7; col++) {
+      var cellIdx = row * 7 + col;
+      var isTodayCell = false;
+      var dayNum = '';
+      var contentHtml = '';
+      if (cellIdx < startDay) {
+        dayNum = '';
+      } else if (dayNum === '' && cellIdx >= startDay) {
+        // First cell of the month
+        if (cellIdx === startDay) {
+          dayNum = '1';
+        } else {
+          dayNum = '';
+        }
+      }
+      if (cellIdx >= startDay && dayCounter <= monthEnd.getDate()) {
+        dayNum = dayCounter.toString();
+        isTodayCell = (dayCounter === now.getDate());
+        var dayOfWeek = col; // 0=Mon
+        var cellDate = new Date(now.getFullYear(), now.getMonth(), dayCounter);
+        html += '<div style="border:1px solid ' + (isTodayCell?'var(--blue)':'var(--border)') + ';border-radius:8px;padding:6px;min-height:80px;background:' + (isTodayCell?'var(--blue-bg)':(col>=5?'var(--red-bg)':'var(--white)')) + '>';
+        html += '<div style="font-size:12px;font-weight:700;color:' + (isTodayCell?'var(--blue)':(col>=5?'var(--red)':'var(--text)')) + ';margin-bottom:4px;">' + dayNum + '</div>';
+        // Show each staff's shift for this day
+        staffNames.forEach(function(name){
+          var sd = scheduleData[name];
+          var shift = sd.days[dayOfWeek] || '';
+          if (shift) {
+            var sc = shiftColors[shift] || shiftColors[''];
+            html += '<div style="font-size:9px;padding:1px 4px;background:' + sc.bg + ';color:' + sc.color + ';border-radius:3px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '·' + sc.label + '</div>';
+          }
+        });
+        html += '</div>';
+        dayCounter++;
+      } else if (dayCounter > monthEnd.getDate()) {
+        // Next month days
+        html += '<div style="border:1px dashed var(--border);border-radius:8px;padding:6px;min-height:80px;background:var(--bg);opacity:0.5;">';
+        html += '<div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:4px;">' + nextMonthDay + '</div>';
+        html += '</div>';
+        nextMonthDay++;
+      } else {
+        html += '<div style="border:1px dashed var(--border);border-radius:8px;padding:6px;min-height:80px;background:var(--bg);opacity:0.3;"></div>';
+      }
+    }
+    html += '</div>';
+  }
+  html += '</div></div>';
   html += '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-shrink:0;background:var(--bg);">';
   var legend = [{label:'早班 07-15',bg:'var(--green-bg)',color:'var(--green)'},{label:'中班 15-23',bg:'var(--blue-bg)',color:'var(--blue)'},{label:'晚班 23-07',bg:'var(--purple-bg)',color:'var(--purple)'},{label:'休息',bg:'var(--bg)',color:'var(--text-muted)'}];
   legend.forEach(function(l){
@@ -45361,6 +45852,30 @@ function exportSchedule() {
 }
 
 function closeScheduleModal() { var m = document.getElementById('modal-staff-schedule'); if(m) m.remove(); }
+
+// 【改进v3-2】排班视图切换：周视图 / 月视图
+function switchScheduleView(view) {
+  var weekBtn = document.getElementById('sched-view-week-btn');
+  var monthBtn = document.getElementById('sched-view-month-btn');
+  var weekView = document.getElementById('sched-week-view');
+  var monthView = document.getElementById('sched-month-view');
+  if (view === 'week') {
+    weekBtn.style.background = 'var(--blue)';
+    weekBtn.style.color = 'white';
+    monthBtn.style.background = 'var(--bg)';
+    monthBtn.style.color = 'var(--text)';
+    if (weekView) weekView.style.display = '';
+    if (monthView) monthView.style.display = 'none';
+  } else {
+    monthBtn.style.background = 'var(--blue)';
+    monthBtn.style.color = 'white';
+    weekBtn.style.background = 'var(--bg)';
+    weekBtn.style.color = 'var(--text)';
+    if (monthView) monthView.style.display = '';
+    if (weekView) weekView.style.display = 'none';
+  }
+}
+
 
 // ============================================================
 // 改进D：发票申请管理 - 申请→审核→开票→邮寄状态闭环
