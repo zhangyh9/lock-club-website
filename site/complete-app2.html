@@ -5765,65 +5765,93 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 
 <!-- 【改进A】批量入住办理弹窗：一次选择多个空房，填写一份客户信息，批量生成钥匙 -->
 <div class="modal-overlay hidden" id="modal-batch-checkin">
-  <div class="modal" style="width:580px;">
+  <div class="modal" style="width:620px;">
     <div class="modal-header">
-      <div class="modal-title">🏨 批量办理入住</div>
+      <div class="modal-title">🏨 批量办理入住（分步流程）</div>
       <button class="modal-close" onclick="closeModal('batch-checkin')">✕</button>
     </div>
     <div class="modal-body">
-      <div style="display:flex;gap:16px;margin-bottom:16px;">
-        <!-- 左侧：房间选择 -->
-        <div style="flex:1;border-right:1px solid var(--border);padding-right:16px;">
-          <div style="font-size:13px;font-weight:600;margin-bottom:10px;">选择房间（可多选）</div>
-          <div id="bci-room-list" style="max-height:220px;overflow-y:auto;"></div>
-          <div style="margin-top:10px;padding:8px 10px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--text-muted);" id="bci-selected-summary">已选 0 间：请勾选房间</div>
+      <!-- 步骤指示器 -->
+      <div style="display:flex;align-items:center;margin-bottom:16px;gap:8px;">
+        <div id="bci-step-ind-1" style="flex:1;height:4px;background:var(--blue);border-radius:2px;"></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--blue);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">1</div>
+        <div style="flex:1;height:4px;background:var(--border);border-radius:2px;" id="bci-step-bar-2"></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--border);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;" id="bci-step-ind-2">2</div>
+        <div style="flex:1;height:4px;background:var(--border);border-radius:2px;" id="bci-step-bar-3"></div>
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--border);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;" id="bci-step-ind-3">3</div>
+        <div style="flex:1;height:4px;background:var(--border);border-radius:2px;" id="bci-step-bar-4"></div>
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--text-muted);margin-bottom:16px;" id="bci-step-label">Step 1：选择房间（可多选）</div>
+
+      <!-- Step 1: 房间网格选择 -->
+      <div id="bci-step1">
+        <div style="display:flex;gap:16px;margin-bottom:12px;">
+          <div style="flex:2;">
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px;">🏠 空房列表（点击选择）</div>
+            <div id="bci-room-grid"></div>
+          </div>
+          <div style="flex:1;border-left:1px solid var(--border);padding-left:16px;">
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px;">📋 已选房间 <span id="bci-selected-count" style="color:var(--blue);">0</span> 间</div>
+            <div id="bci-selected-list" style="min-height:60px;max-height:200px;overflow-y:auto;"></div>
+            <div style="margin-top:12px;padding:8px 10px;background:var(--blue-bg);border-radius:6px;font-size:11px;color:var(--blue);" id="bci-selected-tip">点击上方房间即可选中</div>
+          </div>
         </div>
-        <!-- 右侧：客户信息 -->
-        <div style="flex:1.2;">
-          <div style="font-size:13px;font-weight:600;margin-bottom:10px;">客户信息（统一填写）</div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+          <button class="modal-btn secondary" onclick="closeModal('batch-checkin')">取消</button>
+          <button class="modal-btn primary" id="bci-next-btn" onclick="goBciStep2()" disabled>下一步：填写信息 →</button>
+        </div>
+      </div>
+
+      <!-- Step 2: 客户信息录入 -->
+      <div id="bci-step2" style="display:none;">
+        <div style="padding:12px 14px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;font-size:13px;">
+          <strong>已选房间：</strong><span id="bci-room-summary">-</span>
+        </div>
+        <div class="form-row">
           <div class="form-group">
-            <label class="form-label">姓名 <span class="required">*</span></label>
-            <input type="text" class="form-input" id="bci-name" placeholder="入住人姓名">
+            <label class="form-label">入住人姓名 <span class="required">*</span></label>
+            <input type="text" class="form-input" id="bci-guest-name" placeholder="请输入入住人姓名">
           </div>
           <div class="form-group">
             <label class="form-label">手机号 <span class="required">*</span></label>
-            <input type="tel" class="form-input" id="bci-phone" placeholder="138****8888">
+            <input type="tel" class="form-input" id="bci-guest-phone" placeholder="请输入手机号">
           </div>
+        </div>
+        <div class="form-row">
           <div class="form-group">
             <label class="form-label">身份证号</label>
-            <input type="text" class="form-input" id="bci-idcard" placeholder="18位身份证号">
+            <input type="text" class="form-input" id="bci-guest-idcard" placeholder="18位身份证（选填）">
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">入住日期</label>
-              <input type="date" class="form-input" id="bci-date-in">
-            </div>
-            <div class="form-group">
-              <label class="form-label">离店日期</label>
-              <input type="date" class="form-input" id="bci-date-out">
-            </div>
+          <div class="form-group">
+            <label class="form-label">押金 <span class="required">*</span></label>
+            <input type="number" class="form-input" id="bci-deposit" value="100" min="0">
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">押金(元/间)</label>
-              <input type="number" class="form-input" id="bci-deposit" value="100" style="width:80px;" oninput="updateBciSummary()">
-            </div>
-            <div class="form-group">
-              <label class="form-label">门卡(张/间)</label>
-              <input type="number" class="form-input" id="bci-card-count" value="1" min="0" style="width:70px;" oninput="updateBciSummary()">
-            </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">入住日期</label>
+            <input type="date" class="form-input" id="bci-date-in" value="2026-03-27">
           </div>
-          <div style="margin-top:6px;font-size:12px;font-weight:600;color:var(--blue);" id="bci-fee-summary">合计：¥0</div>
+          <div class="form-group">
+            <label class="form-label">离店日期</label>
+            <input type="date" class="form-input" id="bci-date-out" value="2026-03-28">
+          </div>
+        </div>
+        <!-- 确认预览 -->
+        <div style="margin-top:12px;padding:12px 14px;background:var(--green-bg);border-radius:8px;font-size:13px;">
+          <div style="font-weight:600;color:var(--green);margin-bottom:6px;">📋 入住确认预览</div>
+          <div>房间：<strong id="bci-confirm-rooms">-</strong></div>
+          <div>入住人：<strong id="bci-confirm-name">-</strong> · 手机：<strong id="bci-confirm-phone">-</strong></div>
+          <div>押金：<strong id="bci-confirm-deposit">¥100</strong> × <span id="bci-confirm-count">0</span>间 = <strong style="color:var(--green);" id="bci-confirm-total">¥0</strong></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px;">
+          <button class="modal-btn secondary" onclick="goBciStep1()">← 上一步</button>
+          <button class="modal-btn primary" onclick="submitBatchCheckin()">✅ 确认批量入住</button>
         </div>
       </div>
-      <!-- 确认区 -->
-      <div id="bci-confirm-area" style="display:none;margin-top:12px;"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="modal-btn secondary" onclick="closeModal('batch-checkin')">取消</button>
-      <button class="modal-btn primary" id="bci-submit-btn" onclick="submitBatchCheckinNew()">确认办理入住</button>
     </div>
   </div>
+</div>
 </div>
 
 <!-- 【改进B】设备固件批量升级弹窗：选择版本→预检→批量升级→结果报告 -->
@@ -10083,6 +10111,89 @@ function submitBatchClean() {
   if (checked === 0) { showToast('请选择要清洁的房间', 'error'); return; }
   closeModal('batch-clean');
   showToast('已向 ' + checked + ' 间房间下发清洁任务，清洁人员已接单', 'success');
+}
+
+// ======= 【改进5】批量入住真实多步流程（选房→填信息→确认→执行） =======
+var batchCheckinRooms = [];
+function openBatchCheckinModal() {
+  batchCheckinRooms = [];
+  document.getElementById('bci-selected-list').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">请从下方列表选择房间</div>';
+  document.getElementById('bci-guest-info').style.display = 'none';
+  document.getElementById('bci-step1').style.display = '';
+  document.getElementById('bci-step2').style.display = 'none';
+  renderBatchCheckinRoomList();
+  openModal('batch-checkin');
+}
+function toggleBciRoom(room) {
+  var idx = batchCheckinRooms.indexOf(room);
+  if (idx >= 0) {
+    batchCheckinRooms.splice(idx, 1);
+  } else {
+    batchCheckinRooms.push(room);
+  }
+  updateBciSelectedDisplay();
+}
+function updateBciSelectedDisplay() {
+  var listEl = document.getElementById('bci-selected-list');
+  var countEl = document.getElementById('bci-selected-count');
+  var nextBtn = document.getElementById('bci-next-btn');
+  if (countEl) countEl.textContent = batchCheckinRooms.length + '间';
+  if (batchCheckinRooms.length === 0) {
+    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">请从上方列表选择房间</div>';
+    if (nextBtn) nextBtn.disabled = true;
+  } else {
+    listEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 0;">' +
+      batchCheckinRooms.map(function(r) {
+        return '<span style="padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;" onclick="toggleBciRoom(\'' + r + '\')">' + r + ' ✕</span>';
+      }).join('') + '</div>';
+    if (nextBtn) nextBtn.disabled = false;
+  }
+}
+function renderBatchCheckinRoomList() {
+  var el = document.getElementById('bci-room-grid');
+  if (!el) return;
+  var rooms = [
+    {num:'301',type:'亲子间',status:'empty'},{num:'302',type:'亲子间',status:'in'},
+    {num:'303',type:'亲子间',status:'alert'},{num:'304',type:'亲子间',status:'empty'},
+    {num:'305',type:'亲子间',status:'empty'},{num:'201',type:'大床房',status:'empty'},
+    {num:'202',type:'大床房',status:'empty'},{num:'203',type:'大床房',status:'maintain'}
+  ];
+  var statusMap = { empty: { color: 'var(--green)', bg: 'var(--green-bg)', label: '空房' }, in: { color: 'var(--blue)', bg: 'var(--blue-bg)', label: '入住' }, alert: { color: 'var(--red)', bg: 'var(--red-bg)', label: '告警' }, maintain: { color: 'var(--orange)', bg: 'var(--orange-bg)', label: '维护' } };
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">' + rooms.map(function(r) {
+    var st = statusMap[r.status] || statusMap.empty;
+    var selected = batchCheckinRooms.indexOf(r.num) >= 0;
+    return '<div onclick="toggleBciRoom(\'' + r.num + '\')" style="padding:10px 8px;border-radius:8px;border:2px solid ' + (selected ? 'var(--blue)' : 'var(--border)') + ';background:' + (selected ? 'var(--blue-bg)' : 'var(--bg)') + ';cursor:pointer;text-align:center;opacity:' + (r.status === 'empty' || selected ? '1' : '0.5') + ';pointer-events:' + (r.status === 'empty' || selected ? 'auto' : 'none') + ';">' +
+      '<div style="font-size:16px;font-weight:700;color:var(--text);">' + r.num + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);">' + r.type + '</div>' +
+      '<div style="margin-top:4px;font-size:10px;font-weight:600;color:' + st.color + ';">' + st.label + (selected ? ' ✓' : '') + '</div>' +
+      '</div>';
+  }).join('') + '</div>';
+}
+function goBciStep2() {
+  if (batchCheckinRooms.length === 0) { showToast('请先选择房间', 'error'); return; }
+  document.getElementById('bci-step1').style.display = 'none';
+  document.getElementById('bci-step2').style.display = '';
+  document.getElementById('bci-room-summary').textContent = '已选 ' + batchCheckinRooms.length + ' 间：' + batchCheckinRooms.join('、');
+}
+function goBciStep1() {
+  document.getElementById('bci-step2').style.display = 'none';
+  document.getElementById('bci-step1').style.display = '';
+}
+function submitBatchCheckin() {
+  var name = document.getElementById('bci-guest-name').value.trim();
+  var phone = document.getElementById('bci-guest-phone').value.trim();
+  var idcard = document.getElementById('bci-guest-idcard').value.trim();
+  var deposit = document.getElementById('bci-deposit').value.trim() || '100';
+  if (!name) { showToast('请输入入住人姓名', 'error'); return; }
+  if (!phone) { showToast('请输入手机号', 'error'); return; }
+  closeModal('batch-checkin');
+  showToast('✅ 批量入住成功！房间 ' + batchCheckinRooms.join('、') + ' 已为「' + name + '」办理入住，押金¥' + deposit, 'success');
+  // Reset
+  batchCheckinRooms = [];
+  document.getElementById('bci-guest-name').value = '';
+  document.getElementById('bci-guest-phone').value = '';
+  document.getElementById('bci-guest-idcard').value = '';
+  document.getElementById('bci-deposit').value = '100';
 }
 function filterFloorShow(type) {
   document.querySelectorAll('#floor-map .room-card').forEach(function(card) {
@@ -15254,7 +15365,52 @@ function submitDeviceBatch() {
   setTimeout(tick, 100);
 }
 
-// ======= 【改进5】能耗房间详情弹窗相关函数 =======
+// ======= 【改进5】结算历史真实数据弹窗 =======
+var settlementHistoryData = [
+  {id:'STL-2026032701', room:'301', guest:'张三', checkout:'2026-03-27 11:00', nights:1, roomFee:128, extras:0, total:128, deposit:100, refund:0, payMethod:'微信支付', op:'赵飞'},
+  {id:'STL-2026032602', room:'201', guest:'王五', checkout:'2026-03-26 14:00', nights:2, roomFee:216, extras:70, total:286, deposit:100, refund:0, payMethod:'微信支付', op:'赵飞'},
+  {id:'STL-2026032520', room:'303', guest:'周八', checkout:'2026-03-25 12:30', nights:1, roomFee:128, extras:0, total:128, deposit:100, refund:0, payMethod:'支付宝', op:'周敏'},
+  {id:'STL-2026032415', room:'302', guest:'钱七', checkout:'2026-03-24 15:00', nights:3, roomFee:384, extras:0, total:384, deposit:100, refund:0, payMethod:'现金', op:'赵飞'},
+  {id:'STL-2026032310', room:'202', guest:'赵六', checkout:'2026-03-23 11:00', nights:2, roomFee:216, extras:50, total:266, deposit:100, refund:0, payMethod:'微信支付', op:'周敏'},
+];
+function openSettlementHistoryModal() {
+  var body = document.getElementById('settlement-history-body');
+  var totalRevenue = settlementHistoryData.reduce(function(s, d) { return s + d.total; }, 0);
+  var totalRefund = settlementHistoryData.reduce(function(s, d) { return s + d.refund; }, 0);
+  body.innerHTML = '<div style="margin-bottom:12px;padding:10px 14px;background:var(--blue-bg);border-radius:8px;display:flex;justify-content:space-between;font-size:13px;"><span>累计 <strong style="color:var(--blue);font-size:15px;">' + settlementHistoryData.length + '</strong> 条结算记录</span><span>总营收 <strong style="color:var(--green);font-size:15px;">¥' + totalRevenue.toLocaleString() + '</strong></span><span>退款 <strong style="color:var(--orange);font-size:15px;">¥' + totalRefund + '</strong></span></div>' +
+    '<table class="table" style="font-size:12px;"><thead><tr><th>单号</th><th>房间</th><th>客人</th><th>退房时间</th><th>房费</th><th>附加</th><th>合计</th><th>实退</th><th>支付方式</th><th>操作员</th></tr></thead><tbody>' +
+    settlementHistoryData.map(function(d) {
+      return '<tr>' +
+        '<td style="font-size:11px;">' + d.id + '</td>' +
+        '<td><strong>' + d.room + '</strong></td>' +
+        '<td>' + d.guest + '</td>' +
+        '<td style="font-size:11px;">' + d.checkout + '</td>' +
+        '<td style="color:var(--blue);">¥' + d.roomFee + '</td>' +
+        '<td style="color:var(--orange);">' + (d.extras > 0 ? '¥' + d.extras : '-') + '</td>' +
+        '<td style="font-weight:700;">¥' + d.total + '</td>' +
+        '<td style="color:var(--green);">¥' + d.refund + '</td>' +
+        '<td>' + d.payMethod + '</td>' +
+        '<td>' + d.op + '</td>' +
+        '</tr>';
+    }).join('') + '</tbody></table>' +
+    '<div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:6px;display:flex;gap:12px;font-size:12px;color:var(--text-muted);">' +
+    '<span>💡 历史结算记录可追溯全部结算流水</span>' +
+    '<button class="action-btn small" onclick="exportSettlementHistoryCSV()" style="padding:3px 8px;font-size:11px;margin-left:auto;">📤 导出CSV</button></div>';
+  openModal('settlement-history');
+}
+function exportSettlementHistoryCSV() {
+  var csv = '\uFEFF单号,房间,客人,退房时间,晚数,房费,附加,合计,实退押金,支付方式,操作员\n';
+  csv += settlementHistoryData.map(function(d) {
+    return d.id + ',' + d.room + ',' + d.guest + ',' + d.checkout + ',' + d.nights + ',' + d.roomFee + ',' + d.extras + ',' + d.total + ',' + d.refund + ',' + d.payMethod + ',' + d.op;
+  }).join('\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = '结算历史_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast('结算历史已导出（' + settlementHistoryData.length + ' 条）', 'success');
+}
+
+// ======= 【改进4】能耗房间详情弹窗相关函数 =======
 var energyRoomData = {};
 
 function openEnergyDetailModal(roomNum) {
