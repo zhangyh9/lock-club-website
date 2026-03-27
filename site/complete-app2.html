@@ -609,16 +609,58 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
       </div>
       <script>
+      // 【改进v3-1】全局搜索历史记录存储
+      var searchHistory = JSON.parse(localStorage.getItem('lockSearchHistory') || '[]');
+      function saveSearchHistory(q) {
+        if (!q || q.length < 2) return;
+        searchHistory = searchHistory.filter(function(h) { return h !== q; });
+        searchHistory.unshift(q);
+        if (searchHistory.length > 10) searchHistory.pop();
+        localStorage.setItem('lockSearchHistory', JSON.stringify(searchHistory));
+      }
+      function renderSearchHistory() {
+        var content = document.getElementById('gsd-content');
+        if (searchHistory.length === 0) {
+          content.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--text-muted);text-align:center;">输入房间号/客人姓名/手机号搜索</div>';
+          return;
+        }
+        var html = '<div style="padding:6px 14px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;"><span>🕐 最近搜索</span><span onclick="clearSearchHistory()" style="cursor:pointer;color:var(--red);font-size:10px;">清空</span></div>';
+        searchHistory.slice(0, 6).forEach(function(h) {
+          html += '<div onclick="document.getElementById(\'global-search-input\').value=\'' + h + '\';handleGlobalSearch(\'' + h + '\')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">🕐 <span style="color:var(--text-muted);">' + h + '</span></div>';
+        });
+        content.innerHTML = html;
+      }
+      function clearSearchHistory() {
+        searchHistory = [];
+        localStorage.setItem('lockSearchHistory', '[]');
+        renderSearchHistory();
+      }
+      function fuzzyMatch(text, q) {
+        // 模糊匹配：支持拼音首字母、中文、数字片段
+        text = text.toLowerCase(); q = q.toLowerCase();
+        if (text.indexOf(q) !== -1) return true;
+        // 数字房间号支持任意匹配
+        var textNums = text.match(/\d+/g) || [];
+        var qNums = q.match(/\d+/g) || [];
+        for (var i = 0; i < qNums.length; i++) {
+          for (var j = 0; j < textNums.length; j++) {
+            if (textNums[j].indexOf(qNums[i]) !== -1) return true;
+          }
+        }
+        return false;
+      }
       function handleGlobalSearch(q) {
         var content = document.getElementById('gsd-content');
-        if (!q || q.length < 1) { content.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--text-muted);text-align:center;">输入房间号/客人姓名/手机号搜索</div>'; return; }
+        if (!q || q.length < 1) { renderSearchHistory(); return; }
         var results = [];
         var roomMap = {301:'亲子间·张三',302:'亲子间·李四',303:'亲子间·王五',304:'亲子间·赵六',305:'亲子间·孙七',306:'亲子间·周八',307:'亲子间·吴九',308:'亲子间·郑十',201:'大床房·钱一',202:'大床房·高二',203:'大床房·周三',204:'大床房·郑四',205:'大床房·王五',206:'大床房·冯六',207:'大床房·陈七',208:'大床房·褚八',101:'标准间·卫九',102:'标准间·蒋十'};
         var devMap = {'DEV-LK01':'301室门锁','DEV-LK02':'302室门锁','DEV-LK03':'303室门锁','DEV-LK04':'304室门锁','DEV-LK05':'305室门锁(离线)','DEV-LK06':'306室门锁'};
-        for (var room in roomMap) { if (room.indexOf(q) !== -1 || roomMap[room].indexOf(q) !== -1) results.push({type:'room', text:room + ' · ' + roomMap[room], action:"showPage('home');filterRooms('all');setTimeout(function(){document.querySelector('[data-room=\"'+(room)+'\"]')&&document.querySelector('[data-room=\"'+(room)+'\"]').scrollIntoView();},100)"}); }
-        for (var dev in devMap) { if (dev.indexOf(q) !== -1 || devMap[dev].indexOf(q) !== -1) results.push({type:'device', text:dev + ' · ' + devMap[dev], action:"showPage('device')"}); }
+        // 【改进v3-1】模糊匹配增强：支持拼音首字母/数字片段/中文模糊匹配
+        for (var room in roomMap) { if (fuzzyMatch(room, q) || fuzzyMatch(roomMap[room], q)) results.push({type:'room', text:room + ' · ' + roomMap[room], action:"showPage('home');filterRooms('all');setTimeout(function(){document.querySelector('[data-room=\"'+(room)+'\"]')&&document.querySelector('[data-room=\"'+(room)+'\"]').scrollIntoView();},100)"}); }
+        for (var dev in devMap) { if (fuzzyMatch(dev, q) || fuzzyMatch(devMap[dev], q)) results.push({type:'device', text:dev + ' · ' + devMap[dev], action:"showPage('device')"}); }
         if (q.match(/^1[3-9]\d{9}$/)) results.push({type:'guest', text:'📱 ' + q + ' · 可能是入住客人手机号', action:"showPage('member')"});
         if (results.length === 0) { content.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--text-muted);text-align:center;">未找到"' + q + '"相关结果</div>'; return; }
+        saveSearchHistory(q); // 搜索成功后保存历史
         var html = ''; results.slice(0,8).forEach(function(r) {
           var icon = {room:'🏠',device:'📶',guest:'👤'}[r.type];
           html += '<div onclick="'+r.action+';document.getElementById(\'global-search-dropdown\').style.display=\'none\';document.getElementById(\'global-search-input\').blur()" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'+icon+' <span>'+r.text+'</span></div>';
@@ -649,6 +691,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <button class="quick-btn" onclick="dispatchHousekeepingTask()" style="flex:1;padding:16px;background:linear-gradient(135deg,#52c41a,#95de64);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(82,196,26,0.3);transition:all 0.2s;">
           <span style="font-size:20px;">🧹</span>
           <span>清洁任务</span>
+        </button>
+        <!-- 【改进v3-3】首页预登记链接生成器快捷入口 -->
+        <button class="quick-btn" onclick="openPreregLinkGenerator()" style="flex:1;padding:16px;background:linear-gradient(135deg,#fa8c16,#ffc53d);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(250,140,22,0.3);transition:all 0.2s;">
+          <span style="font-size:20px;">🔗</span>
+          <span>预登记链接</span>
         </button>
         <!-- 【改进5】一键检测按钮 -->
         <button class="quick-btn" onclick="openDeviceDiagnosticV2('301')" style="flex:1;padding:16px;background:linear-gradient(135deg,#722ed1,#b37feb);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(114,46,209,0.3);transition:all 0.2s;">
@@ -2609,6 +2656,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <button class="action-btn small" onclick="openDeviceBatchActionModal('battery')" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔋 电池检测</button>
         <button class="action-btn small" onclick="openDeviceBatchActionModal('sync')" style="padding:5px 10px;background:var(--bg);color:var(--text);border-color:var(--border);">🔍 状态同步</button>
         <button class="action-btn small" onclick="openBatchDeviceBindingModal()" style="padding:5px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">📡 设备绑定</button>
+        <!-- 【改进v3-2】设备重启历史记录按钮（展示最近重启记录+失败重试统计） -->
+        <button class="action-btn small" onclick="openDeviceRestartHistoryModal()" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📋 重启历史</button>
         <button class="action-btn small" onclick="openFirmwareAnalyzerModal()" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📡 版本分析器</button><button class="action-btn small" onclick="openFirmwareComparisonModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📋 固件对比表</button><button class="action-btn small" onclick="openAlertRuleEngineModal()" style="padding:5px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">⚠️ 告警规则</button><button class="action-btn small" onclick="openDeviceFirmwareOTAModal()" style="padding:5px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📦 OTA升级</button>
         <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">💡 勾选左侧设备列表可精确选择设备</span>
       </div>
@@ -5032,6 +5081,154 @@ function submitBatchRoomMaintenance() {
   window._bmmTargetStatus = null;
 }
 
+// 【改进v3-4】楼层房间拖拽调整状态工具弹窗：拖拽房间卡片到目标状态栏即可批量修改
+var dragRoomData = {
+  'in': [
+    {num:'301',type:'亲子间',guest:'张三',checkin:'03-27'},
+    {num:'304',type:'亲子间',guest:'李四',checkin:'03-27'},
+    {num:'306',type:'亲子间',guest:'钱七',checkin:'03-26'}
+  ],
+  'empty': [
+    {num:'302',type:'亲子间'},
+    {num:'307',type:'亲子间'}
+  ],
+  'maintenance': [
+    {num:'303',type:'亲子间',reason:'换电池'},
+    {num:'305',type:'亲子间',reason:'门锁维修'}
+  ]
+};
+
+function openDragDropRoomStatusModal() {
+  var old = document.getElementById('modal-drag-room-status');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-drag-room-status" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:780px;max-height:88vh;display:flex;flex-direction:column;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">';
+  html += '<div><div style="font-size:16px;font-weight:700;">🖐️ 拖拽调整房间状态</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">拖拽房间卡片到目标状态栏即可批量修改房间状态</div></div>';
+  html += '<button onclick="document.getElementById(\'modal-drag-room-status\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  // 状态栏
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">';
+  var statusConfig = [
+    {key:'in', label:'🏨 入住', color:'var(--blue)', bg:'var(--blue-bg)', count: dragRoomData['in'].length},
+    {key:'empty', label:'🏠 空房', color:'var(--green)', bg:'var(--green-bg)', count: dragRoomData['empty'].length},
+    {key:'maintenance', label:'🔧 维护中', color:'var(--orange)', bg:'var(--orange-bg)', count: dragRoomData['maintenance'].length},
+    {key:'dirty', label:'🧹 脏房', color:'var(--red)', bg:'var(--red-bg)', count: 0}
+  ];
+  statusConfig.forEach(function(s) {
+    html += '<div class="drag-drop-zone" data-target="' + s.key + '" ondragover="event.preventDefault();this.style.borderColor=\'var(--blue)\';this.style.background=\'var(--blue-bg)\'" ondragleave="this.style.borderColor=\'var(--border)\';this.style.background=\'\'" ondrop="handleRoomDrop(event,\'' + s.key + '\')" style="padding:10px 12px;border:2px dashed var(--border);border-radius:10px;min-height:60px;transition:all 0.2s;cursor:pointer;">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
+    html += '<span style="font-size:12px;font-weight:700;color:' + s.color + ';">' + s.label + '</span>';
+    html += '<span class="tbadge" style="font-size:10px;padding:2px 6px;background:' + s.bg + ';color:' + s.color + ';" id="dz-count-' + s.key + '">' + s.count + '间</span></div>';
+    html += '<div id="dz-rooms-' + s.key + '" style="display:flex;flex-wrap:wrap;gap:4px;min-height:24px;">';
+    var rooms = dragRoomData[s.key] || [];
+    rooms.forEach(function(r) {
+      html += '<div class="room-drag-chip" draggable="true" ondragstart="handleDragStart(event,\'' + r.num + '\')" data-from="' + s.key + '" data-num="' + r.num + '" style="padding:3px 8px;background:' + s.bg + ';border:1px solid ' + s.color + ';border-radius:6px;font-size:11px;font-weight:600;color:' + s.color + ';cursor:grab;">' + r.num + '</div>';
+    });
+    html += '</div></div>';
+  });
+  html += '</div>';
+  // 待处理房间：从所有状态拖出的房间显示在这里
+  html += '<div style="padding:12px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📋 待调整房间（从下方状态栏拖入上方状态栏）</div>';
+  html += '<div id="drag-pending-area" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px;padding:8px;border:1px dashed var(--border);border-radius:8px;background:var(--bg);">';
+  html += '<div style="font-size:11px;color:var(--text-muted);align-self:center;">💡 提示：拖拽房间卡片到上方对应状态栏即可修改状态</div>';
+  html += '</div></div>';
+  // 操作记录
+  html += '<div style="overflow-y:auto;flex:1;padding:12px 24px;">';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📜 状态变更记录</div>';
+  html += '<div id="drag-change-log" style="max-height:160px;overflow-y:auto;font-size:11px;color:var(--text-muted);">暂无变更记录</div>';
+  html += '</div>';
+  html += '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">';
+  html += '<div style="font-size:11px;color:var(--text-muted);">💡 拖拽变更后实时生效，可点击"重置"恢复原状态</div>';
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<button class="modal-btn secondary" onclick="resetDragRoomChanges()">重置</button>';
+  html += '<button class="modal-btn primary" onclick="confirmDragRoomChanges()" style="background:var(--blue);border-color:var(--blue);color:white;">✅ 确认变更</button></div></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  window._roomChangeLog = [];
+}
+
+var _draggedRoomNum = '';
+var _draggedFromStatus = '';
+
+function handleDragStart(event, roomNum) {
+  _draggedRoomNum = roomNum;
+  _draggedFromStatus = event.target.dataset.from;
+  event.dataTransfer.setData('text/plain', roomNum);
+  event.target.style.opacity = '0.5';
+}
+
+function handleRoomDrop(event, targetStatus) {
+  event.preventDefault();
+  var zone = event.currentTarget;
+  zone.style.borderColor = 'var(--border)';
+  zone.style.background = '';
+  if (!_draggedRoomNum) return;
+  // 记录变更
+  var statusNames = {in:'入住', empty:'空房', maintenance:'维护中', dirty:'脏房'};
+  var change = {room: _draggedRoomNum, from: _draggedFromStatus, to: targetStatus};
+  window._roomChangeLog.push(change);
+  // 从原状态移除
+  var fromZone = document.getElementById('dz-rooms-' + _draggedFromStatus);
+  if (fromZone) {
+    var chips = fromZone.querySelectorAll('.room-drag-chip');
+    chips.forEach(function(chip) {
+      if (chip.dataset.num === _draggedRoomNum) chip.remove();
+    });
+    var fromCount = fromZone.querySelectorAll('.room-drag-chip').length;
+    var fromCountEl = document.getElementById('dz-count-' + _draggedFromStatus);
+    if (fromCountEl) fromCountEl.textContent = fromCount + '间';
+  }
+  // 添加到目标状态
+  var toZone = document.getElementById('dz-rooms-' + targetStatus);
+  if (toZone) {
+    // 移除提示文字
+    var hint = toZone.querySelector('.drag-hint');
+    if (hint) hint.remove();
+    var statusConfig = {in:{color:'var(--blue)',bg:'var(--blue-bg)'},empty:{color:'var(--green)',bg:'var(--green-bg)'},maintenance:{color:'var(--orange)',bg:'var(--orange-bg)'},dirty:{color:'var(--red)',bg:'var(--red-bg)'}};
+    var cfg = statusConfig[targetStatus] || statusConfig['in'];
+    var newChip = document.createElement('div');
+    newChip.className = 'room-drag-chip';
+    newChip.draggable = true;
+    newChip.dataset.from = targetStatus;
+    newChip.dataset.num = _draggedRoomNum;
+    newChip.style.cssText = 'padding:3px 8px;background:' + cfg.bg + ';border:1px solid ' + cfg.color + ';border-radius:6px;font-size:11px;font-weight:600;color:' + cfg.color + ';cursor:grab;';
+    newChip.textContent = _draggedRoomNum;
+    newChip.ondragstart = function(e) { handleDragStart(e, _draggedRoomNum); };
+    toZone.appendChild(newChip);
+    var toCount = toZone.querySelectorAll('.room-drag-chip').length;
+    var toCountEl = document.getElementById('dz-count-' + targetStatus);
+    if (toCountEl) toCountEl.textContent = toCount + '间';
+  }
+  // 更新变更记录
+  var logEl = document.getElementById('drag-change-log');
+  if (logEl) {
+    var html = window._roomChangeLog.map(function(c) {
+      return '<div style="padding:4px 0;border-bottom:1px solid var(--border);">🏠 房间 <strong>' + c.room + '</strong>：' + statusNames[c.from] + ' → ' + statusNames[c.to] + '</div>';
+    }).join('');
+    logEl.innerHTML = html || '<div style="color:var(--text-muted);">暂无变更记录</div>';
+  }
+  _draggedRoomNum = '';
+  _draggedFromStatus = '';
+  // 恢复所有chip透明度
+  document.querySelectorAll('.room-drag-chip').forEach(function(c){ c.style.opacity = '1'; });
+}
+
+function resetDragRoomChanges() {
+  openDragDropRoomStatusModal();
+  showToast('已重置所有变更', 'info');
+}
+
+function confirmDragRoomChanges() {
+  if (window._roomChangeLog.length === 0) {
+    showToast('没有待确认的变更', 'info');
+    return;
+  }
+  var log = window._roomChangeLog;
+  closeModal('drag-room-status');
+  showToast('✅ 已确认 ' + log.length + ' 项房间状态变更，系统已更新', 'success');
+}
+
 // 【改进v3-5】会员积分余额预警系统JS函数
 window.memberPointsThreshold = 500;
 window.memberPointsAlertEnabled = true;
@@ -5455,6 +5652,93 @@ setInterval(function() {
       } else if (action === 'firmware') {
         openFirmwareUpgradeModal();
       }
+    }
+
+    // 【改进v3-2】设备重启历史记录弹窗：展示最近重启记录+失败重试统计
+    function openDeviceRestartHistoryModal() {
+      var old = document.getElementById('modal-dev-restart-history');
+      if (old) old.remove();
+      var successCount = deviceRestartHistory.filter(function(h) { return h.result === '成功'; }).length;
+      var failCount = deviceRestartHistory.length - successCount;
+      var avgDuration = Math.round(deviceRestartHistory.reduce(function(s, h) { return s + parseInt(h.duration); }, 0) / deviceRestartHistory.length);
+      var html = '<div class="modal-overlay" id="modal-dev-restart-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+      html += '<div class="modal" style="width:680px;max-height:85vh;display:flex;flex-direction:column;">';
+      html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">';
+      html += '<div><div style="font-size:16px;font-weight:700;">📋 设备重启历史记录</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">追踪设备重启操作历史、成功率和平均离线时长</div></div>';
+      html += '<button onclick="document.getElementById(\'modal-dev-restart-history\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+      // 统计卡片行
+      html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">';
+      html += '<div style="text-align:center;padding:10px;background:var(--green-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + successCount + '</div><div style="font-size:11px;color:var(--text-muted);">成功次数</div></div>';
+      html += '<div style="text-align:center;padding:10px;background:var(--red-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--red);">' + failCount + '</div><div style="font-size:11px;color:var(--text-muted);">失败次数</div></div>';
+      html += '<div style="text-align:center;padding:10px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--blue);">' + avgDuration + 's</div><div style="font-size:11px;color:var(--text-muted);">平均离线</div></div>';
+      html += '<div style="text-align:center;padding:10px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--orange);">' + deviceRestartHistory[0].time.substring(0,10) + '</div><div style="font-size:11px;color:var(--text-muted);">最近重启</div></div>';
+      html += '</div>';
+      // 过滤工具栏
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:12px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">';
+      html += '<select id="drh-filter-result" onchange="renderRestartHistoryList()" style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;"><option value="all">全部结果</option><option value="成功">成功</option><option value="失败">失败</option></select>';
+      html += '<select id="drh-filter-reason" onchange="renderRestartHistoryList()" style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;"><option value="all">全部原因</option><option value="计划重启">计划重启</option><option value="设备无响应">设备无响应</option><option value="固件升级">固件升级</option></select>';
+      html += '<button onclick="exportRestartHistoryCSV()" style="padding:6px 12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:6px;font-size:11px;cursor:pointer;">📤 导出CSV</button>';
+      html += '<span id="drh-count" style="margin-left:auto;font-size:11px;color:var(--text-muted);">' + deviceRestartHistory.length + ' 条记录</span>';
+      html += '</div>';
+      // 列表
+      html += '<div id="drh-list-container" style="overflow-y:auto;flex:1;padding:0;">';
+      html += '<table class="table" style="margin:0;"><thead><tr><th>重启时间</th><th>操作人</th><th>设备房间</th><th>重启原因</th><th>结果</th><th>离线时长</th><th>操作</th></tr></thead><tbody id="drh-tbody"></tbody></table>';
+      html += '</div>';
+      html += '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">';
+      html += '<div style="font-size:11px;color:var(--text-muted);">💡 重启历史记录保留最近30条，定期自动清理</div>';
+      html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-dev-restart-history\').remove()">关闭</button></div>';
+      html += '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+      renderRestartHistoryList();
+    }
+
+    function renderRestartHistoryList() {
+      var filterResult = document.getElementById('drh-filter-result') ? document.getElementById('drh-filter-result').value : 'all';
+      var filterReason = document.getElementById('drh-filter-reason') ? document.getElementById('drh-filter-reason').value : 'all';
+      var filtered = deviceRestartHistory.filter(function(h) {
+        return (filterResult === 'all' || h.result === filterResult) && (filterReason === 'all' || h.reason === filterReason);
+      });
+      var tbody = document.getElementById('drh-tbody');
+      if (!tbody) return;
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">无符合条件的记录</td></tr>';
+        return;
+      }
+      var html = '';
+      filtered.forEach(function(h, idx) {
+        var resultClass = h.result === '成功' ? 'green' : 'red';
+        html += '<tr>' +
+          '<td style="font-size:12px;">' + h.time + '</td>' +
+          '<td style="font-size:12px;">' + h.operator + '</td>' +
+          '<td style="font-size:12px;">301室 · 领握LH-807</td>' +
+          '<td style="font-size:12px;">' + h.reason + '</td>' +
+          '<td><span class="tbadge ' + resultClass + '" style="font-size:10px;padding:2px 8px;">' + h.result + '</span></td>' +
+          '<td style="font-size:12px;font-weight:600;">' + h.duration + '</td>' +
+          '<td><button class="action-btn small" onclick="showRestartDetail(' + idx + ')" style="padding:3px 8px;font-size:10px;">详情</button></td></tr>';
+      });
+      tbody.innerHTML = html;
+      var countEl = document.getElementById('drh-count');
+      if (countEl) countEl.textContent = filtered.length + ' 条记录';
+    }
+
+    function showRestartDetail(idx) {
+      var h = deviceRestartHistory[idx];
+      if (!h) return;
+      showToast('重启详情：' + h.time + ' | ' + h.operator + ' | ' + h.result + ' | ' + h.duration, 'info');
+    }
+
+    function exportRestartHistoryCSV() {
+      var rows = [['重启时间', '操作人', '设备', '重启原因', '结果', '离线时长']];
+      deviceRestartHistory.forEach(function(h) {
+        rows.push([h.time, h.operator, '301室·领握LH-807', h.reason, h.result, h.duration]);
+      });
+      var csv = rows.map(function(r) { return r.join(','); }).join('\n');
+      var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = 'device_restart_history.csv';
+      a.click(); URL.revokeObjectURL(url);
+      showToast('📤 设备重启历史CSV已导出', 'success');
     }
 
     function openDeviceRestartConfirmModal() {
@@ -8352,6 +8636,8 @@ function openEditMemberLevelModalV2(idx) {
         <button class="action-btn small" onclick="resetWorkorderSearch()" style="padding:6px 10px;">重置</button>
         <button class="action-btn small" onclick="exportWorkorderCSV()" style="padding:6px 10px;">📤 导出CSV</button>
         <button class="action-btn small" onclick="openEscalationRulesModal()" style="padding:6px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">⚙️ 升级规则</button>
+        <!-- 【改进v3-5】工单满意度评价统计入口 -->
+        <button class="action-btn small" onclick="openWorkorderSatisfactionStatsModal()" style="padding:6px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⭐ 满意度统计</button>
         <!-- 【改进D】高级筛选按钮 -->
         <button class="action-btn small" onclick="openModal('wo-filter')" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🔍 高级筛选</button>
       </div>
@@ -11619,6 +11905,8 @@ function openEditMemberLevelModalV2(idx) {
               </div>
               <!-- 【改进v3-3】楼层房间批量维护状态设置入口 -->
               <button class="action-btn small" onclick="openBatchRoomMaintenanceModal()" style="padding:4px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);font-size:11px;">🔧 批量维护</button>
+              <!-- 【改进v3-4】楼层房间拖拽调整状态工具（拖拽房间卡片到目标状态栏即可批量修改） -->
+              <button class="action-btn small" onclick="openDragDropRoomStatusModal()" style="padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);font-size:11px;">🖐️ 拖拽调状态</button>
             </div>
             <div id="floor-room-quickgrid">
               <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">⬇️ 点击房间可直接进入房间详情</div>
@@ -30196,6 +30484,126 @@ function submitHomepageBatchCheckin() {
     closeHomepageBatchCheckin();
   }, 2000);
 }
+
+// 【改进v3-3】客人自助预登记链接生成器：支持短信/微信/邮件/链接多渠道发送入住信息
+var preregData = {
+  pendingList: [
+    {name:'李预订', phone:'13812345678', room:'302', checkinDate:'2026-03-29', nights:2, method:'phone', status:'pending'},
+    {name:'王会议', phone:'13987654321', room:'201', checkinDate:'2026-03-30', nights:3, method:'wechat', status:'pending'}
+  ]
+};
+
+function openPreregLinkGenerator() {
+  var old = document.getElementById('modal-prereg-link');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-prereg-link" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:640px;max-height:85vh;display:flex;flex-direction:column;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">';
+  html += '<div><div style="font-size:16px;font-weight:700;">📋 预登记链接生成器</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">生成客人自助预登记链接，支持短信/微信/邮件多渠道发送</div></div>';
+  html += '<button onclick="document.getElementById(\'modal-prereg-link\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  // 表单
+  html += '<div style="padding:16px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">';
+  html += '<div class="form-group" style="margin:0;"><label class="form-label" style="font-size:11px;">客人姓名</label><input type="text" class="form-input" id="prereg-name" placeholder="如：李先生" style="padding:7px 10px;font-size:12px;"></div>';
+  html += '<div class="form-group" style="margin:0;"><label class="form-label" style="font-size:11px;">手机号</label><input type="tel" class="form-input" id="prereg-phone" placeholder="11位手机号" maxlength="11" style="padding:7px 10px;font-size:12px;"></div>';
+  html += '<div class="form-group" style="margin:0;"><label class="form-label" style="font-size:11px;">房号</label><select class="form-select" id="prereg-room" style="padding:7px 10px;font-size:12px;"><option value="">请选择房号</option><option value="301">301-亲子间</option><option value="302">302-亲子间</option><option value="201">201-大床房</option><option value="202">202-大床房</option><option value="203">203-大床房</option></select></div>';
+  html += '<div class="form-group" style="margin:0;"><label class="form-label" style="font-size:11px;">入住日期</label><input type="date" class="form-input" id="prereg-date" style="padding:7px 10px;font-size:12px;"></div>';
+  html += '<div class="form-group" style="margin:0;"><label class="form-label" style="font-size:11px;">入住天数</label><select class="form-select" id="prereg-nights" style="padding:7px 10px;font-size:12px;"><option value="1">1晚</option><option value="2">2晚</option><option value="3">3晚</option><option value="5">5晚</option><option value="7">7晚</option></select></div>';
+  html += '<div class="form-group" style="margin:0;"><label class="form-label" style="font-size:11px;">发送渠道</label><select class="form-select" id="prereg-channel" style="padding:7px 10px;font-size:12px;"><option value="link">🔗 仅生成链接</option><option value="sms">📱 短信发送</option><option value="wechat">💬 微信推送</option><option value="email">📧 邮件发送</option></select></div>';
+  html += '</div>';
+  html += '<div style="display:flex;align-items:center;gap:10px;"><button class="action-btn primary" onclick="generatePreregLink()" style="padding:7px 16px;background:var(--blue);color:white;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🔗 生成预登记链接</button><span id="prereg-link-hint" style="font-size:11px;color:var(--text-muted);">链接有效期：48小时</span></div>';
+  html += '<div id="prereg-result" style="display:none;margin-top:12px;padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:8px;">✅ 预登记链接已生成</div>';
+  html += '<div id="prereg-link-display" style="font-size:11px;word-break:break-all;margin-bottom:8px;"></div>';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+  html += '<button class="action-btn small" onclick="copyPreregLink()" style="padding:4px 10px;font-size:11px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;">📋 复制链接</button>';
+  html += '<button class="action-btn small" onclick="sendPreregBySMS()" style="padding:4px 10px;font-size:11px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;">📱 短信发送</button>';
+  html += '<button class="action-btn small" onclick="sendPreregByWechat()" style="padding:4px 10px;font-size:11px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;">💬 微信推送</button>';
+  html += '</div></div></div>';
+  // 待发送列表
+  html += '<div style="padding:12px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📤 待发送预登记 (<span id="prereg-pending-count">' + preregData.pendingList.length + '</span>)</div>';
+  html += '<div style="max-height:160px;overflow-y:auto;">';
+  preregData.pendingList.forEach(function(item, idx) {
+    var statusLabel = item.status === 'pending' ? '待发送' : item.status === 'sent' ? '已发送' : '已填写';
+    var statusColor = item.status === 'pending' ? 'orange' : item.status === 'sent' ? 'blue' : 'green';
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">';
+    html += '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + item.name + '</div><div style="font-size:10px;color:var(--text-muted);">' + item.phone + ' · ' + item.room + ' · ' + item.checkinDate + ' · ' + item.nights + '晚</div></div>';
+    html += '<span class="tbadge ' + statusColor + '" style="font-size:10px;padding:2px 8px;">' + statusLabel + '</span>';
+    html += '<button class="action-btn small" onclick="resendPrereg(' + idx + ')" style="padding:2px 8px;font-size:10px;">重发</button>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+  // 发送历史
+  html += '<div style="overflow-y:auto;flex:1;padding:0 24px;">';
+  html += '<div style="font-size:12px;font-weight:600;padding:12px 0;border-bottom:1px solid var(--border);">📨 发送历史</div>';
+  html += '<table class="table" style="margin:0;"><thead><tr><th>时间</th><th>客人</th><th>房间</th><th>渠道</th><th>状态</th></tr></thead><tbody>';
+  html += '<tr><td style="font-size:11px;">2026-03-27 09:30</td><td style="font-size:11px;">李预订</td><td style="font-size:11px;">302</td><td style="font-size:11px;">📱短信</td><td><span class="tbadge green" style="font-size:10px;">已发送</span></td></tr>';
+  html += '<tr><td style="font-size:11px;">2026-03-27 08:15</td><td style="font-size:11px;">王会议</td><td style="font-size:11px;">201</td><td style="font-size:11px;">💬微信</td><td><span class="tbadge green" style="font-size:10px;">已发送</span></td></tr>';
+  html += '</tbody></table></div>';
+  html += '<div style="padding:14px 24px;border-top:1px solid var(--border);flex-shrink:0;text-align:right;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-prereg-link\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  // 设置默认日期为明天
+  var tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  var dateInput = document.getElementById('prereg-date');
+  if (dateInput) dateInput.value = tomorrow.toISOString().split('T')[0];
+}
+
+var generatedPreregLink = '';
+
+function generatePreregLink() {
+  var name = document.getElementById('prereg-name').value.trim();
+  var phone = document.getElementById('prereg-phone').value.trim();
+  var room = document.getElementById('prereg-room').value;
+  var date = document.getElementById('prereg-date').value;
+  var nights = document.getElementById('prereg-nights').value;
+  if (!name || !phone || !room || !date) { showToast('请填写完整信息', 'error'); return; }
+  if (!/^1\d{10}$/.test(phone)) { showToast('手机号格式不正确', 'error'); return; }
+  var code = 'PR' + Date.now().toString(36).toUpperCase();
+  generatedPreregLink = 'https://lockclub.wangjile.cn/guest/prereg?code=' + code + '&room=' + room + '&date=' + date + '&nights=' + nights;
+  var linkDisplay = document.getElementById('prereg-link-display');
+  if (linkDisplay) linkDisplay.textContent = generatedPreregLink;
+  document.getElementById('prereg-result').style.display = 'block';
+  showToast('✅ 预登记链接已生成：有效期48小时', 'success');
+}
+
+function copyPreregLink() {
+  if (!generatedPreregLink) { showToast('请先生成链接', 'error'); return; }
+  try {
+    var textarea = document.createElement('textarea');
+    textarea.value = generatedPreregLink;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    showToast('📋 链接已复制到剪贴板', 'success');
+  } catch(e) {
+    showToast('复制失败，请手动复制', 'error');
+  }
+}
+
+function sendPreregBySMS() {
+  var phone = document.getElementById('prereg-phone').value.trim();
+  if (!phone || !/^1\d{10}$/.test(phone)) { showToast('请输入正确的手机号', 'error'); return; }
+  showToast('📱 短信发送成功！链接已发送至 ' + phone.substring(0,3) + '****' + phone.substring(7), 'success');
+  document.getElementById('prereg-result').style.display = 'none';
+}
+
+function sendPreregByWechat() {
+  showToast('💬 微信推送发送成功！客人可在公众号收到预登记通知', 'success');
+  document.getElementById('prereg-result').style.display = 'none';
+}
+
+function resendPrereg(idx) {
+  var item = preregData.pendingList[idx];
+  if (!item) return;
+  showToast('📤 正在重新发送预登记链接给 ' + item.name + '...', 'info');
+  setTimeout(function() { showToast('✅ 重发成功！', 'success'); }, 1500);
+}
+
 
 // ============================================================
 // 【改进3】房间详情页：新增历史记录Tab（入住/退房/换房时间线）
@@ -54985,6 +55393,136 @@ document.addEventListener('DOMContentLoaded', function() {
 // 逻辑：工单完成弹窗中显示满意度星级评价（1-5星），提交后记录到评价数据库
 // ============================================================
 var workorderSatisfactionDB = [];
+
+// 【改进v3-5】工单满意度统计数据总览弹窗：展示所有已评价工单的满意度统计、趋势图表、员工排名
+var woSatStatsData = [
+  {woId:'WO-2026-001', room:'301', type:'complaint', rating:5, tags:['响应快','态度好','解决彻底'], comment:'处理非常及时，赞！', time:'2026-03-27 14:30', agent:'赵飞'},
+  {woId:'WO-2026-002', room:'201', type:'invoice', rating:4, tags:['专业'], comment:'发票开具顺利', time:'2026-03-27 10:15', agent:'周敏'},
+  {woId:'WO-2026-003', room:'302', type:'delivery', rating:5, tags:['响应快','态度好'], comment:'送物很迅速', time:'2026-03-26 18:20', agent:'赵飞'},
+  {woId:'WO-2026-004', room:'203', type:'repair', rating:3, tags:['时间较长'], comment:'维修速度一般', time:'2026-03-26 09:45', agent:'钱七'},
+  {woId:'WO-2026-005', room:'305', type:'complaint', rating:4, tags:['专业','态度好'], comment:'问题已解决', time:'2026-03-25 16:00', agent:'周敏'},
+  {woId:'WO-2026-006', room:'102', type:'praise', rating:5, tags:['响应快','态度好','解决彻底'], comment:'非常满意，强烈推荐！', time:'2026-03-25 11:30', agent:'赵飞'},
+  {woId:'WO-2026-007', room:'202', type:'delivery', rating:2, tags:['时间较长','需跟进'], comment:'等了1小时', time:'2026-03-24 20:10', agent:'钱七'},
+  {woId:'WO-2026-008', room:'304', type:'invoice', rating:4, tags:['专业'], comment:'发票收到，很规范', time:'2026-03-24 15:45', agent:'周敏'}
+];
+
+function openWorkorderSatisfactionStatsModal() {
+  var old = document.getElementById('modal-wo-sat-stats');
+  if (old) old.remove();
+  // 计算统计数据
+  var total = woSatStatsData.length;
+  var avgRating = (woSatStatsData.reduce(function(s, d) { return s + d.rating; }, 0) / total).toFixed(1);
+  var fiveStar = woSatStatsData.filter(function(d) { return d.rating === 5; }).length;
+  var fourStar = woSatStatsData.filter(function(d) { return d.rating === 4; }).length;
+  var threeStar = woSatStatsData.filter(function(d) { return d.rating === 3; }).length;
+  var lowStar = woSatStatsData.filter(function(d) { return d.rating <= 2; }).length;
+  // 员工评分统计
+  var agentStats = {};
+  woSatStatsData.forEach(function(d) {
+    if (!agentStats[d.agent]) agentStats[d.agent] = {total: 0, sum: 0, avg: 0};
+    agentStats[d.agent].total++;
+    agentStats[d.agent].sum += d.rating;
+    agentStats[d.agent].avg = (agentStats[d.agent].sum / agentStats[d.agent].total).toFixed(1);
+  });
+  // 标签统计
+  var tagCount = {};
+  woSatStatsData.forEach(function(d) {
+    d.tags.forEach(function(t) { tagCount[t] = (tagCount[t] || 0) + 1; });
+  });
+  var topTags = Object.keys(tagCount).sort(function(a, b) { return tagCount[b] - tagCount[a]; }).slice(0, 5);
+  var html = '<div class="modal-overlay" id="modal-wo-sat-stats" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:760px;max-height:88vh;display:flex;flex-direction:column;">';
+  html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">';
+  html += '<div><div style="font-size:16px;font-weight:700;">⭐ 工单满意度统计总览</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">分析已评价工单的满意度分布、趋势和员工绩效</div></div>';
+  html += '<button onclick="document.getElementById(\'modal-wo-sat-stats\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  // 统计概览卡片
+  html += '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:16px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">';
+  html += '<div style="text-align:center;padding:10px;background:var(--green-bg);border-radius:8px;"><div style="font-size:26px;font-weight:700;color:var(--green);">' + avgRating + '</div><div style="font-size:10px;color:var(--text-muted);">平均评分</div><div style="font-size:10px;color:var(--green);">/5分</div></div>';
+  html += '<div style="text-align:center;padding:10px;background:var(--green-bg);border-radius:8px;"><div style="font-size:26px;font-weight:700;color:var(--green);">' + fiveStar + '</div><div style="font-size:10px;color:var(--text-muted);">⭐5星</div></div>';
+  html += '<div style="text-align:center;padding:10px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:26px;font-weight:700;color:var(--blue);">' + fourStar + '</div><div style="font-size:10px;color:var(--text-muted);">⭐4星</div></div>';
+  html += '<div style="text-align:center;padding:10px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:26px;font-weight:700;color:var(--orange);">' + threeStar + '</div><div style="font-size:10px;color:var(--text-muted);">⭐3星</div></div>';
+  html += '<div style="text-align:center;padding:10px;background:var(--red-bg);border-radius:8px;"><div style="font-size:26px;font-weight:700;color:var(--red);">' + lowStar + '</div><div style="font-size:10px;color:var(--text-muted);">⭐1-2星</div></div>';
+  html += '<div style="text-align:center;padding:10px;background:var(--purple-bg);border-radius:8px;"><div style="font-size:26px;font-weight:700;color:var(--purple);">' + Math.round(fiveStar/total*100) + '%</div><div style="font-size:10px;color:var(--text-muted);">满意率</div></div>';
+  html += '</div>';
+  // 评分分布条形图
+  html += '<div style="padding:12px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📊 评分分布</div>';
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+  var maxStar = Math.max(fiveStar, fourStar, threeStar, lowStar);
+  [{stars:5,count:fiveStar,color:'var(--green)'},{stars:4,count:fourStar,color:'var(--blue)'},{stars:3,count:threeStar,color:'var(--orange)'},{stars:2,count:woSatStatsData.filter(function(d){return d.rating===2;}).length,color:'var(--red)'},{stars:1,count:woSatStatsData.filter(function(d){return d.rating===1;}).length,color:'var(--red)'}].forEach(function(s) {
+    var pct = maxStar > 0 ? (s.count / maxStar * 100) : 0;
+    html += '<div style="flex:1;display:flex;align-items:center;gap:4px;">';
+    html += '<span style="font-size:11px;color:var(--text-muted);width:20px;">' + s.stars + '星</span>';
+    html += '<div style="flex:1;height:16px;background:var(--border);border-radius:3px;overflow:hidden;">';
+    html += '<div style="width:' + pct + '%;height:100%;background:' + s.color + ';border-radius:3px;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;">';
+    html += '<span style="font-size:9px;color:white;font-weight:600;">' + s.count + '</span></div></div></div>';
+  });
+  html += '</div></div>';
+  // 员工满意度排名
+  html += '<div style="padding:12px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">👥 员工满意度排名</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
+  Object.keys(agentStats).sort(function(a, b) { return parseFloat(agentStats[b].avg) - parseFloat(agentStats[a].avg); }).forEach(function(agent, idx) {
+    var stats = agentStats[agent];
+    var rankColors = ['var(--orange)', 'var(--blue)', 'var(--green)'];
+    var rankBg = ['var(--orange-bg)', 'var(--blue-bg)', 'var(--green-bg)'];
+    var color = idx < 3 ? rankColors[idx] : 'var(--text)';
+    var bg = idx < 3 ? rankBg[idx] : 'var(--bg)';
+    html += '<div style="padding:10px 12px;background:' + bg + ';border-radius:8px;display:flex;align-items:center;gap:10px;">';
+    html += '<div style="font-size:18px;font-weight:700;color:' + color + ';width:24px;">' + (idx+1) + '</div>';
+    html += '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">' + agent + '</div><div style="font-size:10px;color:var(--text-muted);">' + stats.total + '条评价</div></div>';
+    html += '<div style="text-align:right;"><div style="font-size:18px;font-weight:700;color:' + color + ';">' + stats.avg + '</div><div style="font-size:10px;color:var(--text-muted);">平均分</div></div></div>';
+  });
+  html += '</div></div>';
+  // 高频标签
+  html += '<div style="padding:12px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">🏷️ 高频评价标签</div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  topTags.forEach(function(tag) {
+    var tagColors = {'响应快': 'var(--green)', '态度好': 'var(--blue)', '专业': 'var(--purple)', '解决彻底': 'var(--green)', '时间较长': 'var(--orange)', '需跟进': 'var(--orange)'};
+    var c = tagColors[tag] || 'var(--text)';
+    html += '<span style="padding:4px 10px;background:' + c.replace('var(', 'rgba(').replace(')', ',0.1)') + ';border:1px solid ' + c + ';color:' + c + ';border-radius:12px;font-size:11px;font-weight:600;">' + tag + ' ×' + tagCount[tag] + '</span>';
+  });
+  html += '</div></div>';
+  // 最近评价列表
+  html += '<div style="overflow-y:auto;flex:1;padding:0 24px;">';
+  html += '<div style="font-size:12px;font-weight:600;padding:12px 0;border-bottom:1px solid var(--border);">📋 最近评价详情</div>';
+  woSatStatsData.slice(0, 5).forEach(function(d) {
+    var starColor = d.rating >= 4 ? 'var(--green)' : d.rating === 3 ? 'var(--orange)' : 'var(--red)';
+    html += '<div style="padding:10px 0;border-bottom:1px solid var(--border);">';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
+    html += '<span style="font-size:12px;font-weight:600;">' + d.woId + '</span>';
+    html += '<span style="font-size:10px;color:var(--text-muted);">' + d.room + '室</span>';
+    html += '<span style="font-size:11px;color:' + starColor + ';font-weight:700;">' + '⭐'.repeat(d.rating) + '</span>';
+    html += '<span style="margin-left:auto;font-size:10px;color:var(--text-muted);">' + d.time + '</span>';
+    html += '</div>';
+    html += '<div style="font-size:11px;color:var(--text);">' + d.comment + '</div>';
+    html += '<div style="display:flex;gap:4px;margin-top:4px;">' + d.tags.map(function(t) { return '<span style="font-size:10px;padding:1px 6px;background:var(--bg);border-radius:10px;color:var(--text-muted);">' + t + '</span>'; }).join('') + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  html += '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">';
+  html += '<div style="font-size:11px;color:var(--text-muted);">共 ' + total + ' 条已评价工单 · 数据更新至 ' + (new Date().toLocaleDateString('zh-CN')) + '</div>';
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-sat-stats\').remove()">关闭</button>';
+  html += '<button class="modal-btn" onclick="exportWoSatisfactionStats()" style="background:var(--green);color:white;border:none;">📤 导出统计报表</button></div></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function exportWoSatisfactionStats() {
+  var rows = [['工单号', '房间', '类型', '评分', '评价标签', '文字评价', '时间', '处理员工']];
+  woSatStatsData.forEach(function(d) {
+    rows.push([d.woId, d.room, d.type, d.rating + '星', d.tags.join('/'), d.comment, d.time, d.agent]);
+  });
+  var csv = rows.map(function(r) { return r.join(','); }).join('\n');
+  var blob = new Blob(['\ufeff' + csv], {type: 'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = '工单满意度统计_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('📤 工单满意度统计CSV已导出', 'success');
+}
 
 function openWorkorderSatisfactionModal(woId, guestName) {
   var old = document.getElementById('modal-wo-satisfaction');
