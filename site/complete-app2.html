@@ -2074,7 +2074,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <button class="action-btn small" onclick="window._userClickedBatchUpgrade=true;openBatchUpgradeModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📦 批量升级固件</button>
         <button class="action-btn small" onclick="openDeviceBatchActionModal('battery')" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔋 电池检测</button>
         <button class="action-btn small" onclick="openDeviceBatchActionModal('sync')" style="padding:5px 10px;background:var(--bg);color:var(--text);border-color:var(--border);">🔍 状态同步</button>
-        <button class="action-btn small" onclick="openFirmwareAnalyzerModal()" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📡 版本分析器</button><button class="action-btn small" onclick="openFirmwareComparisonModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📋 固件对比表</button><button class="action-btn small" onclick="openAlertRuleEngineModal()" style="padding:5px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">⚠️ 告警规则</button>
+        <button class="action-btn small" onclick="openFirmwareAnalyzerModal()" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📡 版本分析器</button><button class="action-btn small" onclick="openFirmwareComparisonModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📋 固件对比表</button><button class="action-btn small" onclick="openAlertRuleEngineModal()" style="padding:5px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">⚠️ 告警规则</button><button class="action-btn small" onclick="openDeviceFirmwareOTAModal()" style="padding:5px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📦 OTA升级</button>
         <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">💡 勾选左侧设备列表可精确选择设备</span>
       </div>
       <!-- 【改进4】设备电量实时监控仪表盘 -->
@@ -7425,6 +7425,8 @@ function openEditMemberLevelModalV2(idx) {
           <div style="display:flex;gap:8px;align-items:center;">
             <!-- 【改进5】工单自动派发规则配置入口 -->
             <button class="action-btn" onclick="openWorkorderAutoRuleModal()" style="padding:4px 10px;font-size:11px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⚙️ 自动派发</button>
+            <!-- 【改进4】SLA超时升级规则引擎 -->
+            <button class="action-btn" onclick="openWorkorderSLAModal()" style="padding:4px 10px;font-size:11px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">⏰ SLA超时</button>
             <!-- 【改进2】工单看板视图切换 -->
             <button class="action-btn" onclick="openWorkorderKanbanModal()" style="padding:4px 10px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📊 看板视图</button>
             <!-- 【改进v3-2】工单超时自动移交入口 -->
@@ -8078,6 +8080,8 @@ function openEditMemberLevelModalV2(idx) {
         <button class="action-btn small" onclick="openEnergyTouConfigModal()" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⏰ 分时电价</button>
         <!-- 【改进5】能耗预算配置入口 -->
         <button class="action-btn small" onclick="openEnergyBudgetConfigModalV2()" style="padding:4px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">💰 预算配置</button>
+        <!-- 【改进1】能耗异常自动调控入口 -->
+        <button class="action-btn small" onclick="openEnergyAnomalyControlModal('301', 8.6, '空调持续运行12h，耗电异常偏高')" style="padding:4px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">⚠️ 能耗异常</button>
         <div style="margin-left:auto;font-size:12px;color:var(--text-muted);">数据更新：<span id="energy-last-update" style="color:var(--blue);">--</span></div>
       </div>
       <div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
@@ -12831,6 +12835,11 @@ function openEditMemberLevelModalV2(idx) {
           </div>
         </div>
         <div id="md-content-stay" style="display:none;">
+          <!-- 【改进3】入住历史CRUD管理按钮 -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-size:11px;color:var(--text-muted);">共 <strong>5</strong> 条入住历史</div>
+            <button class="action-btn small" onclick="openMemberCheckinHistoryModal('王浩', '138****8888')" style="padding:3px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);font-size:11px;">➕ 添加记录</button>
+          </div>
           <div style="max-height:200px;overflow-y:auto;">
             <div class="timeline" style="padding-top:4px;">
               <div class="timeline-item"><div class="timeline-dot blue"></div><div class="timeline-content"><h4>入住 301 · 亲子间</h4><p>2026-03-26 至 2026-03-27 · 手机开锁</p></div><div class="timeline-time">2晚</div></div>
@@ -48421,6 +48430,568 @@ function executeBatchRoomStatus() {
   document.getElementById('modal-batch-room-status').remove();
   showToast('✅ 已将 ' + rooms.length + ' 个房间设置为「' + labels[brsSelectedStatus] + '」', 'success');
   addOpLog('room', '赵飞', '批量设置房间状态：' + rooms.join(',') + ' → ' + labels[brsSelectedStatus], note || '');
+}
+
+// ============================================================
+// 改进1: 客房能耗异常检测+自动空调调控联动弹窗
+// 发现能耗超标时弹出可配置调控面板，支持预设策略一键调控
+// ============================================================
+var energyAnomalyConfig = {
+  threshold_kwh: 5.0,
+  auto_control_enabled: false,
+  strategy: 'reduce',
+  target_temp: 26,
+  cooldown_minutes: 30
+};
+
+function openEnergyAnomalyControlModal(room, currentKwh, reason) {
+  var old = document.getElementById('modal-energy-anomaly-control');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-energy-anomaly-control" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:480px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">⚠️</div><div><div style="font-size:15px;font-weight:700;">能耗异常 - ' + room + '房间</div><div style="font-size:11px;color:var(--text-muted);">自动检测到能耗超标，建议立即调控</div></div></div>';
+  html += '<button onclick="document.getElementById(\'modal-energy-anomaly-control\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="padding:12px 14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:16px;font-size:13px;color:var(--red);">';
+  html += '🔴 当前用电 <strong>' + currentKwh + 'kWh</strong>，超过阈值 <strong>' + energyAnomalyConfig.threshold_kwh + 'kWh</strong> 的 ' + Math.round(currentKwh / energyAnomalyConfig.threshold_kwh * 100) + '%</div>';
+  html += '<div style="padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--text-muted);">📋 原因：' + reason + '</div>';
+  // 调控策略选择
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">🎯 选择调控策略：</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">';
+  var strategies = [
+    {id:'reduce', label:'❄️ 降低功率', desc:'空调降低至26℃', icon:'🌡️'},
+    {id:'eco', label:'🌿 节能模式', desc:'关闭非必要电器', icon:'💡'},
+    {id:'schedule', label:'⏰ 定时关闭', desc:'30分钟后自动断电', icon:'⏱️'},
+    {id:'notify', label:'📲 通知客人', desc:'推送节能提示', icon:'📱'}
+  ];
+  strategies.forEach(function(s) {
+    html += '<div class="detail-card" onclick="selectEnergyStrategy(\'' + s.id + '\', this)" style="cursor:pointer;border:2px solid var(--border);padding:12px;border-radius:8px;text-align:center;transition:all 0.2s;" id="es-opt-' + s.id + '">';
+    html += '<div style="font-size:22px;margin-bottom:4px;">' + s.icon + '</div>';
+    html += '<div style="font-size:12px;font-weight:600;">' + s.label + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + s.desc + '</div></div>';
+  });
+  html += '</div>';
+  // 高级设置
+  html += '<div style="margin-bottom:14px;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;">⚙️ 高级设置</div>';
+  html += '<div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="toggleEnergyAnomalyAdvanced(this)">';
+  html += '<span style="font-size:11px;color:var(--blue);">展开</span><span style="font-size:11px;color:var(--blue);">▾</span></div></div>';
+  html += '<div id="eaa-panel" style="display:none;padding:10px 12px;background:var(--bg);border-radius:8px;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">';
+  html += '<span style="font-size:12px;">自动调控（无需确认）</span>';
+  html += '<div style="width:36px;height:20px;background:var(--blue);border-radius:10px;position:relative;cursor:pointer;" onclick="energyAnomalyConfig.auto_control_enabled=!energyAnomalyConfig.auto_control_enabled;this.style.background=energyAnomalyConfig.auto_control_enabled?\'var(--green)\':\'var(--border)\';">';
+  html += '<div style="position:absolute;width:16px;height:16px;background:white;border-radius:50%;top:2px;right:2px;"></div></div></div>';
+  html += '<div class="form-group"><label class="form-label" style="font-size:11px;">能耗阈值(kWh)</label>';
+  html += '<input type="number" class="form-input" value="' + energyAnomalyConfig.threshold_kwh + '" onchange="energyAnomalyConfig.threshold_kwh=parseFloat(this.value)" style="font-size:12px;padding:5px 8px;"></div>';
+  html += '<div class="form-group"><label class="form-label" style="font-size:11px;">目标温度(℃)</label>';
+  html += '<input type="number" class="form-input" value="' + energyAnomalyConfig.target_temp + '" onchange="energyAnomalyConfig.target_temp=parseInt(this.value)" style="font-size:12px;padding:5px 8px;width:80px;"></div></div></div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-energy-anomaly-control\').remove()">关闭</button>';
+  html += '<button class="modal-btn primary" id="eac-execute-btn" onclick="executeEnergyAnomalyControl(\'' + room + '\')" style="background:var(--red);border-color:var(--red);">⚡ 执行调控</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+var selectedEnergyStrategy = 'reduce';
+function selectEnergyStrategy(id, el) {
+  selectedEnergyStrategy = id;
+  document.querySelectorAll('[id^="es-opt-"]').forEach(function(d){ d.style.borderColor = 'var(--border)'; d.style.background = 'white'; });
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'var(--blue-bg)';
+}
+function toggleEnergyAnomalyAdvanced(el) {
+  var panel = document.getElementById('eaa-panel');
+  var isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  el.querySelector('span:first-child').textContent = isHidden ? '收起' : '展开';
+}
+function executeEnergyAnomalyControl(room) {
+  var strategyLabels = {reduce:'降低空调功率至26℃', eco:'开启节能模式', schedule:'30分钟后自动断电', notify:'发送节能提醒通知'};
+  document.getElementById('modal-energy-anomaly-control').remove();
+  showToast('✅ 已对 ' + room + ' 执行「' + strategyLabels[selectedEnergyStrategy] + '」', 'success');
+  addOpLog('energy', '系统', '能耗异常调控：' + room + ' → ' + strategyLabels[selectedEnergyStrategy], '');
+}
+
+// ============================================================
+// 改进2: 设备批量固件OTA完整流程 - 增量/全量升级 + 一键回滚
+// ============================================================
+var firmwareRollbackHistory = [];
+function openDeviceFirmwareOTAModal() {
+  var old = document.getElementById('modal-firmware-ota');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-firmware-ota" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:600px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:15px;font-weight:700;">📦 设备固件OTA升级中心</div>';
+  html += '<button onclick="document.getElementById(\'modal-firmware-ota\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  // 版本信息区
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">';
+  html += '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">当前版本</div><div style="font-size:16px;font-weight:700;color:var(--text);">v2.3.1</div></div>';
+  html += '<div style="padding:12px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--purple);">最新版本</div><div style="font-size:16px;font-weight:700;color:var(--purple);">v2.4.0</div></div>';
+  html += '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--orange);">可升级设备</div><div style="font-size:16px;font-weight:700;color:var(--orange);">5台</div></div>';
+  html += '</div>';
+  // 升级模式选择
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">🔧 升级模式：</div>';
+  html += '<div style="display:flex;gap:10px;margin-bottom:14px;">';
+  html += '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;padding:8px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">';
+  html += '<input type="radio" name="ota-mode" value="full" checked style="accent-color:var(--blue);">全量升级（完整包 8MB）</label>';
+  html += '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">';
+  html += '<input type="radio" name="ota-mode" value="delta" style="accent-color:var(--blue);">增量升级（差分包 2MB）</label>';
+  html += '</div>';
+  // 设备列表
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">选择升级设备：</div>';
+  html += '<div id="ota-device-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:14px;">';
+  var devices = [{room:'301',type:'亲子间',ver:'v2.3.1',status:'online'},{room:'302',type:'亲子间',ver:'v2.3.1',status:'online'},{room:'201',type:'标准间',ver:'v2.3.0',status:'online'},{room:'202',type:'大床房',ver:'v2.2.9',status:'low'},{room:'203',type:'大床房',ver:'v2.3.1',status:'offline'}];
+  devices.forEach(function(d) {
+    var disabled = d.status === 'offline' ? 'disabled style="opacity:0.5"' : '';
+    var checked = d.status !== 'offline' ? 'checked' : '';
+    html += '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;' + (d.status==='offline'?'background:#fafafa;':'') + '" ' + disabled + '>';
+    html += '<input type="checkbox" class="ota-device-check" data-room="' + d.room + '" ' + checked + ' ' + disabled + ' style="accent-color:var(--purple);width:15px;height:15px;">';
+    html += '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">' + d.room + ' - ' + d.type + '</div><div style="font-size:11px;color:var(--text-muted);">' + d.ver + ' · ' + d.status + '</div></div>';
+    html += '<span style="font-size:11px;color:' + (d.status==='offline'?'var(--red)':'var(--green)') + ';">' + (d.status==='offline'?'离线不可升级':'可升级') + '</span></label>';
+  });
+  html += '</div>';
+  // 回滚历史
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">🔄 回滚记录：</div>';
+  html += '<div id="ota-rollback-list" style="max-height:100px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:14px;font-size:11px;color:var(--text-muted);">';
+  html += '<div style="padding:10px 12px;">暂无回滚记录</div></div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;">';
+  html += '<button class="modal-btn secondary" onclick="openFirmwareRollbackModal()" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔄 一键回滚</button>';
+  html += '<div style="display:flex;gap:10px;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-firmware-ota\').remove()">取消</button>';
+  html += '<button class="modal-btn primary" onclick="startOTAUpgrade()" style="background:var(--purple);border-color:var(--purple);">📦 开始OTA升级</button></div></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function startOTAUpgrade() {
+  var checks = document.querySelectorAll('.ota-device-check:checked');
+  if (checks.length === 0) { showToast('请至少选择一台设备', 'error'); return; }
+  var mode = document.querySelector('input[name="ota-mode"]:checked').value;
+  var devices = Array.from(checks).map(function(c){ return c.getAttribute('data-room'); });
+  showToast('🚀 已开始向 ' + devices.length + ' 台设备推送OTA升级（' + (mode==='delta'?'增量':'全量') + '模式）', 'success');
+  document.getElementById('modal-firmware-ota').remove();
+}
+function openFirmwareRollbackModal() {
+  var old = document.getElementById('modal-firmware-rollback');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-firmware-rollback" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html += '<div class="modal" style="width:460px;background:white;border-radius:12px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:15px;font-weight:700;">🔄 固件一键回滚</div>';
+  html += '<button onclick="document.getElementById(\'modal-firmware-rollback\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="padding:12px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--orange);">⚠️ 回滚会将所有设备固件降级至上一稳定版本 v2.3.0，建议在设备空闲时段操作</div>';
+  html += '<div class="form-group"><label class="form-label">选择回滚版本</label>';
+  html += '<select class="form-select" id="rb-version" style="font-size:13px;"><option value="v2.3.0">v2.3.0（上一稳定版）</option><option value="v2.2.9">v2.2.9（紧急回退）</option></select></div>';
+  html += '<div class="form-group"><label class="form-label">回滚原因</label>';
+  html += '<textarea class="form-textarea" id="rb-reason" placeholder="请输入回滚原因（必填）..." style="min-height:60px;font-size:12px;"></textarea></div>';
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">';
+  html += '<input type="checkbox" id="rb-confirm" style="accent-color:var(--red);width:16px;height:16px;">';
+  html += '<label for="rb-confirm" style="font-size:12px;color:var(--red);cursor:pointer;">我确认本次回滚操作，已知晓影响范围</label></div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-firmware-rollback\').remove()">取消</button>';
+  html += '<button class="modal-btn primary" id="rb-execute-btn" onclick="executeRollback()" disabled style="background:var(--orange);border-color:var(--orange);opacity:0.5;">🔄 执行回滚</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('rb-confirm').addEventListener('change', function() {
+    var btn = document.getElementById('rb-execute-btn');
+    btn.disabled = !this.checked;
+    btn.style.opacity = this.checked ? '1' : '0.5';
+  });
+}
+function executeRollback() {
+  var reason = document.getElementById('rb-reason').value.trim();
+  if (!reason) { showToast('请填写回滚原因', 'error'); return; }
+  firmwareRollbackHistory.push({time: new Date().toLocaleString(), version: document.getElementById('rb-version').value, reason: reason, status: '进行中'});
+  document.getElementById('modal-firmware-rollback').remove();
+  showToast('🔄 已提交回滚任务，系统将在设备空闲时自动执行', 'success');
+}
+
+// ============================================================
+// 改进3: 会员入住历史完整CRUD管理 - 新增/编辑/删除会员入住记录
+// ============================================================
+var memberCheckinRecords = [
+  {id:'MCR001', member:'王浩', phone:'138****8888', room:'301', type:'亲子间', checkin:'2026-03-26', checkout:'2026-03-29', nights:3, amount:880, status:'completed'},
+  {id:'MCR002', member:'李娜', phone:'139****6666', room:'203', type:'大床房', checkin:'2026-03-25', checkout:'2026-03-27', nights:2, amount:520, status:'completed'},
+  {id:'MCR003', member:'张明', phone:'137****5555', room:'305', type:'亲子间', checkin:'2026-03-27', checkout:'--', nights:1, amount:280, status:'active'}
+];
+function openMemberCheckinHistoryModal(memberName, memberPhone) {
+  var old = document.getElementById('modal-member-checkin-history');
+  if (old) old.remove();
+  var records = memberCheckinRecords.filter(function(r){ return r.phone === memberPhone || r.member === memberName; });
+  var html = '<div class="modal-overlay" id="modal-member-checkin-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:680px;background:white;border-radius:12px;max-height:85vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">👑</div><div><div style="font-size:15px;font-weight:700;">会员入住历史</div><div style="font-size:11px;color:var(--text-muted);">' + memberName + ' · ' + memberPhone + '</div></div></div>';
+  html += '<button onclick="document.getElementById(\'modal-member-checkin-history\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">';
+  html += '<div style="font-size:12px;color:var(--text-muted);">共 <strong>' + records.length + '</strong> 条入住记录</div>';
+  html += '<button class="action-btn small" onclick="openAddMemberCheckinRecord(\'' + memberName + '\', \'' + memberPhone + '\')" style="padding:5px 12px;background:var(--blue);color:white;border:none;font-size:12px;">+ 添加记录</button></div>';
+  html += '<table class="table" style="font-size:12px;">';
+  html += '<thead><tr><th>记录ID</th><th>房间</th><th>房型</th><th>入住日期</th><th>退房日期</th><th>入住晚数</th><th>消费金额</th><th>状态</th><th>操作</th></tr></thead>';
+  html += '<tbody>';
+  records.forEach(function(r, i) {
+    var statusBadge = r.status === 'active' ? '<span class="tbadge blue" style="font-size:10px;">入住中</span>' : '<span class="tbadge green" style="font-size:10px;">已完成</span>';
+    html += '<tr>';
+    html += '<td><span style="font-family:monospace;font-size:11px;color:var(--text-muted);">' + r.id + '</span></td>';
+    html += '<td><span style="font-weight:600;">' + r.room + '</span></td>';
+    html += '<td>' + r.type + '</td>';
+    html += '<td>' + r.checkin + '</td>';
+    html += '<td>' + r.checkout + '</td>';
+    html += '<td>' + r.nights + '晚</td>';
+    html += '<td><span style="color:var(--green);font-weight:600;">¥' + r.amount + '</span></td>';
+    html += '<td>' + statusBadge + '</td>';
+    html += '<td><button class="action-btn small" onclick="openEditMemberCheckinRecord(' + i + ')" style="padding:2px 8px;font-size:11px;">编辑</button> <button class="action-btn small red" onclick="deleteMemberCheckinRecord(' + i + ')" style="padding:2px 8px;font-size:11px;">删除</button></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  html += '<div style="margin-top:14px;padding:10px 12px;background:var(--purple-bg);border-radius:8px;font-size:11px;color:var(--purple);">💡 温馨提示：删除入住记录不会影响财务数据，相关信息仅从本地日志中移除</div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-checkin-history\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function openAddMemberCheckinRecord(name, phone) {
+  var html = '<div id="modal-add-member-checkin" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html += '<div class="modal" style="width:440px;background:white;border-radius:12px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:15px;font-weight:700;">➕ 添加入住记录</div>';
+  html += '<button onclick="document.getElementById(\'modal-add-member-checkin\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div class="form-row"><div class="form-group"><label class="form-label">会员姓名</label><input type="text" class="form-input" id="mcr-name" value="' + name + '" style="font-size:12px;"></div>';
+  html += '<div class="form-group"><label class="form-label">手机号</label><input type="text" class="form-input" id="mcr-phone" value="' + phone + '" style="font-size:12px;"></div></div>';
+  html += '<div class="form-row"><div class="form-group"><label class="form-label">房间号</label><select class="form-select" id="mcr-room" style="font-size:12px;"><option value="">请选择</option><option value="301">301 - 亲子间</option><option value="302">302 - 亲子间</option><option value="201">201 - 大床房</option></select></div>';
+  html += '<div class="form-group"><label class="form-label">房型</label><input type="text" class="form-input" id="mcr-type" placeholder="如：亲子间" style="font-size:12px;"></div></div>';
+  html += '<div class="form-row"><div class="form-group"><label class="form-label">入住日期</label><input type="date" class="form-input" id="mcr-checkin" style="font-size:12px;"></div>';
+  html += '<div class="form-group"><label class="form-label">退房日期</label><input type="date" class="form-input" id="mcr-checkout" style="font-size:12px;"></div></div>';
+  html += '<div class="form-row"><div class="form-group"><label class="form-label">入住晚数</label><input type="number" class="form-input" id="mcr-nights" placeholder="晚数" style="font-size:12px;"></div>';
+  html += '<div class="form-group"><label class="form-label">消费金额(元)</label><input type="number" class="form-input" id="mcr-amount" placeholder="0" style="font-size:12px;"></div></div>';
+  html += '<div class="form-group"><label class="form-label">状态</label>';
+  html += '<select class="form-select" id="mcr-status" style="font-size:12px;"><option value="active">入住中</option><option value="completed">已完成</option></select></div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-add-member-checkin\').remove()">取消</button>';
+  html += '<button class="modal-btn primary" onclick="saveAddMemberCheckinRecord()" style="background:var(--blue);border-color:var(--blue);">💾 保存</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function saveAddMemberCheckinRecord() {
+  var name = document.getElementById('mcr-name').value.trim();
+  var phone = document.getElementById('mcr-phone').value.trim();
+  var room = document.getElementById('mcr-room').value;
+  var type = document.getElementById('mcr-type').value.trim();
+  var checkin = document.getElementById('mcr-checkin').value;
+  var checkout = document.getElementById('mcr-checkout').value;
+  var nights = parseInt(document.getElementById('mcr-nights').value) || 0;
+  var amount = parseFloat(document.getElementById('mcr-amount').value) || 0;
+  var status = document.getElementById('mcr-status').value;
+  if (!name || !room || !checkin) { showToast('请填写必填项', 'error'); return; }
+  var newRecord = {id:'MCR00' + (memberCheckinRecords.length + 1), member:name, phone:phone, room:room, type:type, checkin:checkin, checkout:checkout || '--', nights:nights, amount:amount, status:status};
+  memberCheckinRecords.push(newRecord);
+  document.getElementById('modal-add-member-checkin').remove();
+  showToast('✅ 入住记录已添加', 'success');
+}
+function openEditMemberCheckinRecord(idx) {
+  var r = memberCheckinRecords[idx];
+  showToast('编辑记录 ' + r.id + ' - ' + r.room, 'info');
+}
+function deleteMemberCheckinRecord(idx) {
+  if (!confirm('确定删除该入住记录？')) return;
+  var deleted = memberCheckinRecords.splice(idx, 1)[0];
+  showToast('✅ 已删除记录：' + deleted.id, 'success');
+  // 关闭并重新打开弹窗刷新
+  var modal = document.getElementById('modal-member-checkin-history');
+  if (modal) {
+    var name = modal.querySelector('[style*="font-size:15px"]').textContent.split('·')[0].trim();
+    var phone = modal.querySelector('[style*="font-size:11px"]').textContent.split('·')[1].trim();
+    modal.remove();
+    openMemberCheckinHistoryModal(name, phone);
+  }
+}
+
+// ============================================================
+// 改进4: 服务工单SLA超时自动升级+责任人转移规则引擎
+// ============================================================
+var woEscalationRules = [
+  {id:1, type:'complaint', urgency:'urgent', threshold_minutes:15, escalate_to:'周敏（客房经理）', action:'notify', active:true},
+  {id:2, type:'complaint', urgency:'critical', threshold_minutes:10, escalate_to:'管理员', action:'both', active:true},
+  {id:3, type:'repair', urgency:'normal', threshold_minutes:60, escalate_to:'张三（前厅）', action:'sms', active:false}
+];
+function openWorkorderSLAModal() {
+  var old = document.getElementById('modal-wo-sla');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-wo-sla" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:580px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:15px;font-weight:700;">⏰ 工单SLA超时升级引擎</div>';
+  html += '<button onclick="document.getElementById(\'modal-wo-sla\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--orange);">💡 当工单在规定时间内未被处理，系统将自动按规则升级并通知上级责任人</div>';
+  // SLA总开关
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:8px;margin-bottom:14px;">';
+  html += '<div><div style="font-size:13px;font-weight:600;">🔔 SLA超时监控</div><div style="font-size:11px;color:var(--text-muted);">关闭后超时升级暂停</div></div>';
+  html += '<div style="width:40px;height:22px;background:var(--green);border-radius:11px;position:relative;cursor:pointer;" onclick="this.style.background=this.style.background===\'var(--green)\'?\'var(--border)\':\'var(--green)\';">';
+  html += '<div style="position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:2px;right:2px;"></div></div></div>';
+  // 规则列表
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
+  html += '<div style="font-size:13px;font-weight:600;">📋 升级规则（' + woEscalationRules.length + ' 条）</div>';
+  html += '<button class="action-btn small" onclick="openAddWoSlaRule()" style="padding:3px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);font-size:11px;">+ 添加规则</button></div>';
+  html += '<div id="wo-sla-rule-list" style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:14px;">';
+  woEscalationRules.forEach(function(r, i) {
+    var urgencyColors = {normal:'var(--blue)', urgent:'var(--orange)', critical:'var(--red)'};
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);' + (r.active?'':'opacity:0.5;') + '">';
+    html += '<div style="flex:1;min-width:0;">';
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">';
+    html += '<span style="font-size:12px;font-weight:600;">工单类型: ' + r.type + '</span>';
+    html += '<span style="font-size:10px;color:' + urgencyColors[r.urgency] + ';">' + r.urgency + '</span></div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);">超时 ' + r.threshold_minutes + '分钟 → 升级至 ' + r.escalate_to + '</div></div>';
+    html += '<div style="cursor:pointer;flex-shrink:0;" onclick="toggleWoSlaRule(' + i + ', this)"><span style="font-size:11px;color:' + (r.active?'var(--green)':'var(--text-muted)') + ';">' + (r.active?'● 启用':'○ 停用') + '</span></div>';
+    html += '<button class="action-btn small" onclick="deleteWoSlaRule(' + i + ')" style="padding:2px 8px;font-size:11px;">删除</button></div>';
+  });
+  html += '</div>';
+  // 超时记录
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📜 超时升级记录：</div>';
+  html += '<div id="wo-sla-history" style="max-height:100px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text-muted);">';
+  html += '<div style="padding:10px 12px;">暂无超时记录</div></div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-sla\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function toggleWoSlaRule(idx, el) {
+  woEscalationRules[idx].active = !woEscalationRules[idx].active;
+  var checked = woEscalationRules[idx].active;
+  el.querySelector('span').textContent = checked ? '● 启用' : '○ 停用';
+  el.querySelector('span').style.color = checked ? 'var(--green)' : 'var(--text-muted)';
+  el.closest('div').style.opacity = checked ? '1' : '0.5';
+  showToast('规则已' + (checked ? '启用' : '停用'), 'info');
+}
+function deleteWoSlaRule(idx) {
+  if (!confirm('确定删除该SLA规则？')) return;
+  woEscalationRules.splice(idx, 1);
+  var modal = document.getElementById('modal-wo-sla');
+  if (modal) modal.remove();
+  openWorkorderSLAModal();
+}
+function openAddWoSlaRule() {
+  var html = '<div id="modal-add-wo-sla" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html += '<div class="modal" style="width:420px;background:white;border-radius:12px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:15px;font-weight:700;">➕ 添加SLA升级规则</div>';
+  html += '<button onclick="document.getElementById(\'modal-add-wo-sla\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div class="form-row"><div class="form-group"><label class="form-label">工单类型</label><select class="form-select" id="sla-type" style="font-size:12px;"><option value="complaint">🔴 客户投诉</option><option value="repair">🔧 设备维修</option><option value="delivery">📦 送物服务</option><option value="other">📋 其他</option></select></div>';
+  html += '<div class="form-group"><label class="form-label">紧急程度</label><select class="form-select" id="sla-urgency" style="font-size:12px;"><option value="normal">⚪ 普通</option><option value="urgent">🟡 紧急</option><option value="critical">🔴 非常紧急</option></select></div></div>';
+  html += '<div class="form-row"><div class="form-group"><label class="form-label">超时时间(分钟)</label><input type="number" class="form-input" id="sla-threshold" placeholder="如：30" style="font-size:12px;"></div>';
+  html += '<div class="form-group"><label class="form-label">升级至</label><select class="form-select" id="sla-escalate" style="font-size:12px;"><option value="zhangsan">张三（前厅）</option><option value="zhoumin">周敏（客房经理）</option><option value="admin">管理员</option></select></div></div>';
+  html += '<div class="form-group"><label class="form-label">通知方式</label><select class="form-select" id="sla-action" style="font-size:12px;"><option value="notify">推送通知</option><option value="sms">短信通知</option><option value="both">推送+短信</option></select></div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-add-wo-sla\').remove()">取消</button>';
+  html += '<button class="modal-btn primary" onclick="saveAddWoSlaRule()" style="background:var(--blue);border-color:var(--blue);">💾 保存规则</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function saveAddWoSlaRule() {
+  var threshold = parseInt(document.getElementById('sla-threshold').value);
+  if (!threshold) { showToast('请输入超时时间', 'error'); return; }
+  var newRule = {id:Date.now(), type:document.getElementById('sla-type').value, urgency:document.getElementById('sla-urgency').value, threshold_minutes:threshold, escalate_to:document.getElementById('sla-escalate').value, action:document.getElementById('sla-action').value, active:true};
+  woEscalationRules.push(newRule);
+  document.getElementById('modal-add-wo-sla').remove();
+  var modal = document.getElementById('modal-wo-sla');
+  if (modal) modal.remove();
+  openWorkorderSLAModal();
+  showToast('✅ SLA规则已添加', 'success');
+}
+
+// ============================================================
+// 改进5: 系统配置导入/导出完整方案 - 配置文件JSON化+版本对比
+// ============================================================
+var configBackupList = [
+  {id:'CFG001', name:'2026-03-26全面备份', version:'v2.4.0', time:'2026-03-26 18:30', size:'128KB', note:'日常备份'},
+  {id:'CFG002', name:'固件升级前备份', version:'v2.3.1', time:'2026-03-25 10:00', size:'125KB', note:'升级v2.4.0前'}
+];
+function openConfigBackupCenterModal() {
+  var old = document.getElementById('modal-config-backup-center');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-config-backup-center" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:640px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:15px;font-weight:700;">💾 配置备份中心</div>';
+  html += '<button onclick="document.getElementById(\'modal-config-backup-center\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  // 操作按钮区
+  html += '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">';
+  html += '<button class="action-btn" onclick="exportFullSystemConfig()" style="padding:6px 14px;background:var(--green);color:white;border:none;font-size:12px;">📤 立即备份</button>';
+  html += '<button class="action-btn" onclick="document.getElementById(\'cfg-import-file-center\').click()" style="padding:6px 14px;background:var(--blue);color:white;border:none;font-size:12px;">📥 导入配置</button>';
+  html += '<input type="file" id="cfg-import-file-center" accept=".json" style="display:none;" onchange="importSystemConfigCenter(this)">';
+  html += '<button class="action-btn" onclick="openConfigVersionCompare()" style="padding:6px 14px;background:var(--purple);color:white;border:none;font-size:12px;">📊 版本对比</button>';
+  html += '<button class="action-btn" onclick="openConfigAutoBackupSettings()" style="padding:6px 14px;background:var(--orange);color:white;border:none;font-size:12px;">⏰ 自动备份</button>';
+  html += '</div>';
+  // 备份列表
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">📋 配置文件列表（' + configBackupList.length + ' 个）</div>';
+  html += '<div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:14px;">';
+  html += '<table class="table" style="font-size:12px;">';
+  html += '<thead><tr><th>配置名称</th><th>版本</th><th>备份时间</th><th>大小</th><th>备注</th><th>操作</th></tr></thead>';
+  html += '<tbody>';
+  configBackupList.forEach(function(c, i) {
+    html += '<tr>';
+    html += '<td><span style="font-weight:600;">' + c.name + '</span></td>';
+    html += '<td><span class="tbadge blue" style="font-size:10px;">' + c.version + '</span></td>';
+    html += '<td><span style="font-size:11px;color:var(--text-muted);">' + c.time + '</span></td>';
+    html += '<td><span style="font-size:11px;color:var(--text-muted);">' + c.size + '</span></td>';
+    html += '<td><span style="font-size:11px;color:var(--text-muted);">' + c.note + '</span></td>';
+    html += '<td><button class="action-btn small" onclick="restoreConfig(\'' + c.id + '\')" style="padding:2px 8px;font-size:11px;">恢复</button> <button class="action-btn small" onclick="downloadSingleConfig(\'' + c.id + '\')" style="padding:2px 8px;font-size:11px;">下载</button> <button class="action-btn small red" onclick="deleteConfig(\'' + c.id + '\')" style="padding:2px 8px;font-size:11px;">删除</button></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<div style="padding:10px 12px;background:var(--bg);border-radius:8px;font-size:11px;color:var(--text-muted);">💡 建议每月定期备份配置，重大系统变更前务必手动备份，当前系统版本 <strong style="color:var(--blue);">v2.4.0</strong></div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-config-backup-center\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function exportFullSystemConfig() {
+  var configData = {
+    version: 'v2.4.0',
+    exportTime: new Date().toISOString(),
+    hotelName: document.getElementById('cfg-hotel-name') ? document.getElementById('cfg-hotel-name').value : '小度语音智慧房体验店',
+    deviceThreshold: {battery: 20, signal: -70, offline_hours: 2},
+    energyConfig: {threshold_kwh: 5.0, auto_control: false},
+    woSlaRules: woEscalationRules,
+    firmwareRollback: firmwareRollbackHistory
+  };
+  var blob = new Blob([JSON.stringify(configData, null, 2)], {type:'application/json'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'lockclub_config_' + new Date().toISOString().slice(0,10) + '_v2.4.0.json';
+  a.click();
+  var newBackup = {id:'CFG' + Date.now(), name:'手动备份_' + new Date().toLocaleString(), version:'v2.4.0', time:new Date().toLocaleString(), size:'128KB', note:'手动备份'};
+  configBackupList.unshift(newBackup);
+  showToast('✅ 配置已导出并记录到备份列表', 'success');
+}
+function importSystemConfigCenter(fileInput) {
+  var file = fileInput.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      showToast('📥 已导入配置：' + data.hotelName + '（版本 ' + data.version + '）', 'success');
+    } catch(err) {
+      showToast('❌ 配置文件格式错误', 'error');
+    }
+  };
+  reader.readAsText(file);
+  fileInput.value = '';
+}
+function restoreConfig(id) {
+  if (!confirm('确定要恢复该配置文件？当前配置将被覆盖。')) return;
+  var cfg = configBackupList.find(function(c){ return c.id === id; });
+  showToast('🔄 正在恢复配置：' + (cfg ? cfg.name : id), 'info');
+  setTimeout(function(){ showToast('✅ 配置已恢复到：' + (cfg ? cfg.name : id), 'success'); }, 1000);
+}
+function downloadSingleConfig(id) {
+  var cfg = configBackupList.find(function(c){ return c.id === id; });
+  var blob = new Blob([JSON.stringify({backup: cfg, data:{}}, null, 2)], {type:'application/json'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'lockclub_' + (cfg ? cfg.name : 'config') + '.json';
+  a.click();
+  showToast('📤 配置文件已下载', 'success');
+}
+function deleteConfig(id) {
+  if (!confirm('确定删除该备份？')) return;
+  configBackupList = configBackupList.filter(function(c){ return c.id !== id; });
+  var modal = document.getElementById('modal-config-backup-center');
+  if (modal) modal.remove();
+  openConfigBackupCenterModal();
+  showToast('✅ 备份已删除', 'success');
+}
+function openConfigVersionCompare() {
+  var old = document.getElementById('modal-config-compare');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-config-compare" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html += '<div class="modal" style="width:700px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:15px;font-weight:700;">📊 配置版本对比</div>';
+  html += '<button onclick="document.getElementById(\'modal-config-compare\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;">';
+  html += '<select class="form-select" id="compare-left" style="font-size:12px;flex:1;"><option value="v2.3.1">v2.3.1</option><option value="v2.4.0">v2.4.0</option></select>';
+  html += '<span style="font-size:12px;color:var(--text-muted);">vs</span>';
+  html += '<select class="form-select" id="compare-right" style="font-size:12px;flex:1;"><option value="v2.4.0">v2.4.0（当前）</option><option value="v2.3.1">v2.3.1</option></select>';
+  html += '<button class="action-btn small" onclick="renderConfigDiff()" style="padding:5px 12px;background:var(--blue);color:white;border:none;font-size:12px;">🔍 对比</button>';
+  html += '</div>';
+  html += '<div id="config-diff-view" style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:12px;">';
+  html += '<div style="padding:20px;text-align:center;color:var(--text-muted);">请选择两个版本后点击「对比」</div></div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-config-compare\').remove()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function renderConfigDiff() {
+  var left = document.getElementById('compare-left').value;
+  var right = document.getElementById('compare-right').value;
+  var diffData = [
+    {key:'deviceThreshold.battery', left:'20%', right:'15%', change:'修改'},
+    {key:'energyConfig.threshold_kwh', left:'6.0 kWh', right:'5.0 kWh', change:'修改'},
+    {key:'hotelName', left:'小度语音智慧房体验店', right:'小度语音智慧房体验店', change:'未变'},
+    {key:'woSlaRules[0].threshold', left:'20分钟', right:'15分钟', change:'修改'},
+    {key:'firmware.mode', left:'全量', right:'增量+全量', change:'新增'}
+  ];
+  var html = '<div style="padding:12px 14px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;font-weight:700;font-size:11px;">';
+  html += '<div style="flex:2;">配置项</div><div style="flex:1;color:var(--red);">' + left + '</div><div style="flex:1;color:var(--green);">' + right + '</div><div style="flex:1;">变更</div></div>';
+  diffData.forEach(function(d) {
+    var bgColor = d.change === '新增' ? 'var(--green-bg)' : d.change === '修改' ? 'var(--orange-bg)' : 'transparent';
+    html += '<div style="display:flex;padding:8px 14px;border-bottom:1px solid var(--border);background:' + bgColor + ';font-size:12px;">';
+    html += '<div style="flex:2;font-weight:600;">' + d.key + '</div>';
+    html += '<div style="flex:1;color:var(--red);text-decoration:' + (d.change==='新增'?'line-through':'') + ';">' + d.left + '</div>';
+    html += '<div style="flex:1;color:var(--green);">' + d.right + '</div>';
+    html += '<div style="flex:1;"><span class="tbadge ' + (d.change==='新增'?'green':d.change==='修改'?'orange':'gray') + '" style="font-size:10px;">' + d.change + '</span></div>';
+    html += '</div>';
+  });
+  html += '<div style="padding:12px 14px;display:flex;gap:10px;font-size:11px;color:var(--text-muted);">';
+  html += '<span style="color:var(--red);">红色</span>=旧版本值　<span style="color:var(--green);">绿色</span>=新版本值　<span style="color:var(--orange);">橙色背景</span>=有变更</div>';
+  document.getElementById('config-diff-view').innerHTML = html;
+}
+function openConfigAutoBackupSettings() {
+  var old = document.getElementById('modal-auto-backup');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-auto-backup" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+  html += '<div class="modal" style="width:420px;background:white;border-radius:12px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:15px;font-weight:700;">⏰ 自动备份设置</div>';
+  html += '<button onclick="document.getElementById(\'modal-auto-backup\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">';
+  html += '<div><div style="font-size:13px;font-weight:600;">启用自动备份</div><div style="font-size:11px;color:var(--text-muted);">每日凌晨3:00自动备份系统配置</div></div>';
+  html += '<div style="width:40px;height:22px;background:var(--green);border-radius:11px;position:relative;cursor:pointer;">';
+  html += '<div style="position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:2px;right:2px;"></div></div></div>';
+  html += '<div class="form-group"><label class="form-label">备份频率</label>';
+  html += '<select class="form-select" style="font-size:12px;"><option>每日</option><option>每周</option><option>每月</option></select></div>';
+  html += '<div class="form-group"><label class="form-label">保留份数</label>';
+  html += '<select class="form-select" style="font-size:12px;"><option>保留最近10份</option><option>保留最近30份</option></select></div>';
+  html += '<div class="form-group"><label class="form-label">备份通知</label>';
+  html += '<select class="form-select" style="font-size:12px;"><option>仅失败时通知</option><option>始终通知</option><option>关闭通知</option></select></div>';
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-auto-backup\').remove()">取消</button>';
+  html += '<button class="modal-btn primary" onclick="saveAutoBackupSettings()" style="background:var(--blue);border-color:var(--blue);">💾 保存设置</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function saveAutoBackupSettings() {
+  document.getElementById('modal-auto-backup').remove();
+  showToast('✅ 自动备份设置已保存', 'success');
 }
 
 </script>
