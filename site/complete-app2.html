@@ -541,11 +541,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       <div class="menu-item" onclick="showPage('keypad')"><span class="icon">🔑</span><span>密码管理</span></div>
       <div class="menu-item" onclick="showPage('oplog')"><span class="icon">📝</span><span>操作日志</span></div>
       <div class="menu-item" onclick="showPage('report')"><span class="icon">📊</span><span>数据报表</span></div>
-    <div class="menu-item" onclick="openNightAuditFullPage()" style="color:var(--orange);"><span class="icon">🌙</span><span>夜审报表</span></div>
-    <div class="menu-item" onclick="openStaffSchedulePage()" style="color:var(--purple);"><span class="icon">📅</span><span>排班管理</span></div>
+    <div class="menu-item" onclick="openNightAuditFullModal()" style="color:var(--orange);"><span class="icon">🌙</span><span>夜审报表</span></div>
+    <div class="menu-item" onclick="openDepositManagementModal()" style="color:var(--orange);"><span class="icon">💰</span><span>押金管理</span></div>
+    <div class="menu-item" onclick="openInvoiceManagementModal()" style="color:var(--blue);"><span class="icon">📄</span><span>发票管理</span></div>
+    <div class="menu-item" onclick="openStaffScheduleModal()" style="color:var(--purple);"><span class="icon">📅</span><span>排班管理</span></div>
+    <div class="menu-item" onclick="openSatisfactionCenterModal()" style="color:var(--green);"><span class="icon">⭐</span><span>服务评价</span></div>
     <div class="menu-item" onclick="openEnergyDetailPage()" style="color:var(--blue);"><span class="icon">⚡</span><span>能耗分析</span></div>
     <div class="menu-item" onclick="openPointsMallPage()" style="color:var(--orange);"><span class="icon">🎁</span><span>积分商城</span></div>
-    <div class="menu-item" onclick="openWorkorderRatingPage()" style="color:var(--green);"><span class="icon">⭐</span><span>服务评价</span></div>
     </div>
     <!-- 【改进4】通知面板（点击铃铛展开，可标记已读/全部清除） -->
     <div id="notif-panel" style="display:none;position:fixed;top:0;right:0;width:340px;height:100vh;background:white;border-left:1px solid var(--border);z-index:200;box-shadow:-4px 0 20px rgba(0,0,0,0.1);overflow-y:auto;">
@@ -636,7 +638,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <span>一键检测</span>
         </button>
         <!-- 【改进4】夜审报表按钮 -->
-        <button class="quick-btn" onclick="openNightAuditModal()" style="flex:1;padding:16px;background:linear-gradient(135deg,#fa8c16,#d46b08);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(250,140,22,0.3);transition:all 0.2s;">
+        <button class="quick-btn" onclick="openNightAuditFullModal()" style="flex:1;padding:16px;background:linear-gradient(135deg,#fa8c16,#d46b08);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(250,140,22,0.3);transition:all 0.2s;">
           <span style="font-size:20px;">🌙</span>
           <span>夜审报表</span>
         </button>
@@ -43439,6 +43441,702 @@ function addNewFeatureMenuEntries(){
 }
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',addNewFeatureMenuEntries);}
 else{setTimeout(addNewFeatureMenuEntries,500);}
+
+// ============================================================
+// 改进A：夜审报表完整版 - 5步流程闭环（房态核查→营收汇总→设备状态→工单移交→签字确认）
+// ============================================================
+var nightAuditData = {
+  date: new Date().toISOString().slice(0,10),
+  rooms: {total:16, occupied:12, vacant:3, maintenance:1},
+  revenue: {room:3860, service:420, other:180, total:4460},
+  deposits: {collected:2400, refunded:800, pending:1600},
+  devices: {online:14, offline:1, lowBattery:2},
+  workorders: {pending:3, completed:8, overtime:1},
+  staff: {present:8, absent:1}
+};
+
+function openNightAuditFullModal() {
+  var old = document.getElementById('modal-night-audit');
+  if (old) old.remove();
+  var d = nightAuditData;
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g,'-');
+  var html = '<div class="modal-overlay" id="modal-night-audit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:680px;max-height:90vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">';
+  html += '<div style="font-size:24px;">🌙</div>';
+  html += '<div style="flex:1;"><div style="font-size:16px;font-weight:700;">夜审报表 - ' + dateStr + '</div><div style="font-size:11px;color:var(--text-muted);">执行夜间审计，检查所有运营数据</div></div>';
+  html += '<div style="padding:4px 12px;background:var(--orange-bg);color:var(--orange);border-radius:10px;font-size:12px;font-weight:600;">步骤 1/5</div>';
+  html += '<button onclick="closeNightAuditModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+
+  // Step indicators
+  html += '<div style="padding:16px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;">';
+  var steps = ['房态核查','营收汇总','设备状态','工单移交','确认提交'];
+  steps.forEach(function(s,i){
+    var active = i === 0 ? 'background:var(--blue);color:white;border-color:var(--blue);' : 'background:var(--bg);color:var(--text-muted);border-color:var(--border);';
+    html += '<div style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid;font-size:11px;font-weight:600;text-align:center;' + active + '">' + (i+1) + '. ' + s + '</div>';
+  });
+  html += '</div>';
+
+  // Step 1: Room status
+  html += '<div id="na-step-1" style="padding:20px 24px;">';
+  html += '<div style="font-size:14px;font-weight:700;margin-bottom:12px;">🏠 第一步：房态核查</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">';
+  var roomStats = [
+    {label:'房间总数',val:d.rooms.total,icon:'🏨',bg:'var(--blue-bg)',color:'var(--blue)'},
+    {label:'当前入住',val:d.rooms.occupied,icon:'🔵',bg:'var(--blue-bg)',color:'var(--blue)'},
+    {label:'空房数量',val:d.rooms.vacant,icon:'🟢',bg:'var(--green-bg)',color:'var(--green)'},
+    {label:'维修房',val:d.rooms.maintenance,icon:'🔶',bg:'var(--orange-bg)',color:'var(--orange)'}
+  ];
+  roomStats.forEach(function(r){
+    html += '<div style="padding:12px;border-radius:8px;background:' + r.bg + ';text-align:center;">';
+    html += '<div style="font-size:20px;margin-bottom:4px;">' + r.icon + '</div>';
+    html += '<div style="font-size:22px;font-weight:700;color:' + r.color + ';">' + r.val + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);">' + r.label + '</div></div>';
+  });
+  html += '</div>';
+  html += '<div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);margin-bottom:14px;">📋 核查清单：入住率 ' + Math.round(d.rooms.occupied/d.rooms.total*100) + '% · 空房率 ' + Math.round(d.rooms.vacant/d.rooms.total*100) + '% · 维修房占比 ' + Math.round(d.rooms.maintenance/d.rooms.total*100) + '%</div>';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">🔍 需要关注房间：</div>';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+  html += '<div style="padding:6px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:6px;font-size:12px;">🔶 303 维修中（门锁故障）</div>';
+  html += '<div style="padding:6px 12px;background:var(--red-bg);border:1px solid var(--red);border-radius:6px;font-size:12px;">🔴 305 入住异常（长住客人）</div>';
+  html += '</div>';
+  html += '</div>';
+
+  // Step 2: Revenue
+  html += '<div id="na-step-2" style="padding:20px 24px;display:none;">';
+  html += '<div style="font-size:14px;font-weight:700;margin-bottom:12px;">💰 第二步：营收汇总</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">';
+  var revStats = [
+    {label:'房费收入',val:'¥'+d.revenue.room,icon:'🏨',bg:'var(--blue-bg)',color:'var(--blue)'},
+    {label:'服务收入',val:'¥'+d.revenue.service,icon:'🛠️',bg:'var(--green-bg)',color:'var(--green)'},
+    {label:'其他收入',val:'¥'+d.revenue.other,icon:'📦',bg:'var(--orange-bg)',color:'var(--orange)'},
+    {label:'当日总收',val:'¥'+d.revenue.total,icon:'💵',bg:'var(--purple-bg)',color:'var(--purple)'}
+  ];
+  revStats.forEach(function(r){
+    html += '<div style="padding:12px;border-radius:8px;background:' + r.bg + ';text-align:center;">';
+    html += '<div style="font-size:20px;margin-bottom:4px;">' + r.icon + '</div>';
+    html += '<div style="font-size:18px;font-weight:700;color:' + r.color + ';">' + r.val + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);">' + r.label + '</div></div>';
+  });
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">';
+  html += '<div style="padding:10px 14px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;">';
+  html += '<div style="font-size:11px;color:var(--text-muted);">押金收取</div>';
+  html += '<div style="font-size:18px;font-weight:700;color:var(--green);">¥' + d.deposits.collected + '</div></div>';
+  html += '<div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;">';
+  html += '<div style="font-size:11px;color:var(--text-muted);">押金待退</div>';
+  html += '<div style="font-size:18px;font-weight:700;color:var(--orange);">¥' + d.deposits.pending + '</div></div>';
+  html += '</div>';
+  html += '<div style="padding:10px 14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;font-size:12px;color:var(--red);">⚠️ 有 ' + d.deposits.refunded + ' 元押金退款需明日处理</div>';
+  html += '</div>';
+
+  // Step 3: Device status
+  html += '<div id="na-step-3" style="padding:20px 24px;display:none;">';
+  html += '<div style="font-size:14px;font-weight:700;margin-bottom:12px;">📱 第三步：设备状态</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">';
+  var devStats = [
+    {label:'在线设备',val:d.devices.online,icon:'🟢',bg:'var(--green-bg)',color:'var(--green)'},
+    {label:'离线设备',val:d.devices.offline,icon:'🔴',bg:'var(--red-bg)',color:'var(--red)'},
+    {label:'低电量',val:d.devices.lowBattery,icon:'🟡',bg:'var(--orange-bg)',color:'var(--orange)'}
+  ];
+  devStats.forEach(function(r){
+    html += '<div style="padding:12px;border-radius:8px;background:' + r.bg + ';text-align:center;">';
+    html += '<div style="font-size:20px;margin-bottom:4px;">' + r.icon + '</div>';
+    html += '<div style="font-size:22px;font-weight:700;color:' + r.color + ';">' + r.val + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);">' + r.label + '</div></div>';
+  });
+  html += '</div>';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">⚠️ 需要处理的设备问题：</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+  html += '<div style="padding:8px 12px;background:var(--red-bg);border-radius:6px;font-size:12px;display:flex;align-items:center;gap:8px;">';
+  html += '<span>🔴</span><span style="flex:1;">303房间门锁离线（已超10小时）</span><span style="color:var(--red);font-size:11px;">严重</span></div>';
+  html += '<div style="padding:8px 12px;background:var(--orange-bg);border-radius:6px;font-size:12px;display:flex;align-items:center;gap:8px;">';
+  html += '<span>🟡</span><span style="flex:1;">306房间电量15%（低于20%）</span><span style="color:var(--orange);font-size:11px;">关注</span></div>';
+  html += '</div>';
+  html += '</div>';
+
+  // Step 4: Workorder handover
+  html += '<div id="na-step-4" style="padding:20px 24px;display:none;">';
+  html += '<div style="font-size:14px;font-weight:700;margin-bottom:12px;">📋 第四步：工单移交</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">';
+  html += '<div style="padding:12px;border-radius:8px;background:var(--red-bg);text-align:center;">';
+  html += '<div style="font-size:20px;">📌</div><div style="font-size:22px;font-weight:700;color:var(--red);">' + d.workorders.pending + '</div><div style="font-size:11px;color:var(--text-muted);">待处理工单</div></div>';
+  html += '<div style="padding:12px;border-radius:8px;background:var(--green-bg);text-align:center;">';
+  html += '<div style="font-size:20px;">✅</div><div style="font-size:22px;font-weight:700;color:var(--green);">' + d.workorders.completed + '</div><div style="font-size:11px;color:var(--text-muted);">已完成工单</div></div>';
+  html += '<div style="padding:12px;border-radius:8px;background:var(--orange-bg);text-align:center;">';
+  html += '<div style="font-size:20px;">⏰</div><div style="font-size:22px;font-weight:700;color:var(--orange);">' + d.workorders.overtime + '</div><div style="font-size:11px;color:var(--text-muted);">超时工单</div></div>';
+  html += '</div>';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📌 待移交工单列表：</div>';
+  html += '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;">';
+  html += '<table class="table" style="font-size:12px;"><thead><tr><th>工单号</th><th>类型</th><th>房间</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+  html += '<tr><td>WO-2026032701</td><td>🔴 投诉</td><td>301</td><td><span class="tbadge red">待接受</span></td><td><button class="action-btn small">移交</button></td></tr>';
+  html += '<tr><td>WO-2026032705</td><td>📄 发票</td><td>304</td><td><span class="tbadge orange">处理中</span></td><td><button class="action-btn small">移交</button></td></tr>';
+  html += '<tr><td>WO-2026032706</td><td>📦 送物</td><td>205</td><td><span class="tbadge orange">超时</span></td><td><button class="action-btn small">移交</button></td></tr>';
+  html += '</tbody></table></div>';
+  html += '<div class="form-group"><label class="form-label">交班备注</label><textarea class="form-textarea" id="na-shift-note" placeholder="记录需要接班人跟进的事项..." style="min-height:60px;font-size:12px;"></textarea></div>';
+  html += '</div>';
+
+  // Step 5: Confirm & Sign
+  html += '<div id="na-step-5" style="padding:20px 24px;display:none;">';
+  html += '<div style="font-size:14px;font-weight:700;margin-bottom:12px;">✍️ 第五步：确认提交</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;">';
+  var summaryItems = [
+    {label:'房态核查',icon:'🏠',val:'✓'},
+    {label:'营收汇总',icon:'💰',val:'✓'},
+    {label:'设备状态',icon:'📱',val:'⚠️'},
+    {label:'工单移交',icon:'📋',val:'3项'},
+    {label:'员工出勤',icon:'👥',val:'8人'}
+  ];
+  summaryItems.forEach(function(s){
+    html += '<div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px;">';
+    html += '<div style="font-size:18px;margin-bottom:4px;">' + s.icon + '</div>';
+    html += '<div style="font-size:12px;font-weight:600;">' + s.val + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);">' + s.label + '</div></div>';
+  });
+  html += '</div>';
+  html += '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--blue);">';
+  html += '📊 当日总结：总营收 ¥' + d.revenue.total + ' · 入住率 ' + Math.round(d.rooms.occupied/d.rooms.total*100) + '% · 在线设备 ' + d.devices.online + ' 台 · 考勤正常';
+  html += '</div>';
+  html += '<div style="margin-bottom:14px;">';
+  html += '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">✍️ 审计人签字</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+  html += '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">夜审人员</div>';
+  html += '<div id="na-signature-audit" style="height:50px;display:flex;align-items:center;justify-content:center;font-family:brush scriptmt,cursive;font-size:22px;color:var(--blue);border-bottom:1px dashed var(--border);margin-bottom:6px;">（签字）</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);">赵飞 · ' + dateStr + ' ' + now.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}) + '</div></div>';
+  html += '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">值班经理确认</div>';
+  html += '<div id="na-signature-mgr" style="height:50px;display:flex;align-items:center;justify-content:center;font-family:brush scriptmt,cursive;font-size:22px;color:var(--purple);border-bottom:1px dashed var(--border);margin-bottom:6px;">（签字）</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);">周敏 · ' + dateStr + ' ' + now.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}) + '</div></div>';
+  html += '</div></div>';
+  html += '</div>';
+
+  // Navigation
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;">';
+  html += '<button id="na-btn-prev" onclick="naPrevStep()" class="modal-btn secondary" disabled style="opacity:0.4;cursor:not-allowed;">◀ 上一步</button>';
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<button onclick="closeNightAuditModal()" class="modal-btn secondary">取消</button>';
+  html += '<button id="na-btn-next" onclick="naNextStep()" class="modal-btn primary">下一步 ▶</button>';
+  html += '</div></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  window.naCurrentStep = 1;
+}
+
+function naNextStep() {
+  if (window.naCurrentStep >= 5) {
+    // Submit
+    var note = document.getElementById('na-shift-note') ? document.getElementById('na-shift-note').value : '';
+    document.getElementById('na-signature-audit').textContent = '赵飞';
+    document.getElementById('na-signature-mgr').textContent = '周敏';
+    document.getElementById('na-btn-next').textContent = '✓ 提交完成';
+    document.getElementById('na-btn-next').disabled = true;
+    document.getElementById('na-btn-next').style.opacity = '0.6';
+    addOpLog('system','赵飞','提交夜审报表，日期：'+nightAuditData.date,'');
+    showToast('🌙 夜审报表已提交，数据已归档！', 'success');
+    setTimeout(closeNightAuditModal, 1500);
+    return;
+  }
+  document.getElementById('na-step-' + window.naCurrentStep).style.display = 'none';
+  window.naCurrentStep++;
+  document.getElementById('na-step-' + window.naCurrentStep).style.display = 'block';
+  var steps = document.querySelectorAll('[id^="na-step-"]');
+  var stepIndicators = document.querySelectorAll('.modal > div:nth-child(3) > div');
+  var btn = document.getElementById('na-btn-next');
+  var prevBtn = document.getElementById('na-btn-prev');
+  prevBtn.disabled = false;
+  prevBtn.style.opacity = '1';
+  prevBtn.style.cursor = 'pointer';
+  if (window.naCurrentStep === 5) {
+    btn.textContent = '✓ 确认提交';
+  } else {
+    btn.textContent = '下一步 ▶';
+  }
+}
+
+function naPrevStep() {
+  if (window.naCurrentStep <= 1) return;
+  document.getElementById('na-step-' + window.naCurrentStep).style.display = 'none';
+  window.naCurrentStep--;
+  document.getElementById('na-step-' + window.naCurrentStep).style.display = 'block';
+  var prevBtn = document.getElementById('na-btn-prev');
+  if (window.naCurrentStep === 1) {
+    prevBtn.disabled = true;
+    prevBtn.style.opacity = '0.4';
+    prevBtn.style.cursor = 'not-allowed';
+  }
+  document.getElementById('na-btn-next').textContent = '下一步 ▶';
+}
+
+function closeNightAuditModal() { var m = document.getElementById('modal-night-audit'); if(m) m.remove(); }
+
+// ============================================================
+// 改进B：押金管理系统 - 收取→退款→冲账→报表完整闭环
+// ============================================================
+var depositDB = [
+  {id:'DP-001',guest:'张三',phone:'13812345678',room:'301',amount:200,status:'held',checkinDate:'2026-03-27',checkoutDate:'2026-03-29',refundAmount:0,operator:'赵飞'},
+  {id:'DP-002',guest:'李四',phone:'13956789012',room:'302',amount:200,status:'refunded',checkinDate:'2026-03-25',checkoutDate:'2026-03-27',refundAmount:200,refundDate:'2026-03-27',operator:'周敏'},
+  {id:'DP-003',guest:'王五',phone:'13798765432',room:'201',amount:300,status:'held',checkinDate:'2026-03-26',checkoutDate:'-',refundAmount:0,operator:'赵飞'},
+  {id:'DP-004',guest:'赵六',phone:'13600001111',room:'203',amount:200,status:'partial',checkinDate:'2026-03-24',checkoutDate:'2026-03-28',refundAmount:100,partialReason:'物品损坏扣款',operator:'周敏'}
+];
+
+function openDepositManagementModal() {
+  var old = document.getElementById('modal-deposit-mgmt');
+  if (old) old.remove();
+  var totalHeld = depositDB.filter(function(d){return d.status==='held';}).reduce(function(s,d){return s+d.amount;},0);
+  var totalRefunded = depositDB.filter(function(d){return d.status==='refunded' || d.status==='partial';}).reduce(function(s,d){return s+d.refundAmount;},0);
+  var pendingCount = depositDB.filter(function(d){return d.status==='held';}).length;
+  var html = '<div class="modal-overlay" id="modal-deposit-mgmt" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:780px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">';
+  html += '<div style="font-size:24px;">💰</div><div style="flex:1;"><div style="font-size:15px;font-weight:700;">押金管理系统</div><div style="font-size:11px;color:var(--text-muted);">押金收取、退款、冲账全流程管理</div></div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex-shrink:0;">';
+  html += '<div style="text-align:center;padding:6px 10px;background:var(--blue-bg);border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--blue);">¥' + totalHeld + '</div><div style="font-size:10px;color:var(--text-muted);">押金待退</div></div>';
+  html += '<div style="text-align:center;padding:6px 10px;background:var(--green-bg);border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--green);">¥' + totalRefunded + '</div><div style="font-size:10px;color:var(--text-muted);">已退款</div></div>';
+  html += '<div style="text-align:center;padding:6px 10px;background:var(--orange-bg);border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--orange);">' + pendingCount + '</div><div style="font-size:10px;color:var(--text-muted);">待退押金</div></div>';
+  html += '</div>';
+  html += '<button onclick="closeDepositMgmtModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);flex-shrink:0;">✕</button></div>';
+  html += '<div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0;background:var(--bg);">';
+  html += '<button class="action-btn small" onclick="openDepositCollectForm()" style="background:var(--blue);color:white;border:none;padding:5px 12px;font-size:12px;">+ 收取押金</button>';
+  html += '<button class="action-btn small" onclick="openDepositRefundForm()" style="padding:5px 12px;font-size:12px;">+ 退款处理</button>';
+  html += '<button class="action-btn small" onclick="openDepositReportForm()" style="padding:5px 12px;font-size:12px;">📊 押金报表</button>';
+  html += '<input type="text" placeholder="🔍 搜索客人/房间/手机号..." oninput="filterDepositList(this.value)" style="margin-left:auto;flex:1;max-width:220px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none;">';
+  html += '</div>';
+  html += '<div id="deposit-list" style="flex:1;overflow-y:auto;padding:12px 24px;">';
+  html += renderDepositTable(depositDB);
+  html += '</div>';
+  html += '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0;"><button class="modal-btn secondary" onclick="closeDepositMgmtModal()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function renderDepositTable(data) {
+  var statusMap = {held:{label:'待退',bg:'var(--blue-bg)',color:'var(--blue)'},refunded:{label:'已退',bg:'var(--green-bg)',color:'var(--green)'},partial:{label:'部分退',bg:'var(--orange-bg)',color:'var(--orange)'}};
+  var html = '<table class="table" style="font-size:12px;"><thead><tr><th>单号</th><th>客人</th><th>房间</th><th>押金金额</th><th>状态</th><th>入住日期</th><th>操作</th></tr></thead><tbody>';
+  data.forEach(function(d){
+    var st = statusMap[d.status] || statusMap.held;
+    html += '<tr>';
+    html += '<td style="font-family:monospace;font-size:11px;">' + d.id + '</td>';
+    html += '<td><div style="font-weight:600;">' + d.guest + '</div><div style="font-size:10px;color:var(--text-muted);">' + d.phone + '</div></td>';
+    html += '<td>' + d.room + '</td>';
+    html += '<td style="font-weight:700;color:var(--blue);">¥' + d.amount + '</td>';
+    html += '<td><span style="padding:2px 8px;background:' + st.bg + ';color:' + st.color + ';border-radius:10px;font-size:11px;font-weight:600;">' + st.label + '</span></td>';
+    html += '<td style="font-size:11px;">' + d.checkinDate + '</td>';
+    html += '<td><button class="action-btn small" onclick="openDepositDetail(\'' + d.id + '\')" style="padding:2px 8px;font-size:11px;">详情</button>';
+    if (d.status === 'held') {
+      html += ' <button class="action-btn small" onclick="openDepositRefundForm(\'' + d.id + '\')" style="padding:2px 8px;font-size:11px;background:var(--green);color:white;border:none;">退款</button>';
+    }
+    html += '</td></tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function filterDepositList(q) {
+  var filtered = depositDB.filter(function(d){
+    return d.guest.indexOf(q) !== -1 || d.room.indexOf(q) !== -1 || d.phone.indexOf(q) !== -1;
+  });
+  document.getElementById('deposit-list').innerHTML = renderDepositTable(filtered);
+}
+
+function openDepositDetail(id) {
+  var d = depositDB.find(function(x){return x.id===id;});
+  if (!d) return;
+  showToast('押金单 ' + id + '：' + d.guest + ' · 房间' + d.room + ' · ¥' + d.amount + ' · ' + (d.status==='held'?'待退':d.status==='refunded'?'已退':'部分退('+d.refundAmount+'元)'), 'info');
+}
+
+function openDepositCollectForm() {
+  var name = prompt('请输入客人姓名：');
+  if (!name) return;
+  var phone = prompt('请输入手机号：');
+  if (!phone) return;
+  var room = prompt('请输入房间号：');
+  if (!room) return;
+  var amount = prompt('请输入押金金额（默认200）：', '200');
+  if (!amount) return;
+  var newId = 'DP-' + String(Date.now()).slice(-6);
+  var newDeposit = {id:newId,guest:name,phone:phone,room:room,amount:parseInt(amount),status:'held',checkinDate:new Date().toISOString().slice(0,10),checkoutDate:'-',refundAmount:0,operator:'赵飞'};
+  depositDB.unshift(newDeposit);
+  addOpLog('deposit','赵飞','收取押金：'+name+' '+room+' ¥'+amount,'');
+  showToast('✅ 押金收取成功！单号：' + newId + '，金额 ¥' + amount, 'success');
+  openDepositManagementModal();
+}
+
+function openDepositRefundForm(id) {
+  if (id) {
+    var d = depositDB.find(function(x){return x.id===id;});
+    if (d && d.status === 'held') {
+      var confirmMsg = '确认退款给 ' + d.guest + '（房间' + d.room + '），押金 ¥' + d.amount + '？';
+      if (confirm(confirmMsg)) {
+        d.status = 'refunded';
+        d.refundDate = new Date().toISOString().slice(0,10);
+        addOpLog('deposit','赵飞','押金退款：'+d.guest+' ¥'+d.amount,'');
+        showToast('✅ 押金退款完成！¥' + d.amount + ' 已退还', 'success');
+        openDepositManagementModal();
+      }
+    }
+  } else {
+    showToast('请从列表中选择要退款的押金单', 'info');
+  }
+}
+
+function openDepositReportForm() {
+  var held = depositDB.filter(function(d){return d.status==='held';});
+  var totalHeld = held.reduce(function(s,d){return s+d.amount;},0);
+  var html = '<div class="modal-overlay" id="modal-deposit-report" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;padding:20px;">';
+  html += '<div class="modal" style="width:500px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:15px;font-weight:700;">📊 押金报表</div>';
+  html += '<button onclick="closeDepositReportModal()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">';
+  html += '<div style="padding:14px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);">¥' + totalHeld + '</div><div style="font-size:11px;color:var(--text-muted);">押金待退总额</div></div>';
+  html += '<div style="padding:14px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + held.length + '</div><div style="font-size:11px;color:var(--text-muted);">待退押金单数</div></div>';
+  html += '</div>';
+  html += '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">📋 待退押金明细：</div>';
+  held.forEach(function(d){
+    html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;">';
+    html += '<span>' + d.guest + ' · ' + d.room + '</span><span style="font-weight:700;color:var(--blue);">¥' + d.amount + '</span></div>';
+  });
+  html += '</div>';
+  html += '<div style="padding:12px 24px;border-top:1px solid var(--border);text-align:right;"><button class="modal-btn secondary" onclick="closeDepositReportModal()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeDepositMgmtModal() { var m = document.getElementById('modal-deposit-mgmt'); if(m) m.remove(); }
+function closeDepositReportModal() { var m = document.getElementById('modal-deposit-report'); if(m) m.remove(); }
+
+// ============================================================
+// 改进C：员工排班日历 - 周视图+增删改调班完整闭环
+// ============================================================
+var scheduleData = {
+  '赵飞': {role:'前台经理',shift:'morning',days:{0:'',1:'morning',2:'morning',3:'afternoon',4:'off',5:'morning',6:'morning'}},
+  '周敏': {role:'前台接待',shift:'afternoon',days:{0:'',1:'afternoon',2:'afternoon',3:'morning',4:'morning',5:'afternoon',6:'off'}},
+  '吴倩': {role:'客房主管',shift:'morning',days:{0:'',1:'off',2:'morning',3:'morning',4:'morning',5:'afternoon',6:'morning'}},
+  '郑强': {role:'安保人员',shift:'night',days:{0:'night',1:'night',2:'off',3:'night',4:'night',5:'off',6:'night'}},
+  '王丽': {role:'前台接待',shift:'morning',days:{0:'',1:'morning',2:'off',3:'morning',4:'morning',5:'morning',6:'afternoon'}}
+};
+var shiftColors = {morning:{label:'早班 07-15',bg:'var(--green-bg)',color:'var(--green)'},afternoon:{label:'中班 15-23',bg:'var(--blue-bg)',color:'var(--blue)'},night:{label:'晚班 23-07',bg:'var(--purple-bg)',color:'var(--purple)'},off:{label:'休息',bg:'var(--bg)',color:'var(--text-muted)'},'':{label:'-',bg:'var(--bg)',color:'var(--text-muted)'}};
+
+function openStaffScheduleModal() {
+  var old = document.getElementById('modal-staff-schedule');
+  if (old) old.remove();
+  var now = new Date();
+  var weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay() + 1);
+  var weekDays = [];
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    weekDays.push(d);
+  }
+  var html = '<div class="modal-overlay" id="modal-staff-schedule" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:800px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">';
+  html += '<div style="font-size:24px;">📅</div><div style="flex:1;"><div style="font-size:15px;font-weight:700;">员工排班管理</div><div style="font-size:11px;color:var(--text-muted);">本周排班（点击单元格可修改班次）</div></div>';
+  html += '<button class="action-btn small" onclick="openAddScheduleForm()" style="padding:5px 12px;background:var(--blue);color:white;border:none;font-size:12px;">+ 添加班次</button>';
+  html += '<button onclick="closeScheduleModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="overflow-x:auto;flex:1;overflow-y:auto;padding:16px 24px;">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px;">';
+  html += '<thead><tr style="background:var(--bg);">';
+  html += '<th style="padding:8px 10px;border:1px solid var(--border);position:sticky;left:0;background:var(--bg);z-index:2;">员工</th>';
+  weekDays.forEach(function(d,i){
+    var isToday = d.toDateString() === now.toDateString();
+    html += '<th style="padding:8px 10px;border:1px solid var(--border);text-align:center;' + (isToday?'background:var(--blue-bg);color:var(--blue);font-weight:700;':'') + '">';
+    html += '<div>' + (d.getMonth()+1) + '/' + d.getDate() + '</div>';
+    html += '<div style="font-size:10px;font-weight:' + (isToday?'700':'400') + ';">' + ['周一','周二','周三','周四','周五','周六','周日'][i] + '</div>';
+    html += '</th>';
+  });
+  html += '</tr></thead><tbody>';
+  var staffNames = Object.keys(scheduleData);
+  staffNames.forEach(function(name){
+    var sd = scheduleData[name];
+    html += '<tr>';
+    html += '<td style="padding:8px 10px;border:1px solid var(--border);position:sticky;left:0;background:white;z-index:1;">';
+    html += '<div style="font-weight:600;font-size:12px;">' + name + '</div><div style="font-size:10px;color:var(--text-muted);">' + sd.role + '</div></td>';
+    weekDays.forEach(function(d,i){
+      var dayKey = i; // 0=Mon
+      var shift = sd.days[dayKey] || '';
+      var sc = shiftColors[shift] || shiftColors[''];
+      html += '<td style="padding:4px;border:1px solid var(--border);text-align:center;cursor:pointer;min-width:70px;" onclick="changeShift(\'' + name + '\',' + dayKey + ')" onmouseover="this.style.background=\'var(--blue-bg)\'" onmouseout="this.style.background=\'white\'">';
+      html += '<div style="padding:4px 6px;background:' + sc.bg + ';color:' + sc.color + ';border-radius:4px;font-size:11px;font-weight:600;white-space:nowrap;">' + sc.label + '</div>';
+      html += '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-shrink:0;background:var(--bg);">';
+  var legend = [{label:'早班 07-15',bg:'var(--green-bg)',color:'var(--green)'},{label:'中班 15-23',bg:'var(--blue-bg)',color:'var(--blue)'},{label:'晚班 23-07',bg:'var(--purple-bg)',color:'var(--purple)'},{label:'休息',bg:'var(--bg)',color:'var(--text-muted)'}];
+  legend.forEach(function(l){
+    html += '<div style="display:flex;align-items:center;gap:4px;font-size:11px;"><div style="padding:2px 6px;background:' + l.bg + ';color:' + l.color + ';border-radius:4px;font-weight:600;">' + l.label + '</div></div>';
+  });
+  html += '<button class="action-btn small" onclick="exportSchedule()" style="margin-left:auto;padding:5px 12px;font-size:11px;">📤 导出排班表</button>';
+  html += '</div>';
+  html += '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0;"><button class="modal-btn secondary" onclick="closeScheduleModal()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function changeShift(name, dayKey) {
+  var shifts = ['morning','afternoon','night','off'];
+  var current = scheduleData[name].days[dayKey] || '';
+  var idx = shifts.indexOf(current);
+  var next = shifts[(idx + 1) % shifts.length];
+  scheduleData[name].days[dayKey] = next;
+  addOpLog('staff','赵飞','调整员工 '+name+' 第'+(['一','二','三','四','五','六','日'][dayKey])+'天排班为：'+shiftColors[next].label,'');
+  showToast(name + ' 周' + ['一','二','三','四','五','六','日'][dayKey] + '已排班：' + shiftColors[next].label, 'success');
+  openStaffScheduleModal();
+}
+
+function openAddScheduleForm() {
+  var name = prompt('请输入员工姓名：');
+  if (!name || !name.trim()) return;
+  var role = prompt('请输入职位：', '前台接待');
+  if (role === null) return;
+  scheduleData[name.trim()] = {role:role,shift:'morning',days:{0:'',1:'',2:'',3:'',4:'',5:'',6:''}};
+  showToast('员工 ' + name + ' 已添加，请点击单元格安排班次', 'success');
+  openStaffScheduleModal();
+}
+
+function exportSchedule() {
+  var lines = ['姓名,职位,周一,周二,周三,周四,周五,周六,周日'];
+  Object.keys(scheduleData).forEach(function(name){
+    var sd = scheduleData[name];
+    var row = [name, sd.role];
+    for (var i = 0; i < 7; i++) {
+      row.push(shiftColors[sd.days[i]||''].label);
+    }
+    lines.push(row.join(','));
+  });
+  var csv = lines.join('\n');
+  var blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'staff_schedule_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('排班表已导出', 'success');
+}
+
+function closeScheduleModal() { var m = document.getElementById('modal-staff-schedule'); if(m) m.remove(); }
+
+// ============================================================
+// 改进D：发票申请管理 - 申请→审核→开票→邮寄状态闭环
+// ============================================================
+var invoiceDB = [
+  {id:'INV-001',guest:'张三',phone:'13812345678',room:'301',type:'增值税专用发票',title:'北京智能科技有限公司',taxNo:'91110000XXXXXXXX',amount:3860,status:'pending',applyDate:'2026-03-27',operator:'赵飞'},
+  {id:'INV-002',guest:'李四',phone:'13956789012',room:'302',type:'增值税普通发票',title:'个人',taxNo:'-',amount:1280,status:'approved',applyDate:'2026-03-26',operator:'周敏'},
+  {id:'INV-003',guest:'王五',phone:'13798765432',room:'201',type:'增值税专用发票',title:'上海商贸有限公司',taxNo:'91310000XXXXXXXX',amount:5620,status:'issued',applyDate:'2026-03-25',operator:'赵飞'},
+  {id:'INV-004',guest:'赵六',phone:'13600001111',room:'203',type:'增值税普通发票',title:'个人',taxNo:'-',amount:680,status:'rejected',applyDate:'2026-03-24',operator:'周敏',rejectReason:'发票信息不完整'}
+];
+var invoiceStatusMap = {pending:{label:'待审核',bg:'var(--red-bg)',color:'var(--red)'},approved:{label:'已通过',bg:'var(--blue-bg)',color:'var(--blue)'},issued:{label:'已开票',bg:'var(--green-bg)',color:'var(--green)'},rejected:{label:'已驳回',bg:'var(--gray-bg)',color:'var(--text-muted)'}};
+
+function openInvoiceManagementModal() {
+  var old = document.getElementById('modal-invoice-mgmt');
+  if (old) old.remove();
+  var pendingCount = invoiceDB.filter(function(d){return d.status==='pending';}).length;
+  var html = '<div class="modal-overlay" id="modal-invoice-mgmt" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:820px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">';
+  html += '<div style="font-size:24px;">📄</div><div style="flex:1;"><div style="font-size:15px;font-weight:700;">发票申请管理</div><div style="font-size:11px;color:var(--text-muted);">发票类型选择→税号录入→状态追踪→邮寄/自取</div></div>';
+  if (pendingCount > 0) {
+    html += '<div style="padding:4px 12px;background:var(--red);color:white;border-radius:10px;font-size:12px;font-weight:600;">' + pendingCount + ' 待审核</div>';
+  }
+  html += '<button onclick="closeInvoiceMgmtModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0;background:var(--bg);">';
+  html += '<button class="action-btn small" onclick="openInvoiceApplyForm()" style="background:var(--blue);color:white;border:none;padding:5px 12px;font-size:12px;">+ 新建申请</button>';
+  var statusFilters = ['全部','pending:待审核','approved:已通过','issued:已开票','rejected:已驳回'];
+  statusFilters.forEach(function(f){
+    var parts = f.split(':');
+    var val = parts[0];
+    var label = parts[1] || '全部';
+    html += '<button class="action-btn small" onclick="filterInvoiceByStatus(\'' + val + '\')" style="padding:5px 10px;font-size:11px;">' + label + '</button>';
+  });
+  html += '</div>';
+  html += '<div id="invoice-list" style="flex:1;overflow-y:auto;padding:12px 24px;">';
+  html += renderInvoiceTable(invoiceDB);
+  html += '</div>';
+  html += '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0;"><button class="modal-btn secondary" onclick="closeInvoiceMgmtModal()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function renderInvoiceTable(data) {
+  var html = '<table class="table" style="font-size:12px;"><thead><tr><th>发票号</th><th>客人</th><th>房间</th><th>发票类型</th><th>抬头</th><th>金额</th><th>状态</th><th>申请日期</th><th>操作</th></tr></thead><tbody>';
+  data.forEach(function(d){
+    var st = invoiceStatusMap[d.status] || invoiceStatusMap.pending;
+    html += '<tr>';
+    html += '<td style="font-family:monospace;font-size:11px;">' + d.id + '</td>';
+    html += '<td><div style="font-weight:600;">' + d.guest + '</div><div style="font-size:10px;color:var(--text-muted);">' + d.phone + '</div></td>';
+    html += '<td>' + d.room + '</td>';
+    html += '<td style="font-size:11px;">' + d.type + '</td>';
+    html += '<td style="font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + d.title + '">' + d.title + '</td>';
+    html += '<td style="font-weight:700;color:var(--blue);">¥' + d.amount + '</td>';
+    html += '<td><span style="padding:2px 8px;background:' + st.bg + ';color:' + st.color + ';border-radius:10px;font-size:11px;font-weight:600;">' + st.label + '</span></td>';
+    html += '<td style="font-size:11px;">' + d.applyDate + '</td>';
+    html += '<td>';
+    if (d.status === 'pending') {
+      html += '<button class="action-btn small" onclick="approveInvoice(\'' + d.id + '\')" style="padding:2px 8px;font-size:11px;background:var(--green);color:white;border:none;">通过</button>';
+      html += ' <button class="action-btn small" onclick="rejectInvoice(\'' + d.id + '\')" style="padding:2px 8px;font-size:11px;background:var(--red);color:white;border:none;">驳回</button>';
+    } else if (d.status === 'approved') {
+      html += '<button class="action-btn small" onclick="issueInvoice(\'' + d.id + '\')" style="padding:2px 8px;font-size:11px;background:var(--blue);color:white;border:none;">开票</button>';
+    } else if (d.status === 'issued') {
+      html += '<button class="action-btn small" onclick="shipInvoice(\'' + d.id + '\')" style="padding:2px 8px;font-size:11px;background:var(--purple);color:white;border:none;">邮寄</button>';
+    }
+    html += '</td></tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function filterInvoiceByStatus(status) {
+  var filtered = status === '全部' ? invoiceDB : invoiceDB.filter(function(d){return d.status===status;});
+  document.getElementById('invoice-list').innerHTML = renderInvoiceTable(filtered);
+}
+
+function openInvoiceApplyForm() {
+  var guest = prompt('请输入客人姓名：');
+  if (!guest) return;
+  var phone = prompt('请输入手机号：');
+  if (!phone) return;
+  var room = prompt('请输入房间号：');
+  if (!room) return;
+  var type = prompt('发票类型（1=增值税专用发票，2=增值税普通发票）：', '2') === '1' ? '增值税专用发票' : '增值税普通发票';
+  if (!type) return;
+  var title = prompt('请输入发票抬头：');
+  if (!title) return;
+  var taxNo = type.indexOf('专用') !== -1 ? prompt('请输入税号：') : '-';
+  if (taxNo === null) return;
+  var amount = prompt('请输入开票金额：');
+  if (!amount) return;
+  var newId = 'INV-' + String(Date.now()).slice(-6);
+  invoiceDB.unshift({id:newId,guest:guest,phone:phone,room:room,type:type,title:title,taxNo:taxNo||'-',amount:parseInt(amount),status:'pending',applyDate:new Date().toISOString().slice(0,10),operator:'赵飞'});
+  addOpLog('invoice','赵飞','新建发票申请：'+newId+' '+guest+' ¥'+amount,'');
+  showToast('✅ 发票申请已提交：' + newId + '，等待审核', 'success');
+  openInvoiceManagementModal();
+}
+
+function approveInvoice(id) {
+  var inv = invoiceDB.find(function(x){return x.id===id;});
+  if (inv) { inv.status='approved'; showToast('发票 ' + id + ' 已审核通过', 'success'); addOpLog('invoice','赵飞','审核通过发票：'+id,''); openInvoiceManagementModal(); }
+}
+function rejectInvoice(id) {
+  var reason = prompt('请输入驳回原因：');
+  if (!reason) return;
+  var inv = invoiceDB.find(function(x){return x.id===id;});
+  if (inv) { inv.status='rejected'; inv.rejectReason=reason; showToast('发票 ' + id + ' 已驳回：' + reason, 'warning'); addOpLog('invoice','赵飞','驳回发票：'+id+' 原因：'+reason,''); openInvoiceManagementModal(); }
+}
+function issueInvoice(id) {
+  var inv = invoiceDB.find(function(x){return x.id===id;});
+  if (inv) { inv.status='issued'; showToast('发票 ' + id + ' 已开具，等待邮寄', 'success'); addOpLog('invoice','赵飞','开具发票：'+id,''); openInvoiceManagementModal(); }
+}
+function shipInvoice(id) {
+  var way = prompt('邮寄方式（1=邮寄，2=自取）：', '1');
+  if (way === '1') {
+    var addr = prompt('请输入邮寄地址：');
+    if (!addr) return;
+    showToast('发票 ' + id + ' 已邮寄至：' + addr, 'success');
+    addOpLog('invoice','赵飞','发票邮寄：'+id+' 地址：'+addr,'');
+  } else {
+    showToast('发票 ' + id + ' 已通知客户自取', 'info');
+    addOpLog('invoice','赵飞','发票自取通知：'+id,'');
+  }
+  openInvoiceManagementModal();
+}
+
+function closeInvoiceMgmtModal() { var m = document.getElementById('modal-invoice-mgmt'); if(m) m.remove(); }
+
+// ============================================================
+// 改进E：服务满意度自动收集 - 工单完成后→推送评价→星级+标签+文字→报表
+// ============================================================
+var satisfactionDB = [
+  {woId:'WO-2026032603',guest:'王五',room:'302',rating:5,tags:['响应快','态度好'],comment:'服务非常周到，前台小赵很热情！',submitTime:'2026-03-26 16:50',handler:'赵飞'},
+  {woId:'WO-2026032604',guest:'钱七',room:'304',rating:4,tags:['效率高','专业'],comment:'处理很及时，问题解决了',submitTime:'2026-03-26 14:30',handler:'周敏'},
+  {woId:'WO-2026032701',guest:'张三',room:'301',rating:3,tags:['响应及时'],comment:'处理还可以，但等待时间稍长',submitTime:'2026-03-27 11:00',handler:'赵飞'}
+];
+var satisfactionTags = ['响应快','态度好','效率高','专业','问题解决','清洁彻底','设备正常','热情周到','耐心细致','超出预期'];
+var pendingSatisfaction = []; // 工单完成后待发评价
+
+function openSatisfactionCenterModal() {
+  var old = document.getElementById('modal-satisfaction-center');
+  if (old) old.remove();
+  var avgRating = satisfactionDB.length > 0 ? (satisfactionDB.reduce(function(s,d){return s+d.rating;},0)/satisfactionDB.length).toFixed(1) : '0.0';
+  var distribution = {5:0,4:0,3:0,2:0,1:0};
+  satisfactionDB.forEach(function(d){ distribution[d.rating] = (distribution[d.rating]||0)+1; });
+  var html = '<div class="modal-overlay" id="modal-satisfaction-center" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:780px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">';
+  html += '<div style="font-size:24px;">⭐</div><div style="flex:1;"><div style="font-size:15px;font-weight:700;">服务满意度评价中心</div><div style="font-size:11px;color:var(--text-muted);">工单完成后自动推送 · 星级+标签+文字反馈 · 员工评分排行</div></div>';
+  html += '<button class="action-btn small" onclick="openSatisfactionSurveyModal()" style="padding:5px 12px;background:var(--blue);color:white;border:none;font-size:12px;">+ 发送评价邀请</button>';
+  html += '<button onclick="closeSatisfactionCenterModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+
+  // Stats row
+  html += '<div style="padding:16px 24px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);gap:10px;flex-shrink:0;">';
+  html += '<div style="text-align:center;padding:12px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:28px;font-weight:700;color:var(--orange);">' + avgRating + '</div><div style="font-size:11px;color:var(--text-muted);">平均评分</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--green-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + satisfactionDB.length + '</div><div style="font-size:11px;color:var(--text-muted);">已收集</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--blue);">' + distribution[5] + '</div><div style="font-size:11px;color:var(--text-muted);">5星</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--text);">' + (distribution[1]+distribution[2]) + '</div><div style="font-size:11px;color:var(--text-muted);">1-2星</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:var(--red-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--red);">' + pendingSatisfaction.length + '</div><div style="font-size:11px;color:var(--text-muted);">待评价</div></div>';
+  html += '</div>';
+
+  // Rating distribution bar
+  html += '<div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;">';
+  html += '<div style="font-size:12px;font-weight:600;width:20px;">5★</div>';
+  html += '<div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden;"><div style="width:' + (distribution[5]/Math.max(satisfactionDB.length,1)*100) + '%;height:100%;background:var(--green);border-radius:4px;"></div></div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);width:30px;text-align:right;">' + distribution[5] + '</div>';
+  html += '</div>';
+
+  // List
+  html += '<div id="satisfaction-list" style="flex:1;overflow-y:auto;padding:12px 24px;">';
+  html += '<table class="table" style="font-size:12px;"><thead><tr><th>工单号</th><th>客人</th><th>房间</th><th>评分</th><th>标签</th><th>评价内容</th><th>提交时间</th><th>处理人</th></tr></thead><tbody>';
+  satisfactionDB.forEach(function(d){
+    var stars = '★'.repeat(d.rating) + '☆'.repeat(5-d.rating);
+    var tagHtml = d.tags.map(function(t){return '<span style="padding:1px 5px;background:var(--blue-bg);color:var(--blue);border-radius:8px;font-size:10px;margin-right:2px;">'+t+'</span>';}).join('');
+    html += '<tr>';
+    html += '<td style="font-family:monospace;font-size:11px;">' + d.woId + '</td>';
+    html += '<td>' + d.guest + '</td>';
+    html += '<td>' + d.room + '</td>';
+    html += '<td><span style="color:var(--orange);font-weight:700;font-size:13px;">' + stars + '</span></td>';
+    html += '<td>' + tagHtml + '</td>';
+    html += '<td style="max-width:180px;font-size:11px;color:var(--text-light);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + d.comment + '">' + d.comment + '</td>';
+    html += '<td style="font-size:11px;">' + d.submitTime + '</td>';
+    html += '<td style="font-size:11px;">' + d.handler + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  html += '</div>';
+
+  // Tag analysis
+  html += '<div style="padding:12px 24px;border-top:1px solid var(--border);flex-shrink:0;background:var(--bg);">';
+  html += '<div style="font-size:12px;font-weight:700;margin-bottom:8px;">🏷️ 标签热度分析：</div>';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+  satisfactionTags.forEach(function(tag){
+    var count = satisfactionDB.filter(function(d){return d.tags.indexOf(tag)!==-1;}).length;
+    var size = Math.max(11, Math.min(14, 11 + count * 2));
+    html += '<span style="padding:3px 10px;background:var(--blue-bg);color:var(--blue);border-radius:10px;font-size:' + size + 'px;font-weight:600;cursor:default;" title="被选中 ' + count + ' 次">' + tag + ' ×' + count + '</span>';
+  });
+  html += '</div></div>';
+
+  html += '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0;"><button class="modal-btn secondary" onclick="closeSatisfactionCenterModal()">关闭</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openSatisfactionSurveyModal() {
+  var woId = prompt('请输入工单号（如：WO-2026032701）：');
+  if (!woId) return;
+  var guest = prompt('请输入客人姓名：');
+  if (!guest) return;
+  var room = prompt('请输入房间号：');
+  if (!room) return;
+  pendingSatisfaction.push({woId:woId,guest:guest,room:room,inviteTime:new Date().toISOString().slice(0,10)});
+  showToast('已向 ' + guest + '（房间' + room + '）发送评价邀请，预计30分钟内推送', 'success');
+  addOpLog('workorder','赵飞','发送服务评价邀请：'+woId+' -> '+guest,'');
+}
+
+function closeSatisfactionCenterModal() { var m = document.getElementById('modal-satisfaction-center'); if(m) m.remove(); }
 </script>
 <script src="v3-improvements.js?v=20260328c"></script>
 </body>
