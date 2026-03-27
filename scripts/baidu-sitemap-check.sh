@@ -2,9 +2,16 @@
 # 百度sitemap提交状态检测
 # 使用百度搜索资源平台API检查sitemap状态
 
-# 百度API配置
-BAIDU_API_KEY="bce-v3/ALTAK-RKdoR6YWNEMsCgHqKj06u/4b56ecc5cf819d3596ac25192829c4c4e5087d48"
+# 百度API配置（从环境变量读取，禁止硬编码）
+BAIDU_API_KEY="${BAIDU_BCE_ACCESS_KEY}"
 SITEMAP_URL="https://lockclub.wangjile.cn/sitemap.xml"
+
+if [ -z "$BAIDU_API_KEY" ]; then
+    echo "⚠️  错误：未设置环境变量 BAIDU_BCE_ACCESS_KEY"
+    echo "   请在 ~/.bashrc 或 ~/.zshrc 中添加："
+    echo "   export BAIDU_BCE_ACCESS_KEY='your_access_key_here'"
+    exit 1
+fi
 
 echo "🔍 百度sitemap状态检测"
 echo "========================"
