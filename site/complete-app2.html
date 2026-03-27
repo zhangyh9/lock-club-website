@@ -538,6 +538,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       <div class="menu-item" onclick="showPage('history')"><span class="icon">📜</span><span>历史记录</span></div>
     </div>
     <div class="menu-item" onclick="showPage('settlement')"><span class="icon">💰</span><span>结算中心</span></div>
+    <div class="menu-item" onclick="showPage('invoice')"><span class="icon">🧾</span><span>发票管理</span></div>
     <div class="menu-item" onclick="showPage('handover')" style="color:var(--purple);"><span class="icon">📊</span><span>交接班报表</span></div>
     <div class="menu-group-title" onclick="toggleGroup(this)">🛡️ 系统管理 <span class="group-arrow">▼</span></div>
     <div class="menu-group">
@@ -2435,7 +2436,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               <span>全选</span>
             </label>
             <button class="action-btn small" id="batch-action-btn" onclick="openDeviceBatchModal()" style="display:none;">📋 批量操作</button>
-            <button class="action-btn small" onclick="openFirmwareUpgradeProgressModal(5)" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📦 固件升级</button>
+            <button class="action-btn small" onclick="openFirmwareBatchUpgradeModal()" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📦 批量固件升级</button>
             <button class="action-btn small" onclick="openACControlModal()" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">❄️ 空调控制</button>
             <!-- 【改进2】预防性维护计划入口 -->
             <button class="action-btn small" onclick="openMaintenancePlanModal()" style="padding:4px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔧 维护计划</button><button class="action-btn small" onclick="openAutoMaintenanceGenerator()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🤖 AI维护计划</button>
@@ -11646,6 +11647,283 @@ function openEditMemberLevelModalV2(idx) {
     </div>
 
     <!-- Page: Operation Log (改进3: 新增操作日志页面) -->
+    <!-- ==================== 改进1: 发票管理完整页面 ==================== -->
+    <div id="page-invoice" class="page">
+      <div class="page-header">
+        <div class="page-title">🧾 发票管理</div>
+        <div class="page-sub">发票开具 · 进度查询 · 增删改查完整闭环</div>
+      </div>
+      <div class="stats-row" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px;">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--blue-bg);">📄</div>
+          <div><div class="stat-num" id="inv-stat-total">24</div><div class="stat-label">发票总数</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--orange-bg);">⏳</div>
+          <div><div class="stat-num" id="inv-stat-pending">5</div><div class="stat-label">待处理</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--green-bg);">✅</div>
+          <div><div class="stat-num">18</div><div class="stat-label">已完成</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--purple-bg);">💰</div>
+          <div><div class="stat-num" id="inv-stat-amount">¥8,640</div><div class="stat-label">开票金额</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--red-bg);">❌</div>
+          <div><div class="stat-num">1</div><div class="stat-label">已作废</div></div>
+        </div>
+      </div>
+      <!-- 发票搜索筛选 -->
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-body" style="padding:12px 20px;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <input type="text" class="form-input" id="inv-search-input" placeholder="🔍 搜索客人姓名/手机号/发票号" style="width:220px;padding:7px 12px;font-size:12px;" onkeydown="if(event.key==='Enter')applyInvoiceSearch()">
+            <select class="form-select" id="inv-status-filter" style="padding:7px 10px;font-size:12px;width:130px;" onchange="applyInvoiceSearch()">
+              <option value="all">全部状态</option>
+              <option value="pending">⏳ 待处理</option>
+              <option value="processing">🔄 开具中</option>
+              <option value="done">✅ 已完成</option>
+              <option value="cancelled">❌ 已作废</option>
+            </select>
+            <select class="form-select" id="inv-type-filter" style="padding:7px 10px;font-size:12px;width:130px;" onchange="applyInvoiceSearch()">
+              <option value="all">全部类型</option>
+              <option value="normal">📄 普通发票</option>
+              <option value="vat">🧾 增值税专用</option>
+              <option value="electronic">📱 电子发票</option>
+            </select>
+            <input type="date" class="form-input" id="inv-date-from" style="width:140px;padding:6px 10px;font-size:12px;" value="2026-03-01">
+            <span style="color:var(--text-muted);font-size:12px;">至</span>
+            <input type="date" class="form-input" id="inv-date-to" style="width:140px;padding:6px 10px;font-size:12px;" value="2026-03-27">
+            <button class="action-btn small" onclick="applyInvoiceSearch()" style="padding:6px 12px;">🔍 搜索</button>
+            <button class="action-btn small" onclick="resetInvoiceSearch()" style="padding:6px 12px;">重置</button>
+            <span style="margin-left:auto;font-size:12px;color:var(--text-muted);" id="inv-filter-count">共 24 条发票</span>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🧾 发票列表</div>
+          <div style="display:flex;gap:6px;">
+            <button class="action-btn small" onclick="exportInvoiceCSV()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出</button>
+            <button class="action-btn small" onclick="openInvoiceCreateModal()" style="padding:4px 10px;background:var(--blue);color:white;border-color:var(--blue);">+ 开具发票</button>
+          </div>
+          <div class="card-tabs">
+            <div class="card-tab active" onclick="filterInvoiceTab('all',this)" id="inv-tab-all">全部 <span id="inv-count-all">24</span></div>
+            <div class="card-tab" onclick="filterInvoiceTab('pending',this)" id="inv-tab-pending">待处理 <span id="inv-count-pending">5</span></div>
+            <div class="card-tab" onclick="filterInvoiceTab('processing',this)" id="inv-tab-processing">开具中 <span id="inv-count-processing">2</span></div>
+            <div class="card-tab" onclick="filterInvoiceTab('done',this)" id="inv-tab-done">已完成 <span id="inv-count-done">16</span></div>
+            <div class="card-tab" onclick="filterInvoiceTab('cancelled',this)" id="inv-tab-cancelled">已作废 <span id="inv-count-cancelled">1</span></div>
+          </div>
+        </div>
+        <div class="card-body">
+          <table class="table">
+            <thead><tr><th>发票号</th><th>客人姓名</th><th>手机号</th><th>房间</th><th>发票类型</th><th>开票金额</th><th>状态</th><th>申请时间</th><th>操作</th></tr></thead>
+            <tbody id="invoice-table-body">
+              <tr data-status="done" data-type="normal">
+                <td><span style="font-size:11px;font-family:monospace;color:var(--blue);">INV-2026032701</span></td>
+                <td><span style="font-weight:600;">张三</span></td>
+                <td>138****8888</td>
+                <td>301</td>
+                <td><span class="tbadge blue">📄 普通发票</span></td>
+                <td><span style="font-weight:600;color:var(--green);">¥368</span></td>
+                <td><span class="tbadge green">✅ 已完成</span></td>
+                <td>2026-03-27 10:30</td>
+                <td>
+                  <button class="action-btn small" onclick="openInvoiceDetailModal('INV-2026032701')">详情</button>
+                  <button class="action-btn small" onclick="reissueInvoice('INV-2026032701')">重开</button>
+                </td>
+              </tr>
+              <tr data-status="pending" data-type="vat">
+                <td><span style="font-size:11px;font-family:monospace;color:var(--blue);">INV-2026032702</span></td>
+                <td><span style="font-weight:600;">李四</span></td>
+                <td>139****6666</td>
+                <td>203</td>
+                <td><span class="tbadge purple">🧾 增值税专用</span></td>
+                <td><span style="font-weight:600;color:var(--green);">¥1,280</span></td>
+                <td><span class="tbadge orange">⏳ 待处理</span></td>
+                <td>2026-03-27 11:15</td>
+                <td>
+                  <button class="action-btn small" onclick="processInvoice('INV-2026032702')">处理</button>
+                  <button class="action-btn small" onclick="openInvoiceDetailModal('INV-2026032702')">详情</button>
+                  <button class="action-btn small red" onclick="cancelInvoice('INV-2026032702')">作废</button>
+                </td>
+              </tr>
+              <tr data-status="processing" data-type="electronic">
+                <td><span style="font-size:11px;font-family:monospace;color:var(--blue);">INV-2026032703</span></td>
+                <td><span style="font-weight:600;">王五</span></td>
+                <td>137****5555</td>
+                <td>304</td>
+                <td><span class="tbadge green">📱 电子发票</span></td>
+                <td><span style="font-weight:600;color:var(--green);">¥296</span></td>
+                <td><span class="tbadge blue">🔄 开具中</span></td>
+                <td>2026-03-27 14:20</td>
+                <td>
+                  <button class="action-btn small" onclick="openInvoiceDetailModal('INV-2026032703')">详情</button>
+                  <button class="action-btn small red" onclick="cancelInvoice('INV-2026032703')">作废</button>
+                </td>
+              </tr>
+              <tr data-status="pending" data-type="normal">
+                <td><span style="font-size:11px;font-family:monospace;color:var(--blue);">INV-2026032601</span></td>
+                <td><span style="font-weight:600;">赵六</span></td>
+                <td>136****4444</td>
+                <td>205</td>
+                <td><span class="tbadge blue">📄 普通发票</span></td>
+                <td><span style="font-weight:600;color:var(--green);">¥458</span></td>
+                <td><span class="tbadge orange">⏳ 待处理</span></td>
+                <td>2026-03-26 16:45</td>
+                <td>
+                  <button class="action-btn small" onclick="processInvoice('INV-2026032601')">处理</button>
+                  <button class="action-btn small" onclick="openInvoiceDetailModal('INV-2026032601')">详情</button>
+                  <button class="action-btn small red" onclick="cancelInvoice('INV-2026032601')">作废</button>
+                </td>
+              </tr>
+              <tr data-status="cancelled" data-type="normal">
+                <td><span style="font-size:11px;font-family:monospace;color:var(--text-muted);">INV-2026032501</span></td>
+                <td><span style="font-weight:600;color:var(--text-muted);">孙七</span></td>
+                <td>135****3333</td>
+                <td>202</td>
+                <td><span class="tbadge gray">📄 普通发票</span></td>
+                <td><span style="font-weight:600;color:var(--text-muted);">¥198</span></td>
+                <td><span class="tbadge gray">❌ 已作废</span></td>
+                <td>2026-03-25 09:00</td>
+                <td>
+                  <button class="action-btn small" onclick="openInvoiceDetailModal('INV-2026032501')">详情</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【改进1-发票开具弹窗】 -->
+    <div class="modal-overlay hidden" id="modal-invoice-create">
+      <div class="modal" style="width:560px;">
+        <div class="modal-header">
+          <div class="modal-title">🧾 开具发票</div>
+          <button class="modal-close" onclick="closeModal('invoice-create')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">发票类型 <span class="required">*</span></label>
+              <select class="form-select" id="inv-create-type">
+                <option value="normal">📄 普通发票</option>
+                <option value="vat">🧾 增值税专用发票</option>
+                <option value="electronic">📱 电子发票</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">关联房间</label>
+              <select class="form-select" id="inv-create-room">
+                <option value="">-- 选择房间 --</option>
+                <option value="301">301 - 张三（入住中）</option>
+                <option value="203">203 - 李四（入住中）</option>
+                <option value="304">304 - 王五（入住中）</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">客人姓名 <span class="required">*</span></label>
+              <input type="text" class="form-input" id="inv-create-name" placeholder="输入客人姓名">
+            </div>
+            <div class="form-group">
+              <label class="form-label">手机号</label>
+              <input type="tel" class="form-input" id="inv-create-phone" placeholder="用于接收发票通知">
+            </div>
+          </div>
+          <div class="form-group" id="inv-vat-fields" style="display:none;">
+            <label class="form-label">增值税专用发票信息</label>
+            <div style="padding:10px;background:var(--blue-bg);border-radius:8px;font-size:12px;color:var(--blue);margin-top:4px;">
+              需填写：单位名称、纳税人识别号、开户银行、账号、注册地址、电话
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">开票金额 <span class="required">*</span></label>
+              <input type="number" class="form-input" id="inv-create-amount" placeholder="¥ 输入金额" min="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">发票抬头</label>
+              <input type="text" class="form-input" id="inv-create-title" placeholder="个人或公司名称">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">税号</label>
+            <input type="text" class="form-input" id="inv-create-tax" placeholder="公司税号（个人发票不填）">
+          </div>
+          <div class="form-group">
+            <label class="form-label">备注</label>
+            <textarea class="form-textarea" id="inv-create-note" placeholder="可选备注信息" style="min-height:60px;"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('invoice-create')">取消</button>
+          <button class="modal-btn primary" onclick="submitInvoiceCreate()" style="background:var(--blue);color:white;border:none;">🧾 提交开票申请</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【改进1-发票详情弹窗】 -->
+    <div class="modal-overlay hidden" id="modal-invoice-detail">
+      <div class="modal" style="width:520px;">
+        <div class="modal-header">
+          <div class="modal-title">🧾 发票详情 - <span id="invd-id" style="color:var(--blue);font-family:monospace;"></span></div>
+          <button class="modal-close" onclick="closeModal('invoice-detail')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;">
+              <div style="font-size:11px;color:var(--text-muted);">发票金额</div>
+              <div style="font-size:22px;font-weight:700;color:var(--blue);" id="invd-amount">¥368</div>
+            </div>
+            <div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;">
+              <div style="font-size:11px;color:var(--text-muted);">当前状态</div>
+              <div style="font-size:14px;font-weight:700;color:var(--green);" id="invd-status">已完成</div>
+            </div>
+          </div>
+          <div class="info-grid" style="grid-template-columns:1fr 1fr;">
+            <div class="info-item"><div class="label">客人姓名</div><div class="value" id="invd-name">张三</div></div>
+            <div class="info-item"><div class="label">手机号</div><div class="value" id="invd-phone">138****8888</div></div>
+            <div class="info-item"><div class="label">房间号</div><div class="value" id="invd-room">301</div></div>
+            <div class="info-item"><div class="label">发票类型</div><div class="value" id="invd-type">普通发票</div></div>
+            <div class="info-item"><div class="label">发票抬头</div><div class="value" id="invd-title">张三</div></div>
+            <div class="info-item"><div class="label">税号</div><div class="value" id="invd-tax">--</div></div>
+            <div class="info-item"><div class="label">申请时间</div><div class="value" id="invd-time">2026-03-27 10:30</div></div>
+            <div class="info-item"><div class="label">处理人</div><div class="value" id="invd-operator">赵飞</div></div>
+          </div>
+          <div style="margin-top:12px;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:8px;">📋 操作记录</div>
+            <div class="timeline" style="font-size:12px;">
+              <div class="timeline-item">
+                <div class="timeline-dot green"></div>
+                <div class="timeline-content"><h4>发票开具完成</h4><p>发票已交给客人</p></div>
+                <div class="timeline-time">03-27 10:35</div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot blue"></div>
+                <div class="timeline-content"><h4>发票开具中</h4><p>系统正在开具发票</p></div>
+                <div class="timeline-time">03-27 10:32</div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot orange"></div>
+                <div class="timeline-content"><h4>开票申请提交</h4><p>申请人：张三</p></div>
+                <div class="timeline-time">03-27 10:30</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('invoice-detail')">关闭</button>
+          <button class="modal-btn" id="invd-reissue-btn" onclick="reissueInvoice(document.getElementById('invd-id').textContent)" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔄 重开</button>
+          <button class="modal-btn" id="invd-print-btn" onclick="printInvoice()" style="background:var(--blue);color:white;border-color:var(--blue);">🖨️ 打印</button>
+        </div>
+      </div>
+    </div>
+
     <div id="page-oplog" class="page">
       <div class="page-header">
         <div class="page-title">📝 操作日志</div>
@@ -41681,7 +41959,9 @@ function downloadCSV(content, filename) {
     <div class="card-header">
       <div class="card-title">📋 夜审检查项 <span id="naf-checklist-text" style="font-size:12px;color:var(--text-muted);font-weight:400;">0/8 已完成</span></div>
       <div style="display:flex;gap:8px;">
+        <button class="action-btn" onclick="generateNightAuditReport()" style="padding:4px 12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔄 生成报表</button>
         <button class="action-btn" onclick="exportNightAuditFull()" style="padding:4px 12px;">📤 导出报表</button>
+        <button class="action-btn" onclick="openNightAuditNotificationModal()" style="padding:4px 12px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">📢 发送通知</button>
         <button class="action-btn" onclick="confirmNightAuditFull()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);padding:4px 12px;">✅ 确认夜审完成</button>
       </div>
     </div>
@@ -41710,6 +41990,10 @@ function downloadCSV(content, filename) {
   <div class="page-header">
     <div class="page-title">📅 员工排班管理</div>
     <div class="page-sub">本周排班日历 · 考勤记录 · 调班申请 · 03/23-03/29</div>
+    <div style="display:flex;gap:8px;">
+      <button class="action-btn" onclick="openStaffScheduleCalendarModal()" style="padding:5px 12px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);font-size:12px;">📅 日历视图</button>
+      <button class="action-btn" onclick="openAnnouncementBroadcastModal()" style="padding:5px 12px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);font-size:12px;">📢 广播公告</button>
+    </div>
   </div>
   <div class="stats-row" style="grid-template-columns:repeat(5,1fr);">
     <div class="stat-card">
@@ -50808,6 +51092,421 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 100);
   };
 });
+
+// ==================== 发票管理JS函数（改进1） ====================
+var invoiceData = [
+  {id:'INV-2026032701',name:'张三',phone:'138****8888',room:'301',type:'normal',typeLabel:'普通发票',amount:368,status:'done',statusLabel:'已完成',createTime:'2026-03-27 10:30',operator:'赵飞'},
+  {id:'INV-2026032702',name:'李四',phone:'139****6666',room:'203',type:'vat',typeLabel:'增值税专用',amount:1280,status:'pending',statusLabel:'待处理',createTime:'2026-03-27 11:15',operator:'待处理'},
+  {id:'INV-2026032703',name:'王五',phone:'137****5555',room:'304',type:'electronic',typeLabel:'电子发票',amount:296,status:'processing',statusLabel:'开具中',createTime:'2026-03-27 14:20',operator:'开具中'},
+  {id:'INV-2026032601',name:'赵六',phone:'136****4444',room:'205',type:'normal',typeLabel:'普通发票',amount:458,status:'pending',statusLabel:'待处理',createTime:'2026-03-26 16:45',operator:'待处理'},
+  {id:'INV-2026032501',name:'孙七',phone:'135****3333',room:'202',type:'normal',typeLabel:'普通发票',amount:198,status:'cancelled',statusLabel:'已作废',createTime:'2026-03-25 09:00',operator:'周敏'}
+];
+function applyInvoiceSearch(){
+  var keyword=document.getElementById('inv-search-input').value.trim().toLowerCase();
+  var status=document.getElementById('inv-status-filter').value;
+  var rows=document.querySelectorAll('#invoice-table-body tr');
+  var count=0;
+  rows.forEach(function(row){
+    var matchKeyword=!keyword || row.textContent.toLowerCase().includes(keyword);
+    var matchStatus=status==='all' || row.dataset.status===status;
+    row.style.display=matchKeyword&&matchStatus?'':'none';
+    if(matchKeyword&&matchStatus)count++;
+  });
+  document.getElementById('inv-filter-count').textContent='共 '+count+' 条发票';
+}
+function resetInvoiceSearch(){
+  document.getElementById('inv-search-input').value='';
+  document.getElementById('inv-status-filter').value='all';
+  document.getElementById('inv-type-filter').value='all';
+  document.getElementById('inv-date-from').value='2026-03-01';
+  document.getElementById('inv-date-to').value='2026-03-27';
+  applyInvoiceSearch();
+}
+function filterInvoiceTab(status,el){
+  document.querySelectorAll('#invoice-table-body tr').forEach(function(r){r.style.display='none';});
+  if(status==='all'){document.querySelectorAll('#invoice-table-body tr').forEach(function(r){r.style.display='';});}
+  else{document.querySelectorAll('#invoice-table-body tr[data-status="'+status+'"]').forEach(function(r){r.style.display='';});}
+  document.querySelectorAll('#page-invoice .card-tab').forEach(function(t){t.classList.remove('active');});
+  if(el)el.classList.add('active');
+  applyInvoiceSearch();
+}
+function openInvoiceCreateModal(){openModal('invoice-create');}
+function submitInvoiceCreate(){
+  var name=document.getElementById('inv-create-name').value.trim();
+  var amount=document.getElementById('inv-create-amount').value;
+  if(!name){showToast('请输入客人姓名','error');return;}
+  if(!amount||parseFloat(amount)<=0){showToast('请输入正确的开票金额','error');return;}
+  closeModal('invoice-create');
+  showToast('发票申请已提交，金额¥'+amount,'success');
+  // 添加到列表
+  var invId='INV-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'0'+(invoiceData.length+1);
+  invoiceData.unshift({id:invId,name:name,phone:document.getElementById('inv-create-phone').value,room:document.getElementById('inv-create-room').value||'--',type:document.getElementById('inv-create-type').value,typeLabel:document.getElementById('inv-create-type').options[document.getElementById('inv-create-type').selectedIndex].text,amount:parseFloat(amount),status:'pending',statusLabel:'待处理',createTime:new Date().toLocaleString('zh-CN',{hour12:false}).replace(/\//g,'-').slice(0,16),operator:'待处理'});
+  var statusColors={done:'green',pending:'orange',processing:'blue',cancelled:'gray'};
+  var statusBadge='<span class="tbadge '+statusColors['pending']+'">⏳ 待处理</span>';
+  var typeBadge='<span class="tbadge blue">'+(document.getElementById('inv-create-type').value==='vat'?'🧾 增值税专用':document.getElementById('inv-create-type').value==='electronic'?'📱 电子发票':'📄 普通发票')+'</span>';
+  var newRow=document.createElement('tr');
+  newRow.dataset.status='pending';
+  newRow.innerHTML='<td><span style="font-size:11px;font-family:monospace;color:var(--blue);">'+invId+'</span></td><td><span style="font-weight:600;">'+name+'</span></td><td>'+(document.getElementById('inv-create-phone').value||'--')+'</td><td>'+(document.getElementById('inv-create-room').value||'--')+'</td><td>'+typeBadge+'</td><td><span style="font-weight:600;color:var(--green);">¥'+amount+'</span></td><td>'+statusBadge+'</td><td>'+new Date().toLocaleString('zh-CN',{hour12:false}).replace(/\//g,'-').slice(0,16)+'</td><td><button class="action-btn small" onclick="processInvoice(\''+invId+'\')">处理</button> <button class="action-btn small" onclick="openInvoiceDetailModal(\''+invId+'\')">详情</button> <button class="action-btn small red" onclick="cancelInvoice(\''+invId+'\')">作废</button></td>';
+  document.getElementById('invoice-table-body').prepend(newRow);
+}
+function processInvoice(invId){
+  var inv=invoiceData.find(function(i){return i.id===invId;});
+  if(!inv){showToast('发票不存在','error');return;}
+  inv.status='processing';
+  inv.statusLabel='开具中';
+  showToast('发票 '+invId+' 开始开具中...','info');
+  setTimeout(function(){
+    inv.status='done';
+    inv.statusLabel='已完成';
+    inv.operator='赵飞';
+    showToast('发票 '+invId+' 开具完成！','success');
+    applyInvoiceSearch();
+  },1500);
+}
+function cancelInvoice(invId){
+  var inv=invoiceData.find(function(i){return i.id===invId;});
+  if(!inv){showToast('发票不存在','error');return;}
+  inv.status='cancelled';
+  inv.statusLabel='已作废';
+  inv.operator='系统';
+  showToast('发票 '+invId+' 已作废','info');
+  applyInvoiceSearch();
+}
+function reissueInvoice(invId){
+  closeModal('invoice-detail');
+  showToast('发票 '+invId+' 正在重新开具...','info');
+  setTimeout(function(){showToast('发票 '+invId+' 重开成功！','success');},1000);
+}
+function openInvoiceDetailModal(invId){
+  var inv=invoiceData.find(function(i){return i.id===invId;});
+  if(!inv){showToast('发票不存在','error');return;}
+  document.getElementById('invd-id').textContent=inv.id;
+  document.getElementById('invd-amount').textContent='¥'+inv.amount;
+  document.getElementById('invd-status').textContent=inv.statusLabel;
+  document.getElementById('invd-name').textContent=inv.name;
+  document.getElementById('invd-phone').textContent=inv.phone;
+  document.getElementById('invd-room').textContent=inv.room;
+  document.getElementById('invd-type').textContent=inv.typeLabel;
+  document.getElementById('invd-title').textContent=inv.name;
+  document.getElementById('invd-tax').textContent='--';
+  document.getElementById('invd-time').textContent=inv.createTime;
+  document.getElementById('invd-operator').textContent=inv.operator;
+  var reissueBtn=document.getElementById('invd-reissue-btn');
+  var printBtn=document.getElementById('invd-print-btn');
+  if(reissueBtn)reissueBtn.style.display=inv.status==='done'||inv.status==='cancelled'?'':'none';
+  if(printBtn)printBtn.style.display=inv.status==='done'?'':'none';
+  openModal('invoice-detail');
+}
+function exportInvoiceCSV(){
+  var rows=invoiceData.map(function(i){
+    return[i.id,i.name,i.phone,i.room,i.typeLabel,'¥'+i.amount,i.statusLabel,i.createTime,i.operator].join(',');
+  }).join('\n');
+  var csv='\uFEFF发票号,姓名,手机号,房间,类型,金额,状态,申请时间,处理人\n'+rows;
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='发票管理_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  showToast('发票清单已导出！','success');
+}
+function printInvoice(){showToast('发票打印任务已发送至打印机...','info');}
+
+// ==================== 改进2: 夜审报表自动生成+确认通知 ====================
+function generateNightAuditReport(){
+  var now=new Date();
+  var dateStr=now.toISOString().slice(0,10);
+  // 模拟数据填充
+  var reportData={
+    date:dateStr,
+    revenue:Math.floor(Math.random()*5000+10000),
+    deposit:Math.floor(Math.random()*500+1000),
+    checkin:Math.floor(Math.random()*5+3),
+    checkout:Math.floor(Math.random()*4+2),
+    inRoom:Math.floor(Math.random()*5+8),
+    vacant:Math.floor(Math.random()*4+6),
+    deviceOnline:14+Math.floor(Math.random()*3),
+    deviceTotal:16,
+    alertCount:Math.floor(Math.random()*5),
+    woPending:Math.floor(Math.random()*5)
+  };
+  document.getElementById('naf-date').textContent=dateStr;
+  document.getElementById('naf-revenue').textContent='¥'+reportData.revenue.toLocaleString();
+  document.getElementById('naf-deposit').textContent='¥'+reportData.deposit.toLocaleString();
+  document.getElementById('naf-checkin-count').textContent=reportData.checkin;
+  document.getElementById('naf-checkout-count').textContent=reportData.checkout;
+  document.getElementById('naf-in-count').textContent=reportData.inRoom;
+  document.getElementById('naf-empty-count').textContent=reportData.vacant;
+  document.getElementById('naf-offline-count').textContent=(reportData.deviceTotal-reportData.deviceOnline);
+  document.getElementById('naf-alert-count').textContent=reportData.alertCount;
+  document.getElementById('naf-wo-pending').textContent=reportData.woPending;
+  document.getElementById('naf-report-time').textContent=new Date().toLocaleString('zh-CN',{hour12:false}).slice(0,19);
+  showToast('夜审报表已自动生成：营收¥'+reportData.revenue.toLocaleString(),'success');
+}
+function openNightAuditNotificationModal(){
+  var old=document.getElementById('modal-na-notify');
+  if(old)old.remove();
+  var html='<div class="modal-overlay" id="modal-na-notify" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999999;">';
+  html+='<div class="modal" style="width:480px;">';
+  html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div style="font-size:16px;font-weight:700;">📢 夜审完成通知</div>';
+  html+='<button onclick="document.getElementById(\'modal-na-notify\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html+='<div style="padding:20px 24px;">';
+  html+='<div style="font-size:13px;font-weight:600;margin-bottom:12px;">选择通知对象（可多选）</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">';
+  var targets=[
+    {id:'manager',label:'前厅经理（赵飞）',checked:true},
+    {id:'supervisor',label:'客房主管（吴倩）',checked:true},
+    {id:'owner',label:'酒店老板',checked:false},
+    {id:'nightstaff',label:'夜班值班员',checked:true}
+  ];
+  targets.forEach(function(t){
+    html+='<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;">';
+    html+='<input type="checkbox" '+(t.checked?'checked':'')+' id="nan-'+t.id+'" style="accent-color:var(--blue);width:16px;height:16px;">';
+    html+='<span style="font-size:13px;">'+t.label+'</span></label>';
+  });
+  html+='</div>';
+  html+='<div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);margin-bottom:12px;">';
+  html+='📋 夜审报告摘要：营收¥'+(document.getElementById('naf-revenue')?document.getElementById('naf-revenue').textContent:'--')+' | 入住'+document.getElementById('naf-checkin-count').textContent+'人 | 退房'+document.getElementById('naf-checkout-count').textContent+'人 | 设备'++(16-parseInt(document.getElementById('naf-offline-count').textContent))+'在线</div>';
+  html+='<div class="form-group"><label class="form-label">附加留言</label><textarea class="form-textarea" id="nan-message" placeholder="可选留言信息..." style="min-height:60px;"></textarea></div>';
+  html+='</div>';
+  html+='<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html+='<button onclick="document.getElementById(\'modal-na-notify\').remove()" class="modal-btn secondary">取消</button>';
+  html+='<button onclick="sendNightAuditNotification()" class="modal-btn primary" style="background:var(--blue);color:white;border:none;">📤 发送通知</button>';
+  html+='</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+function sendNightAuditNotification(){
+  var checked=document.querySelectorAll('#modal-na-notify input[type="checkbox"]:checked');
+  var msg=document.getElementById('nan-message').value;
+  var recipients=Array.from(checked).map(function(c){return c.id.replace('nan-','');});
+  document.getElementById('modal-na-notify').remove();
+  showToast('夜审通知已发送至'+recipients.length+'位相关人员！','success');
+}
+
+// ==================== 改进3: 系统公告广播功能 ====================
+function openAnnouncementBroadcastModal(){
+  var old=document.getElementById('modal-announcement-broadcast');
+  if(old)old.remove();
+  var html='<div class="modal-overlay" id="modal-announcement-broadcast" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999999;">';
+  html+='<div class="modal" style="width:560px;">';
+  html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div style="font-size:16px;font-weight:700;">📢 系统公告广播</div>';
+  html+='<button onclick="document.getElementById(\'modal-announcement-broadcast\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html+='<div style="padding:20px 24px;">';
+  html+='<div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);margin-bottom:16px;">';
+  html+='⚠️ 公告将同时推送给所有在线员工，请确认内容后再发送</div>';
+  html+='<div class="form-group"><label class="form-label">公告标题 <span class="required">*</span></label><input type="text" class="form-input" id="ann-title" placeholder="输入公告标题（必填）" maxlength="50"></div>';
+  html+='<div class="form-group"><label class="form-label">公告类型</label>';
+  html+='<select class="form-select" id="ann-type" style="padding:7px 12px;">';
+  html+='<option value="normal">📋 通知公告</option>';
+  html+='<option value="urgent">🔴 紧急通知</option>';
+  html+='<option value="system">⚙️ 系统公告</option>';
+  html+='<option value="event">🎉 活动通知</option>';
+  html+='</select></div>';
+  html+='<div class="form-group"><label class="form-label">推送范围</label>';
+  var depts=['全部部门','前厅部','客房部','工程部','管理部'];
+  depts.forEach(function(d,i){
+    html+='<label style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;background:var(--bg);border:1px solid var(--border);border-radius:20px;margin:2px;cursor:pointer;font-size:12px;">';
+    html+='<input type="checkbox" '+(i===0?'checked ':'')+' class="ann-dept-check" value="'+d+'"><span>'+d+'</span></label>';
+  });
+  html+='</div>';
+  html+='<div class="form-group"><label class="form-label">公告内容 <span class="required">*</span></label><textarea class="form-textarea" id="ann-content" placeholder="输入公告详细内容..." style="min-height:100px;"></textarea></div>';
+  html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">';
+  html+='<input type="checkbox" id="ann-sms" style="accent-color:var(--blue);"><span style="font-size:12px;">同时发送短信通知</span>';
+  html+='<input type="checkbox" id="ann-feishu" checked style="accent-color:var(--blue);"><span style="font-size:12px;">同时发送飞书通知</span>';
+  html+='</div>';
+  html+='</div>';
+  html+='<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html+='<button onclick="document.getElementById(\'modal-announcement-broadcast\').remove()" class="modal-btn secondary">取消</button>';
+  html+='<button onclick="previewAnnouncement()" class="modal-btn" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">👁️ 预览</button>';
+  html+='<button onclick="broadcastAnnouncement()" class="modal-btn primary" style="background:var(--orange);color:white;border:none;">📤 立即广播</button>';
+  html+='</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+function previewAnnouncement(){
+  var title=document.getElementById('ann-title').value||'未填写标题';
+  var content=document.getElementById('ann-content').value||'未填写内容';
+  showToast('预览：'+title+'\n'+content.substring(0,50),'info');
+}
+function broadcastAnnouncement(){
+  var title=document.getElementById('ann-title').value.trim();
+  var content=document.getElementById('ann-content').value.trim();
+  if(!title){showToast('请输入公告标题','error');return;}
+  if(!content){showToast('请输入公告内容','error');return;}
+  document.getElementById('modal-announcement-broadcast').remove();
+  showToast('公告「'+title+'」已广播至所有员工！','success');
+}
+
+// ==================== 改进4: 员工排班周历视图 ====================
+var scheduleWeekData={
+  '2026-03-23':{morning:['赵飞','周敏'],afternoon:['吴倩'],night:[]},
+  '2026-03-24':{morning:['吴倩'],afternoon:['赵飞','周敏'],night:['郑强']},
+  '2026-03-25':{morning:['赵飞'],afternoon:['吴倩','郑强'],night:[]},
+  '2026-03-26':{morning:['周敏'],afternoon:['赵飞'],night:['郑强']},
+  '2026-03-27':{morning:['赵飞','周敏'],afternoon:['吴倩'],night:[]},
+  '2026-03-28':{morning:['吴倩'],afternoon:['赵飞'],night:['郑强']},
+  '2026-03-29':{morning:['赵飞'],afternoon:['周敏','郑强'],night:[]}
+};
+function openStaffScheduleCalendarModal(){
+  var old=document.getElementById('modal-schedule-calendar');
+  if(old)old.remove();
+  var shifts=['morning','afternoon','night'];
+  var shiftLabels={morning:'🌅早班',afternoon:'☀️中班',night:'🌙夜班'};
+  var staffList=['赵飞','周敏','吴倩','郑强'];
+  var weekDays=['03-23','03-24','03-25','03-26','03-27','03-28','03-29'];
+  var html='<div class="modal-overlay" id="modal-schedule-calendar" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999999;padding:20px;overflow-y:auto;">';
+  html+='<div style="background:white;border-radius:12px;width:900px;max-height:95vh;display:flex;flex-direction:column;">';
+  html+='<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div style="font-size:16px;font-weight:700;">📅 排班日历（03/23-03/29）</div>';
+  html+='<div style="display:flex;gap:8px;"><button onclick="exportScheduleCSV()" class="action-btn small" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出</button><button onclick="document.getElementById(\'modal-schedule-calendar\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div></div>';
+  html+='<div style="padding:16px 20px;overflow-y:auto;flex:1;">';
+  html+='<div style="display:grid;grid-template-columns:100px repeat(7,1fr);gap:1px;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:12px;">';
+  html+='<div style="padding:8px;background:var(--bg);font-size:12px;font-weight:600;text-align:center;">班次</div>';
+  weekDays.forEach(function(d){
+    var isWeekend=(d==='03-28'||d==='03-29');
+    html+='<div style="padding:8px;background:'+(isWeekend?'var(--red-bg)':'var(--bg)')+';font-size:12px;font-weight:600;text-align:center;">'+d+(isWeekend?'<br><span style="font-size:10px;color:var(--red);">周末</span>':'')+'</div>';
+  });
+  shifts.forEach(function(shift){
+    var shiftBg={morning:'var(--blue-bg)',afternoon:'var(--orange-bg)',night:'var(--purple-bg)'}[shift];
+    var shiftColor={morning:'var(--blue)',afternoon:'var(--orange)',night:'var(--purple)'}[shift];
+    html+='<div style="padding:8px;background:'+shiftBg+';font-size:11px;font-weight:600;color:'+shiftColor+';display:flex;align-items:center;justify-content:center;text-align:center;">'+shiftLabels[shift]+'</div>';
+    weekDays.forEach(function(d){
+      var key='2026-'+d.slice(0,2)+'-'+d.slice(3);
+      var people=scheduleWeekData[key]&&scheduleWeekData[key][shift]?scheduleWeekData[key][shift]:[];
+      var personHtml=people.map(function(p){
+        var color={赵飞:'var(--blue)',周敏:'var(--green)',吴倩:'var(--orange)',郑强:'var(--purple)'}[p]||'var(--text)';
+        return'<span style="display:inline-block;padding:2px 6px;background:'+color+';color:white;border-radius:4px;font-size:10px;margin:1px;cursor:pointer;" onclick="removeScheduleSlot(\''+key+'\',\''+shift+'\',\''+p+'\')">'+p+' ✕</span>';
+      }).join('');
+      html+='<div style="padding:6px;min-height:50px;background:white;border:1px solid var(--border);display:flex;flex-wrap:wrap;gap:2px;align-content:flex-start;" ondrop="dropSchedule(event,\''+key+'\',\''+shift+'\')" ondragover="allowDrop(event)" onclick="addScheduleSlot(\''+key+'\',\''+shift+'\')">'+personHtml+'</div>';
+    });
+  });
+  html+='</div>';
+  html+='<div style="font-size:12px;color:var(--text-muted);">💡 点击格子添加排班，拖拽人员到格子调整，点击人员名字删除</div>';
+  html+='<div style="margin-top:12px;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">👥 员工列表（拖拽到日历）</div>';
+  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+  staffList.forEach(function(s){
+    var color={赵飞:'var(--blue)',周敏:'var(--green)',吴倩:'var(--orange)',郑强:'var(--purple)'}[s]||'var(--text)';
+    html+='<div draggable="true" ondragstart="dragStaff(event,\''+s+'\')" style="padding:6px 14px;background:'+color+';color:white;border-radius:20px;font-size:12px;font-weight:600;cursor:grab;">'+s+'</div>';
+  });
+  html+='</div></div></div>';
+  html+='<div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html+='<button onclick="document.getElementById(\'modal-schedule-calendar\').remove()" class="modal-btn secondary">关闭</button>';
+  html+='<button onclick="saveScheduleCalendar()" class="modal-btn primary" style="background:var(--green);border-color:var(--green);">💾 保存排班</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+var draggedStaff=null;
+function dragStaff(e,staff){draggedStaff=staff;e.dataTransfer.setData('text',staff);}
+function allowDrop(e){e.preventDefault();}
+function dropSchedule(e,date,shift){
+  e.preventDefault();
+  if(draggedStaff){
+    if(!scheduleWeekData[date])scheduleWeekData[date]={morning:[],afternoon:[],night:[]};
+    if(!scheduleWeekData[date][shift].includes(draggedStaff))scheduleWeekData[date][shift].push(draggedStaff);
+    showToast('已添加'+draggedStaff+'到'+date+'的'+shift+'班','success');
+    openStaffScheduleCalendarModal();
+  }
+}
+function addScheduleSlot(date,shift){
+  var staff=prompt('输入添加人员姓名：');
+  if(staff&&staff.trim()){
+    if(!scheduleWeekData[date])scheduleWeekData[date]={morning:[],afternoon:[],night:[]};
+    if(!scheduleWeekData[date][shift].includes(staff.trim())){scheduleWeekData[date][shift].push(staff.trim());showToast('已添加','success');openStaffScheduleCalendarModal();}
+    else showToast('该人员已在班次中','info');
+  }
+}
+function removeScheduleSlot(date,shift,staff){
+  if(!scheduleWeekData[date])return;
+  scheduleWeekData[date][shift]=scheduleWeekData[date][shift].filter(function(s){return s!==staff;});
+  openStaffScheduleCalendarModal();
+}
+function saveScheduleCalendar(){document.getElementById('modal-schedule-calendar').remove();showToast('排班已保存！','success');}
+
+// ==================== 改进5: 设备OTA批量升级多设备进度追踪器 ====================
+var firmwareUpgradeTasks=[];
+function openFirmwareBatchUpgradeModal(){
+  var old=document.getElementById('modal-firmware-batch-upgrade');
+  if(old)old.remove();
+  var devices=[
+    {room:'301',name:'领握LH-807',version:'v2.3.1',target:'v2.4.0',status:'pending'},
+    {room:'302',name:'领握LH-807',version:'v2.3.0',target:'v2.4.0',status:'pending'},
+    {room:'303',name:'领握LH-807',version:'v2.2.8',target:'v2.4.0',status:'pending'},
+    {room:'304',name:'领握LH-807',version:'v2.3.1',target:'v2.4.0',status:'pending'},
+    {room:'305',name:'领握LH-807',version:'v2.2.5',target:'v2.4.0',status:'pending'}
+  ];
+  firmwareUpgradeTasks=devices.map(function(d,i){return Object.assign({},d,{id:i,progress:0,phase:'wait',result:null});});
+  var html='<div class="modal-overlay" id="modal-firmware-batch-upgrade" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999999;">';
+  html+='<div class="modal" style="width:640px;">';
+  html+='<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html+='<div><div style="font-size:16px;font-weight:700;">📦 批量固件升级 - 5台设备</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px;">目标版本：v2.4.0 | 预计耗时：约5-10分钟</div></div>';
+  html+='<button onclick="document.getElementById(\'modal-firmware-batch-upgrade\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html+='<div style="padding:16px 24px;background:var(--blue-bg);border-radius:8px;margin:12px 24px 0;font-size:12px;color:var(--blue);">';
+  html+='💡 升级流程：连接设备 → 下载固件 → 写入Flash → 校验签名 → 重启生效。中途断电需重新升级。</div>';
+  html+='<div id="fbu-devices" style="padding:12px 24px;max-height:300px;overflow-y:auto;">';
+  devices.forEach(function(d,i){
+    var phaseLabels={wait:'等待',download:'下载中',flash:'写入中',verify:'校验中',done:'完成',fail:'失败'};
+    var phaseColors={wait:'var(--text-muted)',download:'var(--blue)',flash:'var(--orange)',verify:'var(--purple)',done:'var(--green)',fail:'var(--red)'};
+    html+='<div id="fbu-device-'+i+'" style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:white;">';
+    html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">';
+    html+='<div style="width:28px;height:28px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--text-muted);" id="fbu-icon-'+i+'">'+(i+1)+'</div>';
+    html+='<div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+d.room+' - '+d.name+'</div><div style="font-size:11px;color:var(--text-muted);">当前：'+d.version+' → 目标：'+d.target+'</div></div>';
+    html+='<div style="font-size:12px;font-weight:600;color:var(--text-muted);" id="fbu-phase-'+i+'">⏳ 等待升级</div></div>';
+    html+='<div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div id="fbu-bar-'+i+'" style="height:100%;width:0%;background:var(--blue);border-radius:3px;transition:width 0.5s;"></div></div>';
+    html+='<div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="fbu-status-'+i+'">等待开始...</div></div>';
+  });
+  html+='</div>';
+  html+='<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+  html+='<button onclick="document.getElementById(\'modal-firmware-batch-upgrade\').remove()" class="modal-btn secondary">关闭</button>';
+  html+='<button onclick="startBatchFirmwareUpgrade()" id="fbu-start-btn" class="modal-btn primary" style="background:var(--green);border-color:var(--green);">▶ 开始升级</button>';
+  html+='</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+var fbuRunning=false;
+function startBatchFirmwareUpgrade(){
+  if(fbuRunning)return;
+  fbuRunning=true;
+  document.getElementById('fbu-start-btn').disabled=true;
+  document.getElementById('fbu-start-btn').style.opacity='0.5';
+  var total=firmwareUpgradeTasks.length;
+  var completed=0;
+  firmwareUpgradeTasks.forEach(function(task,idx){
+    var phases=[
+      {label:'连接设备...',pct:10,dur:800},
+      {label:'下载固件包 v2.4.0...',pct:35,dur:1200},
+      {label:'写入Flash...',pct:65,dur:1500},
+      {label:'校验签名...',pct:85,dur:800},
+      {label:'重启生效...',pct:95,dur:600}
+    ];
+    var delay=idx*1800;
+    phases.forEach(function(phase,pi){
+      setTimeout(function(){
+        document.getElementById('fbu-bar-'+idx).style.width=phase.pct+'%';
+        document.getElementById('fbu-bar-'+idx).style.background=phase.pct<50?'var(--blue)':phase.pct<80?'var(--orange)':phase.pct<100?'var(--purple)':'var(--green)';
+        document.getElementById('fbu-phase-'+idx).textContent=phase.label;
+        document.getElementById('fbu-phase-'+idx).style.color='var(--blue)';
+        document.getElementById('fbu-status-'+idx).textContent=phase.label;
+        document.getElementById('fbu-icon-'+idx).style.background='var(--blue)';
+        document.getElementById('fbu-icon-'+idx).style.color='white';
+        if(pi===phases.length-1){
+          setTimeout(function(){
+            document.getElementById('fbu-bar-'+idx).style.width='100%';
+            document.getElementById('fbu-bar-'+idx).style.background='var(--green)';
+            document.getElementById('fbu-phase-'+idx).textContent='✅ 升级成功';
+            document.getElementById('fbu-phase-'+idx).style.color='var(--green)';
+            document.getElementById('fbu-status-'+idx).textContent='固件已更新至 v2.4.0，设备正常运行';
+            document.getElementById('fbu-icon-'+idx).innerHTML='✓';
+            document.getElementById('fbu-icon-'+idx).style.background='var(--green)';
+            completed++;
+            if(completed===total){
+              fbuRunning=false;
+              showToast('批量固件升级全部完成！'+total+'台设备均升级成功','success');
+              document.getElementById('fbu-start-btn').disabled=false;
+              document.getElementById('fbu-start-btn').textContent='✅ 全部完成';
+              document.getElementById('fbu-start-btn').style.opacity='1';
+            }
+          },phase.dur);
+        }
+      },delay+phases.slice(0,pi).reduce(function(s,p){return s+p.dur;},0));
+    });
+  });
+}
 </script>
 </body>
 </html>
