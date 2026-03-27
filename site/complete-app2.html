@@ -3038,6 +3038,111 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <div style="display:flex;gap:8px;align-items:center;">
             <!-- 【改进5】工单自动派发规则配置入口 -->
             <button class="action-btn" onclick="openWorkorderAutoRuleModal()" style="padding:4px 10px;font-size:11px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⚙️ 自动派发</button>
+            <!-- 【新增改进】工单自动派发规则配置弹窗 -->
+            <div class="modal-overlay hidden" id="modal-wo-auto-rule">
+              <div class="modal" style="width:560px;">
+                <div class="modal-header">
+                  <div class="modal-title">⚙️ 工单自动派发规则</div>
+                  <button class="modal-close" onclick="closeModal('wo-auto-rule')">✕</button>
+                </div>
+                <div class="modal-body">
+                  <div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">
+                    💡 配置自动派发规则后，新工单将根据条件自动分配给对应员工，无需手动处理
+                  </div>
+                  <div id="wo-auto-rule-list">
+                    <div style="margin-bottom:16px;">
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <div style="font-size:13px;font-weight:600;">📋 当前规则</div>
+                        <button class="action-btn small" onclick="addWorkorderAutoRule()" style="padding:3px 8px;">+ 添加规则</button>
+                      </div>
+                      <div id="wo-rule-items">
+                        <div class="wo-rule-item" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--bg);">
+                          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                            <span style="font-size:12px;font-weight:600;color:var(--red);">🔴 客户投诉</span>
+                            <span style="font-size:11px;color:var(--text-muted);">→</span>
+                            <span style="font-size:12px;font-weight:600;color:var(--blue);">👤 赵飞（前厅经理）</span>
+                            <span style="margin-left:auto;font-size:11px;color:var(--green);">● 已启用</span>
+                          </div>
+                          <div style="font-size:11px;color:var(--text-muted);">触发条件：工单类型 = 客户投诉 &amp;&amp; 紧急程度 = 紧急/十分紧急</div>
+                        </div>
+                        <div class="wo-rule-item" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--bg);">
+                          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                            <span style="font-size:12px;font-weight:600;color:var(--orange);">🔧 设备报修</span>
+                            <span style="font-size:11px;color:var(--text-muted);">→</span>
+                            <span style="font-size:12px;font-weight:600;color:var(--purple);">👤 王工（工程师）</span>
+                            <span style="margin-left:auto;font-size:11px;color:var(--green);">● 已启用</span>
+                          </div>
+                          <div style="font-size:11px;color:var(--text-muted);">触发条件：工单类型 = 设备报修</div>
+                        </div>
+                        <div class="wo-rule-item" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);">
+                          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                            <span style="font-size:12px;font-weight:600;color:var(--blue);">📦 送物服务</span>
+                            <span style="font-size:11px;color:var(--text-muted);">→</span>
+                            <span style="font-size:12px;font-weight:600;color:var(--orange);">👤 郑强（清洁人员）</span>
+                            <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">● 已启用</span>
+                          </div>
+                          <div style="font-size:11px;color:var(--text-muted);">触发条件：工单类型 = 送物服务</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="wo-rule-add-form" style="display:none;padding:14px;border:2px dashed var(--blue);border-radius:8px;margin-top:12px;">
+                    <div style="font-size:13px;font-weight:600;margin-bottom:12px;">➕ 添加新规则</div>
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label class="form-label">工单类型 <span class="required">*</span></label>
+                        <select class="form-select" id="woar-type">
+                          <option value="">请选择</option>
+                          <option value="complaint">🔴 客户投诉</option>
+                          <option value="delivery">📦 送物服务</option>
+                          <option value="invoice">📄 发票需求</option>
+                          <option value="praise">⭐ 点评表扬</option>
+                          <option value="repair">🔧 设备报修</option>
+                          <option value="other">📋 其他</option>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label">派发给 <span class="required">*</span></label>
+                        <select class="form-select" id="woar-assign">
+                          <option value="">请选择员工</option>
+                          <option value="赵飞">赵飞（前厅经理）</option>
+                          <option value="周敏">周敏（前厅接待）</option>
+                          <option value="吴倩">吴倩（客房主管）</option>
+                          <option value="郑强">郑强（清洁人员）</option>
+                          <option value="王工">王工（工程师）</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label class="form-label">紧急程度（可选）</label>
+                        <select class="form-select" id="woar-urgent">
+                          <option value="">不限</option>
+                          <option value="normal">普通</option>
+                          <option value="urgent">紧急</option>
+                          <option value="critical">十分紧急</option>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label">状态</label>
+                        <select class="form-select" id="woar-status">
+                          <option value="enabled">● 启用</option>
+                          <option value="disabled">○ 禁用</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                      <button class="modal-btn primary" onclick="confirmAddWorkorderRule()" style="padding:6px 16px;">确认添加</button>
+                      <button class="modal-btn secondary" onclick="cancelAddWorkorderRule()" style="padding:6px 16px;">取消</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button class="modal-btn secondary" onclick="closeModal('wo-auto-rule')">关闭</button>
+                  <button class="modal-btn primary" onclick="saveWorkorderAutoRules()">💾 保存规则</button>
+                </div>
+              </div>
+            </div>
             <button class="action-btn" onclick="openCreateWorkorderModal()" style="padding:4px 12px;">+ 创建工单</button>
           </div>
         </div>
@@ -4423,11 +4528,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
       <div class="card" style="margin-bottom:12px;">
         <div class="card-body" style="padding:12px 20px;">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <!-- 【改进5】操作日志增强筛选：增加操作对象/关键词/IP过滤+组合搜索+保存筛选方案 -->
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
             <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-light);"><span>📅</span><span>时间范围：</span></div>
-            <input type="date" class="form-input" id="oplog-date-start" style="width:150px;padding:6px 10px;" value="2026-03-01">
+            <input type="date" class="form-input" id="oplog-date-start" style="width:140px;padding:6px 10px;" value="2026-03-01">
             <span style="color:var(--text-muted);font-size:12px;">至</span>
-            <input type="date" class="form-input" id="oplog-date-end" style="width:150px;padding:6px 10px;" value="2026-03-26">
+            <input type="date" class="form-input" id="oplog-date-end" style="width:140px;padding:6px 10px;" value="2026-03-26">
+            <!-- 【改进5】新增关键词全文搜索 -->
+            <input type="text" class="form-input" id="oplog-keyword" placeholder="🔍 关键词搜索" style="width:130px;padding:6px 10px;font-size:12px;" onkeydown="if(event.key==='Enter')applyOplogFilter()">
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <select class="form-select" id="oplog-module-filter" style="width:130px;padding:6px 10px;" onchange="applyOplogFilter()">
               <option value="all">全部模块</option>
               <option value="checkin">入住/退房</option>
@@ -4443,21 +4553,41 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               <option value="admin">管理员</option>
               <option value="system">系统</option>
             </select>
-            <select class="form-select" id="oplog-type-filter" style="width:120px;padding:6px 10px;">
+            <select class="form-select" id="oplog-type-filter" style="width:120px;padding:6px 10px;" onchange="applyOplogFilter()">
               <option value="all">全部类型</option>
               <option value="create">新增</option>
               <option value="update">修改</option>
               <option value="delete">删除</option>
               <option value="auth">授权</option>
             </select>
-            <select class="form-select" id="oplog-status-filter" style="width:110px;padding:6px 10px;">
+            <select class="form-select" id="oplog-status-filter" style="width:110px;padding:6px 10px;" onchange="applyOplogFilter()">
               <option value="all">全部结果</option>
               <option value="success">成功</option>
               <option value="fail">失败</option>
             </select>
-            <button class="action-btn small" onclick="applyOplogFilter()" style="padding:6px 12px;">🔍 应用筛选</button>
+            <!-- 【改进5】新增操作对象过滤器 -->
+            <input type="text" class="form-input" id="oplog-target" placeholder="操作对象（如301）" style="width:110px;padding:6px 10px;font-size:12px;" onkeydown="if(event.key==='Enter')applyOplogFilter()">
+            <!-- 【改进5】新增IP地址过滤器 -->
+            <input type="text" class="form-input" id="oplog-ip" placeholder="IP地址" style="width:110px;padding:6px 10px;font-size:12px;" onkeydown="if(event.key==='Enter')applyOplogFilter()">
+            <button class="action-btn small" onclick="applyOplogFilter()" style="padding:6px 12px;">🔍 搜索</button>
             <button class="action-btn small" onclick="resetOplogFilter()" style="padding:6px 12px;">重置</button>
-            <span style="margin-left:auto;font-size:12px;color:var(--text-muted);" id="oplog-count">共 5 条记录</span>
+            <!-- 【改进5】保存/加载筛选方案 -->
+            <div style="display:flex;gap:6px;margin-left:auto;">
+              <button class="action-btn small" onclick="saveOplogFilterScheme()" style="padding:5px 10px;font-size:11px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">💾 保存方案</button>
+              <select class="form-select" id="oplog-scheme-select" style="padding:5px 8px;font-size:11px;width:130px;" onchange="loadOplogFilterScheme()">
+                <option value="">加载方案...</option>
+                <option value="admin-audit">👤 管理员审计</option>
+                <option value="device-ops">📱 设备操作</option>
+                <option value="checkin-records">🏨 入住记录</option>
+              </select>
+            </div>
+          </div>
+          <!-- 筛选结果统计条 -->
+          <div style="margin-top:10px;padding:8px 12px;background:var(--blue-bg);border-radius:6px;font-size:12px;display:flex;align-items:center;gap:16px;">
+            <span style="color:var(--text-muted);" id="oplog-count">共 <strong>5</strong> 条记录</span>
+            <span style="color:var(--text-muted);" id="oplog-result-count">已筛选 <strong>5</strong> 条</span>
+            <span style="color:var(--green);" id="oplog-success-count">✅ 成功 <strong>4</strong></span>
+            <span style="color:var(--red);" id="oplog-fail-count">❌ 失败 <strong>1</strong></span>
           </div>
         </div>
       </div>
@@ -7747,7 +7877,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 
 <!-- 【改进2】节能风控-远程通断电控制模态框 -->
 <div class="modal-overlay hidden" id="modal-power-control">
-  <div class="modal">
+  <div class="modal" style="width:480px;">
     <div class="modal-header">
       <div class="modal-title">⚡ 房间设备通断电控制</div>
       <button class="modal-close" onclick="closeModal('power-control')">✕</button>
@@ -7763,9 +7893,40 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div style="font-size:15px;font-weight:600;color:var(--red);" id="pc-target-status">⏸ 断开电源</div>
         <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">执行后，房间内的空调、灯光等设备将<span style="color:var(--red);font-weight:600;">断电</span>，门锁不受影响</div>
       </div>
+      <!-- 【改进2】通断电定时调度：支持选择"立即执行"或"定时执行" -->
+      <div style="margin-bottom:14px;">
+        <label class="form-label" style="margin-bottom:8px;">⏰ 执行方式</label>
+        <div style="display:flex;gap:8px;">
+          <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 12px;border:2px solid var(--blue);border-radius:8px;cursor:pointer;background:var(--blue-bg);" id="pc-mode-immediate-wrap">
+            <input type="radio" name="pc-mode" value="now" id="pc-mode-now" checked style="accent-color:var(--blue);" onchange="togglePcScheduleMode()">
+            <span style="font-size:13px;font-weight:600;color:var(--blue);">⚡ 立即执行</span>
+          </label>
+          <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;" id="pc-mode-timer-wrap">
+            <input type="radio" name="pc-mode" value="timer" id="pc-mode-timer" style="accent-color:var(--blue);" onchange="togglePcScheduleMode()">
+            <span style="font-size:13px;font-weight:600;color:var(--text);">🕐 定时执行</span>
+          </label>
+        </div>
+      </div>
+      <!-- 定时调度面板 -->
+      <div id="pc-schedule-panel" style="display:none;padding:14px;border:1px solid var(--border);border-radius:8px;margin-bottom:14px;background:var(--bg);">
+        <div class="form-row" style="margin-bottom:10px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">执行日期 <span class="required">*</span></label>
+            <input type="date" class="form-input" id="pc-schedule-date" style="padding:6px 10px;font-size:13px;">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">执行时间 <span class="required">*</span></label>
+            <input type="time" class="form-input" id="pc-schedule-time" style="padding:6px 10px;font-size:13px;" value="14:00">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">备注</label>
+          <input type="text" class="form-input" id="pc-schedule-note" placeholder="定时执行原因，如：客人预计18:00入住" style="padding:6px 10px;font-size:13px;">
+        </div>
+      </div>
       <div class="form-group" style="margin-bottom:0;">
         <label class="form-label">操作备注</label>
-        <textarea class="form-textarea" id="pc-note" placeholder="可选填写操作原因，如：客户退房后断电节能"></textarea>
+        <textarea class="form-textarea" id="pc-note" placeholder="可选填写操作原因，如：客户退房后断电节能" style="min-height:60px;"></textarea>
       </div>
     </div>
     <div class="modal-footer">
@@ -11886,18 +12047,28 @@ function openEditEmployeeFullModal(idx) {
 
 // ======= 改进3: 操作日志功能 =======
 // ======= 【改进1】操作日志真实多维筛选（联动模块+操作人+类型+结果） =======
+// ======= 【改进5】操作日志增强：关键词搜索+操作对象过滤+IP过滤+保存方案 =======
+var oplogFilterSchemes = {
+  'admin-audit': {keyword:'管理员', module:'all', user:'admin', type:'all', status:'all', target:'', ip:''},
+  'device-ops': {keyword:'', module:'device', user:'all', type:'all', status:'all', target:'', ip:''},
+  'checkin-records': {keyword:'', module:'checkin', user:'all', type:'all', status:'all', target:'', ip:''}
+};
+
 function applyOplogFilter() {
   var module = document.getElementById('oplog-module-filter').value;
   var user = document.getElementById('oplog-user-filter').value;
   var type = document.getElementById('oplog-type-filter').value;
   var status = document.getElementById('oplog-status-filter').value;
+  var keyword = document.getElementById('oplog-keyword').value.trim().toLowerCase();
+  var target = document.getElementById('oplog-target').value.trim().toLowerCase();
+  var ip = document.getElementById('oplog-ip').value.trim().toLowerCase();
   var rows = document.querySelectorAll('#oplog-table-body tr');
-  var count = 0;
+  var count = 0, successCount = 0, failCount = 0;
   rows.forEach(function(row) {
     var show = true;
     if (module !== 'all' && row.dataset.module !== module) show = false;
     if (user !== 'all') {
-      var userText = row.cells[1].textContent.toLowerCase();
+      var userText = (row.cells[1] ? row.cells[1].textContent : '').toLowerCase();
       if (user === 'zhao' && userText.indexOf('赵飞') === -1) show = false;
       if (user === 'zhou' && userText.indexOf('周敏') === -1) show = false;
       if (user === 'admin' && userText.indexOf('管理员') === -1) show = false;
@@ -11905,10 +12076,69 @@ function applyOplogFilter() {
     }
     if (type !== 'all' && row.dataset.type !== type) show = false;
     if (status !== 'all' && row.dataset.status !== status) show = false;
+    // 【改进5】关键词全文搜索
+    if (keyword) {
+      var rowText = Array.from(row.cells).map(function(c){ return c.textContent; }).join(' ').toLowerCase();
+      if (rowText.indexOf(keyword) === -1) show = false;
+    }
+    // 【改进5】操作对象过滤
+    if (target && (row.cells[4] ? row.cells[4].textContent.toLowerCase().indexOf(target) : -1) === -1) show = false;
+    // 【改进5】IP地址过滤
+    if (ip && (row.cells[6] ? row.cells[6].textContent.toLowerCase().indexOf(ip) : -1) === -1) show = false;
     row.style.display = show ? '' : 'none';
-    if (show) count++;
+    if (show) {
+      count++;
+      if (row.dataset.status === 'success') successCount++;
+      else if (row.dataset.status === 'fail') failCount++;
+    }
   });
-  document.getElementById('oplog-count').textContent = '共 ' + count + ' 条记录';
+  var totalCount = rows.length;
+  document.getElementById('oplog-count').innerHTML = '共 <strong>' + totalCount + '</strong> 条记录';
+  var resultEl = document.getElementById('oplog-result-count');
+  if (resultEl) resultEl.innerHTML = '已筛选 <strong>' + count + '</strong> 条';
+  var succEl = document.getElementById('oplog-success-count');
+  if (succEl) succEl.innerHTML = '✅ 成功 <strong>' + successCount + '</strong>';
+  var failEl = document.getElementById('oplog-fail-count');
+  if (failEl) failEl.innerHTML = '❌ 失败 <strong>' + failCount + '</strong>';
+  showToast('筛选完成：' + count + '/' + totalCount + ' 条记录', 'success');
+}
+
+function saveOplogFilterScheme() {
+  var name = prompt('请输入方案名称（如：我的筛选方案）：');
+  if (!name) return;
+  var scheme = {
+    keyword: document.getElementById('oplog-keyword').value.trim(),
+    module: document.getElementById('oplog-module-filter').value,
+    user: document.getElementById('oplog-user-filter').value,
+    type: document.getElementById('oplog-type-filter').value,
+    status: document.getElementById('oplog-status-filter').value,
+    target: document.getElementById('oplog-target').value.trim(),
+    ip: document.getElementById('oplog-ip').value.trim()
+  };
+  oplogFilterSchemes[name] = scheme;
+  var select = document.getElementById('oplog-scheme-select');
+  if (select) {
+    var opt = document.createElement('option');
+    opt.value = name; opt.textContent = '📁 ' + name;
+    select.appendChild(opt);
+    select.value = name;
+  }
+  showToast('方案 "' + name + '" 已保存', 'success');
+}
+
+function loadOplogFilterScheme() {
+  var name = document.getElementById('oplog-scheme-select').value;
+  if (!name || !oplogFilterSchemes[name]) return;
+  var s = oplogFilterSchemes[name];
+  document.getElementById('oplog-keyword').value = s.keyword || '';
+  document.getElementById('oplog-module-filter').value = s.module || 'all';
+  document.getElementById('oplog-user-filter').value = s.user || 'all';
+  document.getElementById('oplog-type-filter').value = s.type || 'all';
+  document.getElementById('oplog-status-filter').value = s.status || 'all';
+  document.getElementById('oplog-target').value = s.target || '';
+  document.getElementById('oplog-ip').value = s.ip || '';
+  applyOplogFilter();
+  showToast('已加载方案：' + name, 'success');
 }
 
 function resetOplogFilter() {
@@ -12114,13 +12344,42 @@ function openPowerControlModal(room, currentStatus) {
 function submitPowerControl() {
   var room = window.pcRoomName;
   var target = window.pcRoomTarget;
-  closeModal('power-control');
-  if (target === 'off') {
-    showToast('正在向 ' + room + ' 下发断电指令...', 'info');
-    setTimeout(function() { showToast(room + ' 已断电，空调等设备已关闭', 'success'); }, 2500);
+  var mode = document.querySelector('input[name="pc-mode"]:checked').value;
+  if (mode === 'timer') {
+    var date = document.getElementById('pc-schedule-date').value;
+    var time = document.getElementById('pc-schedule-time').value;
+    var note = document.getElementById('pc-schedule-note').value;
+    if (!date || !time) { showToast('请选择定时执行的日期和时间', 'error'); return; }
+    closeModal('power-control');
+    showToast('⏰ 定时断电已设置：' + room + ' 将于 ' + date + ' ' + time + ' 执行' + (target === 'off' ? '断电' : '通电') + '操作', 'success');
   } else {
-    showToast('正在向 ' + room + ' 下发通电指令...', 'info');
-    setTimeout(function() { showToast(room + ' 已通电，设备恢复正常', 'success'); }, 2500);
+    closeModal('power-control');
+    if (target === 'off') {
+      showToast('正在向 ' + room + ' 下发断电指令...', 'info');
+      setTimeout(function() { showToast(room + ' 已断电，空调等设备已关闭', 'success'); }, 2500);
+    } else {
+      showToast('正在向 ' + room + ' 下发通电指令...', 'info');
+      setTimeout(function() { showToast(room + ' 已通电，设备恢复正常', 'success'); }, 2500);
+    }
+  }
+}
+function togglePcScheduleMode() {
+  var mode = document.querySelector('input[name="pc-mode"]:checked').value;
+  var panel = document.getElementById('pc-schedule-panel');
+  var nowWrap = document.getElementById('pc-mode-immediate-wrap');
+  var timerWrap = document.getElementById('pc-mode-timer-wrap');
+  if (panel) panel.style.display = mode === 'timer' ? 'block' : 'none';
+  if (mode === 'now') {
+    if (nowWrap) { nowWrap.style.borderColor = 'var(--blue)'; nowWrap.style.background = 'var(--blue-bg)'; }
+    if (timerWrap) { timerWrap.style.borderColor = 'var(--border)'; timerWrap.style.background = ''; }
+  } else {
+    if (timerWrap) { timerWrap.style.borderColor = 'var(--blue)'; timerWrap.style.background = 'var(--blue-bg)'; }
+    if (nowWrap) { nowWrap.style.borderColor = 'var(--border)'; nowWrap.style.background = ''; }
+    // Default to tomorrow's date
+    var tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    var y = tomorrow.getFullYear(), m = String(tomorrow.getMonth()+1).padStart(2,'0'), d = String(tomorrow.getDate()).padStart(2,'0');
+    var dateEl = document.getElementById('pc-schedule-date');
+    if (dateEl) dateEl.value = y + '-' + m + '-' + d;
   }
 }
 
@@ -15518,30 +15777,77 @@ function openBatchSettlementModal() {
   if (checked.length === 0) { showToast('请先选择要结算的房间', 'error'); return; }
   var total = 0;
   var rooms = [];
+  var feeList = [];
   checked.forEach(function(cb) {
     var row = cb.closest('tr');
     var cells = row.querySelectorAll('td');
     var amtCell = cells[8];
-    if (amtCell) { total += parseInt(amtCell.textContent.replace(/[^0-9]/g, '') || '0'); }
-    rooms.push(cells[1] ? cells[1].textContent.trim() : '?');
+    var roomNum = cells[1] ? cells[1].textContent.trim() : '?';
+    var roomFee = amtCell ? parseInt(amtCell.textContent.replace(/[^0-9]/g, '') || '0') : 0;
+    total += roomFee;
+    rooms.push(roomNum);
+    feeList.push({room: roomNum, fee: roomFee});
   });
   document.getElementById('batch-stl-count').textContent = checked.length + ' 个';
   document.getElementById('batch-stl-rooms').textContent = rooms.join('、') + '室';
   document.getElementById('batch-stl-total').textContent = '¥' + total;
+  // Build fee breakdown
+  var feeListEl = document.getElementById('batch-stl-fee-list');
+  if (feeListEl) {
+    var html = '';
+    feeList.forEach(function(item) {
+      html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);"><span>' + item.room + '室</span><span style="font-weight:600;color:var(--orange);">¥' + item.fee + '</span></div>';
+    });
+    html += '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0 0;font-weight:700;color:var(--text);"><span>费用合计</span><span style="color:var(--orange);">¥' + total + '</span></div>';
+    feeListEl.innerHTML = html;
+  }
+  // Reset discount/cancel fee
+  document.getElementById('batch-stl-discount-type').value = 'none';
+  document.getElementById('batch-stl-discount-val').value = '';
+  document.getElementById('batch-stl-discount-val').style.display = 'none';
+  document.getElementById('batch-stl-discount-unit').style.display = 'none';
+  document.getElementById('batch-stl-cancel-fee').value = '0';
+  document.getElementById('batch-stl-final-total').textContent = '¥' + total;
   openModal('batch-settlement');
+}
+
+function toggleBatchDiscountInput() {
+  var dtype = document.getElementById('batch-stl-discount-type').value;
+  var valInput = document.getElementById('batch-stl-discount-val');
+  var unit = document.getElementById('batch-stl-discount-unit');
+  if (dtype === 'none') { valInput.style.display = 'none'; unit.style.display = 'none'; }
+  else if (dtype === 'percent') { valInput.style.display = 'block'; valInput.placeholder = '输入折扣率'; unit.style.display = 'inline'; unit.textContent = '%'; }
+  else { valInput.style.display = 'block'; valInput.placeholder = '输入金额'; unit.style.display = 'inline'; unit.textContent = '元'; }
+}
+
+function updateBatchSettlementTotal() {
+  var discountType = document.getElementById('batch-stl-discount-type').value;
+  var discountVal = parseFloat(document.getElementById('batch-stl-discount-val').value) || 0;
+  var cancelFee = parseFloat(document.getElementById('batch-stl-cancel-fee').value) || 0;
+  var total = parseInt(document.getElementById('batch-stl-total').textContent.replace(/[^0-9]/g, '') || '0');
+  var discountAmount = 0;
+  if (discountType === 'percent') { discountAmount = Math.round(total * discountVal / 100); }
+  else if (discountType === 'amount') { discountAmount = discountVal; }
+  var finalTotal = Math.max(0, total - discountAmount + cancelFee);
+  document.getElementById('batch-stl-final-total').textContent = '¥' + finalTotal;
 }
 
 function confirmBatchSettlement() {
   var method = document.getElementById('batch-stl-method').value;
   var count = document.getElementById('batch-stl-count').textContent;
   var rooms = document.getElementById('batch-stl-rooms').textContent;
+  var finalTotal = document.getElementById('batch-stl-final-total').textContent;
   var checked = document.querySelectorAll('.stl-row-check:checked');
+  var discountType = document.getElementById('batch-stl-discount-type').value;
+  var discountInfo = '';
+  if (discountType === 'percent') discountInfo = '，折扣率' + document.getElementById('batch-stl-discount-val').value + '%';
+  else if (discountType === 'amount') discountInfo = '，立减¥' + document.getElementById('batch-stl-discount-val').value;
   closeModal('batch-settlement');
-  showToast('批量结算成功！' + count + ' ' + rooms + ' 已完成结算，方式：' + (method === 'wechat' ? '微信' : method === 'alipay' ? '支付宝' : method === 'cash' ? '现金' : '混合'), 'success');
+  showToast('✅ 批量结算成功！' + count + ' ' + rooms + ' 已完成结算，实收 ' + finalTotal + discountInfo + '，方式：' + (method === 'wechat' ? '微信' : method === 'alipay' ? '支付宝' : method === 'cash' ? '现金' : '混合'), 'success');
   checked.forEach(function(cb) { cb.closest('tr').style.display = 'none'; });
   var pendingCount = parseInt(document.getElementById('stl-pending-count').textContent) - checked.length;
   document.getElementById('stl-pending-count').textContent = Math.max(0, pendingCount);
-  document.getElementById('stl-pending-amount').textContent = '¥' + Math.max(0, parseInt(document.getElementById('stl-pending-amount').textContent.replace('¥','')) - parseInt(document.getElementById('batch-stl-total').textContent.replace('¥','')));
+  document.getElementById('stl-pending-amount').textContent = '¥' + Math.max(0, parseInt(document.getElementById('stl-pending-amount').textContent.replace('¥','')) - parseInt(finalTotal.replace(/[^0-9]/g,'')));
 }
 
 function openSettlementHistoryModal() {
@@ -18609,6 +18915,30 @@ function generateRandomCode() {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
 
+function toggleKpTimeRange() {
+  var type = document.getElementById('kp-type').value;
+  var timePanel = document.getElementById('kp-time-range-panel');
+  var validRow = document.getElementById('kp-valid-hours-row');
+  var hintEl = document.getElementById('kp-use-limit-hint');
+  if (timePanel) timePanel.style.display = type === 'temp' ? 'block' : 'none';
+  if (validRow) validRow.style.display = type === 'once' ? 'flex' : 'none';
+  if (hintEl) {
+    var useLimit = document.getElementById('kp-use-limit').value;
+    var hints = {'1':'最多使用1次后自动失效','3':'最多使用3次后自动失效','5':'最多使用5次后自动失效','0':'使用次数不受限制'};
+    hintEl.textContent = hints[useLimit] || '最多使用1次后自动失效';
+  }
+}
+
+function copyKpPassword() {
+  var code = document.getElementById('kp-preview-code').textContent;
+  if (!code || code === '????') { showToast('先生成密码后再复制', 'error'); return; }
+  navigator.clipboard.writeText(code).then(function() {
+    showToast('密码 ' + code + ' 已复制到剪贴板', 'success');
+  }).catch(function() {
+    showToast('复制失败，请手动复制', 'error');
+  });
+}
+
 function openEditKeypadModal(idx) {
   var k = keypadData[idx];
   if (!k) return;
@@ -18625,18 +18955,20 @@ function saveKeypadForm() {
   var holder = document.getElementById('kp-holder').value.trim();
   var type = document.getElementById('kp-type').value;
   var validHours = parseInt(document.getElementById('kp-valid-hours').value) || 24;
+  var useLimit = parseInt(document.getElementById('kp-use-limit').value) || 1;
   var idx = document.getElementById('kp-idx').value;
   if (!room) { showToast('请输入房间号', 'error'); return; }
   if (!holder) { showToast('请输入使用人', 'error'); return; }
-  var code = generateRandomCode();
+  var code = document.getElementById('kp-preview-code').textContent;
+  if (!code || code === '????') { code = generateRandomCode(); }
   var now = new Date();
   var validDate = new Date(now.getTime() + validHours * 3600000);
   var typeLabels = {once:'一次性',cycle:'周期',temp:'临时'};
   var newK = {room:room, code:code, type:typeLabels[type], holder:holder,
-    valid:validDate.toISOString().slice(0,16).replace('T',' '), status:'active', uses:0};
+    valid:validDate.toISOString().slice(0,16).replace('T',' '), status:'active', uses:0, useLimit:useLimit};
   if (idx === '-1') {
     keypadData.unshift(newK);
-    showToast('密码 ' + code + ' 已生成并分配给 ' + holder, 'success');
+    showToast('密码 ' + code + ' 已生成并分配给 ' + holder + '（' + (useLimit > 0 ? '限' + useLimit + '次' : '不限次数') + '）', 'success');
   } else {
     keypadData[idx] = newK;
     showToast('密码信息已更新', 'success');
@@ -19062,7 +19394,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- ======= 【改进C】密码管理新增/编辑表单弹窗 ======= -->
 <div class="modal-overlay hidden" id="modal-keypad-form">
-  <div class="modal" style="width:480px;">
+  <div class="modal" style="width:520px;">
     <div class="modal-header">
       <div class="modal-title">🔑 生成房间密码</div>
       <button class="modal-close" onclick="closeModal('keypad-form')">✕</button>
@@ -19082,22 +19414,62 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">密码类型</label>
-          <select class="form-select" id="kp-type">
+          <select class="form-select" id="kp-type" onchange="toggleKpTimeRange()">
             <option value="once">一次性密码</option>
             <option value="cycle">周期密码（每天生效）</option>
             <option value="temp">临时密码（限时段）</option>
           </select>
         </div>
         <div class="form-group">
+          <label class="form-label">使用次数</label>
+          <select class="form-select" id="kp-use-limit">
+            <option value="1">仅限1次</option>
+            <option value="3">最多3次</option>
+            <option value="5">最多5次</option>
+            <option value="0">不限次数</option>
+          </select>
+        </div>
+      </div>
+      <!-- 【改进4】密码有效期：支持开始时间+失效时间范围（非仅小时数） -->
+      <div class="form-row" id="kp-valid-hours-row">
+        <div class="form-group">
           <label class="form-label">有效期（小数）</label>
           <input type="number" class="form-input" id="kp-valid-hours" value="24" min="1" max="720">
           <div class="form-hint">密码生成后多少小时内有效</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">使用次数限制</label>
+          <div style="padding:9px 0;font-size:12px;color:var(--text-muted);" id="kp-use-limit-hint">最多使用1次后自动失效</div>
+        </div>
+      </div>
+      <!-- 时段限制面板（临时密码时显示） -->
+      <div id="kp-time-range-panel" style="display:none;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;background:var(--bg);">
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--blue);">🕐 密码有效时段（临时密码）</div>
+        <div class="form-row" style="margin-bottom:0;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">生效时间</label>
+            <input type="datetime-local" class="form-input" id="kp-start-time" style="padding:6px 10px;font-size:12px;">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">失效时间</label>
+            <input type="datetime-local" class="form-input" id="kp-end-time" style="padding:6px 10px;font-size:12px;">
+          </div>
         </div>
       </div>
       <div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;">
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">生成的4位数字密码</div>
         <div style="font-size:32px;font-weight:700;color:var(--blue);letter-spacing:8px;" id="kp-preview-code">????</div>
-        <button class="action-btn small" onclick="document.getElementById('kp-preview-code').textContent=generateRandomCode()" style="margin-top:8px;">🎲 重新生成</button>
+        <div style="margin-top:8px;display:flex;gap:8px;justify-content:center;">
+          <button class="action-btn small" onclick="document.getElementById('kp-preview-code').textContent=generateRandomCode()">🎲 重新生成</button>
+          <button class="action-btn small" onclick="copyKpPassword()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">📋 复制密码</button>
+        </div>
+      </div>
+      <!-- 【改进4】房间当前有效密码列表 -->
+      <div style="margin-top:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">📋 <span id="kp-room-label">--</span> 当前有效密码</div>
+        <div id="kp-active-passwords" style="max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg);">
+          <div style="text-align:center;font-size:12px;color:var(--text-muted);padding:8px;">暂无有效密码</div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -19478,9 +19850,9 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </div>
 
-<!-- 【改进6】批量结算确认弹窗 -->
+<!-- 【改进6】批量结算确认弹窗（增强：支持折扣+退房费+费用明细） -->
 <div class="modal-overlay hidden" id="modal-batch-settlement">
-  <div class="modal" style="width:480px;">
+  <div class="modal" style="width:520px;">
     <div class="modal-header">
       <div class="modal-title">🔄 批量结算确认</div>
       <button class="modal-close" onclick="closeModal('batch-settlement')">✕</button>
@@ -19490,7 +19862,14 @@ document.addEventListener('DOMContentLoaded', function() {
         <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px;">已选房间</div>
         <div style="font-size:18px;font-weight:700;color:var(--blue);" id="batch-stl-rooms">—</div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <!-- 【改进3】费用明细区 -->
+      <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:14px;" id="batch-stl-breakdown">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);">💰 费用明细</div>
+        <div style="display:flex;flex-direction:column;gap:6px;" id="batch-stl-fee-list">
+          <!-- JS动态生成 -->
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
         <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center;">
           <div style="font-size:12px;color:var(--text-muted);">房间数</div>
           <div style="font-size:24px;font-weight:700;color:var(--blue);" id="batch-stl-count">0</div>
@@ -19499,6 +19878,30 @@ document.addEventListener('DOMContentLoaded', function() {
           <div style="font-size:12px;color:var(--text-muted);">应付总额</div>
           <div style="font-size:24px;font-weight:700;color:var(--orange);" id="batch-stl-total">¥0</div>
         </div>
+      </div>
+      <!-- 【改进3】批量折扣输入 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">批量折扣</label>
+          <div style="display:flex;gap:6px;">
+            <select class="form-select" id="batch-stl-discount-type" onchange="toggleBatchDiscountInput();updateBatchSettlementTotal();" style="flex:1;padding:6px 8px;font-size:12px;">
+              <option value="none">无折扣</option>
+              <option value="percent">按折扣率</option>
+              <option value="amount">立减金额</option>
+            </select>
+            <input type="number" class="form-input" id="batch-stl-discount-val" placeholder="0" oninput="updateBatchSettlementTotal()" style="width:70px;padding:6px 8px;font-size:12px;display:none;">
+            <span id="batch-stl-discount-unit" style="display:none;line-height:36px;font-size:12px;color:var(--text-muted);">%</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">退房费</label>
+          <input type="number" class="form-input" id="batch-stl-cancel-fee" placeholder="输入退房费（如加急费）" oninput="updateBatchSettlementTotal()" style="padding:6px 10px;font-size:12px;" value="0">
+        </div>
+      </div>
+      <!-- 实际应付金额高亮区 -->
+      <div style="background:var(--green-bg);border:1px solid var(--green);border-radius:8px;padding:12px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:13px;font-weight:600;color:var(--green);">💵 折后应付总额</span>
+        <span style="font-size:22px;font-weight:700;color:var(--green);" id="batch-stl-final-total">¥0</span>
       </div>
       <div class="form-group">
         <label class="form-label">结算方式</label>
@@ -22002,6 +22405,52 @@ function submitWorkorderCreate() {
   showToast('✅ 工单已创建：' + typeLabel, 'success');
   closeModal('workorder-create');
   renderWorkorderTable();
+}
+
+// ======= 【改进5】工单自动派发规则功能 =======
+var woAutoRules = [
+  {type:'complaint', assign:'赵飞', urgent:'urgent|critical', status:'enabled'},
+  {type:'repair', assign:'王工', urgent:'', status:'enabled'},
+  {type:'delivery', assign:'郑强', urgent:'', status:'enabled'}
+];
+
+function openWorkorderAutoRuleModal() { openModal('wo-auto-rule'); }
+function addWorkorderAutoRule() { var form = document.getElementById('wo-rule-add-form'); if (form) form.style.display = 'block'; }
+function cancelAddWorkorderRule() {
+  var form = document.getElementById('wo-rule-add-form');
+  if (form) form.style.display = 'none';
+  document.getElementById('woar-type').value = '';
+  document.getElementById('woar-assign').value = '';
+  document.getElementById('woar-urgent').value = '';
+  document.getElementById('woar-status').value = 'enabled';
+}
+function confirmAddWorkorderRule() {
+  var type = document.getElementById('woar-type').value;
+  var assign = document.getElementById('woar-assign').value;
+  if (!type || !assign) { showToast('请选择工单类型和派发员工', 'error'); return; }
+  var urgent = document.getElementById('woar-urgent').value;
+  var status = document.getElementById('woar-status').value;
+  var typeLabels = {complaint:'🔴 客户投诉',delivery:'📦 送物服务',invoice:'📄 发票需求',praise:'⭐ 点评表扬',repair:'🔧 设备报修',other:'📋 其他'};
+  var assignLabels = {赵飞:'赵飞（前厅经理）',周敏:'周敏（前厅接待）',吴倩:'吴倩（客房主管）',郑强:'郑强（清洁人员）',王工:'王工（工程师）'};
+  var urgentLabels = {normal:'普通',urgent:'紧急',critical:'十分紧急'};
+  var colorMap = {complaint:'var(--red)',delivery:'var(--blue)',invoice:'var(--purple)',praise:'var(--green)',repair:'var(--orange)',other:'var(--text)'};
+  var condText = urgent ? '工单类型 = ' + typeLabels[type] + ' && 紧急程度 = ' + urgentLabels[urgent] : '工单类型 = ' + typeLabels[type];
+  var newHtml = '<div class="wo-rule-item" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--bg);">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">' +
+    '<span style="font-size:12px;font-weight:600;color:' + colorMap[type] + ';">' + typeLabels[type] + '</span>' +
+    '<span style="font-size:11px;color:var(--text-muted);">→</span>' +
+    '<span style="font-size:12px;font-weight:600;color:var(--blue);">👤 ' + assignLabels[assign] + '</span>' +
+    '<span style="margin-left:auto;font-size:11px;color:' + (status === 'enabled' ? 'var(--green)' : 'var(--text-muted)') + ';">' + (status === 'enabled' ? '● 已启用' : '○ 已禁用') + '</span></div>' +
+    '<div style="font-size:11px;color:var(--text-muted);">触发条件：' + condText + '</div></div>';
+  var list = document.getElementById('wo-rule-items');
+  if (list) list.insertAdjacentHTML('beforeend', newHtml);
+  woAutoRules.push({type:type, assign:assign, urgent:urgent, status:status});
+  cancelAddWorkorderRule();
+  showToast('✅ 新规则已添加', 'success');
+}
+function saveWorkorderAutoRules() {
+  showToast('✅ 自动派发规则已保存（' + woAutoRules.length + ' 条规则）', 'success');
+  closeModal('wo-auto-rule');
 }
 
 function submitWorkorderProcess() {
