@@ -472,6 +472,36 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
   <!-- Sidebar -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-logo"><span class="icon">🔐</span><span>领锁物联</span></div>
+    <!-- 【改进6】侧边栏实时运营数据条 -->
+    <div style="padding:10px 16px;margin:0 8px 8px;border-radius:8px;background:var(--blue-bg);display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;">
+      <div onclick="showPage('home')" style="cursor:pointer;" title="当前入住率">
+        <div style="font-size:18px;font-weight:800;color:var(--blue);" id="sbar-occupancy">78%</div>
+        <div style="font-size:10px;color:var(--text-muted);">入住率</div>
+      </div>
+      <div onclick="showPage('device')" style="cursor:pointer;border-left:1px solid var(--border);border-right:1px solid var(--border);" title="在线设备数">
+        <div style="font-size:18px;font-weight:800;color:var(--green);" id="sbar-online">14</div>
+        <div style="font-size:10px;color:var(--text-muted);">在线</div>
+      </div>
+      <div onclick="showPage('alert')" style="cursor:pointer;" title="待处理告警">
+        <div style="font-size:18px;font-weight:800;color:var(--red);" id="sbar-alerts">2</div>
+        <div style="font-size:10px;color:var(--text-muted);">告警</div>
+      </div>
+    </div>
+    <script>
+    // 每10秒更新侧边栏实时数据
+    function updateSidebarStats() {
+      var occ = Math.floor(65 + Math.random() * 30); // 65-95%
+      var online = Math.floor(12 + Math.random() * 4); // 12-16
+      var alerts = Math.floor(Math.random() * 4); // 0-3
+      var occEl = document.getElementById('sbar-occupancy');
+      var onlineEl = document.getElementById('sbar-online');
+      var alertEl = document.getElementById('sbar-alerts');
+      if (occEl) occEl.textContent = occ + '%';
+      if (onlineEl) onlineEl.textContent = online + '/16';
+      if (alertEl) { alertEl.textContent = alerts; alertEl.style.color = alerts > 0 ? 'var(--red)' : 'var(--green)'; }
+    }
+    setInterval(updateSidebarStats, 10000);
+    </script>
     <div class="menu-item active" onclick="showPage('home')"><span class="icon">🏠</span><span>首页</span></div>
     <div class="menu-group-title" onclick="toggleGroup(this)">📊 运营监控 <span class="group-arrow">▼</span></div>
     <div class="menu-group">
@@ -2957,6 +2987,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       <div class="page-header">
         <div class="page-title">📞 服务工单</div>
         <div class="page-sub">客户投诉/点评/发票/送物等全流程处理</div>
+      </div>
+      <!-- 【改进2】工单多字段搜索工具栏 -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <input type="text" class="form-input" id="wo-search-input" placeholder="🔍 搜索工单号/房间/客户名/内容" style="max-width:240px;padding:6px 10px;font-size:12px;" onkeydown="if(event.key==='Enter')applyWorkorderSearch()">
+        <select class="form-select" id="wo-type-filter" style="padding:6px 8px;font-size:12px;width:140px;" onchange="applyWorkorderSearch()">
+          <option value="all">全部类型</option>
+          <option value="complaint">🔴 客户投诉</option>
+          <option value="delivery">📦 送物服务</option>
+          <option value="invoice">📄 发票需求</option>
+          <option value="praise">⭐ 点评表扬</option>
+          <option value="repair">🔧 设备报修</option>
+          <option value="other">📋 其他</option>
+        </select>
+        <select class="form-select" id="wo-status-filter" style="padding:6px 8px;font-size:12px;width:120px;" onchange="applyWorkorderSearch()">
+          <option value="all">全部状态</option>
+          <option value="pending">⏳ 待接受</option>
+          <option value="processing">🔄 处理中</option>
+          <option value="done">✅ 已完成</option>
+        </select>
+        <button class="action-btn small" onclick="applyWorkorderSearch()" style="padding:6px 12px;">🔍 搜索</button>
+        <button class="action-btn small" onclick="resetWorkorderSearch()" style="padding:6px 10px;">重置</button>
+        <button class="action-btn small" onclick="exportWorkorderCSV()" style="padding:6px 10px;margin-left:auto;">📤 导出CSV</button>
       </div>
       <div class="stats-row" style="grid-template-columns:repeat(5,1fr);">
         <div class="stat-card">
@@ -16244,6 +16296,29 @@ function resetWorkorderSearch() {
 function openWorkorderAutoRuleModal() {
   // Opens the new dedicated auto-rule modal
   openModal('workorder-auto-rule');
+}
+
+function exportWorkorderCSV() {
+  var rows = document.querySelectorAll('#workorder-table-body tr');
+  var csv = '\uFEFF工单编号,类型,房间,客户,内容摘要,状态,处理人,创建时间,完成时间\n';
+  rows.forEach(function(row) {
+    if (row.style.display === 'none') return;
+    var tds = row.querySelectorAll('td');
+    if (tds.length >= 9) {
+      csv += Array.from(tds).map(function(td) { return '"' + td.textContent.trim().replace(/"/g,'""') + '"'; }).join(',') + '\n';
+    }
+  });
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '服务工单_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  var visible = Array.from(rows).filter(function(r) { return r.style.display !== 'none'; }).length;
+  showToast('工单已导出CSV（' + visible + ' 条记录）', 'success');
 }
 function saveWorkorderAutoRule() {
   var type = document.getElementById('woar-type').value;
