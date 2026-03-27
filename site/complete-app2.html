@@ -3118,6 +3118,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <button class="action-btn small" onclick="resetWorkorderSearch()" style="padding:6px 10px;">重置</button>
         <button class="action-btn small" onclick="exportWorkorderCSV()" style="padding:6px 10px;margin-left:auto;">📤 导出CSV</button>
       </div>
+      <!-- 【改进1新增】工单批量操作工具栏（多选后可批量分配/批量完成） -->
+      <div id="wo-batch-toolbar" style="display:none;align-items:center;gap:8px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:12px;">
+        <span style="font-size:12px;font-weight:600;color:var(--blue);" id="wo-batch-count">已选择 0 项</span>
+        <div style="display:flex;gap:6px;margin-left:auto;">
+          <button class="action-btn small" onclick="openBatchAssignWorkorder()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🔄 批量分配</button>
+          <button class="action-btn small" onclick="batchCompleteWorkorder()" style="padding:5px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">✅ 批量完成</button>
+          <button class="action-btn small" onclick="clearWorkorderSelection()" style="padding:5px 10px;">✕ 取消选择</button>
+        </div>
+      </div>
       <div class="stats-row" style="grid-template-columns:repeat(5,1fr);">
         <div class="stat-card">
           <div class="stat-icon" style="background:var(--blue-bg);">📋</div>
@@ -3264,14 +3273,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
         <div class="card-body" id="workorder-list">
           <table class="table">
-            <thead><tr><th>工单编号</th><th>类型</th><th>房间</th><th>客户</th><th>内容摘要</th><th>状态</th><th>处理人</th><th>创建时间</th><th>完成时间</th><th>操作</th></tr></thead>
+            <thead><tr><th style="width:32px;"><input type="checkbox" id="wo-select-all" onchange="toggleAllWorkorderSelect(this.checked)" style="accent-color:var(--blue);cursor:pointer;" title="全选"></th><th>工单编号</th><th>类型</th><th>房间</th><th>客户</th><th>内容摘要</th><th>状态</th><th>处理人</th><th>创建时间</th><th>完成时间</th><th>操作</th></tr></thead>
             <tbody id="workorder-table-body">
-              <tr data-status="pending"><td>WO-2026032601</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>301</td><td>张三</td><td>房间空调噪音过大，无法休息</td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:32</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(0)">处理</button></td></tr>
-              <tr data-status="pending"><td>WO-2026032602</td><td><span class="tbadge blue">📦 送物服务</span></td><td>203</td><td>李四</td><td>需要添加矿泉水x2</td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:15</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(1)">处理</button></td></tr>
-              <tr data-status="pending"><td>WO-2026032603</td><td><span class="tbadge purple">📄 发票需求</span></td><td>201</td><td>王五</td><td>需要开具增值税普通发票</td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 09:48</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(2)">处理</button></td></tr>
-              <tr data-status="processing"><td>WO-2026032528</td><td><span class="tbadge blue">📦 送物服务</span></td><td>304</td><td>钱七</td><td>需要浴巾一套</td><td><span class="tbadge purple">处理中</span></td><td><span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 周敏</span></td><td>昨天 18:20</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(3)">详情</button></td></tr>
-              <tr data-status="processing"><td>WO-2026032527</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>202</td><td>赵六</td><td>热水器故障，无热水</td><td><span class="tbadge purple">处理中</span></td><td><span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 赵飞</span></td><td>昨天 17:05</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(4)">详情</button></td></tr>
-              <tr data-status="done"><td>WO-2026032520</td><td><span class="tbadge green">⭐ 点评表扬</span></td><td>303</td><td>周八</td><td>服务态度好，点赞！</td><td><span class="tbadge green">已完成</span></td><td><span class="tbadge green" style="font-size:11px;padding:2px 6px;">👤 赵飞</span></td><td>03-25 14:30</td><td><span style="font-size:11px;color:var(--green);">03-25 16:45</span></td><td><button class="action-btn" onclick="openWorkorderDetail(5)">查看</button></td></tr>
+              <tr data-status="pending"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032601" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032601</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>301</td><td>张三</td><td>房间空调噪音过大，无法休息</td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:32</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(0)">处理</button></td></tr>
+              <tr data-status="pending"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032602" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032602</td><td><span class="tbadge blue">📦 送物服务</span></td><td>203</td><td>李四</td><td>需要添加矿泉水x2</td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 10:15</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(1)">处理</button></td></tr>
+              <tr data-status="pending"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032603" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032603</td><td><span class="tbadge purple">📄 发票需求</span></td><td>201</td><td>王五</td><td>需要开具增值税普通发票</td><td><span class="tbadge orange">待接受</span></td><td><span style="font-size:11px;color:var(--text-muted);">未分配</span></td><td>今天 09:48</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(2)">处理</button></td></tr>
+              <tr data-status="processing"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032528" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032528</td><td><span class="tbadge blue">📦 送物服务</span></td><td>304</td><td>钱七</td><td>需要浴巾一套</td><td><span class="tbadge purple">处理中</span></td><td><span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 周敏</span></td><td>昨天 18:20</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(3)">详情</button></td></tr>
+              <tr data-status="processing"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032527" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032527</td><td><span class="tbadge red">🔴 客户投诉</span></td><td>202</td><td>赵六</td><td>热水器故障，无热水</td><td><span class="tbadge purple">处理中</span></td><td><span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 赵飞</span></td><td>昨天 17:05</td><td><span style="font-size:11px;color:var(--text-muted);">--</span></td><td><button class="action-btn" onclick="openWorkorderDetail(4)">详情</button></td></tr>
+              <tr data-status="done"><td><input type="checkbox" class="wo-row-check" data-wo-id="WO-2026032520" style="accent-color:var(--blue);cursor:pointer;"></td><td>WO-2026032520</td><td><span class="tbadge green">⭐ 点评表扬</span></td><td>303</td><td>周八</td><td>服务态度好，点赞！</td><td><span class="tbadge green">已完成</span></td><td><span class="tbadge green" style="font-size:11px;padding:2px 6px;">👤 赵飞</span></td><td>03-25 14:30</td><td><span style="font-size:11px;color:var(--green);">03-25 16:45</span></td><td><button class="action-btn" onclick="openWorkorderDetail(5)">查看</button></td></tr>
             </tbody>
           </table>
         </div>
@@ -3931,53 +3940,58 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <th style="padding:8px 6px;border:1px solid var(--border);text-align:center;background:var(--orange-bg);">周日 03-29</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
+            <tbody id="schedule-tbody">
+              <tr data-staff="赵飞">
                 <td style="padding:8px 6px;border:1px solid var(--border);font-weight:600;">赵飞<br><span style="font-size:10px;color:var(--text-muted);">前厅经理</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;background:var(--orange-bg);"><span style="display:inline-block;padding:2px 6px;background:var(--orange);color:white;border-radius:4px;font-size:11px;">中班 10-22</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;background:var(--orange-bg);"><span style="display:inline-block;padding:2px 6px;background:var(--orange);color:white;border-radius:4px;font-size:11px;">中班 10-22</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('赵飞','mon','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('赵飞','tue','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('赵飞','wed','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('赵飞','thu','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('赵飞','fri','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;background:var(--orange-bg);" onclick="openScheduleCellEdit('赵飞','sat','中班 10-22')"><span style="display:inline-block;padding:2px 6px;background:var(--orange);color:white;border-radius:4px;font-size:11px;">中班 10-22</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;background:var(--orange-bg);" onclick="openScheduleCellEdit('赵飞','sun','中班 10-22')"><span style="display:inline-block;padding:2px 6px;background:var(--orange);color:white;border-radius:4px;font-size:11px;">中班 10-22</span></td>
               </tr>
-              <tr>
+              <tr data-staff="周敏">
                 <td style="padding:8px 6px;border:1px solid var(--border);font-weight:600;">周敏<br><span style="font-size:10px;color:var(--text-muted);">前厅接待</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:11px;">休息</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:11px;">休息</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('周敏','mon','晚班 14-23')"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('周敏','tue','晚班 14-23')"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('周敏','wed','晚班 14-23')"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('周敏','thu','晚班 14-23')"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('周敏','fri','晚班 14-23')"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('周敏','sat','休息')"><span style="display:inline-block;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:11px;">休息</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('周敏','sun','休息')"><span style="display:inline-block;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:11px;">休息</span></td>
               </tr>
-              <tr>
+              <tr data-staff="吴倩">
                 <td style="padding:8px 6px;border:1px solid var(--border);font-weight:600;">吴倩<br><span style="font-size:10px;color:var(--text-muted);">客房主管</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:11px;">休息</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;background:var(--orange-bg);"><span style="display:inline-block;padding:2px 6px;background:var(--orange);color:white;border-radius:4px;font-size:11px;">中班 10-22</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;background:var(--orange-bg);"><span style="display:inline-block;padding:2px 6px;background:var(--orange);color:white;border-radius:4px;font-size:11px;">中班 10-22</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('吴倩','mon','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('吴倩','tue','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('吴倩','wed','休息')"><span style="display:inline-block;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:11px;">休息</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('吴倩','thu','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('吴倩','fri','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;background:var(--orange-bg);" onclick="openScheduleCellEdit('吴倩','sat','中班 10-22')"><span style="display:inline-block;padding:2px 6px;background:var(--orange);color:white;border-radius:4px;font-size:11px;">中班 10-22</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;background:var(--orange-bg);" onclick="openScheduleCellEdit('吴倩','sun','中班 10-22')"><span style="display:inline-block;padding:2px 6px;background:var(--orange);color:white;border-radius:4px;font-size:11px;">中班 10-22</span></td>
               </tr>
-              <tr>
+              <tr data-staff="郑强">
                 <td style="padding:8px 6px;border:1px solid var(--border);font-weight:600;">郑强<br><span style="font-size:10px;color:var(--text-muted);">清洁人员</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:11px;">休息</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('郑强','mon','晚班 14-23')"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('郑强','tue','晚班 14-23')"><span style="display:inline-block;padding:2px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:11px;">晚班 14-23</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('郑强','wed','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('郑强','thu','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('郑强','fri','休息')"><span style="display:inline-block;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:11px;">休息</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('郑强','sat','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('郑强','sun','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
               </tr>
-              <tr>
+              <tr data-staff="王工">
                 <td style="padding:8px 6px;border:1px solid var(--border);font-weight:600;">王工<br><span style="font-size:10px;color:var(--text-muted);">弱电工程师</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
-                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('王工','mon','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('王工','tue','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('王工','wed','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('王工','thu','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;" onclick="openScheduleCellEdit('王工','fri','早班 08-17')"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;background:var(--orange-bg);" onclick="openScheduleCellEdit('王工','sat','休息')"><span style="display:inline-block;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:11px;">休息</span></td>
+                <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;cursor:pointer;background:var(--orange-bg);" onclick="openScheduleCellEdit('王工','sun','休息')"><span style="display:inline-block;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:11px;">休息</span></td>
+              </tr>
+            </tbody>
                 <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:11px;">早班 08-17</span></td>
                 <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:11px;">休息</span></td>
                 <td style="padding:6px 4px;border:1px solid var(--border);text-align:center;"><span style="display:inline-block;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:11px;">休息</span></td>
@@ -4666,7 +4680,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td>
                   <button class="action-btn small" onclick="openBuildingFormModal('edit','main')">编辑</button>
                   <button class="action-btn small" onclick="showFloorOfBuilding('main')">楼层管理</button>
-                  <button class="action-btn small red" onclick="deleteBuildingItem('main')">删除</button>
+                  <button class="action-btn small red" onclick="confirmDeleteBuilding('main')">删除</button>
                 </td>
               </tr>
               <tr>
@@ -4679,7 +4693,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
                 <td>
                   <button class="action-btn small" onclick="openBuildingFormModal('edit','east')">编辑</button>
                   <button class="action-btn small" onclick="showFloorOfBuilding('east')">楼层管理</button>
-                  <button class="action-btn small red" onclick="deleteBuildingItem('east')">删除</button>
+                  <button class="action-btn small red" onclick="confirmDeleteBuilding('east')">删除</button>
                 </td>
               </tr>
             </tbody>
@@ -6851,6 +6865,40 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
   </div>
 </div>
 
+<!-- 【改进1】工单批量分配弹窗 -->
+<div class="modal-overlay hidden" id="modal-batch-assign-wo">
+  <div class="modal" style="width:440px;">
+    <div class="modal-header">
+      <div class="modal-title">🔄 批量分配工单</div>
+      <button class="modal-close" onclick="closeModal('batch-assign-wo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">
+        💡 将为选中的工单统一分配处理人
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label class="form-label">分配给 <span style="color:var(--red);">*</span></label>
+        <select class="form-select" id="batch-assign-target" style="padding:8px 12px;font-size:13px;width:100%;">
+          <option value="">请选择处理员工</option>
+          <option value="赵飞">👤 赵飞（前厅经理）</option>
+          <option value="周敏">👤 周敏（前厅接待）</option>
+          <option value="吴倩">👤 吴倩（客房主管）</option>
+          <option value="郑强">👤 郑强（清洁人员）</option>
+          <option value="王工">👤 王工（工程师）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">批量分配备注</label>
+        <textarea class="form-input" id="batch-assign-note" placeholder="可选：填写分配说明或备注信息" style="width:100%;min-height:60px;padding:8px 12px;font-size:12px;resize:vertical;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('batch-assign-wo')">取消</button>
+      <button class="modal-btn primary" onclick="submitBatchAssignWorkorder()">✅ 确认分配</button>
+    </div>
+  </div>
+</div>
+
 <!-- 【改进D】工单完整处理流程弹窗：接受→处理→完成+内部备注+关联退房 -->
 <div class="modal-overlay hidden" id="modal-workorder-detail">
   <div class="modal" style="width:520px;">
@@ -8588,6 +8636,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
   </div>
 </div>
 
+<!-- 【改进5】批量删除办理记录确认弹窗 -->
+<div class="modal-overlay hidden" id="modal-batch-delete-record-confirm">
+  <div class="modal" style="width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">⚠️ 确认批量删除</div>
+      <button class="modal-close" onclick="closeModal('batch-delete-record-confirm')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center;padding:10px 0 20px;">
+        <div style="width:52px;height:52px;background:var(--red-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 16px;">🗑️</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px;">确定要删除选中的 <span id="batch-del-record-count" style="color:var(--red);font-size:17px;"></span> 条记录？</div>
+        <div style="padding:10px 14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;font-size:12px;color:var(--red);">
+          ⚠️ 删除后记录将无法恢复，请谨慎操作！
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('batch-delete-record-confirm')">取消</button>
+      <button class="modal-btn" onclick="executeBatchDeleteRecords()" style="padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;background:var(--red);color:white;border:1px solid var(--red);">🗑️ 确认删除</button>
+    </div>
+  </div>
+</div>
+
 <!-- 【改进1】新增办理记录模态框 -->
 <div class="modal-overlay hidden" id="modal-add-record">
   <div class="modal">
@@ -8861,6 +8932,35 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
   </div>
 </div>
 
+<!-- 【改进2】楼栋删除确认弹窗（高风险操作保护） -->
+<div class="modal-overlay hidden" id="modal-delete-building-confirm">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">⚠️ 确认删除楼栋</div>
+      <button class="modal-close" onclick="cancelDeleteBuilding()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center;padding:10px 0 20px;">
+        <div style="width:56px;height:56px;background:var(--red-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px;">⚠️</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px;">确定删除楼栋「<span id="del-bld-name" style="color:var(--red);"></span>」？</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">
+          包含 <span id="del-bld-floor-count" style="font-weight:600;color:var(--orange);"></span> 和 <span id="del-bld-room-count" style="font-weight:600;color:var(--orange);"></span>
+        </div>
+        <div id="del-building-warn" style="display:none;padding:10px 14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;font-size:12px;color:var(--red);text-align:left;margin-bottom:8px;">
+          ⚠️ 该楼栋下仍有房间数据，删除后所有房间和设备信息将一并清除！
+        </div>
+        <div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);">
+          💡 建议：如有房间正在使用中，请先完成退房再删除楼栋
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="cancelDeleteBuilding()">取消</button>
+      <button class="modal-btn" onclick="executeDeleteBuilding()" style="padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;background:var(--red);color:white;border:1px solid var(--red);">🗑️ 确认删除</button>
+    </div>
+  </div>
+</div>
+
 <!-- 【改进B】楼栋管理表单模态框 -->
 <div class="modal-overlay hidden" id="modal-building-form-v2">
   <div class="modal" style="width:520px;">
@@ -8972,6 +9072,43 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 </div>
 
 <!-- 【改进C】员工绩效模态框 -->
+<!-- 【改进4】员工排班单元格编辑弹窗（点击日历单元格弹出） -->
+<div class="modal-overlay hidden" id="modal-schedule-cell-edit">
+  <div class="modal" style="width:380px;">
+    <div class="modal-header">
+      <div class="modal-title">✏️ 编辑排班 - <span id="sce-staff-name" style="color:var(--blue);"></span></div>
+      <button class="modal-close" onclick="closeModal('schedule-cell-edit')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="sce-day-label" style="font-size:12px;color:var(--text-muted);margin-bottom:14px;text-align:center;"></div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">班次类型 <span style="color:var(--red);">*</span></label>
+        <select class="form-select" id="sce-shift-type" style="padding:8px 12px;font-size:13px;width:100%;" onchange="onShiftTypeChange()">
+          <option value="early">🌅 早班（08:00-17:00）</option>
+          <option value="mid">🌞 中班（10:00-22:00）</option>
+          <option value="late">🌙 晚班（14:00-23:00）</option>
+          <option value="night">🌑 夜班（22:00-08:00）</option>
+          <option value="off">🏖️ 休息</option>
+          <option value="leave">✈️ 请假</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0;" id="sce-custom-hours-group">
+        <label class="form-label">自定义时间</label>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="time" class="form-input" id="sce-start-time" value="08:00" style="padding:8px 10px;font-size:13px;width:130px;">
+          <span style="color:var(--text-muted);">至</span>
+          <input type="time" class="form-input" id="sce-end-time" value="17:00" style="padding:8px 10px;font-size:13px;width:130px;">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('schedule-cell-edit')">取消</button>
+      <button class="modal-btn" onclick="deleteScheduleCell()" style="padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;background:var(--red);color:white;border:1px solid var(--red);">🗑️ 删除该班</button>
+      <button class="modal-btn primary" onclick="saveScheduleCell()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay hidden" id="modal-staff-performance">
   <div class="modal" style="width:420px;">
     <div class="modal-header">
@@ -11367,11 +11504,20 @@ function updateRecordSelection() {
 }
 function batchDeleteRecords() {
   if (!selectedRecords.length) { showToast('请先选择要删除的记录', 'error'); return; }
-  if (!confirm('确定要删除选中的 ' + selectedRecords.length + ' 条办理记录吗？')) return;
+  document.getElementById('batch-del-record-count').textContent = selectedRecords.length;
+  openModal('batch-delete-record-confirm');
+}
+
+function executeBatchDeleteRecords() {
+  if (!selectedRecords || !selectedRecords.length) return;
   showToast('已删除 ' + selectedRecords.length + ' 条办理记录', 'success');
   selectedRecords = [];
   var delBtn = document.getElementById('record-batch-del-btn');
   if (delBtn) delBtn.style.display = 'none';
+  closeModal('batch-delete-record-confirm');
+  // Also hide check-all checkbox
+  var checkAll = document.getElementById('record-select-all');
+  if (checkAll) checkAll.checked = false;
 }
 function exportRecords() {
   var csv = '\ufeff类型,姓名,房间,房型,联系方式,时间,状态\n入住,张三,301,亲子间,138****8888,2026-03-27 10:32,进行中\n入住,李四,304,亲子间,139****6666,2026-03-27 09:15,进行中\n入住,王五,201,大床房,137****5555,2026-03-27 08:50,已完成';
@@ -12699,12 +12845,43 @@ function submitCiFinal() {
 
 // ======= 改进1: 会员管理功能 =======
 var memberData = [
-  { name: '王浩', phone: '138****8888', idcard: '1101011990****3512', level: 'gold', nights: '28晚', total: '¥8,860', join: '2025-06-15' },
-  { name: '李娜', phone: '139****6666', idcard: '3101011992****4523', level: 'silver', nights: '15晚', total: '¥4,520', join: '2025-09-20' },
-  { name: '张伟', phone: '137****5555', idcard: '4401011988****7812', level: 'vip', nights: '52晚', total: '¥15,680', join: '2024-11-01' },
-  { name: '赵敏', phone: '136****4444', idcard: '5101011995****8934', level: 'silver', nights: '8晚', total: '¥2,240', join: '2026-01-10' },
-  { name: '钱进', phone: '135****3333', idcard: '3201011998****1234', level: 'normal', nights: '3晚', total: '¥860', join: '2026-02-28' }
+  { name: '王浩', phone: '138****8888', idcard: '1101011990****3512', level: 'gold', nights: '28晚', total: '¥8,860', join: '2025-06-15', birthday: '1990-05-20', rights: '入住9折·开卡8.5折·免费升房', nightsNum: 28, totalNum: 8860, balance: '¥2,350', points: 2340 },
+  { name: '李娜', phone: '139****6666', idcard: '3101011992****4523', level: 'silver', nights: '15晚', total: '¥4,520', join: '2025-09-20', birthday: '1992-03-15', rights: '入住9.5折·开卡9折', nightsNum: 15, totalNum: 4520, balance: '¥800', points: 890 },
+  { name: '张伟', phone: '137****5555', idcard: '4401011988****7812', level: 'vip', nights: '52晚', total: '¥15,680', join: '2024-11-01', birthday: '1988-07-22', rights: '入住8折·免费升房·免费早餐', nightsNum: 52, totalNum: 15680, balance: '¥5,200', points: 5680 },
+  { name: '赵敏', phone: '136****4444', idcard: '5101011995****8934', level: 'silver', nights: '8晚', total: '¥2,240', join: '2026-01-10', birthday: '1995-11-03', rights: '入住9.5折·开卡9折', nightsNum: 8, totalNum: 2240, balance: '¥320', points: 420 },
+  { name: '钱进', phone: '135****3333', idcard: '3201011998****1234', level: 'normal', nights: '3晚', total: '¥860', join: '2026-02-28', birthday: '1998-01-18', rights: '入住9.8折', nightsNum: 3, totalNum: 860, balance: '¥0', points: 120 }
 ];
+
+// ======= 【改进3】会员详情弹窗动态数据加载 =======
+var currentMemberIdx = -1;
+function openMemberDetail(idx) {
+  currentMemberIdx = idx;
+  var d = memberData[idx];
+  if (!d) return;
+  // Populate basic info fields
+  document.getElementById('member-detail-title').textContent = '👑 会员详情 - ' + d.name;
+  document.getElementById('member-detail-name').textContent = d.name;
+  document.getElementById('member-detail-phone').textContent = d.phone;
+  document.getElementById('member-detail-idcard').textContent = d.idcard;
+  document.getElementById('member-detail-join').textContent = d.join;
+  document.getElementById('member-detail-birthday').textContent = d.birthday || '-';
+  document.getElementById('member-detail-rights').textContent = d.rights || '-';
+  // Stats
+  document.getElementById('member-detail-total-nights').textContent = d.nightsNum || d.nights;
+  document.getElementById('member-detail-total-fee').textContent = d.total;
+  // Level badge
+  var levelNames = { normal: '普通', silver: '🥈 银卡', gold: '🥇 金卡', vip: '💎 VIP' };
+  var levelColors = { normal: 'var(--text-muted)', silver: 'var(--orange)', gold: 'var(--purple)', vip: 'var(--green)' };
+  var levelBg = { normal: 'var(--bg)', silver: 'var(--orange-bg)', gold: 'var(--purple-bg)', vip: 'var(--green-bg)' };
+  var lvl = d.level || 'normal';
+  document.getElementById('member-detail-level-badge').innerHTML = '<span class="tbadge" style="background:' + levelBg[lvl] + ';color:' + levelColors[lvl] + ';font-size:12px;padding:4px 10px;">' + levelNames[lvl] + '会员</span>';
+  // Avatar emoji based on level
+  var avatarEmoji = { normal: '👤', silver: '🥈', gold: '👑', vip: '💎' };
+  document.getElementById('member-detail-avatar').textContent = avatarEmoji[lvl] || '👤';
+  // Reset to info tab
+  switchMemberDetailTab('info', document.getElementById('md-tab-info'));
+  openModal('member-detail');
+}
 
 function filterMember(level, el) {
   el.parentElement.querySelectorAll('.card-tab').forEach(function(t) { t.classList.remove('active'); });
@@ -18080,6 +18257,110 @@ function openWorkorderAutoRuleModal() {
   openModal('workorder-auto-rule');
 }
 
+// ======= 【改进1】工单批量处理功能 =======
+function toggleAllWorkorderSelect(checked) {
+  document.querySelectorAll('.wo-row-check').forEach(function(cb) { cb.checked = checked; });
+  updateWorkorderBatchCount();
+}
+
+function updateWorkorderBatchCount() {
+  var checked = document.querySelectorAll('.wo-row-check:checked');
+  var count = checked.length;
+  var toolbar = document.getElementById('wo-batch-toolbar');
+  var countEl = document.getElementById('wo-batch-count');
+  if (count > 0) {
+    toolbar.style.display = 'flex';
+    if (countEl) countEl.textContent = '已选择 ' + count + ' 项';
+  } else {
+    toolbar.style.display = 'none';
+  }
+}
+
+function getSelectedWorkorderIds() {
+  var ids = [];
+  document.querySelectorAll('.wo-row-check:checked').forEach(function(cb) {
+    ids.push(cb.dataset.woId);
+  });
+  return ids;
+}
+
+function openBatchAssignWorkorder() {
+  var ids = getSelectedWorkorderIds();
+  if (ids.length === 0) { showToast('请先选择要分配的工单', 'error'); return; }
+  var pending = ids.filter(function(id) {
+    var row = document.querySelector('[data-wo-id="' + id + '"]');
+    return row && row.closest('tr').dataset.status !== 'done';
+  });
+  if (pending.length === 0) { showToast('所选工单均已完成，无需分配', 'error'); return; }
+  currentBatchWoIds = ids;
+  openModal('batch-assign-wo');
+}
+
+var currentBatchWoIds = [];
+
+function submitBatchAssignWorkorder() {
+  var assignee = document.getElementById('batch-assign-target') ? document.getElementById('batch-assign-target').value : '';
+  if (!assignee) { showToast('请选择分配对象', 'error'); return; }
+  currentBatchWoIds.forEach(function(woId) {
+    var row = document.querySelector('[data-wo-id="' + woId + '"]');
+    if (row) {
+      var tr = row.closest('tr');
+      var statusCell = tr.cells[6]; // status column index after adding checkbox
+      var handlerCell = tr.cells[7]; // handler column
+      if (statusCell) {
+        statusCell.innerHTML = '<span class="tbadge purple">处理中</span>';
+        tr.dataset.status = 'processing';
+      }
+      if (handlerCell) {
+        handlerCell.innerHTML = '<span class="tbadge blue" style="font-size:11px;padding:2px 6px;">👤 ' + assignee + '</span>';
+      }
+    }
+  });
+  closeModal('batch-assign-wo');
+  clearWorkorderSelection();
+  showToast('✅ 已成功分配 ' + currentBatchWoIds.length + ' 个工单给 ' + assignee, 'success');
+}
+
+function batchCompleteWorkorder() {
+  var ids = getSelectedWorkorderIds();
+  if (ids.length === 0) { showToast('请先选择要完成的工单', 'error'); return; }
+  var notDone = ids.filter(function(id) {
+    var row = document.querySelector('[data-wo-id="' + id + '"]');
+    return row && row.closest('tr').dataset.status !== 'done';
+  });
+  if (notDone.length === 0) { showToast('所选工单均已完成', 'info'); return; }
+  if (!confirm('确定要完成选中的 ' + notDone.length + ' 个工单吗？')) return;
+  var now = new Date();
+  var timeStr = String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  notDone.forEach(function(woId) {
+    var row = document.querySelector('[data-wo-id="' + woId + '"]');
+    if (row) {
+      var tr = row.closest('tr');
+      tr.cells[6].innerHTML = '<span class="tbadge green">已完成</span>';
+      tr.dataset.status = 'done';
+      var completeTimeCell = tr.cells[9];
+      if (completeTimeCell) completeTimeCell.innerHTML = '<span style="font-size:11px;color:var(--green);">' + timeStr + '</span>';
+    }
+  });
+  clearWorkorderSelection();
+  showToast('✅ 已批量完成 ' + notDone.length + ' 个工单', 'success');
+}
+
+function clearWorkorderSelection() {
+  document.querySelectorAll('.wo-row-check').forEach(function(cb) { cb.checked = false; });
+  var tb = document.getElementById('wo-batch-toolbar');
+  if (tb) tb.style.display = 'none';
+}
+
+// Add checkbox listeners after DOM loads
+document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('change', function(e) {
+    if (e.target.classList && e.target.classList.contains('wo-row-check')) {
+      updateWorkorderBatchCount();
+    }
+  });
+});
+
 function exportWorkorderCSV() {
   var rows = document.querySelectorAll('#workorder-table-body tr');
   var csv = '\uFEFF工单编号,类型,房间,客户,内容摘要,状态,处理人,创建时间,完成时间\n';
@@ -22270,6 +22551,84 @@ function switchStaffMainTab(tab, el) {
     if (schedContent) schedContent.style.display = '';
   }
 }
+// ======= 【改进4】员工排班日历点击编辑功能 =======
+var currentScheduleCell = { staff: '', day: '', currentShift: '' };
+var dayLabels = { mon: '周一（03-23）', tue: '周二（03-24）', wed: '周三（03-25）', thu: '周四（03-26）', fri: '周五（03-27）', sat: '周六（03-28）', sun: '周日（03-29）' };
+
+function openScheduleCellEdit(staffName, day, currentShift) {
+  currentScheduleCell = { staff: staffName, day: day, currentShift: currentShift };
+  document.getElementById('sce-staffName').textContent = staffName;
+  document.getElementById('sce-day-label').textContent = dayLabels[day] || day;
+  // Parse current shift to set dropdown
+  var shiftMap = { '早班': 'early', '中班': 'mid', '晚班': 'late', '夜班': 'night', '休息': 'off', '请假': 'leave' };
+  var baseType = 'early';
+  Object.keys(shiftMap).forEach(function(k) { if (currentShift.indexOf(k) !== -1) baseType = shiftMap[k]; });
+  document.getElementById('sce-shift-type').value = baseType;
+  // Parse time from current shift
+  var timeMatch = currentShift.match(/(\d{2}):(\d{2})-(\d{2}):(\d{2})/);
+  if (timeMatch) {
+    document.getElementById('sce-start-time').value = timeMatch[1] + ':' + timeMatch[2];
+    document.getElementById('sce-end-time').value = timeMatch[3] + ':' + timeMatch[4];
+  }
+  onShiftTypeChange();
+  openModal('schedule-cell-edit');
+}
+
+function onShiftTypeChange() {
+  var type = document.getElementById('sce-shift-type').value;
+  var hourGroups = document.getElementById('sce-custom-hours-group');
+  var st = document.getElementById('sce-start-time');
+  var et = document.getElementById('sce-end-time');
+  var presets = { early: ['08:00', '17:00'], mid: ['10:00', '22:00'], late: ['14:00', '23:00'], night: ['22:00', '08:00'], off: ['00:00', '00:00'], leave: ['00:00', '00:00'] };
+  if (presets[type]) {
+    st.value = presets[type][0];
+    et.value = presets[type][1];
+  }
+  hourGroups.style.display = (type === 'early' || type === 'mid' || type === 'late' || type === 'night') ? '' : 'none';
+}
+
+function saveScheduleCell() {
+  var type = document.getElementById('sce-shift-type').value;
+  var start = document.getElementById('sce-start-time').value;
+  var end = document.getElementById('sce-end-time').value;
+  var labelMap = { early: '早班', mid: '中班', late: '晚班', night: '夜班', off: '休息', leave: '请假' };
+  var colorMap = { early: 'var(--blue-bg)', mid: 'var(--orange-bg)', late: 'var(--purple-bg)', night: 'var(--dark-bg)', off: 'var(--green-bg)', leave: 'var(--gray-bg)' };
+  var textColorMap = { early: 'var(--blue)', mid: 'var(--orange)', late: 'var(--purple)', night: 'var(--text)', off: 'var(--green)', leave: 'var(--text-muted)' };
+  var newLabel = labelMap[type] + ' ' + start + '-' + end;
+  var newBg = colorMap[type];
+  var newTextColor = textColorMap[type];
+  // Find and update the cell in the schedule table
+  var tr = document.querySelector('#schedule-tbody tr[data-staff="' + currentScheduleCell.staff + '"]');
+  if (tr) {
+    var dayIndex = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 7 };
+    var cell = tr.cells[dayIndex[currentScheduleCell.day]];
+    if (cell) {
+      var bgStyle = (currentScheduleCell.day === 'sat' || currentScheduleCell.day === 'sun') ? 'var(--orange-bg);' : '';
+      cell.style.background = (currentScheduleCell.day === 'sat' || currentScheduleCell.day === 'sun') ? 'var(--orange-bg)' : '';
+      cell.innerHTML = '<span style="display:inline-block;padding:2px 6px;background:' + newBg + ';color:' + newTextColor + ';border-radius:4px;font-size:11px;">' + newLabel + '</span>';
+      cell.onclick = function() { openScheduleCellEdit(currentScheduleCell.staff, currentScheduleCell.day, newLabel); };
+    }
+  }
+  closeModal('schedule-cell-edit');
+  showToast('✅ 已更新 ' + currentScheduleCell.staff + ' 的排班', 'success');
+}
+
+function deleteScheduleCell() {
+  var dayIndex = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 7 };
+  var tr = document.querySelector('#schedule-tbody tr[data-staff="' + currentScheduleCell.staff + '"]');
+  if (tr) {
+    var cell = tr.cells[dayIndex[currentScheduleCell.day]];
+    if (cell) {
+      var bgStyle = (currentScheduleCell.day === 'sat' || currentScheduleCell.day === 'sun') ? 'var(--orange-bg)' : '';
+      cell.style.background = bgStyle;
+      cell.innerHTML = '<span style="display:inline-block;padding:2px 6px;background:var(--bg);color:var(--text-muted);border-radius:4px;font-size:11px;">-</span>';
+      cell.onclick = function() { openScheduleCellEdit(currentScheduleCell.staff, currentScheduleCell.day, '-'); };
+    }
+  }
+  closeModal('schedule-cell-edit');
+  showToast('🗑️ 已删除 ' + currentScheduleCell.staff + ' 当日排班', 'info');
+}
+
 // 【改进2】换班申请弹窗
 function openSwapShiftModal() {
   openModal('swap-shift');
@@ -23356,6 +23715,36 @@ function deleteBuildingItem(bldId) {
     showToast('楼栋「' + bld.name + '」已删除', 'success');
     renderBuildingList();
   }
+}
+
+// ======= 【改进2】楼栋删除确认弹窗（高风险操作保护） =======
+var pendingDeleteBuildingId = '';
+function confirmDeleteBuilding(bldId) {
+  var bld = buildingListData.find(function(b){return b.id===bldId;});
+  if (!bld) return;
+  pendingDeleteBuildingId = bldId;
+  document.getElementById('del-bld-name').textContent = bld.name;
+  document.getElementById('del-bld-room-count').textContent = bld.rooms + ' 间';
+  document.getElementById('del-bld-floor-count').textContent = bld.floors + ' 层';
+  document.getElementById('del-building-warn').style.display = bld.rooms > 0 ? '' : 'none';
+  openModal('delete-building-confirm');
+}
+
+function executeDeleteBuilding() {
+  if (!pendingDeleteBuildingId) return;
+  var bld = buildingListData.find(function(b){return b.id===pendingDeleteBuildingId;});
+  if (bld) {
+    buildingListData = buildingListData.filter(function(b){return b.id!==pendingDeleteBuildingId;});
+    showToast('✅ 楼栋「' + bld.name + '」已删除', 'success');
+    renderBuildingList();
+  }
+  pendingDeleteBuildingId = '';
+  closeModal('delete-building-confirm');
+}
+
+function cancelDeleteBuilding() {
+  pendingDeleteBuildingId = '';
+  closeModal('delete-building-confirm');
 }
 
 function renderBuildingList() {
