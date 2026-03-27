@@ -2000,6 +2000,75 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           </div>
         </div>
       </div>
+      <!-- 【改进4】设备网络信号质量实时监控面板：信号强度分布+最近掉线设备列表 -->
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;">
+        <div style="padding:14px 16px;background:var(--white);border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:12px;color:var(--text);">📡 设备网络信号强度分布</div>
+          <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;">
+            <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;color:var(--text-muted);width:50px;">强(>-50dBm)</span>
+                <div style="flex:1;height:18px;background:var(--green-bg);border-radius:4px;overflow:hidden;">
+                  <div id="dev-signal-excellent-bar" style="width:50%;height:100%;background:var(--green);border-radius:4px;display:flex;align-items:center;justify-content:center;">
+                    <span style="font-size:10px;color:white;font-weight:600;">8台</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;color:var(--text-muted);width:50px;">中(-50~-70dBm)</span>
+                <div style="flex:1;height:18px;background:var(--blue-bg);border-radius:4px;overflow:hidden;">
+                  <div id="dev-signal-good-bar" style="width:25%;height:100%;background:var(--blue);border-radius:4px;display:flex;align-items:center;justify-content:center;">
+                    <span style="font-size:10px;color:white;font-weight:600;">4台</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;color:var(--text-muted);width:50px;">弱(-70~-90dBm)</span>
+                <div style="flex:1;height:18px;background:var(--orange-bg);border-radius:4px;overflow:hidden;">
+                  <div id="dev-signal-weak-bar" style="width:19%;height:100%;background:var(--orange);border-radius:4px;display:flex;align-items:center;justify-content:center;">
+                    <span style="font-size:10px;color:white;font-weight:600;">3台</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;color:var(--text-muted);width:50px;">差(<-90dBm)</span>
+                <div style="flex:1;height:18px;background:var(--red-bg);border-radius:4px;overflow:hidden;">
+                  <div id="dev-signal-poor-bar" style="width:6%;height:100%;background:var(--red);border-radius:4px;display:flex;align-items:center;justify-content:center;">
+                    <span style="font-size:10px;color:white;font-weight:600;">1台</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="text-align:center;padding:10px;background:var(--blue-bg);border-radius:8px;min-width:90px;">
+              <div style="font-size:24px;font-weight:700;color:var(--blue);" id="dev-avg-signal">-62</div>
+              <div style="font-size:11px;color:var(--text-muted);">平均信号(dBm)</div>
+              <div style="font-size:10px;color:var(--green);margin-top:4px;">信号质量良好</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:14px 16px;background:var(--white);border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text);">⚠️ 最近掉线设备</div>
+          <div id="dev-offline-list" style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--red-bg);border-radius:6px;border-left:3px solid var(--red);">
+              <div style="flex:1;">
+                <div style="font-size:12px;font-weight:600;color:var(--red);">305室门锁</div>
+                <div style="font-size:10px;color:var(--text-muted);">DEV-LK05 · 离线48分钟</div>
+              </div>
+              <button class="action-btn small" onclick="openDeviceRestartConfirmModal('DEV-LK05')" style="padding:3px 8px;font-size:10px;background:var(--red);color:white;border:none;">重启</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--orange-bg);border-radius:6px;border-left:3px solid var(--orange);">
+              <div style="flex:1;">
+                <div style="font-size:12px;font-weight:600;color:var(--orange);">203室门锁</div>
+                <div style="font-size:10px;color:var(--text-muted);">DEV-LK07 · 离线15分钟</div>
+              </div>
+              <button class="action-btn small" onclick="openDeviceRestartConfirmModal('DEV-LK07')" style="padding:3px 8px;font-size:10px;background:var(--orange);color:white;border:none;">重启</button>
+            </div>
+          </div>
+          <div style="margin-top:10px;padding:8px 10px;background:var(--bg);border-radius:6px;text-align:center;">
+            <button class="action-btn small" onclick="openDeviceBatchActionModal('restart')" style="padding:4px 10px;font-size:11px;">🔄 批量重启离线设备</button>
+          </div>
+        </div>
+      </div>
       <!-- 【改进1】设备管理：搜索+筛选工具栏 -->
       <div class="card" style="margin-bottom:12px;">
         <div class="card-body" style="padding:12px 20px;">
@@ -8430,6 +8499,88 @@ setInterval(function() {
           <div><div class="stat-num">¥28.6k</div><div class="stat-label">本月消费</div></div>
         </div>
       </div>
+      <!-- 【改进5】会员消费行为分析：消费类型占比饼图+月度消费趋势柱状图 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;">
+        <div style="padding:14px 16px;background:var(--white);border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:12px;color:var(--text);">🍰 会员消费类型占比（本月）</div>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div id="member-consume-pie" style="position:relative;width:110px;height:110px;flex-shrink:0;">
+              <svg width="110" height="110" viewBox="0 0 110 110" style="transform:rotate(-90deg);">
+                <circle cx="55" cy="55" r="45" fill="none" stroke="#e8e8e8" stroke-width="18"/>
+                <circle cx="55" cy="55" r="45" fill="none" stroke="#1890ff" stroke-width="18" stroke-dasharray="113.1 283.0" stroke-dashoffset="0"/>
+                <circle cx="55" cy="55" r="45" fill="none" stroke="#52c41a" stroke-width="18" stroke-dasharray="84.8 283.0" stroke-dashoffset="-113.1"/>
+                <circle cx="55" cy="55" r="45" fill="none" stroke="#fa8c16" stroke-width="18" stroke-dasharray="56.5 283.0" stroke-dashoffset="-197.9"/>
+                <circle cx="55" cy="55" r="45" fill="none" stroke="#722ed1" stroke-width="18" stroke-dasharray="28.3 283.0" stroke-dashoffset="-254.4"/>
+              </svg>
+              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:var(--text);">¥28.6k</div>
+                <div style="font-size:9px;color:var(--text-muted);">总消费</div>
+              </div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+                <span style="width:10px;height:10px;background:#1890ff;border-radius:2px;flex-shrink:0;"></span>
+                <span style="flex:1;color:var(--text);">房费</span>
+                <span style="font-weight:700;color:var(--blue);">¥15.8k</span>
+                <span style="color:var(--text-muted);width:40px;text-align:right;">55%</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+                <span style="width:10px;height:10px;background:#52c41a;border-radius:2px;flex-shrink:0;"></span>
+                <span style="flex:1;color:var(--text);">餐饮</span>
+                <span style="font-weight:700;color:var(--green);">¥6.2k</span>
+                <span style="color:var(--text-muted);width:40px;text-align:right;">22%</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+                <span style="width:10px;height:10px;background:#fa8c16;border-radius:2px;flex-shrink:0;"></span>
+                <span style="flex:1;color:var(--text);">加购</span>
+                <span style="font-weight:700;color:var(--orange);">¥4.1k</span>
+                <span style="color:var(--text-muted);width:40px;text-align:right;">14%</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+                <span style="width:10px;height:10px;background:#722ed1;border-radius:2px;flex-shrink:0;"></span>
+                <span style="flex:1;color:var(--text);">其他</span>
+                <span style="font-weight:700;color:var(--purple);">¥2.5k</span>
+                <span style="color:var(--text-muted);width:40px;text-align:right;">9%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:14px 16px;background:var(--white);border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:12px;color:var(--text);">📈 会员月度消费趋势（近6月）</div>
+          <div id="member-spend-trend" style="display:flex;align-items:flex-end;justify-content:space-between;height:100px;padding:0 8px;gap:6px;"></div>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--text-muted);">
+            <span>10月</span><span>11月</span><span>12月</span><span>1月</span><span>2月</span><span>3月</span>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+            <div style="flex:1;text-align:center;">
+              <div style="font-size:14px;font-weight:700;color:var(--blue);">¥142.6k</div>
+              <div style="font-size:10px;color:var(--text-muted);">近6月累计</div>
+            </div>
+            <div style="flex:1;text-align:center;">
+              <div style="font-size:14px;font-weight:700;color:var(--green);">+12.3%</div>
+              <div style="font-size:10px;color:var(--text-muted);">同比增长率</div>
+            </div>
+            <div style="flex:1;text-align:center;">
+              <div style="font-size:14px;font-weight:700;color:var(--orange);">¥856</div>
+              <div style="font-size:10px;color:var(--text-muted);">人均消费</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <script>
+      (function(){
+        var trendData = [18.2, 22.5, 28.6, 15.3, 19.8, 28.6];
+        var maxV = Math.max.apply(null, trendData);
+        var el = document.getElementById('member-spend-trend');
+        if (el) {
+          el.innerHTML = trendData.map(function(v, i) {
+            var h = Math.round((v / maxV) * 80) + 10;
+            var color = i === trendData.length - 1 ? '#1890ff' : '#b0d4ff';
+            return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;"><div style="font-size:10px;font-weight:700;color:' + (i === trendData.length - 1 ? 'var(--blue)' : 'var(--text-muted)') + ';margin-bottom:4px;">' + (i === trendData.length - 1 ? v + 'k' : '') + '</div><div style="width:100%;background:' + color + ';border-radius:3px 3px 0 0;height:' + h + 'px;"></div></div>';
+          }).join('');
+        }
+      })();
+      </script>
       <!-- 【改进v3-5】会员积分余额预警系统：余额不足提醒+阈值配置+自动通知 -->
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
         <div style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;min-width:300px;">
@@ -9006,6 +9157,50 @@ setInterval(function() {
             <span>🟢 在线设备：<strong id="bld-3d-online" style="color:var(--green);">14</strong> 台</span>
             <span>🔴 离线设备：<strong id="bld-3d-offline" style="color:var(--red);">2</strong> 台</span>
             <span>入住率：<strong id="bld-3d-occupancy" style="color:var(--blue);">75%</strong></span>
+          </div>
+        </div>
+      </div>
+      <!-- 【改进3】楼栋入住率趋势分析：展示近7天入住率折线图+同比/环比数据 -->
+      <div class="card" id="bld-occupancy-trend-section" style="margin-bottom:16px;">
+        <div class="card-header">
+          <div class="card-title">📈 楼栋入住率趋势</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select class="form-select" id="bld-occ-bld-select" onchange="renderBldOccupancyTrend()" style="padding:5px 10px;font-size:12px;width:130px;">
+              <option value="main">🏢 主楼</option>
+              <option value="east">🏢 东配楼</option>
+            </select>
+            <select class="form-select" id="bld-occ-range" onchange="renderBldOccupancyTrend()" style="padding:5px 10px;font-size:12px;width:120px;">
+              <option value="7">近7天</option>
+              <option value="14">近14天</option>
+              <option value="30">近30天</option>
+            </select>
+            <div style="display:flex;gap:12px;font-size:11px;margin-left:8px;">
+              <span style="color:var(--green);">🟢 本月均值 <strong id="bld-occ-avg">78%</strong></span>
+              <span style="color:var(--blue);">📊 同比 <strong id="bld-occ-yoy">+5%</strong></span>
+              <span style="color:var(--orange);">📈 环比 <strong id="bld-occ-mom">+3%</strong></span>
+            </div>
+          </div>
+        </div>
+        <div class="card-body" style="padding:16px;">
+          <div id="bld-occ-trend-chart" style="display:flex;align-items:flex-end;justify-content:space-between;height:120px;padding:0 8px;gap:8px;"></div>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--text-muted);" id="bld-occ-trend-labels"></div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px;">
+            <div style="padding:10px 12px;background:var(--blue-bg);border-radius:8px;text-align:center;">
+              <div style="font-size:22px;font-weight:700;color:var(--blue);" id="bld-occ-today">75%</div>
+              <div style="font-size:11px;color:var(--text-muted);">今日入住率</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--green-bg);border-radius:8px;text-align:center;">
+              <div style="font-size:22px;font-weight:700;color:var(--green);" id="bld-occ-occupy">12</div>
+              <div style="font-size:11px;color:var(--text-muted);">已入住房间</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--orange-bg);border-radius:8px;text-align:center;">
+              <div style="font-size:22px;font-weight:700;color:var(--orange);" id="bld-occ-vacant">4</div>
+              <div style="font-size:11px;color:var(--text-muted);">空房数量</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--red-bg);border-radius:8px;text-align:center;">
+              <div style="font-size:22px;font-weight:700;color:var(--red);" id="bld-occ-revenue">¥1,856</div>
+              <div style="font-size:11px;color:var(--text-muted);">预计日收益</div>
+            </div>
           </div>
         </div>
       </div>
@@ -13750,7 +13945,7 @@ setInterval(function() {
 </div>
 
 <div class="modal-overlay hidden" id="modal-staff-performance">
-  <div class="modal" style="width:420px;">
+  <div class="modal" style="width:680px;max-height:90vh;overflow-y:auto;">
     <div class="modal-header">
       <div class="modal-title">📊 员工绩效统计</div>
       <button class="modal-close" onclick="closeModal('staff-performance')">✕</button>
@@ -13774,7 +13969,7 @@ setInterval(function() {
           <div style="font-size:11px;color:var(--text-muted);">服务工单</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
         <div style="padding:10px;background:var(--bg);border-radius:6px;text-align:center;">
           <div style="font-size:13px;color:var(--text-muted);">总业务量</div>
           <div style="font-size:20px;font-weight:700;color:var(--text);" id="sp-total">0</div>
@@ -13782,6 +13977,23 @@ setInterval(function() {
         <div style="padding:10px;background:var(--bg);border-radius:6px;text-align:center;">
           <div style="font-size:13px;color:var(--text-muted);">当前状态</div>
           <div style="font-size:14px;font-weight:700;color:var(--green);" id="sp-rate">在岗</div>
+        </div>
+      </div>
+      <!-- 【改进2】员工绩效雷达图+月度业务量柱状图 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div style="padding:14px;border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text);">📡 能力雷达图</div>
+          <div id="sp-radar-canvas" style="display:flex;align-items:center;justify-content:center;height:160px;"></div>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--text-muted);">
+            <span>办理力</span><span>服务力</span><span>响应力</span><span>满意度</span>
+          </div>
+        </div>
+        <div style="padding:14px;border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text);">📈 月度业务量</div>
+          <div id="sp-bar-canvas" style="display:flex;align-items:flex-end;justify-content:space-around;height:160px;padding:0 4px;"></div>
+          <div style="display:flex;justify-content:space-around;margin-top:6px;font-size:10px;color:var(--text-muted);">
+            <span>3月</span><span>2月</span><span>1月</span><span>12月</span><span>11月</span><span>10月</span>
+          </div>
         </div>
       </div>
     </div>
@@ -14778,7 +14990,7 @@ function showPage(name) {
   }
   // 【改进5】切换到楼栋管理页时初始化3D楼层可视化
   if (name === 'building') {
-    setTimeout(function() { initBuilding3D(); }, 100);
+    setTimeout(function() { initBuilding3D(); renderBldOccupancyTrend(); }, 100);
   }
 }
 
@@ -15026,6 +15238,60 @@ var building3DData = {
   }
 };
 
+// 【改进3】楼栋入住率趋势图渲染函数
+var bldOccupancyData = {
+  main: {
+    '7': [72, 68, 75, 80, 78, 74, 75],
+    '14': [70, 72, 68, 75, 80, 78, 74, 76, 72, 75, 78, 80, 77, 75],
+    '30': [65, 68, 70, 72, 75, 78, 80, 78, 76, 74, 72, 70, 68, 65, 68, 70, 72, 75, 78, 80, 82, 80, 78, 76, 74, 75, 78, 80, 77, 75]
+  },
+  east: {
+    '7': [60, 58, 65, 70, 68, 64, 65],
+    '14': [58, 60, 58, 65, 70, 68, 64, 66, 62, 65, 68, 70, 67, 65],
+    '30': [50, 52, 55, 58, 60, 58, 65, 70, 68, 64, 62, 60, 58, 55, 58, 60, 65, 70, 68, 64, 66, 62, 65, 68, 70, 67, 65, 68, 70, 67, 65]
+  }
+};
+function renderBldOccupancyTrend() {
+  var bldId = document.getElementById('bld-occ-bld-select') ? document.getElementById('bld-occ-bld-select').value : 'main';
+  var range = document.getElementById('bld-occ-range') ? document.getElementById('bld-occ-range').value : '7';
+  var data = bldOccupancyData[bldId] && bldOccupancyData[bldId][range] ? bldOccupancyData[bldId][range] : [];
+  var today = new Date();
+  // Render chart
+  var chartEl = document.getElementById('bld-occ-trend-chart');
+  var labelsEl = document.getElementById('bld-occ-trend-labels');
+  if (!chartEl || !labelsEl) return;
+  var max = 100;
+  var chartHtml = data.map(function(v, i) {
+    var h = Math.round((v / max) * 100);
+    var color = v >= 80 ? '#52c41a' : v >= 60 ? '#1890ff' : v >= 40 ? '#fa8c16' : '#ff4d4f';
+    var isToday = i === data.length - 1;
+    var barColor = isToday ? '#722ed1' : color;
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;">' +
+      '<div style="font-size:10px;font-weight:700;color:' + (isToday ? 'var(--purple)' : 'var(--text-light)') + ';">' + v + '%</div>' +
+      '<div style="width:100%;background:' + barColor + ';border-radius:' + (isToday ? '6px 6px 0 0' : '3px 3px 0 0') + ';height:' + h + 'px;min-height:4px;"></div></div>';
+  }).join('');
+  chartEl.innerHTML = chartHtml;
+  // Render labels
+  var labelsHtml = data.map(function(v, i) {
+    var d = new Date(today);
+    d.setDate(d.getDate() - (data.length - 1 - i));
+    var isToday = i === data.length - 1;
+    return '<span style="' + (isToday ? 'color:var(--purple);font-weight:700;' : '') + '">' + (d.getMonth() + 1) + '/' + d.getDate() + '</span>';
+  }).join('');
+  labelsEl.innerHTML = labelsHtml;
+  // Update stats
+  var todayVal = data.length > 0 ? data[data.length - 1] : 0;
+  var avgVal = data.length > 0 ? Math.round(data.reduce(function(a, b) { return a + b; }, 0) / data.length) : 0;
+  if (document.getElementById('bld-occ-today')) document.getElementById('bld-occ-today').textContent = todayVal + '%';
+  if (document.getElementById('bld-occ-avg')) document.getElementById('bld-occ-avg').textContent = avgVal + '%';
+  if (document.getElementById('bld-occ-yoy')) document.getElementById('bld-occ-yoy').textContent = (Math.random() > 0.5 ? '+' : '-') + Math.round(Math.random() * 8) + '%';
+  if (document.getElementById('bld-occ-mom')) document.getElementById('bld-occ-mom').textContent = (Math.random() > 0.5 ? '+' : '-') + Math.round(Math.random() * 5) + '%';
+  var totalRooms = bldId === 'main' ? 16 : 10;
+  var occupy = Math.round(totalRooms * todayVal / 100);
+  if (document.getElementById('bld-occ-occupy')) document.getElementById('bld-occ-occupy').textContent = occupy;
+  if (document.getElementById('bld-occ-vacant')) document.getElementById('bld-occ-vacant').textContent = totalRooms - occupy;
+  if (document.getElementById('bld-occ-revenue')) document.getElementById('bld-occ-revenue').textContent = '¥' + (occupy * 128).toLocaleString();
+}
 function renderBuilding3DView() {
   var bldId = document.getElementById('bld-3d-selector') ? document.getElementById('bld-3d-selector').value : 'main';
   var bld = building3DData[bldId];
@@ -15949,6 +16215,38 @@ function openWorkorderDetail(idx) {
   document.getElementById('wo-assignee-select').value = d.assignee || '';
   selectedWoSolution = 'accept';
   document.querySelectorAll('.solution-item').forEach((s, i) => s.classList.toggle('selected', i === 0));
+  // 【改进1】动态渲染工单处理历史时间线（基于真实处理记录）
+  var timelineEl = document.getElementById('wd-processing-timeline');
+  var timelineContent = document.getElementById('wd-timeline-content');
+  if (timelineEl && timelineContent) {
+    var historyRecords = d.processHistory || [];
+    var timelineHtml = '';
+    // 添加创建记录
+    var createDate = d.time || new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\//g,'-');
+    timelineHtml += '<div style="display:flex;gap:10px;margin-bottom:12px;position:relative;padding-left:20px;">' +
+      '<div style="position:absolute;left:6px;top:4px;width:10px;height:10px;background:var(--blue);border-radius:50%;"></div>' +
+      '<div style="flex:1;"><div style="font-size:11px;color:var(--blue);font-weight:600;">🕐 ' + createDate + '</div>' +
+      '<div style="font-size:12px;color:var(--text);">客户提交工单</div></div></div>';
+    if (historyRecords.length > 0) {
+      historyRecords.forEach(function(rec) {
+        var color = rec.action === '分配' ? 'var(--purple)' : rec.action === '接单' ? 'var(--orange)' : rec.action === '处理' ? 'var(--blue)' : 'var(--green)';
+        timelineHtml += '<div style="display:flex;gap:10px;margin-bottom:12px;position:relative;padding-left:20px;">' +
+          '<div style="position:absolute;left:6px;top:4px;width:10px;height:10px;background:' + color + ';border-radius:50%;"></div>' +
+          '<div style="flex:1;"><div style="font-size:11px;color:' + color + ';font-weight:600;">🕐 ' + rec.time + ' · ' + rec.operator + '</div>' +
+          '<div style="font-size:12px;color:var(--text);">' + rec.action + (rec.note ? '：' + rec.note : '') + '</div></div></div>';
+      });
+    } else if (d.status !== 'pending') {
+      timelineHtml += '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px;">暂无处理记录</div>';
+    }
+    // 当前状态高亮
+    var statusColor = d.status === 'pending' ? 'var(--orange)' : d.status === 'processing' ? 'var(--purple)' : 'var(--green)';
+    timelineHtml += '<div style="display:flex;gap:10px;position:relative;padding-left:20px;">' +
+      '<div style="position:absolute;left:6px;top:4px;width:10px;height:10px;background:' + statusColor + ';border-radius:50%;box-shadow:0 0 0 3px ' + statusColor + '40;"></div>' +
+      '<div style="flex:1;"><div style="font-size:11px;color:' + statusColor + ';font-weight:600;">🕐 当前 · ' + (d.status === 'pending' ? '待接受' : d.status === 'processing' ? '处理中' : '已完成') + '</div>' +
+      '<div style="font-size:12px;color:var(--text);">' + (d.assignee ? '处理人：' + d.assignee : '尚未分配处理人') + '</div></div></div>';
+    timelineContent.innerHTML = timelineHtml;
+    timelineEl.style.display = 'block';
+  }
   // 标记当前行以便状态更新
   document.querySelectorAll('#workorder-table-body tr').forEach(r => { r.id = ''; delete r.dataset.idx; });
   var rows = document.querySelectorAll('#workorder-table-body tr');
@@ -30194,6 +30492,75 @@ function openStaffPerformanceModal(idx) {
   var rate = s.status === 'enabled' ? '在岗' : '休息/禁用';
   document.getElementById('sp-rate').textContent = rate;
   openModal('modal-staff-performance');
+  // 【改进2】渲染绩效雷达图和月度柱状图
+  setTimeout(function() { renderStaffPerformanceCharts(idx); }, 50);
+}
+function renderStaffPerformanceCharts(idx) {
+  var s = staffList[idx];
+  var total = Math.max(1, s.checkinCount + s.checkoutCount + s.woCount);
+  // 雷达图：办理力=入住办理/总业务，退款率=反向，服务响应=工单处理率，满意度评分
+  var handling = Math.round(s.checkinCount / total * 100);
+  var checkoutRatio = Math.round(s.checkoutCount / total * 100);
+  var woRatio = Math.round((s.woCount || 0) / total * 100);
+  var satisfaction = Math.round(70 + Math.random() * 25); // 模拟满意度
+  var radarData = [handling, checkoutRatio, woRatio, satisfaction];
+  var radarLabels = ['办理力', '退房力', '服务力', '满意度'];
+  var radarColors = ['#1890ff', '#52c41a', '#722ed1', '#fa8c16'];
+  var radarCanvas = document.getElementById('sp-radar-canvas');
+  if (radarCanvas) {
+    var size = 140;
+    var cx = size / 2, cy = size / 2, r = 55;
+    // 绘制4轴雷达
+    var pts = radarData.map(function(v, i) {
+      var angle = (Math.PI * 2 * i / 4) - Math.PI / 2;
+      var dist = (v / 100) * r;
+      return { x: cx + dist * Math.cos(angle), y: cy + dist * Math.sin(angle) };
+    });
+    var gridLevels = [0.25, 0.5, 0.75, 1];
+    var gridHtml = gridLevels.map(function(level) {
+      var levelPts = [];
+      for (var i = 0; i < 4; i++) {
+        var angle = (Math.PI * 2 * i / 4) - Math.PI / 2;
+        levelPts.push(cx + r * level * Math.cos(angle) + ',' + (cy + r * level * Math.sin(angle)));
+      }
+      return '<polygon points="' + levelPts.join(' ') + '" fill="none" stroke="#e8e8e8" stroke-width="1"/>';
+    }).join('');
+    var dataPts = pts.map(function(p) { return p.x + ',' + p.y; }).join(' ');
+    var radarHtml = '<svg width="' + size + '" height="' + size + '" style="overflow:visible;">' + gridHtml +
+      '<polygon points="' + dataPts + '" fill="#1890ff30" stroke="#1890ff" stroke-width="2"/>' +
+      '<line x1="' + cx + '" y1="' + cy + '" x2="' + cx + '" y2="' + (cy - r) + '" stroke="#e8e8e8" stroke-width="1"/>' +
+      '<line x1="' + cx + '" y1="' + cy + '" x2="' + (cx + r * Math.cos(Math.PI / 2)) + '" y2="' + (cy + r * Math.sin(Math.PI / 2)) + '" stroke="#e8e8e8" stroke-width="1"/>' +
+      '<line x1="' + cx + '" y1="' + cy + '" x2="' + (cx + r * Math.cos(Math.PI)) + '" y2="' + (cy + r * Math.sin(Math.PI)) + '" stroke="#e8e8e8" stroke-width="1"/>' +
+      '<line x1="' + cx + '" y1="' + cy + '" x2="' + (cx + r * Math.cos(Math.PI * 1.5)) + '" y2="' + (cy + r * Math.sin(Math.PI * 1.5)) + '" stroke="#e8e8e8" stroke-width="1"/>';
+    radarData.forEach(function(v, i) {
+      var angle = (Math.PI * 2 * i / 4) - Math.PI / 2;
+      var dist = (v / 100) * r;
+      var px = cx + dist * Math.cos(angle), py = cy + dist * Math.sin(angle);
+      radarHtml += '<circle cx="' + px + '" cy="' + py + '" r="4" fill="' + radarColors[i] + '"/>';
+      radarHtml += '<text x="' + px + '" y="' + (py - 8) + '" text-anchor="middle" font-size="10" fill="' + radarColors[i] + '" font-weight="700">' + v + '%</text>';
+    });
+    radarHtml += '</svg>';
+    radarCanvas.innerHTML = radarHtml;
+  }
+  // 月度柱状图
+  var barCanvas = document.getElementById('sp-bar-canvas');
+  if (barCanvas) {
+    var months = [
+      { m: '10月', v: Math.round(s.checkinCount * 0.6 + s.checkoutCount * 0.5 + (s.woCount||0) * 0.4) },
+      { m: '11月', v: Math.round(s.checkinCount * 0.8 + s.checkoutCount * 0.7 + (s.woCount||0) * 0.6) },
+      { m: '12月', v: Math.round(s.checkinCount * 0.9 + s.checkoutCount * 0.85 + (s.woCount||0) * 0.75) },
+      { m: '1月', v: Math.round(s.checkinCount * 0.5 + s.checkoutCount * 0.4 + (s.woCount||0) * 0.55) },
+      { m: '2月', v: Math.round(s.checkinCount * 0.7 + s.checkoutCount * 0.65 + (s.woCount||0) * 0.7) },
+      { m: '3月', v: s.checkinCount + s.checkoutCount + (s.woCount||0) }
+    ];
+    var maxV = Math.max.apply(null, months.map(function(x) { return x.v; }));
+    var barHtml = months.map(function(month) {
+      var h = Math.round((month.v / maxV) * 130);
+      var color = month.m === '3月' ? '#1890ff' : '#b0d4ff';
+      return '<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;"><div style="width:22px;background:' + color + ';border-radius:3px 3px 0 0;height:' + h + 'px;"></div></div>';
+    }).join('');
+    barCanvas.innerHTML = barHtml;
+  }
 }
 
 function renderStaffTable() {
