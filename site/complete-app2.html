@@ -851,6 +851,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             <div class="card-tab" onclick="filterHomeAlerts('energy',this)" style="border-radius:6px 6px 0 0;">⚡ 能耗 <span id="hal-count-energy">1</span></div>
             <div class="card-tab" onclick="filterHomeAlerts('checkout',this)" style="border-radius:6px 6px 0 0;">🚪 退房 <span id="hal-count-checkout">1</span></div>
           </div>
+          <!-- 【改进4】一键处理全部告警按钮 + 处理历史入口 -->
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--red-bg);border-bottom:1px solid var(--border);">
+            <button class="action-btn small" onclick="processAllHomeAlerts()" style="padding:5px 12px;background:var(--red);color:white;border:none;font-size:11px;font-weight:600;border-radius:6px;">⚡ 一键处理全部</button>
+            <button class="action-btn small" onclick="openAlertProcessHistory()" style="padding:5px 10px;font-size:11px;background:var(--bg);border-color:var(--border);">📋 处理记录</button>
+            <span id="home-alert-count" style="margin-left:auto;font-size:12px;color:var(--red);font-weight:600;">4 条待处理</span>
+          </div>
           <!-- 告警列表 -->
           <div id="home-alert-list" style="max-height:220px;overflow-y:auto;">
             <div class="home-alert-item" data-type="device" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;" onclick="openDeviceDetailFromAlert('303')">
@@ -916,6 +922,50 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           item.style.opacity = '0';
           setTimeout(function(){ item.style.display = 'none'; }, 300);
         }
+      }
+      // 【改进4】一键处理全部告警：自动根据告警类型分配最佳处理动作
+      var alertProcessHistory = [];
+      function processAllHomeAlerts() {
+        var items = document.querySelectorAll('.home-alert-item[style*="flex"], .home-alert-item:not([style*="display: none"])');
+        var processed = 0;
+        items.forEach(function(item) {
+          var type = item.dataset.type;
+          var actionBtns = item.querySelectorAll('button');
+          if (actionBtns.length > 0) {
+            actionBtns[0].click(); // 自动点击第一个处理按钮
+            var title = item.querySelector('div div') ? item.querySelector('div div').textContent : item.textContent.substring(0, 30);
+            alertProcessHistory.unshift({time: new Date().toLocaleTimeString(), action: title, type: type, result: '已处理'});
+            processed++;
+          }
+        });
+        if (processed > 0) {
+          showToast('⚡ 已自动处理 ' + processed + ' 条告警（详细结果见处理记录）', 'success');
+        } else {
+          showToast('当前无待处理告警', 'info');
+        }
+      }
+      // 【改进4】告警处理历史弹窗
+      function openAlertProcessHistory() {
+        var existing = document.getElementById('modal-alert-history');
+        if (existing) existing.remove();
+        var html = '<div class="modal-overlay" id="modal-alert-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-alert-history\').remove()">' +
+          '<div class="modal" style="width:520px;max-height:80vh;overflow-y:auto;background:white;border-radius:12px;">' +
+          '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+          '<div style="font-size:15px;font-weight:700;">📋 告警处理历史</div>' +
+          '<button onclick="document.getElementById(\'modal-alert-history\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+          '<div style="padding:16px 20px;">';
+        if (alertProcessHistory.length === 0) {
+          html += '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">暂无处理记录</div>';
+        } else {
+          alertProcessHistory.slice(0, 20).forEach(function(item) {
+            html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px;">';
+            html += '<span style="font-size:11px;color:var(--text-muted);width:60px;">' + item.time + '</span>';
+            html += '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + item.action + '</span>';
+            html += '<span style="font-size:11px;color:var(--green);font-weight:600;">✓ ' + item.result + '</span></div>';
+          });
+        }
+        html += '</div><div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;"><button class="action-btn secondary" onclick="document.getElementById(\'modal-alert-history\').remove()">关闭</button></div></div></div>';
+        document.body.insertAdjacentHTML('beforeend', html);
       }
       function dismissAllHomeAlerts() {
         document.querySelectorAll('.home-alert-item').forEach(function(item){
@@ -1126,7 +1176,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <div><div class="stat-num" id="home-stat-revenue">¥4,820</div><div class="stat-label">今日营收</div></div>
         </div>
         <!-- 【改进5-新增】首页能耗趋势迷你面板（实时7日数据） -->
-        <div class="stat-card" title="今日能耗" style="cursor:pointer;position:relative;overflow:hidden;" onclick="showPage('energy')" id="home-energy-mini-card">
+        <div class="stat-card" title="今日能耗" style="cursor:pointer;position:relative;overflow:hidden;" onclick="openHomeEnergyDashboard()" id="home-energy-mini-card">
           <div class="stat-icon" style="background:linear-gradient(135deg,#fa541c,#ff7a45);">⚡</div>
           <div>
             <div style="display:flex;align-items:baseline;gap:3px;">
@@ -1189,6 +1239,122 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           </div>
         </div>
       </div>
+
+      <!-- 【改进5】首页能耗分析仪表盘弹窗入口：点击首页能耗卡片触发 -->
+      <div class="modal-overlay hidden" id="modal-home-energy-dashboard">
+        <div class="modal" style="width:800px;max-height:90vh;overflow-y:auto;">
+          <div class="modal-header">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div class="modal-title">⚡ 能耗分析仪表盘</div>
+              <div style="font-size:12px;padding:3px 10px;background:var(--orange-bg);color:var(--orange);border-radius:12px;font-weight:600;">实时数据</div>
+            </div>
+            <button class="modal-close" onclick="closeModal('home-energy-dashboard')">✕</button>
+          </div>
+          <div class="modal-body" style="padding:20px;">
+            <!-- 关键指标卡片 -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+              <div style="padding:14px;background:linear-gradient(135deg,#fa541c,#ff7a45);border-radius:10px;color:white;text-align:center;">
+                <div style="font-size:11px;opacity:0.9;margin-bottom:6px;">今日总用电</div>
+                <div style="font-size:28px;font-weight:700;">48.6<span style="font-size:14px;">kWh</span></div>
+                <div style="font-size:11px;opacity:0.8;margin-top:4px;">📉 较昨日 -5.2%</div>
+              </div>
+              <div style="padding:14px;background:linear-gradient(135deg,#1890ff,#69c0ff);border-radius:10px;color:white;text-align:center;">
+                <div style="font-size:11px;opacity:0.9;margin-bottom:6px;">近7日平均</div>
+                <div style="font-size:28px;font-weight:700;">52.3<span style="font-size:14px;">kWh</span></div>
+                <div style="font-size:11px;opacity:0.8;margin-top:4px;">日均用电</div>
+              </div>
+              <div style="padding:14px;background:linear-gradient(135deg,#52c41a,#73d13d);border-radius:10px;color:white;text-align:center;">
+                <div style="font-size:11px;opacity:0.9;margin-bottom:6px;">预估月电费</div>
+                <div style="font-size:28px;font-weight:700;">¥2,840</div>
+                <div style="font-size:11px;opacity:0.8;margin-top:4px;">按 ¥0.6/kWh</div>
+              </div>
+              <div style="padding:14px;background:linear-gradient(135deg,#722ed1,#b37feb);border-radius:10px;color:white;text-align:center;">
+                <div style="font-size:11px;opacity:0.9;margin-bottom:6px;">节能目标</div>
+                <div style="font-size:28px;font-weight:700;">-15%</div>
+                <div style="font-size:11px;opacity:0.8;margin-top:4px;">本月已完成 8%</div>
+              </div>
+            </div>
+            <!-- 7日趋势图 -->
+            <div style="padding:16px;background:white;border:1px solid var(--border);border-radius:10px;margin-bottom:16px;">
+              <div style="font-size:13px;font-weight:700;margin-bottom:14px;">📈 近7日用电趋势</div>
+              <div style="display:flex;align-items:flex-end;gap:10px;height:100px;">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                  <div style="width:100%;background:#1890ff;border-radius:4px 4px 0 0;min-height:6px;" id="he-bar-1"></div>
+                  <div style="font-size:10px;color:var(--text-muted);">03-21</div>
+                  <div style="font-size:10px;font-weight:600;" id="he-bar-v-1">38kWh</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                  <div style="width:100%;background:#1890ff;border-radius:4px 4px 0 0;min-height:6px;" id="he-bar-2"></div>
+                  <div style="font-size:10px;color:var(--text-muted);">03-22</div>
+                  <div style="font-size:10px;font-weight:600;" id="he-bar-v-2">45kWh</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                  <div style="width:100%;background:#1890ff;border-radius:4px 4px 0 0;min-height:6px;" id="he-bar-3"></div>
+                  <div style="font-size:10px;color:var(--text-muted);">03-23</div>
+                  <div style="font-size:10px;font-weight:600;" id="he-bar-v-3">52kWh</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                  <div style="width:100%;background:#1890ff;border-radius:4px 4px 0 0;min-height:6px;" id="he-bar-4"></div>
+                  <div style="font-size:10px;color:var(--text-muted);">03-24</div>
+                  <div style="font-size:10px;font-weight:600;" id="he-bar-v-4">60kWh</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                  <div style="width:100%;background:#1890ff;border-radius:4px 4px 0 0;min-height:6px;" id="he-bar-5"></div>
+                  <div style="font-size:10px;color:var(--text-muted);">03-25</div>
+                  <div style="font-size:10px;font-weight:600;" id="he-bar-v-5">55kWh</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                  <div style="width:100%;background:#1890ff;border-radius:4px 4px 0 0;min-height:6px;" id="he-bar-6"></div>
+                  <div style="font-size:10px;color:var(--text-muted);">03-26</div>
+                  <div style="font-size:10px;font-weight:600;" id="he-bar-v-6">51kWh</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                  <div style="width:100%;background:#fa541c;border-radius:4px 4px 0 0;min-height:6px;" id="he-bar-7"></div>
+                  <div style="font-size:10px;color:var(--blue);font-weight:700;">03-27</div>
+                  <div style="font-size:10px;font-weight:700;color:var(--blue);" id="he-bar-v-7">48.6kWh</div>
+                </div>
+              </div>
+            </div>
+            <!-- 节能建议 -->
+            <div style="padding:16px;background:var(--green-bg);border:1px solid var(--green);border-radius:10px;">
+              <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--green);">💡 节能优化建议</div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;align-items:center;gap:10px;font-size:12px;padding:8px;background:white;border-radius:6px;">
+                  <span style="font-size:16px;">🌡️</span>
+                  <div style="flex:1;"><strong>空调温度优化：</strong>当前设定24°C，建议调整为26°C，可节省约 8kWh/天</div>
+                  <button class="action-btn small" onclick="showToast('空调温度已调整为26°C','success')" style="padding:3px 8px;font-size:10px;background:var(--green);color:white;border:none;">立即优化</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;font-size:12px;padding:8px;background:white;border-radius:6px;">
+                  <span style="font-size:16px;">⏰</span>
+                  <div style="flex:1;"><strong>定时开关策略：</strong>空房超过2小时自动关闭空调，预计月节省 180kWh</div>
+                  <button class="action-btn small" onclick="showToast('定时策略已启用','success')" style="padding:3px 8px;font-size:10px;background:var(--green);color:white;border:none;">立即启用</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="modal-btn secondary" onclick="closeModal('home-energy-dashboard')">关闭</button>
+            <button class="modal-btn" onclick="showPage('energy')" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">查看完整能耗页面 ›</button>
+          </div>
+        </div>
+      </div>
+      <script>
+      // 【改进5】打开首页能耗仪表盘弹窗
+      function openHomeEnergyDashboard() {
+        openModal('home-energy-dashboard');
+        initHomeEnergyDashboard();
+      }
+      // 【改进5】初始化能耗仪表盘图表
+      function initHomeEnergyDashboard() {
+        var data = [38, 45, 52, 60, 55, 51, 48.6];
+        var max = Math.max.apply(null, data);
+        for (var i = 1; i <= 7; i++) {
+          var bar = document.getElementById('he-bar-' + i);
+          if (bar) bar.style.height = (data[i-1] / max * 100) + '%';
+        }
+      }
+      </script>
+
       <!-- 【改进2 v3】首页工作台待办聚合面板：一站式处理告警/工单/待查房 -->
       <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,#fff8e6,#fff3d9);border:1px solid #ffc53d;">
         <div style="padding:14px 20px;display:flex;align-items:center;gap:12px;">
@@ -11290,6 +11456,8 @@ function openEditMemberLevelModalV2(idx) {
           <button class="action-btn" onclick="openBuildingCRUDForm('add', '')" style="padding:4px 12px;font-size:12px;">+ 新增楼栋</button>
           <!-- 【改进V3-2】新增：楼栋设备概览统计按钮 -->
           <button class="action-btn small" onclick="openBuildingDeviceOverviewPanel('main')" style="padding:4px 10px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📡 设备概览</button>
+          <!-- 【改进3】新增：房型管理弹窗入口 -->
+          <button class="action-btn small" onclick="openRoomTypeManageModal()" style="padding:4px 10px;font-size:11px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🏠 房型管理</button>
         </div>
         <div class="card-body" style="padding:0;">
           <table class="table">
@@ -12491,6 +12659,83 @@ function openEditMemberLevelModalV2(idx) {
           </div>
         </div>
       </div>
+
+    </div>
+    <!-- 【改进3】房型管理完整弹窗：CRUD + 房间数统计 -->
+    <div class="modal-overlay hidden" id="modal-roomtype-manage">
+      <div class="modal" style="width:620px;max-height:85vh;overflow-y:auto;">
+        <div class="modal-header">
+          <div class="modal-title">🏠 房型管理</div>
+          <button class="modal-close" onclick="closeModal('roomtype-manage')">✕</button>
+        </div>
+        <div class="modal-body" style="padding:0;">
+          <div style="padding:16px 20px 0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:12px;color:var(--text-muted);">共</span>
+                <span style="font-size:18px;font-weight:700;color:var(--blue);" id="rtm-total-count">4</span>
+                <span style="font-size:12px;color:var(--text-muted);">种房型，</span>
+                <span style="font-size:18px;font-weight:700;color:var(--green);" id="rtm-total-rooms">25</span>
+                <span style="font-size:12px;color:var(--text-muted);">间客房</span>
+              </div>
+              <button class="action-btn" onclick="openRoomTypeAddForm()" style="padding:6px 14px;font-size:12px;background:var(--blue);color:white;border:none;">+ 新增房型</button>
+            </div>
+          </div>
+          <div id="rtm-list-container" style="padding:0 20px 16px;"></div>
+        </div>
+        <div class="modal-footer">
+          <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;width:100%;">
+            <div id="rtm-stat-summary" style="font-size:12px;color:var(--text-muted);"></div>
+            <button class="modal-btn secondary" onclick="closeModal('roomtype-manage')">关闭</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【改进3-2】新增/编辑房型表单（内嵌在房型管理弹窗内） -->
+    <div class="modal-overlay hidden" id="modal-rt-add-form">
+      <div class="modal" style="width:480px;">
+        <div class="modal-header">
+          <div class="modal-title" id="rt-add-title">🏠 新增房型</div>
+          <button class="modal-close" onclick="closeModal('rt-add-form')">✕</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="rt-edit-id" value="">
+          <div class="form-group"><label class="form-label">房型名称 <span class="required">*</span></label>
+            <input type="text" class="form-input" id="rt-add-name" placeholder="如：亲子间/大床房/标准间/豪华套房"></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">编码 <span class="required">*</span></label>
+              <input type="text" class="form-input" id="rt-add-code" placeholder="如：KIDS/DOUBLE/STANDARD/DELUXE" style="text-transform:uppercase;"></div>
+            <div class="form-group"><label class="form-label">容纳人数</label>
+              <input type="number" class="form-input" id="rt-add-cap" placeholder="如：2" min="1" max="10"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">标准价(元/晚)</label>
+              <input type="number" class="form-input" id="rt-add-price" placeholder="如：298" min="0"></div>
+            <div class="form-group"><label class="form-label">定价模式</label>
+              <select class="form-select" id="rt-add-pricing-mode">
+                <option value="fixed">固定价格</option>
+                <option value="dynamic">动态定价</option>
+                <option value="seasonal">季节定价</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">特点描述</label>
+            <textarea class="form-textarea" id="rt-add-feature" placeholder="如：1.8米大床+儿童高低床，适合家庭入住" style="min-height:60px;"></textarea></div>
+          <div class="form-group"><label class="form-label">状态</label>
+            <select class="form-select" id="rt-add-status">
+              <option value="enabled">🟢 启用</option>
+              <option value="disabled">🔴 停用</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('rt-add-form')">取消</button>
+          <button class="modal-btn primary" onclick="submitRoomTypeAdd()">确认保存</button>
+        </div>
+      </div>
+    </div>
+
       <!-- 【改进5】角色权限Tab内容 -->
       <div id="cfg-content-roles" style="display:none;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
@@ -13756,14 +14001,20 @@ function openEditMemberLevelModalV2(idx) {
 <div class="modal-overlay hidden" id="modal-create-wo">
   <div class="modal" style="width:520px;">
     <div class="modal-header">
-      <div class="modal-title" id="wo-create-title">📋 创建服务工单</div>
+      <!-- 【改进1】优先级色块指示器：随紧急程度动态变化 -->
+      <div style="display:flex;align-items:center;gap:10px;flex:1;">
+        <div class="modal-title" id="wo-create-title">📋 创建服务工单</div>
+        <div id="wo-priority-indicator" style="padding:3px 10px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:12px;font-size:11px;font-weight:600;color:var(--orange);">🟡 紧急</div>
+      </div>
       <button class="modal-close" onclick="closeModal('create-wo')">✕</button>
     </div>
+    <!-- 【改进1】创建结果展示区 -->
+    <div id="wo-create-result" style="display:none;margin:0 20px 0;border-radius:8px;padding:12px 16px;font-size:13px;font-weight:600;"></div>
     <div class="modal-body">
       <div class="form-row" style="margin-bottom:0;">
         <div class="form-group">
           <label class="form-label">工单类型 <span class="required">*</span></label>
-          <select class="form-select" id="wo-type" onchange="previewAutoDispatch()">
+          <select class="form-select" id="wo-type" onchange="previewAutoDispatch();updatePriorityIndicator()">
             <option value="complaint">🔴 客户投诉</option>
             <option value="review">⭐ 差评反馈</option>
             <option value="invoice">📄 发票需求</option>
@@ -13788,6 +14039,7 @@ function openEditMemberLevelModalV2(idx) {
           </select>
         </div>
       </div>
+      <!-- 【改进1】派发预览区 -->
       <div id="wo-dispatch-preview" style="display:none;margin-top:10px;padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-size:14px;">🤖</span>
@@ -15048,83 +15300,113 @@ function openEditMemberLevelModalV2(idx) {
   </div>
 </div>
 
-<!-- 改进2: 房间快速操作面板 -->
+<!-- 【改进2】房间快速操作面板新增Tab切换：房间信息/钥匙信息 -->
 <div class="modal-overlay hidden" id="modal-room-quick">
   <div class="modal" style="width:480px;">
     <div class="modal-header">
       <div class="modal-title" id="rqp-title">🚪 房间详情</div>
       <button class="modal-close" onclick="closeModal('room-quick')">✕</button>
     </div>
+    <!-- 【改进2】Tab切换：房间信息 / 钥匙信息 -->
+    <div style="display:flex;border-bottom:2px solid var(--border);padding:0 20px;">
+      <div id="rqp-tab-info" onclick="switchRqpTab('info',this)" style="padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;color:var(--blue);border-bottom:2px solid var(--blue);margin-bottom:-2px;">📱 房间信息</div>
+      <div id="rqp-tab-keys" onclick="switchRqpTab('keys',this)" style="padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text-muted);">🔑 钥匙信息</div>
+    </div>
     <div class="modal-body">
-      <!-- 房间基础信息 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
-        <div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;">
-          <div style="font-size:10px;color:var(--blue);">房间号</div>
-          <div style="font-size:20px;font-weight:700;color:var(--blue);" id="rqp-room">301</div>
+      <!-- Tab1: 房间信息 -->
+      <div id="rqp-content-info">
+        <!-- 房间基础信息 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;">
+            <div style="font-size:10px;color:var(--blue);">房间号</div>
+            <div style="font-size:20px;font-weight:700;color:var(--blue);" id="rqp-room">301</div>
+          </div>
+          <div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;">
+            <div style="font-size:10px;color:var(--green);">房型</div>
+            <div style="font-size:14px;font-weight:600;color:var(--green);" id="rqp-type">亲子间</div>
+          </div>
+          <div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;">
+            <div style="font-size:10px;color:var(--orange);">状态</div>
+            <div style="font-size:14px;font-weight:600;color:var(--orange);" id="rqp-status">在住</div>
+          </div>
         </div>
-        <div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;">
-          <div style="font-size:10px;color:var(--green);">房型</div>
-          <div style="font-size:14px;font-weight:600;color:var(--green);" id="rqp-type">亲子间</div>
+        <!-- 入住客人信息（在住时显示） -->
+        <div id="rqp-guest-section" style="display:none;padding:10px 12px;background:var(--blue-bg);border-radius:8px;margin-bottom:12px;">
+          <div style="font-size:11px;color:var(--blue);margin-bottom:6px;font-weight:600;">👤 当前入住人</div>
+          <div style="display:flex;gap:16px;font-size:12px;">
+            <div><span style="color:var(--text-muted);">姓名：</span><span style="font-weight:600;" id="rqp-guest-name">--</span></div>
+            <div><span style="color:var(--text-muted);">电话：</span><span style="font-weight:600;" id="rqp-guest-phone">--</span></div>
+            <div><span style="color:var(--text-muted);">入住：</span><span style="font-weight:600;" id="rqp-guest-checkin">--</span></div>
+          </div>
         </div>
-        <div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;">
-          <div style="font-size:10px;color:var(--orange);">状态</div>
-          <div style="font-size:14px;font-weight:600;color:var(--orange);" id="rqp-status">在住</div>
+        <!-- 设备状态 -->
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">📱 设备状态</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+              <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">🚪 门锁</div>
+              <div style="font-size:13px;font-weight:600;" id="rqp-lock">已反锁</div>
+            </div>
+            <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+              <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">⚡ 通电</div>
+              <div style="font-size:13px;font-weight:600;" id="rqp-power">空调开启</div>
+            </div>
+            <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+              <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">🔋 电量</div>
+              <div style="font-size:13px;font-weight:600;color:var(--green);" id="rqp-battery">85%</div>
+            </div>
+            <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+              <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">📶 信号</div>
+              <div style="font-size:13px;font-weight:600;color:var(--blue);" id="rqp-signal">-48 dBm</div>
+            </div>
+          </div>
+        </div>
+        <!-- 操作按钮 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <button class="action-btn green" onclick="doQuickUnlock()" style="padding:10px;font-size:13px;">🔓 开锁</button>
+          <button class="action-btn" onclick="doQuickTempPwd()" style="padding:10px;font-size:13px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔢 密码</button>
+          <button class="action-btn" onclick="goToRoomDetail()" style="padding:10px;font-size:13px;">📋 记录</button>
+          <button class="action-btn" onclick="doQuickCheckin()" style="padding:10px;font-size:13px;" id="rqp-checkin-btn">🏨 入住</button>
+          <button class="action-btn" onclick="doQuickCheckout()" style="padding:10px;font-size:13px;" id="rqp-checkout-btn">🚪 退房</button>
+          <button class="action-btn" onclick="doQuickClean()" style="padding:10px;font-size:13px;">🧹 清洁</button>
         </div>
       </div>
-      <!-- 入住客人信息（在住时显示） -->
-      <div id="rqp-guest-section" style="display:none;padding:10px 12px;background:var(--blue-bg);border-radius:8px;margin-bottom:12px;">
-        <div style="font-size:11px;color:var(--blue);margin-bottom:6px;font-weight:600;">👤 当前入住人</div>
-        <div style="display:flex;gap:16px;font-size:12px;">
-          <div><span style="color:var(--text-muted);">姓名：</span><span style="font-weight:600;" id="rqp-guest-name">--</span></div>
-          <div><span style="color:var(--text-muted);">电话：</span><span style="font-weight:600;" id="rqp-guest-phone">--</span></div>
-          <div><span style="color:var(--text-muted);">入住：</span><span style="font-weight:600;" id="rqp-guest-checkin">--</span></div>
-        </div>
-      </div>
-      <!-- 设备状态 -->
-      <div style="margin-bottom:12px;">
-        <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">📱 设备状态</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">🚪 门锁</div>
-            <div style="font-size:13px;font-weight:600;" id="rqp-lock">已反锁</div>
+      <!-- Tab2: 钥匙信息 -->
+      <div id="rqp-content-keys" style="display:none;">
+        <div style="margin-bottom:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text);">🔑 当前生效钥匙</div>
+            <span style="font-size:11px;color:var(--blue);font-weight:600;" id="rqp-keys">2张</span>
           </div>
-          <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">⚡ 通电</div>
-            <div style="font-size:13px;font-weight:600;" id="rqp-power">空调开启</div>
-          </div>
-          <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">🔋 电量</div>
-            <div style="font-size:13px;font-weight:600;color:var(--green);" id="rqp-battery">85%</div>
-          </div>
-          <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">📶 信号</div>
-            <div style="font-size:13px;font-weight:600;color:var(--blue);" id="rqp-signal">-48 dBm</div>
+          <div id="rqp-keycard-list" style="display:flex;flex-direction:column;gap:6px;">
+            <div style="padding:10px 12px;background:var(--green-bg);border-radius:6px;display:flex;align-items:center;gap:10px;font-size:12px;border:1px solid var(--green);">
+              <span style="font-size:18px;">🟢</span>
+              <div style="flex:1;">
+                <div style="font-weight:600;">张**（主人卡）</div>
+                <div style="font-size:11px;color:var(--text-muted);">有效期至 2026-03-30 14:00</div>
+              </div>
+              <button class="action-btn small" onclick="doQuickUnlock()" style="padding:3px 8px;font-size:10px;">🔓 开锁</button>
+            </div>
+            <div style="padding:10px 12px;background:var(--blue-bg);border-radius:6px;display:flex;align-items:center;gap:10px;font-size:12px;border:1px solid var(--blue);">
+              <span style="font-size:18px;">🔵</span>
+              <div style="flex:1;">
+                <div style="font-weight:600;">李四（备用卡1）</div>
+                <div style="font-size:11px;color:var(--text-muted);">有效期至 2026-03-29 12:00</div>
+              </div>
+              <button class="action-btn small" onclick="doQuickUnlock()" style="padding:3px 8px;font-size:10px;">🔓 开锁</button>
+            </div>
           </div>
         </div>
-      </div>
-      <!-- 生效钥匙列表 -->
-      <div style="margin-bottom:14px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="font-size:11px;font-weight:600;color:var(--text-muted);">🔑 生效钥匙</div>
-          <span style="font-size:11px;color:var(--blue);font-weight:600;" id="rqp-keys">2张</span>
-        </div>
-        <div id="rqp-keycard-list" style="display:flex;flex-direction:column;gap:4px;">
-          <div style="padding:6px 10px;background:var(--green-bg);border-radius:6px;display:flex;align-items:center;gap:8px;font-size:12px;">
-            <span>🟢</span><span style="flex:1;">张**（主人卡）</span><span style="font-size:10px;color:var(--text-muted);">有效期至 03-30</span>
-          </div>
-          <div style="padding:6px 10px;background:var(--blue-bg);border-radius:6px;display:flex;align-items:center;gap:8px;font-size:12px;">
-            <span style="color:var(--blue);">🔵</span><span style="flex:1;">李四（备用卡）</span><span style="font-size:10px;color:var(--text-muted);">有效期至 03-29</span>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">➕ 发行新钥匙</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button class="action-btn small" onclick="openAddKeycardModal()" style="padding:8px;font-size:12px;background:var(--green-bg);color:var(--green);border-color:var(--green);">💳 发行门卡</button>
+            <button class="action-btn small" onclick="openAddTempPwdModal()" style="padding:8px;font-size:12px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔢 临时密码</button>
           </div>
         </div>
-      </div>
-      <!-- 操作按钮 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-        <button class="action-btn green" onclick="doQuickUnlock()" style="padding:10px;font-size:13px;">🔓 开锁</button>
-        <button class="action-btn" onclick="doQuickTempPwd()" style="padding:10px;font-size:13px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔢 密码</button>
-        <button class="action-btn" onclick="goToRoomDetail()" style="padding:10px;font-size:13px;">📋 记录</button>
-        <button class="action-btn" onclick="doQuickCheckin()" style="padding:10px;font-size:13px;" id="rqp-checkin-btn">🏨 入住</button>
-        <button class="action-btn" onclick="doQuickCheckout()" style="padding:10px;font-size:13px;" id="rqp-checkout-btn">🚪 退房</button>
-        <button class="action-btn" onclick="doQuickClean()" style="padding:10px;font-size:13px;">🧹 清洁</button>
+        <div style="padding:10px 12px;background:var(--red-bg);border-radius:8px;font-size:12px;color:var(--red);">
+          ⚠️ 房间非在住状态时，所有钥匙权限已自动失效
+        </div>
       </div>
     </div>
   </div>
@@ -20510,6 +20792,23 @@ function previewAutoDispatch() {
   preview.style.borderColor = isUrgent ? 'var(--red)' : 'var(--blue)';
 }
 
+// 【改进1】优先级色块指示器：根据紧急程度动态更新颜色和文字
+function updatePriorityIndicator() {
+  var urgency = document.getElementById('wo-urgency') ? document.getElementById('wo-urgency').value : 'normal';
+  var indicator = document.getElementById('wo-priority-indicator');
+  if (!indicator) return;
+  var configs = {
+    normal: { text: '⚪ 普通', bg: 'var(--bg)', color: 'var(--text-muted)', border: 'var(--border)' },
+    urgent: { text: '🟡 紧急', bg: 'var(--orange-bg)', color: 'var(--orange)', border: 'var(--orange)' },
+    critical: { text: '🔴 非常紧急', bg: 'var(--red-bg)', color: 'var(--red)', border: 'var(--red)' }
+  };
+  var cfg = configs[urgency] || configs.normal;
+  indicator.textContent = cfg.text;
+  indicator.style.background = cfg.bg;
+  indicator.style.color = cfg.color;
+  indicator.style.borderColor = cfg.border;
+}
+
 // ========== 【改进2】房间记录导出入账报告 ==========
 function exportRoomRevenueReport() {
   var records = [
@@ -22332,6 +22631,81 @@ function searchDoorLog(query) {
 function showDoorLogDetail(room) {
   showToast('正在加载 ' + room + ' 房间的开锁记录详情...', 'info');
   setTimeout(() => showToast(room + ' 房间今日共开锁5次，详见历史记录页面', 'success'), 1000);
+}
+
+// ======= 【改进2】房间快速操作面板Tab切换JS =======
+function switchRqpTab(tab, el) {
+  var infoContent = document.getElementById('rqp-content-info');
+  var keysContent = document.getElementById('rqp-content-keys');
+  var infoTab = document.getElementById('rqp-tab-info');
+  var keysTab = document.getElementById('rqp-tab-keys');
+  if (tab === 'info') {
+    infoContent.style.display = '';
+    keysContent.style.display = 'none';
+    infoTab.style.color = 'var(--blue)';
+    infoTab.style.borderBottomColor = 'var(--blue)';
+    keysTab.style.color = 'var(--text-muted)';
+    keysTab.style.borderBottomColor = 'transparent';
+  } else {
+    infoContent.style.display = 'none';
+    keysContent.style.display = '';
+    keysTab.style.color = 'var(--blue)';
+    keysTab.style.borderBottomColor = 'var(--blue)';
+    infoTab.style.color = 'var(--text-muted)';
+    infoTab.style.borderBottomColor = 'transparent';
+  }
+}
+// 【改进2】发行门卡弹窗
+function openAddKeycardModal() {
+  var html = '<div class="modal-overlay" id="modal-add-keycard" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-add-keycard\').remove()">' +
+    '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">💳 发行新门卡</div>' +
+    '<button onclick="document.getElementById(\'modal-add-keycard\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">持卡人姓名 <span class="required">*</span></label><input type="text" class="form-input" id="kc-name" placeholder="请输入持卡人姓名"></div>' +
+    '<div class="form-group"><label class="form-label">卡类型</label><select class="form-select" id="kc-type"><option value="master">🔑 主人卡（全权限）</option><option value="slave">🔵 备用卡（受限权限）</option><option value="temp">⏰ 临时卡（有时限）</option></select></div>' +
+    '<div class="form-group"><label class="form-label">有效期至</label><input type="date" class="form-input" id="kc-expire"></div>' +
+    '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="action-btn secondary" onclick="document.getElementById(\'modal-add-keycard\').remove()">取消</button>' +
+    '<button class="action-btn primary" onclick="submitAddKeycard()" style="background:var(--green);color:white;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-weight:600;">确认发行</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitAddKeycard() {
+  var name = document.getElementById('kc-name').value.trim();
+  if (!name) { showToast('请输入持卡人姓名', 'error'); return; }
+  var typeLabels = { master: '主人卡', slave: '备用卡', temp: '临时卡' };
+  var type = document.getElementById('kc-type').value;
+  var expire = document.getElementById('kc-expire').value;
+  var room = document.getElementById('rqp-room') ? document.getElementById('rqp-room').textContent : '301';
+  document.getElementById('modal-add-keycard').remove();
+  showToast('门卡发行成功：' + name + '（' + typeLabels[type] + '）', 'success');
+  switchRqpTab('keys', document.getElementById('rqp-tab-keys'));
+}
+// 【改进2】临时密码弹窗
+function openAddTempPwdModal() {
+  var html = '<div class="modal-overlay" id="modal-add-temp-pwd" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-add-temp-pwd\').remove()">' +
+    '<div class="modal" style="width:380px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🔢 生成临时密码</div>' +
+    '<button onclick="document.getElementById(\'modal-add-temp-pwd\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">密码用途</label><input type="text" class="form-input" id="tp-purpose" placeholder="如：装修工人/访客"></div>' +
+    '<div class="form-group"><label class="form-label">有效期</label><select class="form-select" id="tp-hours"><option value="1">1小时</option><option value="2" selected>2小时</option><option value="4">4小时</option><option value="8">8小时</option><option value="24">24小时</option></select></div>' +
+    '<div class="form-group"><label class="form-label">生成密码</label><div style="display:flex;gap:8px;"><input type="text" class="form-input" id="tp-code" value="' + String(Math.floor(Math.random()*900000+100000)) + '" readonly style="font-weight:700;color:var(--blue);font-size:18px;letter-spacing:3px;"><button class="action-btn small" onclick="document.getElementById(\'tp-code\').value=String(Math.floor(Math.random()*900000+100000))" style="padding:6px 12px;">🔄</button></div></div>' +
+    '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="action-btn secondary" onclick="document.getElementById(\'modal-add-temp-pwd\').remove()">取消</button>' +
+    '<button class="action-btn primary" onclick="submitAddTempPwd()" style="background:var(--orange);color:white;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-weight:600;">确认生成</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitAddTempPwd() {
+  var purpose = document.getElementById('tp-purpose').value.trim() || '访客';
+  var hours = document.getElementById('tp-hours').value;
+  var code = document.getElementById('tp-code').value;
+  var room = document.getElementById('rqp-room') ? document.getElementById('rqp-room').textContent : '301';
+  document.getElementById('modal-add-temp-pwd').remove();
+  showToast('临时密码生成成功：' + code + '（有效期' + hours + '小时）', 'success');
+  switchRqpTab('keys', document.getElementById('rqp-tab-keys'));
 }
 
 // ======= 改进2: 房间快速操作面板 =======
@@ -44824,20 +45198,33 @@ function openCreateWorkorderModal() {
     '<button class="action-btn primary" onclick="submitCreateWorkorder()" style="background:var(--blue);color:white;border:none;padding:8px 24px;font-weight:700;">✓ 创建工单</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
+// 【改进1】创建结果展示：提交后弹窗内显示成功结果
 function submitCreateWorkorder() {
-  var desc = document.getElementById('wo-create-desc').value.trim();
+  var desc = document.getElementById('wo-create-desc') ? document.getElementById('wo-create-desc').value.trim() : '';
+  if (!desc && document.getElementById('wo-create-content')) desc = document.getElementById('wo-create-content').value.trim();
   if (!desc) { showToast('请填写工单描述', 'error'); return; }
   var typeMap = {complaint:'客户投诉', review:'差评预警', invoice:'发票申请', delivery:'送物服务', maintenance:'设备报修', other:'其他'};
-  var type = document.getElementById('wo-create-type').value;
-  var priority = document.getElementById('wo-create-priority').value;
-  var room = document.getElementById('wo-create-room').value;
-  var guest = document.getElementById('wo-create-guest').value;
-  var handler = document.getElementById('wo-create-handler').value;
+  var type = document.getElementById('wo-create-type') ? document.getElementById('wo-create-type').value : 'other';
+  var priority = document.getElementById('wo-create-priority') ? document.getElementById('wo-create-priority').value : 'normal';
+  var room = document.getElementById('wo-create-room') ? document.getElementById('wo-create-room').value : '';
+  var guest = document.getElementById('wo-create-guest') ? document.getElementById('wo-create-guest').value : '';
+  var handler = document.getElementById('wo-create-handler') ? document.getElementById('wo-create-handler').value : '';
   var now = new Date();
   var ts = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
   var newId = 'WO-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + String(Math.floor(Math.random()*100)).padStart(2,'0');
   workorderFullData.unshift({id:newId, type:type, typeLabel:typeMap[type], room:room||'-', guest:guest||'-', desc:desc, status:'pending', statusLabel:'待接受', priority:priority, priorityLabel:priority==='high'?'高':'普通', createdAt:ts, handler:handler||'', createdBy:'赵飞'});
-  document.getElementById('modal-wo-create-full').remove();
+  // 【改进1】创建结果在弹窗内展示
+  var resultEl = document.getElementById('wo-create-result');
+  if (resultEl) {
+    resultEl.style.display = 'block';
+    resultEl.style.background = 'var(--green-bg)';
+    resultEl.style.color = 'var(--green)';
+    resultEl.style.border = '1px solid var(--green)';
+    resultEl.innerHTML = '✅ 工单 <strong>' + newId + '</strong> 创建成功！已自动派发给 ' + (handler || '待分配') + '，当前状态：<span style="background:var(--orange-bg);color:var(--orange);padding:2px 8px;border-radius:8px;font-size:12px;">待接受</span>';
+  }
+  if (document.getElementById('modal-wo-create-full')) {
+    document.getElementById('modal-wo-create-full').remove();
+  }
   renderWorkorderTable();
   showToast('工单 ' + newId + ' 创建成功', 'success');
   addOpLog('workorder', '赵飞', '创建工单：' + newId + ' - ' + desc, '');
@@ -52047,6 +52434,123 @@ function startBatchFirmwareUpgrade(){
       },delay+phases.slice(0,pi).reduce(function(s,p){return s+p.dur;},0));
     });
   });
+}
+
+// ============================================================
+// 【改进3】房型管理完整CRUD（增删改查+弹窗渲染）
+// ============================================================
+var roomTypeData = [
+  {id:'rt1', name:'亲子间', code:'KIDS', capacity:4, price:398, feature:'1.8米大床+儿童高低床，适合家庭入住', status:'enabled', roomCount:5},
+  {id:'rt2', name:'大床房', code:'DOUBLE', capacity:2, price:298, feature:'1.8米大床，舒适安静', status:'enabled', roomCount:6},
+  {id:'rt3', name:'标准间', code:'STANDARD', capacity:2, price:238, feature:'双床配置，经济实惠', status:'enabled', roomCount:8},
+  {id:'rt4', name:'豪华套房', code:'DELUXE', capacity:3, price:598, feature:'独立客厅+全景落地窗，尊贵体验', status:'enabled', roomCount:3}
+];
+
+function openRoomTypeManageModal() {
+  var existing = document.getElementById('modal-roomtype-manage');
+  if (existing) existing.remove();
+  openModal('roomtype-manage');
+  renderRoomTypeManageList();
+}
+
+function renderRoomTypeManageList() {
+  var container = document.getElementById('rtm-list-container');
+  if (!container) return;
+  var totalRooms = roomTypeData.reduce(function(s, r){return s + (r.status === 'enabled' ? r.roomCount : 0);}, 0);
+  document.getElementById('rtm-total-count').textContent = roomTypeData.length;
+  document.getElementById('rtm-total-rooms').textContent = totalRooms;
+  var html = '';
+  roomTypeData.forEach(function(rt) {
+    var statusColor = rt.status === 'enabled' ? 'var(--green)' : 'var(--red)';
+    var statusBg = rt.status === 'enabled' ? 'var(--green-bg)' : 'var(--red-bg)';
+    var statusLabel = rt.status === 'enabled' ? '启用中' : '已停用';
+    var disabledStyle = rt.status === 'disabled' ? 'opacity:0.6;' : '';
+    html += '<div style="display:grid;grid-template-columns:1fr auto;gap:12px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;background:white;' + disabledStyle + '">';
+    html += '<div>';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">';
+    html += '<span style="font-size:18px;">' + (rt.code === 'KIDS' ? '👨‍👩‍👧' : rt.code === 'DOUBLE' ? '🛏️' : rt.code === 'STANDARD' ? '🛏️' : '👑') + '</span>';
+    html += '<span style="font-size:15px;font-weight:700;">' + rt.name + '</span>';
+    html += '<span style="font-size:11px;padding:2px 8px;background:' + statusBg + ';color:' + statusColor + ';border-radius:8px;font-weight:600;">' + statusLabel + '</span>';
+    html += '</div>';
+    html += '<div style="font-size:12px;color:var(--text-muted);display:flex;gap:16px;flex-wrap:wrap;">';
+    html += '<span>编码：<code style="background:var(--bg);padding:1px 4px;border-radius:3px;font-size:11px;">' + rt.code + '</code></span>';
+    html += '<span>容纳：' + rt.capacity + '人</span>';
+    html += '<span>定价：<strong style="color:var(--blue);">¥' + rt.price + '</strong>/晚</span>';
+    html += '<span>房间：' + rt.roomCount + '间</span>';
+    html += '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">' + rt.feature + '</div>';
+    html += '</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">';
+    html += '<button class="action-btn small" onclick="openRoomTypeEditForm(\'' + rt.id + '\')" style="padding:4px 10px;font-size:11px;">编辑</button>';
+    html += '<button class="action-btn small red" onclick="deleteRoomType(\'' + rt.id + '\')" style="padding:4px 10px;font-size:11px;">删除</button>';
+    html += '</div></div>';
+  });
+  if (roomTypeData.length === 0) {
+    html = '<div style="text-align:center;padding:40px;color:var(--text-muted);">暂无房型数据，请点击"新增房型"添加</div>';
+  }
+  container.innerHTML = html;
+  var enabled = roomTypeData.filter(function(r){return r.status==='enabled'}).length;
+  document.getElementById('rtm-stat-summary').textContent = '已启用 ' + enabled + ' 种房型，共 ' + totalRooms + ' 间客房';
+}
+
+function openRoomTypeAddForm() {
+  document.getElementById('rt-edit-id').value = '';
+  document.getElementById('rt-add-title').textContent = '🏠 新增房型';
+  document.getElementById('rt-add-name').value = '';
+  document.getElementById('rt-add-code').value = '';
+  document.getElementById('rt-add-cap').value = '';
+  document.getElementById('rt-add-price').value = '';
+  document.getElementById('rt-add-feature').value = '';
+  document.getElementById('rt-add-status').value = 'enabled';
+  openModal('rt-add-form');
+}
+
+function openRoomTypeEditForm(rtId) {
+  var rt = roomTypeData.find(function(r){return r.id === rtId});
+  if (!rt) return;
+  document.getElementById('rt-edit-id').value = rtId;
+  document.getElementById('rt-add-title').textContent = '🏠 编辑房型：' + rt.name;
+  document.getElementById('rt-add-name').value = rt.name;
+  document.getElementById('rt-add-code').value = rt.code;
+  document.getElementById('rt-add-cap').value = rt.capacity;
+  document.getElementById('rt-add-price').value = rt.price;
+  document.getElementById('rt-add-feature').value = rt.feature;
+  document.getElementById('rt-add-status').value = rt.status;
+  openModal('rt-add-form');
+}
+
+function submitRoomTypeAdd() {
+  var editId = document.getElementById('rt-edit-id').value;
+  var name = document.getElementById('rt-add-name').value.trim();
+  var code = document.getElementById('rt-add-code').value.trim().toUpperCase();
+  var cap = parseInt(document.getElementById('rt-add-cap').value) || 2;
+  var price = parseInt(document.getElementById('rt-add-price').value) || 0;
+  var feature = document.getElementById('rt-add-feature').value.trim();
+  var status = document.getElementById('rt-add-status').value;
+  if (!name) { showToast('请输入房型名称', 'error'); return; }
+  if (!code) { showToast('请输入房型编码', 'error'); return; }
+  if (editId) {
+    var idx = roomTypeData.findIndex(function(r){return r.id === editId});
+    if (idx !== -1) {
+      roomTypeData[idx] = Object.assign({}, roomTypeData[idx], {name:name, code:code, capacity:cap, price:price, feature:feature, status:status});
+      showToast('房型「' + name + '」更新成功', 'success');
+    }
+  } else {
+    var newId = 'rt_' + Date.now();
+    roomTypeData.push({id:newId, name:name, code:code, capacity:cap, price:price, feature:feature, status:status, roomCount:0});
+    showToast('房型「' + name + '」创建成功', 'success');
+  }
+  closeModal('rt-add-form');
+  renderRoomTypeManageList();
+}
+
+function deleteRoomType(rtId) {
+  var rt = roomTypeData.find(function(r){return r.id === rtId});
+  if (!rt) return;
+  if (!confirm('确定删除房型「' + rt.name + '」吗？')) return;
+  roomTypeData = roomTypeData.filter(function(r){return r.id !== rtId});
+  showToast('房型已删除', 'success');
+  renderRoomTypeManageList();
 }
 
 // ============================================================
