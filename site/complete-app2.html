@@ -530,6 +530,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       <div class="menu-item" onclick="showPage('history')"><span class="icon">📜</span><span>历史记录</span></div>
     </div>
     <div class="menu-item" onclick="showPage('settlement')"><span class="icon">💰</span><span>结算中心</span></div>
+    <div class="menu-item" onclick="showPage('handover')" style="color:var(--purple);"><span class="icon">📊</span><span>交接班报表</span></div>
     <div class="menu-group-title" onclick="toggleGroup(this)">🛡️ 系统管理 <span class="group-arrow">▼</span></div>
     <div class="menu-group">
       <div class="menu-item" onclick="showPage('staff')"><span class="icon">👨‍💼</span><span>员工管理</span></div>
@@ -735,6 +736,35 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           </div>
           <div style="padding:8px 12px;border-top:1px solid var(--border);text-align:center;">
             <button class="action-btn small" onclick="showPage('records');openAddRecordModal();" style="padding:3px 10px;font-size:11px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">+ 新增预登记</button>
+          </div>
+        </div>
+        <!-- 【改进1】首页新增「即将到期退房」告警面板（改进0：今日到期但未退房，酒店核心运营需求） -->
+        <div class="card" style="margin-bottom:0;border:2px solid var(--red);">
+          <div class="card-header" style="background:var(--red-bg);">
+            <div class="card-title" style="color:var(--red);">⚠️ 今日到期未退</div>
+            <span style="font-size:11px;color:var(--red);font-weight:600;" id="home-expired-count">2间</span>
+          </div>
+          <div class="card-body" style="padding:8px 12px;max-height:180px;overflow-y:auto;" id="home-expired-feed">
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+              <div style="width:28px;height:28px;background:var(--red-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;">⏰</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:600;">302 · 亲子间 <span style="font-size:10px;color:var(--red);background:var(--red);color:white;padding:1px 5px;border-radius:3px;margin-left:4px;">已过期</span></div>
+                <div style="font-size:11px;color:var(--text-muted);">入住人：李四 · 已过期 2小时 · 房费 ¥128/天</div>
+              </div>
+              <button class="action-btn small" onclick="openCheckoutFullModal('302','李四','2026-03-27 14:00')" style="padding:2px 8px;font-size:10px;background:var(--red);color:white;border:none;">立即退房</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 0;">
+              <div style="width:28px;height:28px;background:var(--orange-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;">⏰</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:600;">205 · 大床房 <span style="font-size:10px;color:var(--orange);background:var(--orange-bg);padding:1px 5px;border-radius:3px;margin-left:4px;">即将到期</span></div>
+                <div style="font-size:11px;color:var(--text-muted);">入住人：赵六 · 14:00 到期（还有 1小时）</div>
+              </div>
+              <button class="action-btn small" onclick="openCheckoutFullModal('205','赵六','2026-03-27 14:00')" style="padding:2px 8px;font-size:10px;background:var(--orange);color:white;border:none;">提前退房</button>
+            </div>
+          </div>
+          <div style="padding:8px 12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:11px;color:var(--red);">⚠️ 超时将自动转为全天计费</span>
+            <button class="action-btn small" onclick="showPage('settlement')" style="padding:2px 8px;font-size:10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">查看全部 ›</button>
           </div>
         </div>
       </div>
@@ -3402,21 +3432,34 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <!-- 押金处理 -->
           <div style="padding:14px 20px;border-bottom:1px solid var(--border);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span style="font-size:13px;font-weight:600;">💰 押金退还</span>
+              <span style="font-size:13px;font-weight:600;">💰 押金处理</span>
             </div>
-            <div style="display:flex;gap:8px;">
-              <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px;border:2px solid var(--green);border-radius:6px;background:var(--green-bg);cursor:pointer;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <label style="display:flex;align-items:center;gap:6px;padding:8px;border:2px solid var(--green);border-radius:6px;background:var(--green-bg);cursor:pointer;" onclick="this.querySelector('input').checked=true;this.style.border='2px solid var(--green)';this.style.background='var(--green-bg)';hideDepositForfeit();">
                 <input type="radio" name="deposit-method" value="refund" checked style="accent-color:var(--green);">
                 <span style="font-size:12px;font-weight:600;color:var(--green);">💚 原路退回</span>
               </label>
-              <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
+              <label style="display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;" onclick="this.querySelector('input').checked=true;this.style.border='2px solid var(--blue)';this.style.background='var(--blue-bg)';hideDepositForfeit();">
                 <input type="radio" name="deposit-method" value="抵扣" style="accent-color:var(--blue);">
                 <span style="font-size:12px;font-weight:600;">抵扣房费</span>
               </label>
-              <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
+              <label style="display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;" onclick="this.querySelector('input').checked=true;this.style.border='2px solid var(--blue)';this.style.background='var(--blue-bg)';hideDepositForfeit();">
                 <input type="radio" name="deposit-method" value="现金" style="accent-color:var(--blue);">
-                <span style="font-size:12px;font-weight:600;">💵 现金</span>
+                <span style="font-size:12px;font-weight:600;">💵 现金退回</span>
               </label>
+              <!-- 【改进4】押金没收选项：房间物品损坏/超时严重时执行 -->
+              <label style="display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--red);border-radius:6px;background:var(--red-bg);cursor:pointer;" onclick="this.querySelector('input').checked=true;this.style.border='2px solid var(--red)';this.style.background='var(--red-bg)'">
+                <input type="radio" name="deposit-method" value="forfeit" style="accent-color:var(--red);">
+                <span style="font-size:12px;font-weight:600;color:var(--red);">❌ 押金没收</span>
+              </label>
+            </div>
+            <!-- 【改进4】押金没收原因输入（选中没收时显示） -->
+            <div id="deposit-forfeit-reason" style="display:none;margin-top:10px;">
+              <textarea class="form-textarea" placeholder="请填写押金没收原因（如：房间地毯损坏、超时3小时未退房）…" style="min-height:60px;font-size:12px;"></textarea>
+              <div style="margin-top:6px;display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="deposit-forfeit-confirm" style="accent-color:var(--red);width:14px;height:14px;">
+                <label for="deposit-forfeit-confirm" style="font-size:11px;color:var(--red);cursor:pointer;">我已确认需要没收押金（此操作不可逆）</label>
+              </div>
             </div>
           </div>
           <!-- 支付方式 -->
@@ -3461,12 +3504,69 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       openModal('settlement-confirm');
     }
     function confirmSettlementPay() {
+      // 【改进4】押金没收逻辑：选中没收时必须填写原因
+      var depositMethod = document.querySelector('input[name="deposit-method"]:checked');
+      if (depositMethod && depositMethod.value === 'forfeit') {
+        var reason = document.getElementById('deposit-forfeit-reason');
+        var confirmCheck = document.getElementById('deposit-forfeit-confirm');
+        if (reason && !reason.querySelector('textarea').value.trim()) {
+          showToast('请填写押金没收原因', 'error'); return;
+        }
+        if (confirmCheck && !confirmCheck.checked) {
+          showToast('请勾选"确认没收押金"以继续', 'error'); return;
+        }
+        showToast('✅ 押金已没收处理，结算成功', 'success');
+        setTimeout(function(){ closeModal('settlement-confirm'); }, 1500);
+        return;
+      }
       if (!currentSettlementData) return;
       showToast('✅ 结算成功！房间 ' + currentSettlementData.room + ' 已完成退房结算，实付¥' + currentSettlementData.payable, 'success');
       setTimeout(function(){ closeModal('settlement-confirm'); }, 1500);
     }
     function printSettlementReceipt() {
       showToast('🖨️ 小票正在打印中...', 'info');
+    }
+    function hideDepositForfeit() {
+      var reason = document.getElementById('deposit-forfeit-reason');
+      if (reason) reason.style.display = 'none';
+    }
+    // 押金没收选项切换逻辑
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('input[name="deposit-method"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+          var reason = document.getElementById('deposit-forfeit-reason');
+          if (!reason) return;
+          if (this.value === 'forfeit') {
+            reason.style.display = 'block';
+          } else {
+            reason.style.display = 'none';
+          }
+        });
+      });
+    });
+    // ======= 【改进2】交接班报表功能 =======
+    function openHandoverSignModal() {
+      openModal('handover-sign');
+    }
+    function confirmHandover() {
+      var signer = document.getElementById('ho-signer');
+      var confirmCheck = document.getElementById('ho-confirm-check');
+      if (!signer || !signer.value) { showToast('请选择接班人', 'error'); return; }
+      if (confirmCheck && !confirmCheck.checked) { showToast('请勾选确认checkbox', 'error'); return; }
+      var receiver = signer.value;
+      document.getElementById('ho-receiver').textContent = receiver;
+      document.getElementById('ho-receive-time').textContent = new Date().toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\//g,'-');
+      closeModal('handover-sign');
+      showToast('✅ 交班已确认，接班人：' + receiver, 'success');
+    }
+    function exportHandoverReport() {
+      var shift = document.getElementById('handover-shift-select') ? document.getElementById('handover-shift-select').value : 'morning';
+      var date = document.getElementById('handover-date') ? document.getElementById('handover-date').value : '';
+      showToast('📤 交接班报表已导出（' + date + ' ' + shift + '）', 'success');
+    }
+    function renderHandoverReport() {
+      var now = new Date();
+      document.getElementById('ho-update-time').textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
     }
     </script>
 
@@ -5307,6 +5407,177 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               <div class="permission-item"><input type="checkbox" id="p15"><label for="p15">房型管理</label></div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【改进2】新增交接班报表页面（酒店核心运营功能：交班时汇总本班营收+待办+设备状态） -->
+    <div id="page-handover" class="page">
+      <div class="page-header">
+        <div class="page-title">📊 交接班报表</div>
+        <div class="page-sub">每日结账 · 营收核对 · 交接班确认</div>
+      </div>
+      <!-- 班次选择器 -->
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;padding:12px 16px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">
+        <span style="font-size:13px;font-weight:600;color:var(--blue);">🕐 班次：</span>
+        <select class="form-select" id="handover-shift-select" style="padding:6px 12px;font-size:13px;width:160px;" onchange="renderHandoverReport()">
+          <option value="morning">🌅 早班 07:00-15:00</option>
+          <option value="afternoon">☀️ 中班 15:00-23:00</option>
+          <option value="night">🌙 晚班 23:00-07:00</option>
+        </select>
+        <span style="font-size:13px;color:var(--text-muted);margin-left:8px;">交接日期：</span>
+        <input type="date" class="form-input" id="handover-date" value="2026-03-27" style="padding:6px 10px;font-size:13px;width:140px;" onchange="renderHandoverReport()">
+        <button class="action-btn primary" onclick="exportHandoverReport()" style="background:var(--blue);color:white;border:none;padding:6px 14px;font-size:13px;">📤 导出报表</button>
+        <button class="action-btn" onclick="openHandoverSignModal()" style="padding:6px 14px;font-size:13px;">✍️ 确认交班</button>
+      </div>
+      <!-- 营收统计卡片 -->
+      <div class="stats-row" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px;">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--green-bg);">💰</div>
+          <div><div class="stat-num" id="ho-revenue">¥1,420</div><div class="stat-label">本班营收</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--blue-bg);">🏨</div>
+          <div><div class="stat-num" id="ho-checkin">5</div><div class="stat-label">入住（退）</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--orange-bg);">🧾</div>
+          <div><div class="stat-num" id="ho-settlement">8</div><div class="stat-label">结算笔数</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--red-bg);">📳</div>
+          <div><div class="stat-num" id="ho-alerts">3</div><div class="stat-label">待处理告警</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--purple-bg);">📋</div>
+          <div><div class="stat-num" id="ho-wo">2</div><div class="stat-label">待办工单</div></div>
+        </div>
+      </div>
+      <!-- 交接明细三列 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
+        <!-- 营收明细 -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">💰 营收明细</div></div>
+          <div class="card-body">
+            <table class="table" style="font-size:12px;">
+              <thead><tr><th>项目</th><th>金额</th></tr></thead>
+              <tbody>
+                <tr><td>房费收入</td><td style="font-weight:600;color:var(--green);">¥1,180</td></tr>
+                <tr><td>加床/加物</td><td style="font-weight:600;">¥80</td></tr>
+                <tr><td>迷你吧消费</td><td style="font-weight:600;">¥60</td></tr>
+                <tr><td>赔偿费</td><td style="font-weight:600;color:var(--red);">¥0</td></tr>
+                <tr><td>押金退还</td><td style="font-weight:600;color:var(--orange);">-¥300</td></tr>
+              </tbody>
+            </table>
+            <div style="border-top:2px solid var(--border);padding:10px 0;display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;font-weight:700;">合计</span>
+              <span style="font-size:18px;font-weight:700;color:var(--green);">¥1,020</span>
+            </div>
+            <div style="margin-top:8px;padding:8px 10px;background:var(--green-bg);border-radius:6px;font-size:11px;color:var(--green);">
+              💡 本班现金 ¥420，微信 ¥380，支付宝 ¥220
+            </div>
+          </div>
+        </div>
+        <!-- 待办事项 -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">📋 交接待办</div></div>
+          <div class="card-body" style="padding:8px 12px;">
+            <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:8px;">
+              <span style="font-size:16px;">📳</span>
+              <div style="flex:1;"><div style="font-size:12px;font-weight:600;">设备告警 3条</div><div style="font-size:11px;color:var(--text-muted);">303设备离线，205电量仅15%</div></div>
+              <span class="tbadge red" style="font-size:10px;padding:2px 6px;">紧急</span>
+            </div>
+            <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:8px;">
+              <span style="font-size:16px;">🧹</span>
+              <div style="flex:1;"><div style="font-size:12px;font-weight:600;">清洁任务 2间</div><div style="font-size:11px;color:var(--text-muted);">302、205退房需清洁</div></div>
+              <span class="tbadge orange" style="font-size:10px;padding:2px 6px;">待清洁</span>
+            </div>
+            <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:8px;">
+              <span style="font-size:16px;">⚠️</span>
+              <div style="flex:1;"><div style="font-size:12px;font-weight:600;">今日到期未退 2间</div><div style="font-size:11px;color:var(--text-muted);">302（已过期2小时）、205（14:00到期）</div></div>
+              <span class="tbadge red" style="font-size:10px;padding:2px 6px;">超时</span>
+            </div>
+            <div style="padding:8px 0;display:flex;align-items:flex-start;gap:8px;">
+              <span style="font-size:16px;">📋</span>
+              <div style="flex:1;"><div style="font-size:12px;font-weight:600;">服务工单 2条</div><div style="font-size:11px;color:var(--text-muted);">送物×1，报修×1</div></div>
+              <span class="tbadge blue" style="font-size:10px;padding:2px 6px;">处理中</span>
+            </div>
+          </div>
+        </div>
+        <!-- 房态总览 -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">🏨 房态总览</div></div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+              <div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);">12</div><div style="font-size:11px;color:var(--text-muted);">入住中</div></div>
+              <div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">8</div><div style="font-size:11px;color:var(--text-muted);">空房</div></div>
+              <div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">3</div><div style="font-size:11px;color:var(--text-muted);">脏房</div></div>
+              <div style="padding:10px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red);">2</div><div style="font-size:11px;color:var(--text-muted);">告警/离线</div></div>
+            </div>
+            <div style="padding:10px;background:var(--bg);border-radius:8px;font-size:11px;color:var(--text-muted);text-align:center;">
+              <div style="font-weight:600;color:var(--text);margin-bottom:4px;">入住率 57%</div>
+              <div>总房间 25间 · 实时更新于 <span id="ho-update-time">10:32</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 交班签字区 -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">✍️ 交班确认签字</div></div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:end;">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">交班人（早班）</div>
+              <div style="padding:12px;border-bottom:2px solid var(--blue);font-size:14px;font-weight:600;color:var(--blue);">赵飞</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">时间：2026-03-27 15:00</div>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">接班人（中班）</div>
+              <div style="padding:12px;border-bottom:2px solid var(--green);font-size:14px;font-weight:600;color:var(--green);" id="ho-receiver">待确认</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="ho-receive-time">—</div>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">主管确认</div>
+              <div style="padding:12px;border-bottom:2px solid var(--purple);font-size:14px;font-weight:600;color:var(--purple);">周经理</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">2026-03-27 15:05</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 交接班确认弹窗 -->
+    <div class="modal-overlay hidden" id="modal-handover-sign">
+      <div class="modal" style="width:420px;">
+        <div class="modal-header">
+          <div class="modal-title">✍️ 交接班确认</div>
+          <button class="modal-close" onclick="closeModal('handover-sign')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;font-size:13px;color:var(--blue);">
+            📋 请确认本班工作已完成，营收数据准确，待办事项已交接给下一班
+          </div>
+          <div class="form-group">
+            <label class="form-label">接班人</label>
+            <select class="form-select" id="ho-signer">
+              <option value="">请选择接班人</option>
+              <option value="周敏">周敏（前厅接待）</option>
+              <option value="吴倩">吴倩（客房主管）</option>
+              <option value="郑强">郑强（清洁人员）</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">交班备注</label>
+            <textarea class="form-textarea" id="ho-remark" placeholder="如有特殊情况请在此说明…" style="min-height:80px;"></textarea>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <input type="checkbox" id="ho-confirm-check" style="accent-color:var(--blue);width:16px;height:16px;">
+            <label for="ho-confirm-check" style="font-size:13px;cursor:pointer;">我确认上述数据准确无误</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn secondary" onclick="closeModal('handover-sign')">取消</button>
+          <button class="modal-btn primary" onclick="confirmHandover()" style="background:var(--green);border-color:var(--green);">✅ 确认交班</button>
         </div>
       </div>
     </div>
@@ -12016,7 +12287,7 @@ function showPage(name) {
     history: '历史记录', config: '管理配置', floor: '楼层管理',
     workorder: '服务工单', energy: '节能风控', roles: '角色权限',
     member: '会员管理', building: '楼栋管理', oplog: '操作日志',
-    settlement: '结算中心', report: '数据报表', keypad: '密码管理'
+    settlement: '结算中心', report: '数据报表', keypad: '密码管理', handover: '交接班'
   };
   document.querySelectorAll('.menu-item').forEach(m => {
     if (m.textContent.includes(pageMap[name] || '')) {
@@ -18930,8 +19201,16 @@ function onKeypadTypeChange(type) {
 function generateKeypadPassword() {
   var room = document.getElementById('kp-room').value;
   if (!room) { showToast('请先选择关联房间', 'error'); return; }
+  // 【改进3】密码生成重复检测：防止生成重复密码
+  var existingPwds = {};
+  var rows = document.querySelectorAll('#keypad-table-body tr');
+  rows.forEach(function(r){ var pwdSpan = r.querySelector('span[onclick*="copyKeypadPasswordCell"]'); if(pwdSpan) existingPwds[pwdSpan.textContent.trim()] = true; });
   var chars1 = '123456789', chars2 = '*#$', chars3 = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  var pwd = chars1[Math.floor(Math.random()*chars1.length)] + chars2[Math.floor(Math.random()*chars2.length)] + chars2[Math.floor(Math.random()*chars2.length)] + '-' + chars3[Math.floor(Math.random()*chars3.length)] + chars3[Math.floor(Math.random()*chars3.length)] + chars1[Math.floor(Math.random()*chars1.length)];
+  var maxAttempts = 10, attempts = 0, pwd;
+  do { attempts++;
+    pwd = chars1[Math.floor(Math.random()*chars1.length)] + chars2[Math.floor(Math.random()*chars2.length)] + chars2[Math.floor(Math.random()*chars2.length)] + '-' + chars3[Math.floor(Math.random()*chars3.length)] + chars3[Math.floor(Math.random()*chars3.length)] + chars1[Math.floor(Math.random()*chars1.length)];
+  } while (existingPwds[pwd] && attempts < maxAttempts);
+  if (existingPwds[pwd]) { showToast('密码库已满（"重复达到上限），请手动指定密码', 'warn'); }
   var pwdField = document.getElementById('kp-generated-pwd');
   if (pwdField) { pwdField.value = pwd; if (pwdField.parentElement) pwdField.parentElement.style.display = 'block'; }
   return pwd;
