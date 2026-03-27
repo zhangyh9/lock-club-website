@@ -793,6 +793,87 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
         <button class="btn" onclick="showPage('alert')">立即处理</button>
       </div>
+      <!-- 【改进v3-1】首页通知铃铛 + 未读计数红点（实时提醒待处理事项） -->
+      <div style="position:fixed;top:16px;right:24px;z-index:999;">
+        <button onclick="toggleNotificationPanel()" id="notif-bell-btn" style="width:40px;height:40px;border-radius:50%;border:none;background:var(--white);box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;font-size:18px;position:relative;display:flex;align-items:center;justify-content:center;">
+          🔔
+          <span id="notif-bell-badge" style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;background:var(--red);color:white;border-radius:9px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;display:none;">0</span>
+        </button>
+        <!-- 通知面板 -->
+        <div id="notif-panel" style="display:none;position:absolute;top:48px;right:0;width:320px;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);z-index:1000;overflow:hidden;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:14px;font-weight:600;">🔔 待办提醒</span>
+            <button onclick="markAllNotifRead()" style="background:none;border:none;color:var(--blue);font-size:11px;cursor:pointer;">全部标为已读</button>
+          </div>
+          <div id="notif-panel-list" style="max-height:320px;overflow-y:auto;"></div>
+          <div style="padding:10px 16px;border-top:1px solid var(--border);text-align:center;">
+            <button onclick="showPage('notif');toggleNotificationPanel();" style="background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;font-weight:600;">查看全部 ›</button>
+          </div>
+        </div>
+      </div>
+      <script>
+      var notifData = [
+        {id:1, type:'alert', icon:'🔴', title:'设备离线告警', desc:'303房间门锁离线超过10小时', time:'10分钟前', page:'alert', read:false},
+        {id:2, type:'alert', icon:'🟡', title:'低电量预警', desc:'306房间电量低于20%', time:'25分钟前', page:'device', read:false},
+        {id:3, type:'workorder', icon:'🛠️', title:'待接受工单', desc:'305房间客户投诉热水问题', time:'30分钟前', page:'workorder', read:false},
+        {id:4, type:'workorder', icon:'🛠️', title:'工单超时提醒', desc:'201房间发票需求已超时2小时', time:'1小时前', page:'workorder', read:false},
+        {id:5, type:'housekeeping', icon:'🧹', title:'待查房提醒', desc:'203房间保洁完成待查房', time:'15分钟前', page:'housekeeping', read:true},
+        {id:6, type:'system', icon:'⚙️', title:'系统通知', desc:'夜审报表已自动生成', time:'2小时前', page:'nightaudit', read:true}
+      ];
+      function updateNotifBell() {
+        var unread = notifData.filter(function(n){ return !n.read; }).length;
+        var badge = document.getElementById('notif-bell-badge');
+        if (badge) {
+          badge.textContent = unread;
+          badge.style.display = unread > 0 ? 'flex' : 'none';
+        }
+      }
+      function renderNotifPanel() {
+        var list = document.getElementById('notif-panel-list');
+        if (!list) return;
+        var html = '';
+        notifData.slice(0,5).forEach(function(n) {
+          var bg = n.read ? 'var(--bg)' : 'var(--blue-bg)';
+          html += '<div onclick="handleNotifClick(' + n.id + ')" style="padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;background:' + bg + ';transition:background 0.2s;">' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+            '<span style="font-size:14px;">' + n.icon + '</span>' +
+            '<span style="font-size:12px;font-weight:600;">' + n.title + '</span>' +
+            (n.read ? '' : '<span style="width:6px;height:6px;background:var(--red);border-radius:50%;flex-shrink:0;"></span>') +
+            '</div>' +
+            '<div style="font-size:11px;color:var(--text-muted);margin-left:22px;">' + n.desc + '</div>' +
+            '<div style="font-size:10px;color:var(--text-muted);margin-left:22px;margin-top:2px;">' + n.time + '</div></div>';
+        });
+        list.innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">暂无新通知</div>';
+        updateNotifBell();
+      }
+      function toggleNotificationPanel() {
+        var panel = document.getElementById('notif-panel');
+        if (!panel) return;
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        renderNotifPanel();
+      }
+      function handleNotifClick(id) {
+        var n = notifData.find(function(n){ return n.id === id; });
+        if (n) { n.read = true; updateNotifBell(); renderNotifPanel(); showPage(n.page); toggleNotificationPanel(); }
+      }
+      function markAllNotifRead() {
+        notifData.forEach(function(n){ n.read = true; });
+        updateNotifBell(); renderNotifPanel();
+        showToast('已全部标为已读', 'success');
+      }
+      // 每分钟自动刷新通知数
+      setInterval(function(){ updateNotifBell(); }, 60000);
+      updateNotifBell();
+      // 点击外部关闭通知面板
+      document.addEventListener('click', function(e) {
+        var btn = document.getElementById('notif-bell-btn');
+        var panel = document.getElementById('notif-panel');
+        if (btn && panel && !btn.contains(e.target) && !panel.contains(e.target)) {
+          panel.style.display = 'none';
+        }
+      });
+      </script>
+
       <!-- 【改进1】首页统计卡片下钻：点击跳转到对应详情 -->
       <div class="stats-row" id="homepage-stats">
         <div class="stat-card" style="cursor:pointer;" onclick="drilldownHomeStat('total','device')" title="点击查看房间列表">
@@ -1135,6 +1216,37 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
       </div>
       <!-- 改进1: 入住记录卡片（新增） -->
+      <!-- 【改进v3-2】入住记录增强：筛选工具栏 + 搜索 + 导出 + 动态统计 -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-body" style="padding:12px 20px;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <input type="text" id="ci-search-input" placeholder="🔍 搜索客人姓名/房间号" style="max-width:200px;padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;" oninput="applyCiSearch()" onkeydown="if(event.key==='Enter')applyCiSearch()">
+            <select id="ci-type-filter" onchange="applyCiFilter()" style="padding:6px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;">
+              <option value="all">全部类型</option>
+              <option value="in">🏨 入住</option>
+              <option value="out">🚪 退房</option>
+              <option value="change">🔄 换房</option>
+            </select>
+            <select id="ci-date-filter" onchange="applyCiFilter()" style="padding:6px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;">
+              <option value="all">全部时间</option>
+              <option value="today">今天</option>
+              <option value="yesterday">昨天</option>
+              <option value="week">本周</option>
+              <option value="month">本月</option>
+            </select>
+            <button onclick="applyCiFilter()" style="padding:6px 10px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);border-radius:6px;font-size:12px;cursor:pointer;">🔍 筛选</button>
+            <button onclick="resetCiFilter()" style="padding:6px 10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;">重置</button>
+            <button onclick="exportCiRecords()" style="padding:6px 10px;background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;">📤 导出</button>
+          </div>
+          <!-- 入住记录实时统计栏 -->
+          <div style="display:flex;gap:16px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+            <div style="font-size:11px;color:var(--text-muted);">🏨 今日入住：<b id="ci-stat-in" style="color:var(--blue);">2</b> 人</div>
+            <div style="font-size:11px;color:var(--text-muted);">🚪 今日退房：<b id="ci-stat-out" style="color:var(--green);">1</b> 人</div>
+            <div style="font-size:11px;color:var(--text-muted);">🔄 换房间数：<b id="ci-stat-change" style="color:var(--orange);">1</b> 间</div>
+            <div style="font-size:11px;color:var(--text-muted);">📋 当前在住房：<b id="ci-stat-current" style="color:var(--purple);">8</b> 间</div>
+          </div>
+        </div>
+      </div>
       <div class="card">
         <div class="card-header">
           <div class="card-title">📋 入住记录</div>
@@ -6592,9 +6704,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       <div class="card">
         <div class="card-header">
           <div class="card-title">👥 会员列表</div>
-          <button class="action-btn" onclick="openAddMemberModal()" style="padding:4px 12px;">+ 新增会员</button>
-          <!-- 【改进4】客户档案/偏好管理入口 -->
-          <button class="action-btn small" onclick="openGuestPreferenceModal('张三')" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">👤 客户档案</button>
+          <div style="display:flex;gap:6px;">
+            <button class="action-btn" onclick="openAddMemberModal()" style="padding:4px 12px;">+ 新增会员</button>
+            <!-- 【改进4】客户档案/偏好管理入口 -->
+            <button class="action-btn small" onclick="openGuestPreferenceModal('张三')" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">👤 客户档案</button>
+            <!-- 【改进v3-3】会员消费充值记录Tab切换 -->
+            <button class="action-btn small" onclick="openMemberTransactionHistory()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">💰 消费记录</button>
+          </div>
         </div>
         <div class="card-header" style="border-top:1px solid var(--border);padding-top:12px;">
           <div class="card-tabs">
@@ -12755,6 +12871,60 @@ function showPage(name) {
   }
 }
 
+// ======= 【改进v3-5】全局键盘快捷键（提升操作效率） =======
+document.addEventListener('keydown', function(e) {
+  // 跳过输入框/文本域中的按键
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  // Ctrl/Cmd + 数字键：快速切换页面
+  if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
+    var pageMap = { '1': 'home', '2': 'device', '3': 'workorder', '4': 'member', '5': 'staff', '6': 'floor', '7': 'keypad', '8': 'settlement', '9': 'config' };
+    var target = pageMap[e.key];
+    if (target) { showPage(target); showToast('已切换至：' + (pageMap[e.key] === 'home' ? '首页' : target), 'info'); }
+    e.preventDefault();
+  }
+  // ESC：关闭当前弹窗
+  if (e.key === 'Escape') {
+    var modals = document.querySelectorAll('.modal-overlay:not(.hidden)');
+    if (modals.length > 0) {
+      modals[modals.length - 1].querySelector('.modal-close, [onclick*="closeModal"]') && modals[modals.length - 1].querySelector('.modal-close, [onclick*="closeModal"]').click();
+    }
+  }
+  // G键：打开全局搜索（焦点到搜索框）
+  if (e.key === 'g' || e.key === 'G') {
+    var searchInput = document.getElementById('global-search-input');
+    if (searchInput) { searchInput.focus(); searchInput.select(); showToast('请输入搜索内容', 'info'); }
+    e.preventDefault();
+  }
+  // H键：回到首页
+  if (e.key === 'h' || e.key === 'H') {
+    showPage('home');
+    showToast('已切换至首页', 'info');
+    e.preventDefault();
+  }
+  // D键：快速新建服务工单
+  if (e.key === 'd' || e.key === 'D') {
+    showPage('workorder');
+    setTimeout(function() { openCreateWorkorderModal(); }, 100);
+    showToast('创建服务工单', 'info');
+    e.preventDefault();
+  }
+  // 快捷键提示浮层
+  if (e.key === '?' && e.shiftKey) {
+    var existing = document.getElementById('kbd-shortcut-panel');
+    if (existing) { existing.remove(); return; }
+    var html = '<div id="kbd-shortcut-panel" style="position:fixed;bottom:20px;right:20px;width:280px;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:99999;padding:16px;font-size:12px;">' +
+      '<div style="font-weight:600;margin-bottom:10px;font-size:13px;">⌨️ 键盘快捷键</div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">Ctrl+1~9</span><span>快速切换页面</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">G</span><span>全局搜索</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">H</span><span>回到首页</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text-muted);">D</span><span>新建服务工单</span></div>' +
+      '<div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">ESC</span><span>关闭弹窗</span></div>' +
+      '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);text-align:center;"><button onclick="document.getElementById(\'kbd-shortcut-panel\').remove()" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:11px;">关闭</button></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+    e.preventDefault();
+  }
+});
+
 // ======= 改进3: 房型价格管理（钟点房/半天/全天多档计费） =======
 var currentRoomTypePrice = '';
 
@@ -13054,13 +13224,60 @@ function updateFilterRoomCounts(filter) {
 function filterCheckin(type, el) {
   el.parentElement.querySelectorAll('.card-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
+  var searchText = (document.getElementById('ci-search-input') || {}).value || '';
   document.querySelectorAll('#checkin-records .checkin-record').forEach(rec => {
-    if (type === 'all' || rec.dataset.type === type) {
-      rec.style.display = '';
-    } else {
-      rec.style.display = 'none';
+    var typeMatch = type === 'all' || rec.dataset.type === type;
+    var textMatch = !searchText || rec.textContent.toLowerCase().indexOf(searchText.toLowerCase()) !== -1;
+    rec.style.display = (typeMatch && textMatch) ? '' : 'none';
+  });
+}
+function applyCiSearch() {
+  var activeTab = document.querySelector('#checkin-records') && document.querySelector('#checkin-records').previousElementSibling.querySelector('.card-tab.active');
+  var type = activeTab ? (activeTab.textContent.includes('入住') ? 'in' : activeTab.textContent.includes('退房') ? 'out' : activeTab.textContent.includes('换房') ? 'change' : 'all') : 'all';
+  var searchText = (document.getElementById('ci-search-input') || {}).value || '';
+  document.querySelectorAll('#checkin-records .checkin-record').forEach(rec => {
+    var typeMatch = type === 'all' || rec.dataset.type === type;
+    var textMatch = !searchText || rec.textContent.toLowerCase().indexOf(searchText.toLowerCase()) !== -1;
+    rec.style.display = (typeMatch && textMatch) ? '' : 'none';
+  });
+}
+function applyCiFilter() {
+  var typeFilter = (document.getElementById('ci-type-filter') || {}).value || 'all';
+  applyCiSearch();
+}
+function resetCiFilter() {
+  var si = document.getElementById('ci-search-input');
+  if (si) si.value = '';
+  var tf = document.getElementById('ci-type-filter');
+  if (tf) tf.value = 'all';
+  var df = document.getElementById('ci-date-filter');
+  if (df) df.value = 'all';
+  document.querySelectorAll('#checkin-records .checkin-record').forEach(rec => rec.style.display = '');
+  showToast('筛选条件已重置', 'info');
+}
+function exportCiRecords() {
+  var rows = [['类型','时间','客人','房间','房型','方式']];
+  document.querySelectorAll('#checkin-records .checkin-record').forEach(rec => {
+    if (rec.style.display !== 'none') {
+      var badge = rec.querySelector('.record-badge');
+      var name = rec.querySelector('.name');
+      var meta = rec.querySelector('.meta');
+      rows.push([
+        badge ? badge.textContent.trim() : '',
+        rec.querySelector('.alert-time') ? rec.querySelector('.alert-time').textContent.trim() : '',
+        name ? name.textContent.trim() : '',
+        meta ? meta.textContent.split('·')[0].trim() : '',
+        meta ? (meta.textContent.split('·')[1] || '').trim() : '',
+        meta ? meta.textContent.split('·')[2] || '' : ''
+      ]);
     }
   });
+  var csv = rows.map(r => r.join(',')).join('\n');
+  var blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '入住记录_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('入住记录已导出（' + (rows.length - 1) + '条）', 'success');
 }
 
 // ======= 【改进1】通知中心功能（通知数据+展开/关闭+标记已读+一键清空） =======
@@ -15767,6 +15984,83 @@ function openMemberDetail(idx) {
   document.getElementById('md-level').textContent = levelNames[d.level] || d.level;
   document.getElementById('md-level').style.color = levelColors[d.level] || '';
   openModal('member-detail');
+}
+
+// 【改进v3-3】会员消费充值记录弹窗
+var memberTransactionData = [
+  {id:1, member:'王浩', phone:'138****8888', type:'consume', category:'住宿', amount:298, balance:2850, date:'2026-03-25', desc:'301房间住宿费'},
+  {id:2, member:'王浩', phone:'138****8888', type:'recharge', category:'充值', amount:1000, balance:3148, date:'2026-03-20', desc:'会员充值赠送100积分'},
+  {id:3, member:'王浩', phone:'138****8888', type:'consume', category:'早餐', amount:28, balance:2148, date:'2026-03-22', desc:'双人早餐×2份'},
+  {id:4, member:'王浩', phone:'138****8888', type:'recharge', category:'充值', amount:500, balance:2176, date:'2026-03-18', desc:'会员充值'},
+  {id:5, member:'王浩', phone:'138****8888', type:'consume', category:'加床', amount:80, balance:1676, date:'2026-03-15', desc:'加床费'},
+  {id:6, member:'李娜', phone:'139****6666', type:'recharge', category:'充值', amount:2000, balance:4520, date:'2026-03-15', desc:'金卡升级充值'},
+  {id:7, member:'李娜', phone:'139****6666', type:'consume', category:'住宿', amount:298, balance:2520, date:'2026-03-20', desc:'202房间住宿'},
+  {id:8, member:'张伟', phone:'137****5555', type:'recharge', category:'充值', amount:500, balance:680, date:'2026-03-10', desc:'新会员注册充值'},
+];
+var currentMemberTransFilter = 'all';
+function openMemberTransactionHistory() {
+  var html = '<div class="modal-overlay" id="modal-mth" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:700px;max-height:80vh;display:flex;flex-direction:column;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">💰 会员消费充值记录</div>' +
+    '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">✕</button></div>' +
+    '<div class="modal-body" style="flex:1;overflow-y:auto;padding:12px 16px;">' +
+    '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">' +
+    '<input type="text" id="mth-search" placeholder="🔍 搜索会员姓名" style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;width:180px;" oninput="renderMthList()">' +
+    '<select id="mth-type-filter" onchange="renderMthList()" style="padding:6px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;">' +
+    '<option value="all">全部类型</option><option value="recharge">💰 充值</option><option value="consume">💸 消费</option></select>' +
+    '<select id="mth-member-filter" onchange="renderMthList()" style="padding:6px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;">' +
+    '<option value="all">全部会员</option><option value="王浩">王浩</option><option value="李娜">李娜</option><option value="张伟">张伟</option></select>' +
+    '<button onclick="exportMemberTransactions()" style="padding:6px 12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;">📤 导出</button></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);" id="mth-stat-total">¥14,286</div><div style="font-size:11px;color:var(--text-muted);">累计充值</div></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);" id="mth-stat-consume">¥704</div><div style="font-size:11px;color:var(--text-muted);">累计消费</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);" id="mth-stat-balance">¥13,582</div><div style="font-size:11px;color:var(--text-muted);">账户余额</div></div></div>' +
+    '<table class="table"><thead><tr><th>日期</th><th>会员</th><th>类型</th><th>类别</th><th>金额</th><th>余额</th><th>备注</th></tr></thead>' +
+    '<tbody id="mth-table-body"></tbody></table></div></div></div>';
+  var existing = document.getElementById('modal-mth');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+  renderMthList();
+}
+function renderMthList() {
+  var search = (document.getElementById('mth-search') || {}).value || '';
+  var typeFilter = (document.getElementById('mth-type-filter') || {}).value || 'all';
+  var memberFilter = (document.getElementById('mth-member-filter') || {}).value || 'all';
+  var filtered = memberTransactionData.filter(function(r) {
+    return (search === '' || r.member.indexOf(search) !== -1) &&
+      (typeFilter === 'all' || r.type === typeFilter) &&
+      (memberFilter === 'all' || r.member === memberFilter);
+  });
+  var tbody = document.getElementById('mth-table-body');
+  if (!tbody) return;
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px;">暂无记录</td></tr>';
+    return;
+  }
+  var html = '';
+  filtered.forEach(function(r) {
+    var amountColor = r.type === 'recharge' ? 'var(--green)' : 'var(--orange)';
+    var amountPrefix = r.type === 'recharge' ? '+' : '-';
+    var typeLabel = r.type === 'recharge' ? '<span class="tbadge green">充值</span>' : '<span class="tbadge orange">消费</span>';
+    html += '<tr style="' + (r.type === 'recharge' ? 'background:var(--green-bg);' : '') + '">' +
+      '<td>' + r.date + '</td><td><b>' + r.member + '</b></td><td>' + typeLabel + '</td>' +
+      '<td>' + r.category + '</td><td style="color:' + amountColor + ';font-weight:700;">' + amountPrefix + '¥' + r.amount + '</td>' +
+      '<td>¥' + r.balance + '</td><td style="color:var(--text-muted);font-size:12px;">' + r.desc + '</td></tr>';
+  });
+  tbody.innerHTML = html;
+}
+function exportMemberTransactions() {
+  var rows = [['日期','会员','类型','类别','金额','余额','备注']];
+  memberTransactionData.forEach(function(r) {
+    rows.push([r.date, r.member, r.type === 'recharge' ? '充值' : '消费', r.category, (r.type === 'recharge' ? '+' : '-') + '¥' + r.amount, '¥' + r.balance, r.desc]);
+  });
+  var csv = rows.map(function(r){ return r.join(','); }).join('\n');
+  var blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '会员消费充值记录_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('已导出 ' + rows.length + ' 条记录', 'success');
 }
 
 // ======= 【改进1】会员新增完善化：会员数据+动态添加到列表 =======
@@ -21241,6 +21535,7 @@ function submitBatchAssignWorkorder() {
   showToast('✅ 已成功分配 ' + currentBatchWoIds.length + ' 个工单给 ' + assignee, 'success');
 }
 
+// 【改进v3-4】服务工单批量完成确认弹窗（替代原生confirm，UX更友好）
 function batchCompleteWorkorder() {
   var ids = getSelectedWorkorderIds();
   if (ids.length === 0) { showToast('请先选择要完成的工单', 'error'); return; }
@@ -21249,21 +21544,82 @@ function batchCompleteWorkorder() {
     return row && row.closest('tr').dataset.status !== 'done';
   });
   if (notDone.length === 0) { showToast('所选工单均已完成', 'info'); return; }
-  if (!confirm('确定要完成选中的 ' + notDone.length + ' 个工单吗？')) return;
+  // 构建批量完成确认弹窗
+  var woNames = notDone.slice(0, 3).map(function(id) {
+    var row = document.querySelector('[data-wo-id="' + id + '"]');
+    return row ? row.closest('tr').querySelector('td:nth-child(3)') ? row.closest('tr').querySelector('td:nth-child(3)').textContent.trim() : id : id;
+  }).join('、');
+  if (notDone.length > 3) woNames += ' 等';
+  var html = '<div class="modal-overlay" id="modal-batch-complete-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:440px;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">✅ 批量完成工单确认</div>' +
+    '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="text-align:center;margin-bottom:16px;">' +
+    '<div style="width:60px;height:60px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:30px;">✅</div>' +
+    '<div style="font-size:15px;font-weight:600;margin-bottom:6px;">确认完成以下 <b style="color:var(--green);">' + notDone.length + '</b> 个工单？</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);max-height:80px;overflow-y:auto;text-align:left;background:var(--bg);border-radius:8px;padding:8px 12px;margin-top:8px;">' + woNames + '</div></div>' +
+    '<div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);margin-bottom:12px;">' +
+    '💡 工单完成后将自动计算处理时长，并可对客户发送满意度评价邀请</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+    '<input type="checkbox" id="bcc-send-survey" checked style="accent-color:var(--blue);width:16px;height:16px;">' +
+    '<label for="bcc-send-survey" style="font-size:12px;cursor:pointer;">发送满意度评价邀请短信</label></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;">' +
+    '<input type="checkbox" id="bcc-add-record" checked style="accent-color:var(--blue);width:16px;height:16px;">' +
+    '<label for="bcc-add-record" style="font-size:12px;cursor:pointer;">记录完成备注</label></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmBatchCompleteWorkorder(' + notDone.length + ')" style="background:var(--green);border-color:var(--green);">✅ 确认完成</button></div></div></div>';
+  var existing = document.getElementById('modal-batch-complete-confirm');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function confirmBatchCompleteWorkorder(count) {
+  var sendSurvey = document.getElementById('bcc-send-survey') && document.getElementById('bcc-send-survey').checked;
+  var addRecord = document.getElementById('bcc-add-record') && document.getElementById('bcc-add-record').checked;
+  document.getElementById('modal-batch-complete-confirm').remove();
+  var ids = getSelectedWorkorderIds();
   var now = new Date();
   var timeStr = String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-  notDone.forEach(function(woId) {
+  ids.forEach(function(woId) {
     var row = document.querySelector('[data-wo-id="' + woId + '"]');
     if (row) {
       var tr = row.closest('tr');
-      tr.cells[6].innerHTML = '<span class="tbadge green">已完成</span>';
-      tr.dataset.status = 'done';
-      var completeTimeCell = tr.cells[9];
-      if (completeTimeCell) completeTimeCell.innerHTML = '<span style="font-size:11px;color:var(--green);">' + timeStr + '</span>';
+      var statusCell = tr.cells[6];
+      if (statusCell) { statusCell.innerHTML = '<span class="tbadge green">✅ 已完成</span>'; tr.dataset.status = 'done'; }
     }
   });
+  if (sendSurvey) showToast('已将满意度评价链接发送至客户手机', 'info');
+  if (addRecord) showToast('已记录完成备注（处理时长已自动计算）', 'success');
+  showToast('✅ 批量完成 ' + count + ' 个工单成功！', 'success');
   clearWorkorderSelection();
-  showToast('✅ 已批量完成 ' + notDone.length + ' 个工单', 'success');
+}
+
+// 【改进v3-4】工单超时自动升级功能（超时后自动标红+通知上级）
+var woEscalationRules = { urgent: 30, high: 60, normal: 120, low: 240 }; // minutes
+function checkWoEscalation() {
+  var now = new Date();
+  var escalated = 0;
+  document.querySelectorAll('#wo-table-body tr[data-status="pending"],#wo-table-body tr[data-status="processing"]').forEach(function(tr) {
+    var timeCell = tr.querySelector('td:nth-child(8)');
+    if (!timeCell) return;
+    var created = new Date(tr.dataset.created || now);
+    var mins = (now - created) / 60000;
+    var priority = tr.dataset.priority || 'normal';
+    var threshold = woEscalationRules[priority] || 120;
+    if (mins > threshold) {
+      tr.style.background = 'var(--red-bg)';
+      var badge = tr.querySelector('.tbadge');
+      if (badge && !badge.textContent.includes('⏰')) badge.textContent = '⏰ ' + badge.textContent;
+      escalated++;
+    }
+  });
+  var overdueBadge = document.getElementById('wo-stat-overdue');
+  if (overdueBadge) overdueBadge.textContent = escalated;
+}
+setInterval(checkWoEscalation, 30000); // 每30秒检查一次超时
+checkWoEscalation();
 }
 
 function clearWorkorderSelection() {
