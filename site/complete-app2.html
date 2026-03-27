@@ -3810,6 +3810,117 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
     </div>
 
+    
+      <div class="page-header">
+        <div class="page-title">💰 结算中心</div>
+        <div class="page-sub">账单结算 · 押金管理 · 收入报表</div>
+      </div>
+      <div class="stats-row" style="grid-template-columns:repeat(5,1fr);">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--blue-bg);">💰</div>
+          <div><div class="stat-num" id="stl-today">¥2,860</div><div class="stat-label">今日结算</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--green-bg);">🔒</div>
+          <div><div class="stat-num" id="stl-deposit">¥1,200</div><div class="stat-label">待退押金</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--purple-bg);">📋</div>
+          <div><div class="stat-num" id="stl-pending">3</div><div class="stat-label">待结算账单</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--orange-bg);">✅</div>
+          <div><div class="stat-num" id="stl-done">86</div><div class="stat-label">已完成结算</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--red-bg);">⚠️</div>
+          <div><div class="stat-num" id="stl-overdue">1</div><div class="stat-label">逾期账单</div></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📋 待结算账单</div>
+            <button class="action-btn small" onclick="openCreateSettlementModal()" style="padding:4px 10px;">+ 新建账单</button>
+          </div>
+          <div class="card-body" style="padding:12px;">
+            <table class="table">
+              <thead><tr><th>账单编号</th><th>房间</th><th>客户</th><th>金额</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody id="stl-pending-body">
+                <tr data-status="pending">
+                  <td>BL-2026032701</td><td>301</td><td>张三</td><td style="font-weight:700;color:var(--blue);">¥328</td>
+                  <td><span class="tbadge orange">待结算</span></td>
+                  <td><button class="action-btn small" onclick="openSettlementDetail('BL-2026032701')">结算</button></td>
+                </tr>
+                <tr data-status="pending">
+                  <td>BL-2026032702</td><td>203</td><td>李四</td><td style="font-weight:700;color:var(--blue);">¥218</td>
+                  <td><span class="tbadge orange">待结算</span></td>
+                  <td><button class="action-btn small" onclick="openSettlementDetail('BL-2026032702')">结算</button></td>
+                </tr>
+                <tr data-status="overdue">
+                  <td>BL-2026032503</td><td>202</td><td>钱七</td><td style="font-weight:700;color:var(--red);">¥198</td>
+                  <td><span class="tbadge red">已逾期</span></td>
+                  <td><button class="action-btn small" onclick="openSettlementDetail('BL-2026032503')">结算</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">💳 押金退还待处理</div>
+          </div>
+          <div class="card-body" style="padding:12px;">
+            <div id="stl-deposit-list">
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+                <div style="width:32px;height:32px;background:var(--blue-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">🏨</div>
+                <div style="flex:1;">
+                  <div style="font-size:13px;font-weight:600;">张三 <span style="font-size:10px;color:var(--blue);background:var(--blue-bg);padding:1px 5px;border-radius:3px;margin-left:4px;">301</span></div>
+                  <div style="font-size:11px;color:var(--text-muted);">押金 ¥100 · 入住 03-26 退房 03-27</div>
+                </div>
+                <button class="action-btn small green" onclick="processDepositRefund('张三','301','100')">退押金</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+                <div style="width:32px;height:32px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">🏨</div>
+                <div style="flex:1;">
+                  <div style="font-size:13px;font-weight:600;">李四 <span style="font-size:10px;color:var(--blue);background:var(--blue-bg);padding:1px 5px;border-radius:3px;margin-left:4px;">203</span></div>
+                  <div style="font-size:11px;color:var(--text-muted);">押金 ¥200 · 入住 03-25 退房 03-27</div>
+                </div>
+                <button class="action-btn small green" onclick="processDepositRefund('李四','203','200')">退押金</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 0;">
+                <div style="width:32px;height:32px;background:var(--purple-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">🏨</div>
+                <div style="flex:1;">
+                  <div style="font-size:13px;font-weight:600;">王五 <span style="font-size:10px;color:var(--blue);background:var(--blue-bg);padding:1px 5px;border-radius:3px;margin-left:4px;">201</span></div>
+                  <div style="font-size:11px;color:var(--text-muted);">押金 ¥100 · 入住 03-26 退房 03-27</div>
+                </div>
+                <button class="action-btn small green" onclick="processDepositRefund('王五','201','100')">退押金</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📊 结算记录</div>
+          <div class="card-tabs">
+            <div class="card-tab active" onclick="filterSettlementTab('all',this)">全部</div>
+            <div class="card-tab" onclick="filterSettlementTab('done',this)">已完成</div>
+            <div class="card-tab" onclick="filterSettlementTab('refunded',this)">已退款</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <table class="table">
+            <thead><tr><th>结算编号</th><th>房间</th><th>客户</th><th>房费</th><th>押金</th><th>其他</th><th>合计</th><th>结算方式</th><th>时间</th><th>状态</th></tr></thead>
+            <tbody id="stl-done-body">
+              <tr data-status="done"><td>BL-2026032601</td><td>302</td><td>周八</td><td>¥256</td><td>¥200</td><td>¥0</td><td style="font-weight:700;">¥456</td><td><span class="tbadge blue">微信支付</span></td><td>03-26 14:20</td><td><span class="tbadge green">已完成</span></td></tr>
+              <tr data-status="done"><td>BL-2026032602</td><td>305</td><td>吴九</td><td>¥432</td><td>¥200</td><td>¥+50</td><td style="font-weight:700;">¥682</td><td><span class="tbadge green">支付宝</span></td><td>03-26 12:00</td><td><span class="tbadge green">已完成</span></td></tr>
+              <tr data-status="refunded"><td>BL-2026032603</td><td>202</td><td>郑十</td><td>¥196</td><td style="color:var(--green);">-¥100</td><td>¥0</td><td style="font-weight:700;color:var(--green);">¥96</td><td><span class="tbadge gray">现金</span></td><td>03-26 11:30</td><td><span class="tbadge gray">已退款</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
     <!-- Page: Data Report (v3新页面：数据报表中心) -->
     <div id="page-report" class="page">
       <div class="page-header">
@@ -7304,6 +7415,16 @@ function showPage(name) {
     const tabs = document.querySelectorAll('#page-home .card-tabs .card-tab');
     if (tabs[0]) tabs[0].classList.add('active');
   }
+  // 如果切换到看板页面，启动实时刷新
+  if (name === 'dashboard') {
+    setTimeout(function() {
+      if (typeof startDashboardCountdown === 'function') startDashboardCountdown();
+      if (typeof startDashboardLive === 'function') startDashboardLive();
+    }, 100);
+  } else if (typeof dashboardRefreshInterval !== 'undefined' && dashboardRefreshInterval) {
+    clearInterval(dashboardRefreshInterval);
+    dashboardRefreshInterval = null;
+  }
 }
 
 // ======= 改进1: 房间卡片Tab筛选 =======
@@ -7728,26 +7849,29 @@ function confirmUnlock() {
 
 // ======= 改进5: 房型管理 - 新增/编辑 =======
 function openAddRoomTypeModal() {
-  document.getElementById('roomtype-modal-title').textContent = '🏢 新增房型';
+  // Redirect to our new roomtype-form modal
+  document.getElementById('rt-form-title').textContent = '🏠 新增房型';
   document.getElementById('rt-name').value = '';
   document.getElementById('rt-bed').value = '';
   document.getElementById('rt-price').value = '';
   document.getElementById('rt-status').value = 'enabled';
-  document.getElementById('rt-desc').value = '';
-  document.getElementById('rt-modal-idx').value = '';
-  openModal('roomtype');
+  document.getElementById('rt-sort').value = '0';
+  document.getElementById('rt-remark').value = '';
+  openModal('roomtype-form');
 }
 function openEditRoomTypeModal(idx) {
-  var names = ['标准间', '大床房', '亲子间'];
-  var beds = ['大床1.8m', '大床1.5m', '多床'];
-  var prices = ['98', '108', '128'];
-  document.getElementById('roomtype-modal-title').textContent = '🏢 编辑房型';
+  // Redirect to our new roomtype-form modal
+  var names = ['标准间', '大床房', '亲子间', '家庭套房'];
+  var beds = ['大床1.8m', '大床1.5m', '多床（1大+1小）', '子母床'];
+  var prices = ['98', '108', '128', '198'];
+  document.getElementById('rt-form-title').textContent = '✏️ 编辑房型 - ' + (names[idx] || '');
   document.getElementById('rt-name').value = names[idx] || '';
   document.getElementById('rt-bed').value = beds[idx] || '';
   document.getElementById('rt-price').value = prices[idx] || '';
-  document.getElementById('rt-status').value = idx === 2 ? 'enabled' : 'disabled';
-  document.getElementById('rt-desc').value = '';
-  openModal('roomtype');
+  document.getElementById('rt-status').value = idx === 0 ? 'disabled' : 'enabled';
+  document.getElementById('rt-sort').value = String(3 - idx);
+  document.getElementById('rt-remark').value = '';
+  openModal('roomtype-form');
 }
 function submitRoomType() {
   var idx = document.getElementById('rt-modal-idx').value;
@@ -9454,13 +9578,14 @@ function searchMember(query) {
 }
 
 function openAddMemberModal() {
-  document.getElementById('mf-modal-title').textContent = '👑 新增会员';
-  document.getElementById('mf-name').value = '';
-  document.getElementById('mf-phone').value = '';
-  document.getElementById('mf-idcard').value = '';
-  document.getElementById('mf-level').value = 'normal';
-  document.getElementById('mf-note').value = '';
-  openModal('member-form');
+  // Opens our new add-member modal
+  document.getElementById('nm-name').value = '';
+  document.getElementById('nm-phone').value = '';
+  document.getElementById('nm-idcard').value = '';
+  document.getElementById('nm-birthday').value = '';
+  document.getElementById('nm-level').value = 'normal';
+  document.getElementById('nm-remark').value = '';
+  openModal('add-member');
 }
 
 function openEditMemberModal(idx) {
@@ -13112,31 +13237,6 @@ function manualRefreshDashboard() {
   showToast('看板数据已手动刷新！', 'success');
 }
 
-// 当切换到看板页面时启动倒计时
-var originalShowPage = null;
-try { originalShowPage = showPage; } catch(e) {}
-function showPage(name) {
-  // 调用原函数
-  if (originalShowPage) originalShowPage(name); else {
-    document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
-    document.getElementById('page-' + name).classList.add('active');
-    if (event && event.target && event.target.closest) {
-      var mi = event.target.closest('.menu-item');
-      if (mi) { document.querySelectorAll('.menu-item').forEach(function(m){m.classList.remove('active');}); mi.classList.add('active'); }
-    }
-  }
-  // 如果切换到看板页面，启动实时刷新
-  if (name === 'dashboard') {
-    setTimeout(function() {
-      startDashboardCountdown();
-      startDashboardLive();
-    }, 100);
-  } else if (dashboardRefreshInterval) {
-    clearInterval(dashboardRefreshInterval);
-    dashboardRefreshInterval = null;
-  }
-}
-
 // ========== 改进F4: 密码生成器完整表单（密码类型选择+房间选择+有效期设置+生成+复制完整闭环） ==========
 var keypadPasswordCounter = 2800;
 function openCreateKeypadModal() {
@@ -14381,6 +14481,21 @@ var workorderAutoRules = [
 ];
 
 function openWorkorderAutoRuleModal() {
+  // Opens the new dedicated auto-rule modal
+  openModal('workorder-auto-rule');
+}
+function saveWorkorderAutoRule() {
+  var type = document.getElementById('woar-type').value;
+  var target = document.getElementById('woar-target').value;
+  var urgent = document.getElementById('woar-urgent').checked;
+  var sms = document.getElementById('woar-sms').checked;
+  var remind = document.getElementById('woar-remind').checked;
+  var enabled = document.querySelector('input[name="woar-enabled"]:checked').value === 'on';
+  closeModal('workorder-auto-rule');
+  showToast('工单自动派发规则已保存！类型=' + type + '，派发=' + target + '，启用=' + enabled, 'success');
+  addNotif('⚙️', 'var(--purple)', 'workorder', '工单派发规则已更新：' + type);
+}
+function saveWorkorderAutoRule_old() {
   var handlers = [{val:'',label:'-- 请选择 --'}, {val:'赵飞',label:'赵飞（管理员）'}, {val:'周敏',label:'周敏（客房经理）'}, {val:'前台',label:'前台组'}, {val:'客房',label:'客房组'}, {val:'工程',label:'工程组'}];
   var urgencies = [{val:'normal',label:'⚪ 普通'},{val:'urgent',label:'🟡 紧急'}];
   var typeOptions = [{val:'',label:'-- 所有类型 --'},{val:'complaint',label:'🔴 客户投诉'},{val:'review',label:'⭐ 差评反馈'},{val:'invoice',label:'📄 发票需求'},{val:'delivery',label:'📦 送物服务'},{val:'clean',label:'🧹 清洁服务'},{val:'maintain',label:'🔧 设施维修'},{val:'other',label:'📝 其他'}];
@@ -16724,6 +16839,104 @@ function saveSystemSettings() {
   showToast('系统设置已保存！', 'success');
 }
 
+// ======= 【改进1】新增会员表单提交 =======
+function submitAddMember() {
+  var name = document.getElementById('nm-name').value.trim();
+  var phone = document.getElementById('nm-phone').value.trim();
+  var idcard = document.getElementById('nm-idcard').value.trim();
+  var birthday = document.getElementById('nm-birthday').value;
+  var level = document.getElementById('nm-level').value;
+  var remark = document.getElementById('nm-remark').value.trim();
+  if (!name) { showToast('请输入会员姓名', 'error'); return; }
+  if (!phone) { showToast('请输入手机号', 'error'); return; }
+  var levelLabels = { normal: '普通会员', silver: '银卡会员', gold: '金卡会员', vip: 'VIP会员' };
+  closeModal('add-member');
+  showToast('会员「' + name + '」开通成功！等级：' + levelLabels[level], 'success');
+  addNotif('👑', 'var(--purple)', 'member', '新增会员：' + name + '（' + levelLabels[level] + '）');
+}
+
+// ======= 【改进2】结算详情与押金退还 =======
+function openSettlementDetail(id) {
+  var detailData = {
+    'BL-2026032701': { room: '301', name: '张三', roomType: '亲子间', checkin: '2026-03-26 14:00', checkout: '2026-03-27 12:00', nights: 1, price: 128, extra: 0, deposit: 100, payMethod: '微信支付' },
+    'BL-2026032702': { room: '203', name: '李四', roomType: '大床房', checkin: '2026-03-25 14:00', checkout: '2026-03-27 12:00', nights: 2, price: 216, extra: 0, deposit: 200, payMethod: '支付宝' },
+    'BL-2026032503': { room: '202', name: '钱七', roomType: '标准间', checkin: '2026-03-24 14:00', checkout: '2026-03-26 12:00', nights: 2, price: 196, extra: 0, deposit: 100, payMethod: '现金' }
+  };
+  var d = detailData[id] || detailData['BL-2026032701'];
+  document.getElementById('std-title').textContent = '💰 结算详情 - ' + id;
+  var body = document.getElementById('std-body');
+  body.innerHTML =
+    '<div class="settlement-section"><div class="settlement-section-title">🏠 房费明细</div>' +
+    '<div class="settlement-row"><span class="label">账单编号</span><span class="value">' + id + '</span></div>' +
+    '<div class="settlement-row"><span class="label">房间</span><span class="value">' + d.room + ' · ' + d.roomType + '</span></div>' +
+    '<div class="settlement-row"><span class="label">入住 / 退房</span><span class="value">' + d.checkin + ' → ' + d.checkout + '</span></div>' +
+    '<div class="settlement-row"><span class="label">住夜数</span><span class="value">' + d.nights + ' 夜</span></div>' +
+    '<div class="settlement-row"><span class="label">房费</span><span class="value">¥' + d.price + '</span></div>' +
+    '<div class="settlement-row"><span class="label">其他费用</span><span class="value">¥' + d.extra + '</span></div></div>' +
+    '<div class="settlement-row total"><span class="label">应付总额</span><span class="value red">¥' + (d.price + d.extra) + '</span></div>' +
+    '<div class="settlement-row discount"><span class="label">押金已付</span><span class="value green">-¥' + d.deposit + '</span></div>' +
+    '<div class="settlement-row total"><span class="label">' + (d.price + d.extra >= d.deposit ? '实付金额' : '实退金额') + '</span><span class="value ' + (d.price + d.extra >= d.deposit ? 'red' : 'green') + '">¥' + Math.abs(d.price + d.extra - d.deposit) + '</span></div>';
+  openModal('settlement-detail');
+}
+function confirmSettlement() {
+  closeModal('settlement-detail');
+  showToast('结算成功！账单已结清。', 'success');
+}
+function processDepositRefund(name, room, amount) {
+  document.getElementById('dpr-info').textContent = name + ' · ' + room + '房间';
+  document.getElementById('dpr-amount').textContent = '¥' + amount;
+  openModal('deposit-refund');
+}
+function confirmDepositRefund() {
+  var method = document.getElementById('dpr-method').value;
+  var remark = document.getElementById('dpr-remark').value.trim();
+  closeModal('deposit-refund');
+  showToast('押金退还申请已提交！退款方式：' + method + '，1-3个工作日内到账。', 'success');
+  addNotif('💳', 'var(--green)', 'settlement', '押金退款申请：' + document.getElementById('dpr-info').textContent + '，方式：' + method);
+}
+
+// ======= 【改进2】结算页面筛选 =======
+function filterSettlementTab(tab, el) {
+  document.querySelectorAll('#page-settlement .card-tabs .card-tab').forEach(function(t) { t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  var rows = document.querySelectorAll('#stl-done-body tr');
+  rows.forEach(function(row) {
+    if (tab === 'all') { row.style.display = ''; }
+    else { row.style.display = row.dataset.status === tab ? '' : 'none'; }
+  });
+}
+function renderSettlementTable() {}
+function openCreateSettlementModal() {
+  showToast('新建账单功能：选择房间并录入消费明细', 'info');
+}
+
+// ======= 【改进4】操作日志筛选 =======
+function applyOpLogFilter() {
+  var type = document.getElementById('oplog-type-filter').value;
+  var operator = document.getElementById('oplog-operator').value;
+  var rows = document.querySelectorAll('#oplog-table-body tr');
+  var count = 0;
+  rows.forEach(function(row) {
+    var matchType = type === 'all' || row.dataset.type === type;
+    var matchOp = operator === 'all' || row.cells[2].textContent === operator;
+    row.style.display = matchType && matchOp ? '' : 'none';
+    if (matchType && matchOp) count++;
+  });
+  var countEl = document.getElementById('oplog-count');
+  if (countEl) countEl.textContent = '共 ' + count + ' 条记录';
+}
+function resetOpLogFilter() {
+  document.getElementById('oplog-type-filter').value = 'all';
+  document.getElementById('oplog-operator').value = 'all';
+  document.querySelectorAll('#oplog-table-body tr').forEach(function(r) { r.style.display = ''; });
+  var countEl = document.getElementById('oplog-count');
+  if (countEl) countEl.textContent = '共 ' + document.querySelectorAll('#oplog-table-body tr').length + ' 条记录';
+}
+function exportOpLog() {
+  showToast('正在导出操作日志...', 'info');
+  setTimeout(function() { showToast('导出成功！日志已保存为 CSV 文件', 'success'); }, 800);
+}
+
 // Init all tables on load
 document.addEventListener('DOMContentLoaded', function() {
   renderMemberTable();
@@ -17025,6 +17238,242 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="modal-footer">
       <button class="modal-btn secondary" onclick="closeModal('system-settings')">取消</button>
       <button class="modal-btn primary" onclick="saveSystemSettings()">💾 保存设置</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进3】工单自动派发规则配置弹窗（解决openWorkorderAutoRuleModal未定义问题） -->
+<div class="modal-overlay hidden" id="modal-workorder-auto-rule">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ 工单自动派发规则</div>
+      <button class="modal-close" onclick="closeModal('workorder-auto-rule')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">工单类型</label>
+        <select class="form-select" id="woar-type">
+          <option value="complaint">🔴 客户投诉 → 自动派发给 前厅经理</option>
+          <option value="clean">🧹 清洁服务 → 自动派发给 客房经理</option>
+          <option value="maintain">🔧 设施维修 → 自动派发给 工程部</option>
+          <option value="delivery">📦 送物服务 → 自动派发给 客房服务员</option>
+          <option value="invoice">📄 发票需求 → 自动派发给 前厅</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">派发对象</label>
+        <select class="form-select" id="woar-target">
+          <option value="front-manager">前厅经理（赵飞）</option>
+          <option value="housekeeping">客房经理（周敏）</option>
+          <option value="engineer">工程部（待配置）</option>
+          <option value="service">客房服务员（待配置）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">触发条件</label>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="woar-urgent" checked style="accent-color:var(--blue);width:15px;height:15px;">
+            <span>紧急工单（30分钟内未响应自动升级）</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="woar-sms" checked style="accent-color:var(--blue);width:15px;height:15px;">
+            <span>创建时短信通知处理人</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="woar-remind" checked style="accent-color:var(--blue);width:15px;height:15px;">
+            <span>超过2小时未处理发送提醒</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">自动派发开关</label>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="radio" name="woar-enabled" value="on" checked style="accent-color:var(--blue);"> 开启
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="radio" name="woar-enabled" value="off" style="accent-color:var(--blue);"> 关闭
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('workorder-auto-rule')">取消</button>
+      <button class="modal-btn primary" onclick="saveWorkorderAutoRule()">💾 保存规则</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进1】新增会员弹窗（解决openAddMemberModal未定义问题） -->
+<div class="modal-overlay hidden" id="modal-add-member">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header">
+      <div class="modal-title">👑 新增会员</div>
+      <button class="modal-close" onclick="closeModal('add-member')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">姓名 <span class="required">*</span></label>
+          <input type="text" class="form-input" id="nm-name" placeholder="请输入会员姓名">
+        </div>
+        <div class="form-group">
+          <label class="form-label">手机号 <span class="required">*</span></label>
+          <input type="tel" class="form-input" id="nm-phone" placeholder="请输入手机号">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">身份证号</label>
+          <input type="text" class="form-input" id="nm-idcard" placeholder="选填">
+        </div>
+        <div class="form-group">
+          <label class="form-label">生日</label>
+          <input type="date" class="form-input" id="nm-birthday">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">会员等级</label>
+        <select class="form-select" id="nm-level">
+          <option value="normal">普通会员（默认权益）</option>
+          <option value="silver">银卡会员（9.5折）</option>
+          <option value="gold">金卡会员（9折）</option>
+          <option value="vip">VIP会员（8.5折）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="nm-remark" placeholder="选填，如渠道来源、特殊需求等"></textarea>
+      </div>
+      <div style="padding:12px;background:var(--green-bg);border-radius:8px;font-size:12px;color:var(--green);">
+        💡 开通会员卡后，系统将自动发放会员编号，并可设置折扣权益、开卡优惠等
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('add-member')">取消</button>
+      <button class="modal-btn primary" onclick="submitAddMember()">💾 确认开通</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进5】房型管理表单弹窗（房型增删改查核心闭环） -->
+<div class="modal-overlay hidden" id="modal-roomtype-form">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title" id="rt-form-title">🏠 新增房型</div>
+      <button class="modal-close" onclick="closeModal('roomtype-form')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">房型名称 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="rt-name" placeholder="如：标准间、大床房、亲子间">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">床型</label>
+          <input type="text" class="form-input" id="rt-bed" placeholder="如：大床1.8m">
+        </div>
+        <div class="form-group">
+          <label class="form-label">价格(元/12h) <span class="required">*</span></label>
+          <input type="number" class="form-input" id="rt-price" placeholder="如：128">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">状态</label>
+          <select class="form-select" id="rt-status">
+            <option value="enabled">启用</option>
+            <option value="disabled">关闭</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">排序权重</label>
+          <input type="number" class="form-input" id="rt-sort" value="0" placeholder="数字越大越靠前">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="rt-remark" placeholder="选填，如：含独立卫浴、楼层位置等"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('roomtype-form')">取消</button>
+      <button class="modal-btn primary" onclick="submitRoomTypeForm()">💾 确认保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进2】结算详情弹窗 -->
+<div class="modal-overlay hidden" id="modal-settlement-detail">
+  <div class="modal" style="width:500px;">
+    <div class="modal-header">
+      <div class="modal-title" id="std-title">💰 结算详情</div>
+      <button class="modal-close" onclick="closeModal('settlement-detail')">✕</button>
+    </div>
+    <div class="modal-body" id="std-body">
+      <div class="settlement-section">
+        <div class="settlement-section-title">🏠 房费明细</div>
+        <div class="settlement-row"><span class="label">房型</span><span class="value">亲子间</span></div>
+        <div class="settlement-row"><span class="label">入住时间</span><span class="value">2026-03-26 14:00</span></div>
+        <div class="settlement-row"><span class="label">退房时间</span><span class="value">2026-03-27 12:00</span></div>
+        <div class="settlement-row"><span class="label">住夜数</span><span class="value">1 夜</span></div>
+        <div class="settlement-row"><span class="label">单价</span><span class="value">¥128 / 12h</span></div>
+        <div class="settlement-row"><span class="label">房费小计</span><span class="value">¥128</span></div>
+      </div>
+      <div class="settlement-section">
+        <div class="settlement-section-title">➕ 其他费用</div>
+        <div class="settlement-row"><span class="label">加客费</span><span class="value">¥0</span></div>
+        <div class="settlement-row"><span class="label">加床费</span><span class="value">¥0</span></div>
+        <div class="settlement-row"><span class="label">损坏赔偿</span><span class="value">¥0</span></div>
+      </div>
+      <div class="settlement-section">
+        <div class="settlement-section-title">💳 支付信息</div>
+        <div class="settlement-row"><span class="label">押金</span><span class="value" style="color:var(--green);">¥100（入住时已收）</span></div>
+        <div class="settlement-row"><span class="label">支付方式</span><span class="value">微信支付</span></div>
+      </div>
+      <div class="settlement-row total"><span class="label">应付总额</span><span class="value red">¥128</span></div>
+      <div class="settlement-row discount"><span class="label">押金抵扣</span><span class="value green">-¥100</span></div>
+      <div class="settlement-row total"><span class="label">实退金额</span><span class="value green">¥72</span></div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('settlement-detail')">取消</button>
+      <button class="modal-btn green" onclick="confirmSettlement()" style="background:var(--green);color:white;border-color:var(--green);">✅ 确认结算</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进2】押金退还确认弹窗 -->
+<div class="modal-overlay hidden" id="modal-deposit-refund">
+  <div class="modal" style="width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">💳 确认退还押金</div>
+      <button class="modal-close" onclick="closeModal('deposit-refund')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center;padding:20px 0;">
+        <div style="font-size:48px;margin-bottom:12px;">💰</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:8px;" id="dpr-info">张三 · 301房间</div>
+        <div style="font-size:28px;font-weight:700;color:var(--green);" id="dpr-amount">¥100</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">押金将在1-3个工作日内原路退回</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">退还方式</label>
+        <select class="form-select" id="dpr-method">
+          <option value="wechat">微信支付退回</option>
+          <option value="alipay">支付宝退回</option>
+          <option value="cash">现金退款</option>
+          <option value="transfer">转账至银行卡</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="dpr-remark" placeholder="选填，如退款原因"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('deposit-refund')">取消</button>
+      <button class="modal-btn green" onclick="confirmDepositRefund()" style="background:var(--green);color:white;border-color:var(--green);">✅ 确认退还</button>
     </div>
   </div>
 </div>
