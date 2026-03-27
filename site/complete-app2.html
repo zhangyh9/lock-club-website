@@ -817,6 +817,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
         <button class="btn" onclick="showPage('alert')">立即处理</button>
       </div>
+      <!-- 【改进A】逾期未退房告警横幅 -->
+      <div id="overdue-checkout-banner" class="alert-banner" style="background:var(--orange-bg);border-color:var(--orange);display:none;">
+        <div class="icon" style="background:var(--orange);">⏰</div>
+        <div class="content">
+          <h4 style="color:var(--orange);">301房间逾期未退房</h4>
+          <p>张三 已超时约 3 小时，请及时处理</p>
+        </div>
+        <button class="btn" style="background:var(--orange);" onclick="openOverdueCheckoutModal()">处理结算</button>
+      </div>
       <!-- 【改进4】首页待办事项交互面板 -->
       <div id="home-todo-panel" class="card" style="margin-bottom:16px;">
         <!-- 由 renderHomeTodoPanel() 动态渲染 -->
@@ -935,6 +944,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <div class="stat-icon" style="background: var(--red-bg);">📡</div>
           <div><div class="stat-num" id="home-stat-offline">2</div><div class="stat-label">设备离线</div></div>
           <div style="margin-left:auto;font-size:11px;color:var(--red);opacity:0;">›</div>
+        </div>
+        <!-- 【改进D】新增实时刷新统计卡片：入住率/在线设备/待处理工单/今日营收 -->
+        <div class="stat-card" onclick="showPage('room-detail')" title="当前入住率">
+          <div class="stat-icon" style="background:var(--blue-bg);">🏠</div>
+          <div><div class="stat-num" id="home-stat-occupancy">78%</div><div class="stat-label">入住率</div></div>
+        </div>
+        <div class="stat-card" onclick="showPage('device')" title="在线设备数">
+          <div class="stat-icon" style="background:var(--green-bg);">📶</div>
+          <div><div class="stat-num" id="home-stat-device-online">14台</div><div class="stat-label">设备在线</div></div>
+        </div>
+        <div class="stat-card" onclick="showPage('workorder')" title="待处理工单">
+          <div class="stat-icon" style="background:var(--orange-bg);">🛠️</div>
+          <div><div class="stat-num" id="home-stat-pending-wo">3件</div><div class="stat-label">待处理工单</div></div>
+        </div>
+        <div class="stat-card" title="今日营收">
+          <div class="stat-icon" style="background:var(--purple-bg);">💰</div>
+          <div><div class="stat-num" id="home-stat-revenue">¥4,820</div><div class="stat-label">今日营收</div></div>
         </div>
       </div>
       <!-- 【改进2 v3】首页工作台待办聚合面板：一站式处理告警/工单/待查房 -->
@@ -18386,6 +18412,10 @@ function handleNotifAction(id, cat) { markNotifRead(id); if (cat === 'device') s
 // Auto-init notification center when page loads
 window.addEventListener('DOMContentLoaded', function() {
   setTimeout(initNotifCenter, 300);
+  setTimeout(function() {
+    if (typeof startHomeRealtimeUpdate === 'function') startHomeRealtimeUpdate();
+    if (typeof showOverdueCheckoutBanner === 'function') showOverdueCheckoutBanner();
+  }, 500);
 });
 
 
@@ -48394,7 +48424,7 @@ function executeBatchRoomStatus() {
 }
 
 </script>
-<script src="v3-improvements.js?v=20260328e">
+<script src="v3-improvements.js?v=20260328f">
 // Wrapper for voice greeting from config tab
 function openVoiceGreetingFromConfig() { openModal("voice-greeting"); loadVoiceGreetingScenario(); }
 </script>

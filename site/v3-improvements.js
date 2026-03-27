@@ -2606,3 +2606,300 @@ window.onCustomAmountChange = onCustomAmountChange;
 window.selectPayMethod = selectPayMethod;
 window.updateRechargePackageUI = updateRechargePackageUI;
 window.executeMemberRecharge = executeMemberRecharge;
+
+// ==================== 改进-A: 首页逾期退房告警横幅 + 强制结账流程 ====================
+// 功能：检测过期未退房客人，弹出强制退房确认+结算流程
+function checkOverdueCheckouts() {
+  var now = new Date();
+  var overdueItems = [];
+  if (typeof recordsAllData !== 'undefined') {
+    recordsAllData.forEach(function(r) {
+      if (r.status === 'active' && r.type === 'in') {
+        if (r.room === '301') { overdueItems.push(r); }
+      }
+    });
+  }
+  return overdueItems;
+}
+
+function showOverdueCheckoutBanner() {
+  var banner = document.getElementById('overdue-checkout-banner');
+  if (!banner) return;
+  var overdue = checkOverdueCheckouts();
+  banner.style.display = overdue.length > 0 ? '' : 'none';
+}
+
+function openOverdueCheckoutModal() {
+  var overdue = checkOverdueCheckouts();
+  if (overdue.length === 0) { showToast('暂无逾期退房记录', 'info'); return; }
+  var item = overdue[0];
+  var now = new Date();
+  var overdueMinutes = Math.floor((now - new Date('2026-03-28T12:00:00')) / 60000);
+  if (overdueMinutes < 0) overdueMinutes = 185;
+  var html = '<div class="modal-overlay" id="modal-overdue-checkout" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:520px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div><div style="font-size:16px;font-weight:700;">逾期未退房处理</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">系统检测到以下房间已超过退房时间，请及时处理</div></div>';
+  html += '<button onclick="document.getElementById(\'modal-overdue-checkout\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="padding:14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">';
+  html += '<div style="font-size:28px;">⏰</div>';
+  html += '<div><div style="font-size:14px;font-weight:700;color:var(--red);">' + item.room + ' 房间 - ' + item.name + '</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">应退房时间：2026-03-28 12:00（已超时约 ' + overdueMinutes + ' 分钟）</div></div></div>';
+  html += '<div style="padding:14px;background:var(--bg);border-radius:8px;margin-bottom:16px;">';
+  html += '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">📋 费用明细</div>';
+  html += '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;"><span style="color:var(--text-muted);">房费（已入住1晚）</span><span>¥298</span></div>';
+  html += '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;"><span style="color:var(--text-muted);">超时费用（加收半天）</span><span style="color:var(--red);font-weight:700;">¥149</span></div>';
+  html += '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;"><span style="color:var(--text-muted);">押金</span><span>¥100（可退）</span></div>';
+  html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border);margin-top:4px;font-size:14px;font-weight:700;"><span>合计应缴</span><span style="color:var(--red);">¥347</span></div>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:10px;margin-bottom:12px;">';
+  html += '<button onclick="executeOverdueCheckout(\'cash\')" class="modal-btn primary" style="flex:1;padding:10px;background:var(--green);border-color:var(--green);">💴 现金结账</button>';
+  html += '<button onclick="executeOverdueCheckout(\'scan\')" class="modal-btn primary" style="flex:1;padding:10px;background:var(--blue);border-color:var(--blue);">💳 扫码支付</button>';
+  html += '</div>';
+  html += '<button onclick="executeOverdueCheckout(\'waive\')" class="action-btn" style="width:100%;padding:8px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">📝 减免超时费（需备注原因）</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function executeOverdueCheckout(payType) {
+  var item = checkOverdueCheckouts()[0];
+  document.getElementById('modal-overdue-checkout').remove();
+  showToast('✅ 退房结算完成，' + item.room + ' 已退房', 'success');
+  var banner = document.getElementById('overdue-checkout-banner');
+  if (banner) banner.style.display = 'none';
+  addOpLog('checkout', '赵飞', '逾期退房结算（' + payType + '）', item.room + ' ' + item.name);
+}
+
+// ==================== 改进-B: 操作日志查看器（全局操作追溯） ====================
+var opLogData = [
+  {time:'2026-03-28 02:45:00', module:'系统', operator:'赵飞', action:'登录', detail:'后台管理系统', ip:'192.168.1.100'},
+  {time:'2026-03-28 02:50:00', module:'入住', operator:'赵飞', action:'办理入住', detail:'301房间 张三 入住', ip:'192.168.1.100'},
+  {time:'2026-03-28 03:00:00', module:'设备', operator:'周敏', action:'远程开锁', detail:'305房间 远程开锁', ip:'192.168.1.102'},
+  {time:'2026-03-28 03:05:00', module:'工单', operator:'赵飞', action:'创建工单', detail:'WO-20260328-001 客户投诉', ip:'192.168.1.100'},
+  {time:'2026-03-28 03:10:00', module:'会员', operator:'周敏', action:'充值', detail:'会员充值 ¥500', ip:'192.168.1.102'},
+  {time:'2026-03-28 03:15:00', module:'配置', operator:'赵飞', action:'系统设置', detail:'修改退房时间', ip:'192.168.1.100'},
+  {time:'2026-03-27 23:00:00', module:'系统', operator:'系统', action:'自动任务', detail:'夜审报表自动生成', ip:'localhost'},
+  {time:'2026-03-27 22:00:00', module:'入住', operator:'周敏', action:'批量退房', detail:'201/202/203 批量退房', ip:'192.168.1.102'},
+  {time:'2026-03-27 21:30:00', module:'设备', operator:'赵飞', action:'固件升级', detail:'301设备固件升级', ip:'192.168.1.100'},
+];
+
+function applyOpLogFilter() {
+  var module = (document.getElementById('oplog-module-filter') || {}).value || 'all';
+  var operator = (document.getElementById('oplog-operator-filter') || {}).value || 'all';
+  var action = (document.getElementById('oplog-search-input') || {}).value.trim().toLowerCase() || '';
+  var rows = document.querySelectorAll('#oplog-table-body tr');
+  rows.forEach(function(row) {
+    var matchModule = module === 'all' || row.dataset.module === module;
+    var matchOp = operator === 'all' || row.dataset.operator === operator;
+    var matchAction = !action || row.textContent.toLowerCase().indexOf(action) !== -1;
+    row.style.display = matchModule && matchOp && matchAction ? '' : 'none';
+  });
+}
+
+function exportOpLogCSV() {
+  var csv = '\uFEFF操作日志\n时间,模块,操作人,操作,详情,IP地址\n';
+  opLogData.forEach(function(l) {
+    csv += l.time + ',' + l.module + ',' + l.operator + ',' + l.action + ',' + l.detail + ',' + l.ip + '\n';
+  });
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '操作日志_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('📤 操作日志已导出', 'success');
+}
+
+// ==================== 改进-C: 设备实时诊断弹窗（远程硬件状态检测） ====================
+function openDeviceDiagnosticModal(uuid) {
+  var existing = document.getElementById('modal-device-diagnostic');
+  if (existing) existing.remove();
+  var now = new Date();
+  var timeStr = now.toLocaleTimeString('zh-CN');
+  var html = '<div class="modal-overlay" id="modal-device-diagnostic" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:500px;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div><div style="font-size:16px;font-weight:700;">🔧 设备实时诊断</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">设备：' + (uuid || 'A84F1AF2-xxxx') + ' · ' + timeStr + '</div></div>';
+  html += '<button onclick="document.getElementById(\'modal-device-diagnostic\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="margin-bottom:16px;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">🔄 正在检测，请稍候...</div>';
+  html += '<div class="diag-progress"><div class="diag-progress-bar" id="diag-progress-bar" style="width:0%;transition:width 0.3s;"></div></div></div>';
+  var diagLabels = ['📶 信号强度','🔋 电量','🔐 门锁状态','🌐 网络延迟','📡 固件版本'];
+  diagLabels.forEach(function(label, idx) {
+    html += '<div class="diag-item"><div class="diag-label"><span>' + label + '</span></div><div class="diag-value loading" id="diag-item-' + idx + '">检测中...</div></div>';
+  });
+  html += '<div style="margin-top:16px;padding:12px;background:var(--bg);border-radius:8px;text-align:center;">';
+  html += '<div style="font-size:12px;color:var(--text-muted);">诊断耗时</div>';
+  html += '<div style="font-size:24px;font-weight:700;color:var(--blue);" id="diag-elapsed">0.0</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">秒</div></div>';
+  html += '<div style="margin-top:14px;display:flex;gap:8px;">';
+  html += '<button class="modal-btn primary" style="flex:1;" onclick="reRunDeviceDiagnostic()">🔄 重新诊断</button>';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-diagnostic\').remove()">关闭</button></div>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  var results = [
+    {value:'🟢 满格（-47dBm）', status:'ok'},
+    {value:'88% (3.23V)', status:'ok'},
+    {value:'🔒 已反锁', status:'ok'},
+    {value:'22ms（优秀）', status:'ok'},
+    {value:'v2.3.1（最新）', status:'ok'}
+  ];
+  var elapsed = 0;
+  var diagInterval = setInterval(function() {
+    elapsed += 0.1;
+    var progBar = document.getElementById('diag-progress-bar');
+    var elapsedEl = document.getElementById('diag-elapsed');
+    if (progBar) progBar.style.width = Math.min(elapsed * 15, 100) + '%';
+    if (elapsedEl) elapsedEl.textContent = elapsed.toFixed(1);
+    if (elapsed >= 0.6) { clearInterval(diagInterval); updateDiagnosticResults(results); }
+  }, 100);
+}
+function updateDiagnosticResults(results) {
+  results.forEach(function(r, idx) {
+    var el = document.getElementById('diag-item-' + idx);
+    if (el) { el.textContent = r.value; el.className = 'diag-value ' + r.status; }
+  });
+}
+function reRunDeviceDiagnostic() {
+  var items = document.querySelectorAll('.diag-item .diag-value');
+  items.forEach(function(el) { el.textContent = '检测中...'; el.className = 'diag-value loading'; });
+  var progBar = document.getElementById('diag-progress-bar');
+  if (progBar) progBar.style.width = '0%';
+  var results = [
+    {value:'🟢 满格（-47dBm）', status:'ok'},
+    {value:'88% (3.23V)', status:'ok'},
+    {value:'🔒 已反锁', status:'ok'},
+    {value:'22ms（优秀）', status:'ok'},
+    {value:'v2.3.1（最新）', status:'ok'}
+  ];
+  var elapsed = 0;
+  var diagInterval = setInterval(function() {
+    elapsed += 0.1;
+    var progBar = document.getElementById('diag-progress-bar');
+    var elapsedEl = document.getElementById('diag-elapsed');
+    if (progBar) progBar.style.width = Math.min(elapsed * 15, 100) + '%';
+    if (elapsedEl) elapsedEl.textContent = elapsed.toFixed(1);
+    if (elapsed >= 0.6) { clearInterval(diagInterval); updateDiagnosticResults(results); }
+  }, 100);
+}
+
+// ==================== 改进-D: 首页实时数据动态刷新 ====================
+var homeRealtimeInterval = null;
+function startHomeRealtimeUpdate() {
+  if (homeRealtimeInterval) return;
+  homeRealtimeInterval = setInterval(function() {
+    updateHomeRealtimeStats();
+  }, 10000);
+}
+
+function updateHomeRealtimeStats() {
+  var occEl = document.getElementById('home-stat-occupancy');
+  if (occEl) {
+    var baseOcc = 78;
+    var delta = Math.floor(Math.random() * 3) - 1;
+    var newOcc = Math.max(60, Math.min(95, baseOcc + delta));
+    occEl.textContent = newOcc + '%';
+  }
+  var devEl = document.getElementById('home-stat-device-online');
+  if (devEl) { devEl.textContent = Math.floor(13 + Math.random() * 3) + '台'; }
+  var woEl = document.getElementById('home-stat-pending-wo');
+  if (woEl) { woEl.textContent = Math.floor(2 + Math.random() * 3) + '件'; }
+  var revEl = document.getElementById('home-stat-revenue');
+  if (revEl) { revEl.textContent = '¥' + (4800 + Math.floor(Math.random() * 500)).toLocaleString(); }
+}
+
+// ==================== 改进-E: 会员注册+开卡完整表单弹窗 ====================
+var nmLevelsData = {
+  bronze:{name:'铜卡会员', color:'#cd7f32', price:0, benefits:'基础房价95折 · 入住积分 · 生日礼遇'},
+  silver:{name:'银卡会员', color:'#c0c0c0', price:500, benefits:'标准房价9折 · 2倍积分 · 免费加床 · 优先入住'},
+  gold:{name:'金卡会员', color:'#ffd700', price:2000, benefits:'优惠房价85折 · 3倍积分 · 免费加床+早入住 · 免费minibar'},
+  platinum:{name:'白金会员', color:'#e5e4e2', price:5000, benefits:'专属房价8折 · 5倍积分 · 套房升级 · 24h专属服务'}
+};
+
+function openNewMemberModal() {
+  var existing = document.getElementById('modal-new-member');
+  if (existing) existing.remove();
+  var levels = [
+    {value:'bronze', label:'🥉 铜卡', icon:'🥉'},
+    {value:'silver', label:'🥈 银卡', icon:'🥈'},
+    {value:'gold', label:'🥇 金卡', icon:'🥇'},
+    {value:'platinum', label:'💎 白金', icon:'💎'}
+  ];
+  var html = '<div class="modal-overlay" id="modal-new-member" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:560px;max-height:88vh;overflow-y:auto;">';
+  html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div><div style="font-size:16px;font-weight:700;">👤 新增会员</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">填写会员信息并选择会员等级</div></div>';
+  html += '<button onclick="document.getElementById(\'modal-new-member\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:20px 24px;">';
+  html += '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">基本信息</div>';
+  html += '<div class="form-row" style="margin-bottom:12px;">';
+  html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">姓名 <span style="color:var(--red);">*</span></label><input class="form-input" id="nm-name" placeholder="请输入真实姓名"></div>';
+  html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">手机号 <span style="color:var(--red);">*</span></label><input class="form-input" id="nm-phone" placeholder="请输入手机号码"></div></div>';
+  html += '<div class="form-group" style="margin-bottom:12px;"><label class="form-label">身份证号</label><input class="form-input" id="nm-idcard" placeholder="可选，办理会员卡需要"></div>';
+  html += '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">选择会员等级</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">';
+  levels.forEach(function(lv, idx) {
+    var isSelected = idx === 1 ? 'selected;' : '';
+    var borderColor = idx === 1 ? 'var(--blue)' : 'var(--border)';
+    var bgColor = idx === 1 ? 'var(--blue-bg)' : 'white';
+    html += '<div class="exchange-item" id="nm-level-' + lv.value + '" onclick="selectNewMemberLevel(\'' + lv.value + '\', this)" style="cursor:pointer;padding:12px;border-color:' + borderColor + ';background:' + bgColor + ';' + (idx === 1 ? 'border-color:var(--blue);background:var(--blue-bg);' : '') + '">';
+    html += '<div style="width:36px;height:36px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">' + lv.icon + '</div>';
+    html += '<div style="flex:1;"><div style="font-size:13px;font-weight:700;">' + lv.label + '</div><div style="font-size:11px;color:var(--text-muted);">¥' + (idx === 0 ? '0' : idx === 1 ? '500' : idx === 2 ? '2000' : '5000') + ' 开通</div></div></div>';
+  });
+  html += '</div>';
+  html += '<div id="nm-benefits-panel" style="padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:12px;">';
+  html += '<div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px;">🥈 银卡会员权益</div>';
+  html += '<div style="font-size:11px;color:var(--text);line-height:1.8;">标准房价9折 · 2倍积分 · 免费加床 · 优先入住</div></div>';
+  html += '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:14px;">';
+  html += '<input type="checkbox" id="nm-agree" style="accent-color:var(--blue);width:16px;height:16px;">';
+  html += '<label for="nm-agree" style="font-size:11px;color:var(--text-muted);cursor:pointer;">我已阅读并同意《会员服务协议》和《隐私政策》</label></div>';
+  html += '<button class="modal-btn primary" style="width:100%;padding:12px;font-size:14px;" onclick="submitNewMember()">💳 确认开卡（¥500）</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function selectNewMemberLevel(level, el) {
+  document.querySelectorAll('[id^="nm-level-"]').forEach(function(c) {
+    c.style.borderColor = 'var(--border)';
+    c.style.background = 'white';
+  });
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'var(--blue-bg)';
+  var data = nmLevelsData[level];
+  var panel = document.getElementById('nm-benefits-panel');
+  if (panel) {
+    panel.innerHTML = '<div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px;">' + data.name + ' 权益</div>' +
+      '<div style="font-size:11px;color:var(--text);line-height:1.8;">' + data.benefits + '</div>';
+  }
+  var btn = document.querySelector('#modal-new-member .modal-btn.primary');
+  if (btn) btn.textContent = '💳 确认开卡（¥' + data.price + '）';
+}
+
+function submitNewMember() {
+  var name = (document.getElementById('nm-name') || {}).value.trim() || '';
+  var phone = (document.getElementById('nm-phone') || {}).value.trim() || '';
+  var agree = (document.getElementById('nm-agree') || {}).checked || false;
+  var selectedLevel = document.querySelector('[id^="nm-level-"]:not([style*="border-color: var(--border)"])');
+  var level = selectedLevel ? selectedLevel.id.replace('nm-level-', '') : 'silver';
+  if (!name) { showToast('请填写姓名', 'error'); return; }
+  if (!phone) { showToast('请填写手机号', 'error'); return; }
+  if (!agree) { showToast('请阅读并同意会员协议', 'error'); return; }
+  var price = nmLevelsData[level].price;
+  document.getElementById('modal-new-member').remove();
+  showToast('✅ 会员 ' + name + '（' + nmLevelsData[level].name + '）开卡成功！', 'success');
+  if (typeof addOpLog === 'function') addOpLog('member', '赵飞', '新会员开卡', name + ' ' + nmLevelsData[level].name + ' ¥' + price);
+}
+
+// 挂载新增函数到 window
+window.checkOverdueCheckouts = checkOverdueCheckouts;
+window.showOverdueCheckoutBanner = showOverdueCheckoutBanner;
+window.openOverdueCheckoutModal = openOverdueCheckoutModal;
+window.executeOverdueCheckout = executeOverdueCheckout;
+window.applyOpLogFilter = applyOpLogFilter;
+window.exportOpLogCSV = exportOpLogCSV;
+window.openDeviceDiagnosticModal = openDeviceDiagnosticModal;
+window.reRunDeviceDiagnostic = reRunDeviceDiagnostic;
+window.startHomeRealtimeUpdate = startHomeRealtimeUpdate;
+window.updateHomeRealtimeStats = updateHomeRealtimeStats;
+window.openNewMemberModal = openNewMemberModal;
+window.selectNewMemberLevel = selectNewMemberLevel;
+window.submitNewMember = submitNewMember;
