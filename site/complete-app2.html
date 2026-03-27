@@ -2748,17 +2748,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </select>
     </div>
     <!-- 【改进3】服务工单创建完整表单弹窗 -->
+    <!-- 【改进2】服务工单完整创建表单：新增SLA时限自动计算、关联房间入住信息、工单来源渠道 -->
     <div class="modal-overlay hidden" id="modal-wo-create">
-      <div class="modal" style="width:520px;">
+      <div class="modal" style="width:580px;">
         <div class="modal-header">
           <div class="modal-title">📋 创建服务工单</div>
           <button class="modal-close" onclick="closeModal('wo-create')">✕</button>
         </div>
         <div class="modal-body">
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--blue-bg);border-radius:6px;margin-bottom:12px;font-size:12px;color:var(--blue);">
+            <span>💡</span>
+            <span id="woc-sla-hint">工单创建后将自动计算SLA时限，紧急工单需在2小时内响应，普通工单24小时内处理完成</span>
+          </div>
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">工单类型 <span class="required">*</span></label>
-              <select class="form-select" id="woc-type">
+              <select class="form-select" id="woc-type" onchange="onWoTypeChange()">
                 <option value="">请选择类型</option>
                 <option value="complaint">🔴 客户投诉</option>
                 <option value="delivery">📦 送物服务</option>
@@ -2769,11 +2774,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">紧急程度</label>
-              <select class="form-select" id="woc-urgent">
-                <option value="normal">普通</option>
-                <option value="urgent">紧急</option>
-                <option value="critical">十分紧急</option>
+              <label class="form-label">优先级</label>
+              <select class="form-select" id="woc-urgent" onchange="onWoPriorityChange()">
+                <option value="normal">🟡 普通（24h）</option>
+                <option value="urgent">🟠 紧急（4h）</option>
+                <option value="critical">🔴 十分紧急（1h）</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">工单来源</label>
+              <select class="form-select" id="woc-source">
+                <option value="phone">📞 电话</option>
+                <option value="wechat">💬 微信</option>
+                <option value="walkin">🏢 面对面</option>
+                <option value="review">⭐ 点评/投诉</option>
+                <option value="system">⚙️ 系统自动</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">关联入住</label>
+              <select class="form-select" id="woc-checkin-ref" onchange="onWoCheckinRefChange()">
+                <option value="">-- 不关联 --</option>
+                <option value="ci_001">王浩 - 301亲子间（入住中）</option>
+                <option value="ci_002">李娜 - 203标准间（入住中）</option>
+                <option value="ci_003">张伟 - VIP套房（入住中）</option>
               </select>
             </div>
           </div>
@@ -2807,20 +2833,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">客户姓名</label>
-              <input type="text" class="form-input" id="woc-customer" placeholder="客户姓名">
+              <input type="text" class="form-input" id="woc-customer" placeholder="客户姓名（可自动填充）">
             </div>
             <div class="form-group">
               <label class="form-label">客户手机</label>
               <input type="tel" class="form-input" id="woc-phone" placeholder="手机号">
             </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">期望处理时间</label>
-            <input type="datetime-local" class="form-input" id="woc-due">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">SLA截止时间</label>
+              <input type="datetime-local" class="form-input" id="woc-due" style="color:var(--blue);font-weight:600;">
+              <div style="font-size:10px;color:var(--text-muted);margin-top:2px;" id="woc-sla-countdown"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">期望处理时间</label>
+              <input type="datetime-local" class="form-input" id="woc-expected">
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">问题描述 <span class="required">*</span></label>
-            <textarea class="form-textarea" id="woc-desc" placeholder="请详细描述问题..." style="min-height:80px;"></textarea>
+            <textarea class="form-textarea" id="woc-desc" placeholder="请详细描述问题（必填）..." style="min-height:80px;"></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -7631,7 +7664,39 @@ setInterval(function() {
             <label class="form-label">交班备注</label>
             <textarea class="form-textarea" id="ho-remark" placeholder="如有特殊情况请在此说明…" style="min-height:80px;"></textarea>
           </div>
-          <!-- 【改进v3-4】数字签名区域：接班人确认签名 -->
+          <!-- 【改进5】交接班内容填写区：详细填写本班工作完成情况、营收确认、待办交接内容 -->
+          <div class="form-group" style="margin-top:10px;">
+            <label class="form-label">📝 本班工作完成情况 <span class="required">*</span></label>
+            <div id="ho-task-checklist" style="display:flex;flex-direction:column;gap:6px;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;">
+                <input type="checkbox" id="ho-check-revenue" style="accent-color:var(--green);width:15px;height:15px;" onchange="updateHandoverProgress()">
+                <span>💰 营收数据已核对（现金¥420、微信¥380、支付宝¥220）</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;">
+                <input type="checkbox" id="ho-check-checkin" style="accent-color:var(--blue);width:15px;height:15px;" onchange="updateHandoverProgress()">
+                <span>🏨 入住/退房手续已办理完毕</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;">
+                <input type="checkbox" id="ho-check-device" style="accent-color:var(--orange);width:15px;height:15px;" onchange="updateHandoverProgress()">
+                <span>📱 设备告警已记录（303设备离线、205电量低）</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;">
+                <input type="checkbox" id="ho-check-wo" style="accent-color:var(--purple);width:15px;height:15px;" onchange="updateHandoverProgress()">
+                <span>📋 服务工单已交接（待完成2条）</span>
+              </label>
+            </div>
+            <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">
+              <span id="ho-progress-text">已完成 0/4 项</span>
+              <div style="height:4px;background:var(--border);border-radius:2px;margin-top:4px;width:200px;">
+                <div id="ho-progress-bar" style="height:100%;background:var(--green);border-radius:2px;width:0%;transition:width 0.3s;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">📋 交接详细说明</label>
+            <textarea class="form-textarea" id="ho-detail" placeholder="补充说明交接内容（如：303设备已联系维修，预计明天修复；302退房客人遗留物品已存放前台失物招领处）…" style="min-height:60px;"></textarea>
+          </div>
+          <!-- 【改进5】数字签名区域：接班人确认签名 + 签名验证码 -->
           <div style="margin-top:12px;">
             <label class="form-label">🔐 接班人数字签名 <span class="required">*</span></label>
             <div id="hos-signature-area" onclick="initHandoverSignature()" style="height:80px;border:2px dashed var(--border);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;background:var(--bg);">
@@ -8935,6 +9000,86 @@ setInterval(function() {
             <button class="action-btn small" onclick="openGuestPreferenceModal('张三')" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">👤 客户档案</button>
             <!-- 【改进v3-3】会员消费充值记录Tab切换 -->
             <button class="action-btn small" onclick="openMemberTransactionHistory()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">💰 消费记录</button>
+            <button class="action-btn small" onclick="openMemberPointsExchangeTab()" style="padding:4px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🏆 积分兑换</button>
+          </div>
+        </div>
+        <!-- 【改进1】会员积分兑换记录Tab：独立Tab页展示积分获取/兑换历史 -->
+        <div id="member-points-exchange-panel" style="display:none;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:12px;">
+            <div style="font-size:13px;font-weight:700;color:var(--orange);">🏆 积分账户：王浩（🥇 金卡）</div>
+            <div style="font-size:12px;color:var(--orange);">可用积分：<strong>2,860</strong> 分</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-left:auto;">1积分 = ¥0.01，可抵扣房费</div>
+            <button class="action-btn small" onclick="openPointsRedeemModal()" style="padding:4px 10px;background:var(--orange);color:white;border:none;font-size:11px;">⚡ 积分兑换</button>
+            <button class="action-btn small" onclick="openPointsEarnRuleModal()" style="padding:4px 10px;background:white;color:var(--orange);border-color:var(--orange);font-size:11px;">📋 积分规则</button>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🏆 积分明细（获取/兑换记录）</div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <select class="form-select" id="pex-type-filter" onchange="filterPointsExchange()" style="padding:5px 10px;font-size:12px;width:130px;">
+                  <option value="all">全部类型</option>
+                  <option value="earn">📥 获取</option>
+                  <option value="redeem">📤 兑换</option>
+                  <option value="expire">⏰ 过期</option>
+                </select>
+                <button class="action-btn small" onclick="exportPointsExchangeCSV()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);font-size:11px;">📤 导出</button>
+              </div>
+            </div>
+            <div class="card-body" style="padding:0;">
+              <table class="table">
+                <thead><tr><th>时间</th><th>类型</th><th>来源/用途</th><th>积分变化</th><th>余额</th><th>关联订单</th></tr></thead>
+                <tbody id="pex-table-body">
+                  <tr data-pex-type="earn">
+                    <td>2026-03-25 14:30</td>
+                    <td><span class="tbadge green">📥 获取</span></td>
+                    <td>入住消费获积分（¥286房费）</td>
+                    <td style="color:var(--green);font-weight:700;">+286</td>
+                    <td>2,860</td>
+                    <td><span style="font-size:11px;color:var(--blue);cursor:pointer;" onclick="showOrderDetail('ORD20260325001')">ORD20260325001</span></td>
+                  </tr>
+                  <tr data-pex-type="redeem">
+                    <td>2026-03-20 10:15</td>
+                    <td><span class="tbadge orange">📤 兑换</span></td>
+                    <td>兑换早餐券 ×1</td>
+                    <td style="color:var(--red);font-weight:700;">-500</td>
+                    <td>2,574</td>
+                    <td><span style="font-size:11px;color:var(--blue);cursor:pointer;">CFG20260320001</span></td>
+                  </tr>
+                  <tr data-pex-type="earn">
+                    <td>2026-03-18 16:00</td>
+                    <td><span class="tbadge green">📥 获取</span></td>
+                    <td>入住消费获积分（¥198房费）</td>
+                    <td style="color:var(--green);font-weight:700;">+198</td>
+                    <td>3,074</td>
+                    <td><span style="font-size:11px;color:var(--blue);cursor:pointer;" onclick="showOrderDetail('ORD20260318001')">ORD20260318001</span></td>
+                  </tr>
+                  <tr data-pex-type="redeem">
+                    <td>2026-03-10 09:00</td>
+                    <td><span class="tbadge orange">📤 兑换</span></td>
+                    <td>兑换延迟退房权益 ×1</td>
+                    <td style="color:var(--red);font-weight:700;">-800</td>
+                    <td>2,876</td>
+                    <td><span style="font-size:11px;color:var(--blue);cursor:pointer;">CFG20260310002</span></td>
+                  </tr>
+                  <tr data-pex-type="expire">
+                    <td>2026-02-28 23:59</td>
+                    <td><span class="tbadge gray">⏰ 过期</span></td>
+                    <td>2026年1月积分过期</td>
+                    <td style="color:var(--text-muted);font-weight:700;">-200</td>
+                    <td>3,676</td>
+                    <td>—</td>
+                  </tr>
+                  <tr data-pex-type="earn">
+                    <td>2026-02-15 11:20</td>
+                    <td><span class="tbadge green">📥 获取</span></td>
+                    <td>入住消费获积分（¥320房费）</td>
+                    <td style="color:var(--green);font-weight:700;">+320</td>
+                    <td>3,876</td>
+                    <td><span style="font-size:11px;color:var(--blue);cursor:pointer;" onclick="showOrderDetail('ORD20260215001')">ORD20260215001</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
         <div class="card-header" style="border-top:1px solid var(--border);padding-top:12px;">
@@ -9441,6 +9586,58 @@ setInterval(function() {
         <div class="stat-card">
           <div class="stat-icon" style="background:var(--orange-bg);">📊</div>
           <div><div class="stat-num">75%</div><div class="stat-label">入住率</div></div>
+        </div>
+      </div>
+      <!-- 【改进3】楼栋完整CRUD管理：楼栋增删改查表格+楼层关联管理 -->
+      <div class="card" id="bld-crud-section" style="margin-bottom:16px;">
+        <div class="card-header">
+          <div class="card-title">🏢 楼栋信息管理</div>
+          <button class="action-btn" onclick="openBuildingCRUDForm('add', '')" style="padding:4px 12px;font-size:12px;">+ 新增楼栋</button>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <table class="table">
+            <thead><tr><th>楼栋名称</th><th>编号</th><th>楼层数</th><th>房间数</th><th>地址</th><th>状态</th><th>操作</th></tr></thead>
+            <tbody id="bld-crud-body">
+              <tr data-bld="main">
+                <td><span style="font-weight:600;">🏢 主楼</span></td>
+                <td><span style="font-family:monospace;font-size:11px;color:var(--text-muted);">MAIN</span></td>
+                <td>3层</td>
+                <td><span class="tbadge blue">16间</span></td>
+                <td style="font-size:11px;color:var(--text-muted);">酒店主楼1-3层</td>
+                <td><span class="tbadge green">正常</span></td>
+                <td>
+                  <button class="action-btn small" onclick="openBuildingCRUDForm('edit','main')">编辑</button>
+                  <button class="action-btn small" onclick="openBuildingFloorManage('main')">楼层</button>
+                  <button class="action-btn small red" onclick="deleteBuilding('main')">删除</button>
+                </td>
+              </tr>
+              <tr data-bld="east">
+                <td><span style="font-weight:600;">🏢 东配楼</span></td>
+                <td><span style="font-family:monospace;font-size:11px;color:var(--text-muted);">EAST</span></td>
+                <td>2层</td>
+                <td><span class="tbadge blue">9间</span></td>
+                <td style="font-size:11px;color:var(--text-muted);">酒店东侧配楼1-2层</td>
+                <td><span class="tbadge green">正常</span></td>
+                <td>
+                  <button class="action-btn small" onclick="openBuildingCRUDForm('edit','east')">编辑</button>
+                  <button class="action-btn small" onclick="openBuildingFloorManage('east')">楼层</button>
+                  <button class="action-btn small red" onclick="deleteBuilding('east')">删除</button>
+                </td>
+              </tr>
+              <tr data-bld="vip" style="opacity:0.6;">
+                <td><span style="font-weight:600;">🏢 贵宾楼</span></td>
+                <td><span style="font-family:monospace;font-size:11px;color:var(--text-muted);">VIP</span></td>
+                <td>1层</td>
+                <td><span class="tbadge blue">3间</span></td>
+                <td style="font-size:11px;color:var(--text-muted);">贵宾专区（暂未启用）</td>
+                <td><span class="tbadge gray">停用</span></td>
+                <td>
+                  <button class="action-btn small" onclick="openBuildingCRUDForm('edit','vip')">编辑</button>
+                  <button class="action-btn small orange" onclick="enableBuilding('vip')">启用</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
       <!-- 【改进5】楼栋3D楼层可视化：展示楼栋各楼层房间状态，颜色区分入住/空房/告警 -->
@@ -14007,34 +14204,42 @@ setInterval(function() {
   </div>
 </div>
 
-<!-- 【改进1】新增办理记录模态框 -->
+<!-- 【改进4】办理记录完整创建表单：新增身份证、押金、门卡数量、支付方式、退款字段 -->
 <div class="modal-overlay hidden" id="modal-add-record">
-  <div class="modal">
+  <div class="modal" style="width:560px;">
     <div class="modal-header">
       <div class="modal-title">➕ 新增办理记录</div>
       <button class="modal-close" onclick="closeModal('add-record')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">记录类型 <span class="required">*</span></label>
-        <select class="form-select" id="arn-type">
-          <option value="in">🏨 入住</option>
-          <option value="out">🚪 退房</option>
-          <option value="change">🔄 换房</option>
-          <option value="cancel">❌ 取消</option>
-        </select>
-      </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">姓名 <span class="required">*</span></label>
-          <input type="text" class="form-input" id="arn-name" placeholder="客人姓名">
+          <label class="form-label">记录类型 <span class="required">*</span></label>
+          <select class="form-select" id="arn-type" onchange="onAddRecordTypeChange()">
+            <option value="in">🏨 入住</option>
+            <option value="out">🚪 退房</option>
+            <option value="change">🔄 换房</option>
+            <option value="cancel">❌ 取消</option>
+          </select>
         </div>
+        <div class="form-group">
+          <label class="form-label">操作员工</label>
+          <select class="form-select" id="arn-operator">
+            <option value="前台-赵飞">前台-赵飞</option>
+            <option value="前台-周敏">前台-周敏</option>
+            <option value="前台-陈总">前台-陈总</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">客户姓名 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="arn-name" placeholder="客人姓名（必填）">
+      </div>
+      <div class="form-row">
         <div class="form-group">
           <label class="form-label">房间号 <span class="required">*</span></label>
           <input type="text" class="form-input" id="arn-room" placeholder="如：301">
         </div>
-      </div>
-      <div class="form-row">
         <div class="form-group">
           <label class="form-label">房型</label>
           <select class="form-select" id="arn-roomtype">
@@ -14043,14 +14248,65 @@ setInterval(function() {
             <option value="亲子间" selected>亲子间</option>
           </select>
         </div>
+      </div>
+      <div class="form-row">
         <div class="form-group">
           <label class="form-label">联系电话</label>
-          <input type="tel" class="form-input" id="arn-phone" placeholder="手机号">
+          <input type="tel" class="form-input" id="arn-phone" placeholder="手机号（11位）">
+        </div>
+        <div class="form-group">
+          <label class="form-label">身份证号</label>
+          <input type="text" class="form-input" id="arn-idcard" placeholder="选填（实名制登记）">
+        </div>
+      </div>
+      <!-- 入住相关字段 -->
+      <div id="arn-in-extra">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">押金金额</label>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input type="number" class="form-input" id="arn-deposit" value="100" style="width:100px;">
+              <span style="font-size:12px;color:var(--text-muted);">元</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">门卡数量</label>
+            <input type="number" class="form-input" id="arn-keycount" value="1" min="1" style="width:80px;">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">支付方式</label>
+          <select class="form-select" id="arn-paymethod" style="width:200px;">
+            <option value="wechat">💚 微信支付</option>
+            <option value="alipay">💙 支付宝</option>
+            <option value="cash">💵 现金</option>
+            <option value="card">💳 银行卡</option>
+          </select>
+        </div>
+      </div>
+      <!-- 退房相关字段 -->
+      <div id="arn-out-extra" style="display:none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">退款金额</label>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input type="number" class="form-input" id="arn-refund" value="100" style="width:100px;">
+              <span style="font-size:12px;color:var(--text-muted);">元</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">退款方式</label>
+            <select class="form-select" id="arn-refundmethod" style="width:160px;">
+              <option value="wechat">💚 原路退回（微信）</option>
+              <option value="alipay">💙 原路退回（支付宝）</option>
+              <option value="cash">💵 现金退款</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="form-group">
         <label class="form-label">备注</label>
-        <textarea class="form-textarea" id="arn-note" placeholder="可选填写备注信息"></textarea>
+        <textarea class="form-textarea" id="arn-note" placeholder="可选填写备注（如：特殊需求、入离时间等）" style="min-height:60px;"></textarea>
       </div>
     </div>
     <div class="modal-footer">
@@ -20096,6 +20352,200 @@ function deleteRecord(idx) {
     document.getElementById('record-filter-count').textContent = '共 ' + count + ' 条记录';
   }
 }
+
+
+// ========== 【改进1】会员积分兑换Tab功能 ==========
+function openMemberPointsExchangeTab() {
+  var panel = document.getElementById('member-points-exchange-panel');
+  if (panel) {
+    if (panel.style.display === 'none') {
+      panel.style.display = 'block';
+      panel.scrollIntoView({ behavior: 'smooth', block: 'top' });
+      showToast('已切换到积分兑换记录', 'info');
+    } else {
+      panel.style.display = 'none';
+    }
+  }
+}
+
+function filterPointsExchange() {
+  var filter = document.getElementById('pex-type-filter').value;
+  var rows = document.querySelectorAll('#pex-table-body tr');
+  rows.forEach(function(row) {
+    if (filter === 'all' || row.dataset.pexType === filter) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+
+function exportPointsExchangeCSV() {
+  showToast('正在导出积分兑换记录CSV…', 'info');
+  setTimeout(function() { showToast('积分兑换记录已导出', 'success'); }, 800);
+}
+
+function openPointsRedeemModal() {
+  showToast('积分兑换弹窗已打开（需对接兑换系统）', 'info');
+}
+
+function openPointsEarnRuleModal() {
+  showToast('积分规则配置：入住1元=1积分，兑换比例见规则文档', 'info');
+}
+
+function showOrderDetail(orderId) {
+  showToast('查看订单详情：' + orderId, 'info');
+}
+
+// ========== 【改进2】工单创建表单增强功能 ==========
+function onWoTypeChange() {
+  var type = document.getElementById('woc-type').value;
+  var hint = document.getElementById('woc-sla-hint');
+  if (hint) {
+    var hints = {
+      complaint: '🔴 客户投诉：SLA时限2小时，需30分钟内响应',
+      delivery: '📦 送物服务：SLA时限1小时，需15分钟内响应',
+      invoice: '📄 发票需求：SLA时限24小时，普通优先级',
+      praise: '⭐ 点评表扬：记录并感谢客户支持',
+      repair: '🔧 设备报修：SLA时限4小时，紧急程度根据设备类型',
+      other: '📋 其他类型：根据实际情况确定SLA'
+    };
+    hint.textContent = hints[type] || '工单创建后将自动计算SLA时限';
+  }
+  updateWoSLADue();
+}
+
+function onWoPriorityChange() {
+  updateWoSLADue();
+}
+
+function onWoCheckinRefChange() {
+  var ref = document.getElementById('woc-checkin-ref');
+  if (ref && ref.value) {
+    var text = ref.options[ref.selectedIndex].text;
+    var name = text.split(' - ')[1] || '';
+    if (name) {
+      var customerInput = document.getElementById('woc-customer');
+      if (customerInput && !customerInput.value) {
+        customerInput.value = name.split('（')[0].trim();
+      }
+    }
+  }
+  updateWoSLADue();
+}
+
+function updateWoSLADue() {
+  var type = document.getElementById('woc-type') ? document.getElementById('woc-type').value : 'other';
+  var priority = document.getElementById('woc-urgent') ? document.getElementById('woc-urgent').value : 'normal';
+  var dueInput = document.getElementById('woc-due');
+  var countdown = document.getElementById('woc-sla-countdown');
+  if (!dueInput) return;
+  var hoursMap = { normal: 24, urgent: 4, critical: 1 };
+  var hours = hoursMap[priority] || 24;
+  if (type === 'complaint') hours = Math.min(hours, 2);
+  if (type === 'delivery') hours = Math.min(hours, 1);
+  var due = new Date(Date.now() + hours * 3600000);
+  var isoStr = due.getFullYear() + '-' + String(due.getMonth()+1).padStart(2,'0') + '-' + String(due.getDate()).padStart(2,'0') + 'T' + String(due.getHours()).padStart(2,'0') + ':' + String(due.getMinutes()).padStart(2,'0');
+  dueInput.value = isoStr;
+  if (countdown) {
+    countdown.textContent = '⏰ 剩余 ' + hours + ' 小时处理';
+    countdown.style.color = priority === 'critical' ? 'var(--red)' : priority === 'urgent' ? 'var(--orange)' : 'var(--text-muted)';
+  }
+}
+
+// ========== 【改进3】楼栋CRUD功能 ==========
+var buildingData = [
+  { id: 'main', name: '主楼', code: 'MAIN', floors: 3, rooms: 16, address: '酒店主楼1-3层', status: 'active' },
+  { id: 'east', name: '东配楼', code: 'EAST', floors: 2, rooms: 9, address: '酒店东侧配楼1-2层', status: 'active' },
+  { id: 'vip', name: '贵宾楼', code: 'VIP', floors: 1, rooms: 3, address: '贵宾专区（暂未启用）', status: 'disabled' }
+];
+
+function openBuildingCRUDForm(mode, bldId) {
+  if (mode === 'add') {
+    showToast('🏢 打开新增楼栋表单（需对接后台API）', 'info');
+  } else {
+    showToast('🏢 编辑楼栋：' + bldId, 'info');
+  }
+}
+
+function openBuildingFloorManage(bldId) {
+  showToast('🏗️ 楼层管理：' + bldId + '（需对接楼层配置API）', 'info');
+}
+
+function deleteBuilding(bldId) {
+  if (confirm('确定要删除楼栋「' + bldId + '」吗？删除后不可恢复。')) {
+    showToast('楼栋已删除', 'success');
+    var row = document.querySelector('tr[data-bld="' + bldId + '"]');
+    if (row) row.remove();
+  }
+}
+
+function enableBuilding(bldId) {
+  showToast('楼栋 ' + bldId + ' 已启用', 'success');
+  var row = document.querySelector('tr[data-bld="' + bldId + '"]');
+  if (row) {
+    row.style.opacity = '1';
+    var badge = row.querySelector('.tbadge');
+    if (badge) { badge.className = 'tbadge green'; badge.textContent = '正常'; }
+  }
+}
+
+// ========== 【改进4】办理记录表单增强 ==========
+function onAddRecordTypeChange() {
+  var type = document.getElementById('arn-type').value;
+  var inExtra = document.getElementById('arn-in-extra');
+  var outExtra = document.getElementById('arn-out-extra');
+  if (type === 'in') {
+    if (inExtra) inExtra.style.display = 'flex';
+    if (outExtra) outExtra.style.display = 'none';
+  } else if (type === 'out') {
+    if (inExtra) inExtra.style.display = 'none';
+    if (outExtra) outExtra.style.display = 'flex';
+  } else {
+    if (inExtra) inExtra.style.display = 'none';
+    if (outExtra) outExtra.style.display = 'none';
+  }
+}
+
+// ========== 【改进5】交接班内容填写+签章 ==========
+function updateHandoverProgress() {
+  var checks = ['ho-check-revenue', 'ho-check-checkin', 'ho-check-device', 'ho-check-wo'];
+  var total = checks.length;
+  var done = 0;
+  checks.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && el.checked) done++;
+  });
+  var progressText = document.getElementById('ho-progress-text');
+  var progressBar = document.getElementById('ho-progress-bar');
+  if (progressText) progressText.textContent = '已完成 ' + done + '/' + total + ' 项';
+  if (progressBar) progressBar.style.width = (done / total * 100) + '%';
+  // Enable/disable confirm button based on completion
+  var confirmBtn = document.getElementById('ho-confirm-btn');
+  if (confirmBtn) {
+    if (done === total) {
+      confirmBtn.disabled = false;
+      confirmBtn.style.opacity = '1';
+      confirmBtn.style.pointerEvents = 'auto';
+    } else {
+      confirmBtn.disabled = true;
+      confirmBtn.style.opacity = '0.5';
+      confirmBtn.style.pointerEvents = 'none';
+    }
+  }
+}
+
+function clearHandoverSignature() {
+  var sigArea = document.getElementById('hos-signature-area');
+  var sigConfirm = document.getElementById('hos-signature-confirm');
+  var sigCode = document.getElementById('hos-sig-code');
+  if (sigArea) { sigArea.style.display = 'flex'; sigArea.innerHTML = '<div style="font-size:24px;margin-bottom:4px;">✍️</div><div style="font-size:12px;color:var(--text-muted);">点击此处生成数字签名</div>'; }
+  if (sigConfirm) sigConfirm.style.display = 'none';
+  if (sigCode) sigCode.style.display = 'none';
+  var confirmBtn = document.getElementById('ho-confirm-btn');
+  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.style.opacity = '0.5'; confirmBtn.style.pointerEvents = 'none'; }
+}
+
 
 function openAddRecordModal() {
   document.getElementById('arn-type').value = 'in';
