@@ -3493,7 +3493,325 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       closeModal('building-detail');
       openEditBuildingModal(currentBldDetailIdx);
     }
-    </script>
+    // 【改进v3-1】楼栋能耗阈值配置相关函数
+    var buildingEnergyThreshold = {
+      main: { dailyKwh: 5.0, alertRatio: 0.8, actualAvg: 3.2, status: 'normal', trend: [3.2,2.9,3.6,4.4,4.8,2.8,2.4] },
+      east: { dailyKwh: 4.0, alertRatio: 0.8, actualAvg: 2.1, status: 'normal', trend: [2.1,1.9,2.3,2.5,2.0,1.8,1.9] }
+    };
+    function renderBuildingEnergyThreshold() {
+      var bld = document.getElementById('bld-energy-bld-select').value;
+      var data = buildingEnergyThreshold[bld];
+      if (!data) return;
+      var threshold = data.dailyKwh * data.alertRatio;
+      var status = data.actualAvg > threshold ? (data.actualAvg > data.dailyKwh ? '超标' : '偏高') : '正常';
+      var statusColor = data.actualAvg > threshold ? (data.actualAvg > data.dailyKwh ? 'var(--red)' : 'var(--orange)') : 'var(--green)';
+      var statusBg = data.actualAvg > threshold ? (data.actualAvg > data.dailyKwh ? 'var(--red-bg)' : 'var(--orange-bg)') : 'var(--green-bg)';
+      document.getElementById('bet-daily-threshold').textContent = data.dailyKwh.toFixed(1);
+      document.getElementById('bet-alert-ratio').textContent = Math.round(data.alertRatio * 100) + '%';
+      document.getElementById('bet-actual-avg').textContent = data.actualAvg.toFixed(1);
+      document.getElementById('bet-alert-status').textContent = status === '正常' ? '✅ 正常' : (status === '偏高' ? '⚠️ 偏高' : '🚨 超标');
+      document.getElementById('bet-alert-status').parentElement.style.background = statusBg;
+      document.getElementById('bet-alert-status').style.color = statusColor;
+      renderBuildingEnergyTrend();
+    }
+    function renderBuildingEnergyTrend() {
+      var bld = document.getElementById('bld-energy-bld-select').value;
+      var days = parseInt(document.getElementById('bet-trend-range').value) || 7;
+      var data = buildingEnergyThreshold[bld];
+      if (!data) return;
+      var chart = document.getElementById('bet-trend-chart');
+      if (!chart) return;
+      var trend = data.trend.slice(-days);
+      var max = Math.max.apply(null, trend) * 1.2;
+      var today = new Date();
+      var html = '';
+      trend.forEach(function(v, i) {
+        var h = Math.round((v / max) * 70) + 10;
+        var color = v > data.dailyKwh ? 'var(--red)' : v > data.dailyKwh * data.alertRatio ? 'var(--orange)' : 'var(--blue)';
+        var d = new Date(today);
+        d.setDate(d.getDate() - (trend.length - 1 - i));
+        var dateStr = (d.getMonth() + 1) + '-' + String(d.getDate()).padStart(2, '0');
+        html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;"><div style="width:100%;background:' + color + ';border-radius:3px 3px 0 0;height:' + h + 'px;"></div><div style="font-size:9px;color:var(--text-muted);">' + dateStr + '</div></div>';
+      });
+      chart.innerHTML = html;
+    }
+    function openBuildingEnergyThresholdModal() {
+      var bld = document.getElementById('bld-energy-bld-select').value;
+      var data = buildingEnergyThreshold[bld];
+      if (!data) return;
+      var bldName = bld === 'main' ? '主楼' : '东配楼';
+      var html = '<div class="modal-overlay" id="modal-bld-energy-threshold" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+      html += '<div class="modal" style="width:440px;">';
+      html += '<div class="modal-header"><div class="modal-title">⚡ ' + bldName + ' 能耗阈值配置</div><button class="modal-close" onclick="closeModal(\'bld-energy-threshold\')">✕</button></div>';
+      html += '<div class="modal-body">';
+      html += '<div class="form-group"><label class="form-label">日均能耗阈值(kWh) <span class="required">*</span></label>';
+      html += '<input type="number" class="form-input" id="betm-daily" value="' + data.dailyKwh + '" step="0.1" min="0.5" max="50" style="padding:8px 12px;font-size:14px;">';
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">超过此值判定为异常耗电</div></div>';
+      html += '<div class="form-group"><label class="form-label">告警触发比例</label>';
+      html += '<div style="display:flex;align-items:center;gap:10px;">';
+      html += '<input type="range" id="betm-ratio" min="50" max="100" value="' + Math.round(data.alertRatio * 100) + '" style="flex:1;accent-color:var(--blue);" oninput="document.getElementById(\'betm-ratio-val\').textContent = this.value + \'%\'">';
+      html += '<span id="betm-ratio-val" style="font-weight:700;color:var(--blue);min-width:45px;">' + Math.round(data.alertRatio * 100) + '%</span></div>';
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">达到阈值百分比时发送预警通知</div></div>';
+      html += '<div class="form-group"><label class="form-label">告警通知方式</label>';
+      html += '<div style="display:flex;flex-direction:column;gap:8px;padding:8px 0;">';
+      html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;"><input type="checkbox" id="betm-notify-feishu" checked style="accent-color:var(--blue);width:16px;height:16px;"> 📲 飞书通知管理员</label>';
+      html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;"><input type="checkbox" id="betm-notify-sms" style="accent-color:var(--blue);width:16px;height:16px;"> 📱 短信通知</label>';
+      html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;"><input type="checkbox" id="betm-notify-email" checked style="accent-color:var(--blue);width:16px;height:16px;"> 📧 邮件通知</label></div></div>';
+      html += '</div>';
+      html += '<div class="modal-footer">';
+      html += '<button class="modal-btn secondary" onclick="closeModal(\'bld-energy-threshold\')">取消</button>';
+      html += '<button class="modal-btn primary" onclick="saveBuildingEnergyThreshold(\'' + bld + '\')">💾 保存配置</button>';
+      html += '</div></div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function saveBuildingEnergyThreshold(bld) {
+      var daily = parseFloat(document.getElementById('betm-daily').value) || 5.0;
+      var ratio = parseInt(document.getElementById('betm-ratio').value) / 100;
+      buildingEnergyThreshold[bld] = Object.assign({}, buildingEnergyThreshold[bld], { dailyKwh: daily, alertRatio: ratio });
+      closeModal('bld-energy-threshold');
+      renderBuildingEnergyThreshold();
+      showToast('✅ ' + (bld === 'main' ? '主楼' : '东配楼') + ' 能耗阈值配置已保存', 'success');
+    }
+
+// 【改进v3-3】楼层房间批量维护状态设置弹窗
+var batchMaintSelectedRooms = [];
+
+function openBatchRoomMaintenanceModal() {
+  var currentFloor = parseInt(document.querySelector('.floor-chip.active') ? document.querySelector('.floor-chip.active').textContent : '3') || 3;
+  var bld = document.getElementById('bld-selector') ? document.getElementById('bld-selector').value : 'main';
+  var rooms = [
+    { num: '301', type: '亲子间', status: 'in' },
+    { num: '302', type: '亲子间', status: 'empty' },
+    { num: '303', type: '亲子间', status: 'alert' },
+    { num: '304', type: '亲子间', status: 'empty' },
+    { num: '305', type: '亲子间', status: 'maintenance' },
+    { num: '306', type: '亲子间', status: 'in' },
+    { num: '307', type: '亲子间', status: 'empty' },
+    { num: '308', type: '亲子间', status: 'maintenance' }
+  ];
+  var html = '<div class="modal-overlay" id="modal-batch-maint" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:580px;">';
+  html += '<div class="modal-header"><div class="modal-title">🔧 批量设置房间维护状态</div><button class="modal-close" onclick="closeModal(\'batch-maint\')">✕</button></div>';
+  html += '<div class="modal-body" style="max-height:420px;overflow-y:auto;">';
+  html += '<div style="padding:8px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:12px;font-size:12px;color:var(--blue);">';
+  html += '💡 选择要设置维护状态的房间，可多选。选择后设置统一的目标状态。</div>';
+  html += '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">';
+  html += '<span style="font-size:12px;color:var(--text-muted);">批量选择：</span>';
+  html += '<button class="action-btn small" onclick="bmmSelectAll(rooms)" style="padding:3px 8px;font-size:11px;">全选</button>';
+  html += '<button class="action-btn small" onclick="bmmSelectFloor()" style="padding:3px 8px;font-size:11px;">选中同状态</button>';
+  html += '<button class="action-btn small" onclick="bmmClearAll()" style="padding:3px 8px;font-size:11px;">清空</button>';
+  html += '<span style="margin-left:auto;font-size:12px;color:var(--blue);font-weight:600;">已选：<span id="bmm-count">0</span>间</span>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;" id="bmm-room-grid">';
+  rooms.forEach(function(r, i) {
+    var statusColor = r.status === 'in' ? 'var(--blue)' : r.status === 'empty' ? 'var(--green)' : r.status === 'alert' ? 'var(--red)' : 'var(--orange)';
+    var statusBg = r.status === 'in' ? 'var(--blue-bg)' : r.status === 'empty' ? 'var(--green-bg)' : r.status === 'alert' ? 'var(--red-bg)' : 'var(--orange-bg)';
+    html += '<div class="bmm-room-item" data-num="' + r.num + '" data-status="' + r.status + '" onclick="toggleBmmRoom(this)" style="padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;">';
+    html += '<div style="font-size:14px;font-weight:700;">' + r.num + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);">' + r.type + '</div>';
+    html += '<div style="margin-top:4px;"><span class="tbadge" style="font-size:10px;background:' + statusBg + ';color:' + statusColor + ';">' + (r.status === 'in' ? '入住' : r.status === 'empty' ? '空房' : r.status === 'alert' ? '告警' : '维护') + '</span></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  html += '<div class="form-group"><label class="form-label">批量设置为</label>';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+  html += '<button class="action-btn small" id="bmm-btn-in" onclick="setBmmTargetStatus(\'in\',this)" style="padding:6px 12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🏨 入住</button>';
+  html += '<button class="action-btn small" id="bmm-btn-empty" onclick="setBmmTargetStatus(\'empty\',this)" style="padding:6px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🏠 空房</button>';
+  html += '<button class="action-btn small" id="bmm-btn-maintenance" onclick="setBmmTargetStatus(\'maintenance\',this)" style="padding:6px 12px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔧 维护中</button>';
+  html += '<button class="action-btn small" id="bmm-btn-alert" onclick="setBmmTargetStatus(\'alert\',this)" style="padding:6px 12px;background:var(--red-bg);color:var(--red);border-color:var(--red);">⚠️ 告警</button>';
+  html += '</div></div>';
+  html += '<div class="form-group" style="margin-top:8px;"><label class="form-label">维护原因</label>';
+  html += '<select class="form-select" id="bmm-reason" style="width:100%;padding:6px 10px;">';
+  html += '<option value="cleaning">🧹 清洁维护</option>';
+  html += '<option value="repair">🔧 设备维修</option>';
+  html += '<option value="renovation">🏗️ 装修翻新</option>';
+  html += '<option value="inspection">🔍 例行检查</option>';
+  html += '<option value="other">📋 其他原因</option>';
+  html += '</select></div>';
+  html += '<div class="form-group" style="margin-top:8px;"><label class="form-label">预计完成时间</label>';
+  html += '<input type="date" class="form-input" id="bmm-est-time" style="width:100%;padding:6px 10px;"></div>';
+  html += '<div class="form-group" style="margin-top:8px;"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">';
+  html += '<input type="checkbox" id="bmm-notify-staff" checked style="accent-color:var(--blue);width:16px;height:16px;">';
+  html += '通知客房服务人员</label></div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="closeModal(\'batch-maint\')">取消</button>';
+  html += '<button class="modal-btn primary" id="bmm-submit-btn" onclick="submitBatchRoomMaintenance()" style="opacity:0.5;pointer-events:none;background:var(--blue);color:white;border:none;">确认设置</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  window._bmmRooms = rooms;
+  window._bmmTargetStatus = null;
+}
+
+function toggleBmmRoom(el) {
+  var num = el.dataset.num;
+  var idx = batchMaintSelectedRooms.indexOf(num);
+  if (idx >= 0) {
+    batchMaintSelectedRooms.splice(idx, 1);
+    el.style.borderColor = 'var(--border)';
+    el.style.background = '';
+  } else {
+    batchMaintSelectedRooms.push(num);
+    el.style.borderColor = 'var(--blue)';
+    el.style.background = 'var(--blue-bg)';
+  }
+  document.getElementById('bmm-count').textContent = batchMaintSelectedRooms.length;
+  updateBmmSubmitBtn();
+}
+
+function bmmSelectAll(rooms) {
+  batchMaintSelectedRooms = rooms.map(function(r) { return r.num; });
+  document.querySelectorAll('.bmm-room-item').forEach(function(el) {
+    el.style.borderColor = 'var(--blue)';
+    el.style.background = 'var(--blue-bg)';
+  });
+  document.getElementById('bmm-count').textContent = batchMaintSelectedRooms.length;
+  updateBmmSubmitBtn();
+}
+
+function bmmClearAll() {
+  batchMaintSelectedRooms = [];
+  document.querySelectorAll('.bmm-room-item').forEach(function(el) {
+    el.style.borderColor = 'var(--border)';
+    el.style.background = '';
+  });
+  document.getElementById('bmm-count').textContent = '0';
+  updateBmmSubmitBtn();
+}
+
+function setBmmTargetStatus(status, btn) {
+  window._bmmTargetStatus = status;
+  document.querySelectorAll('[id^="bmm-btn-"]').forEach(function(b) {
+    b.style.opacity = '0.5';
+    b.style.borderWidth = '1px';
+  });
+  btn.style.opacity = '1';
+  btn.style.borderWidth = '2px';
+  updateBmmSubmitBtn();
+}
+
+function updateBmmSubmitBtn() {
+  var btn = document.getElementById('bmm-submit-btn');
+  if (!btn) return;
+  if (batchMaintSelectedRooms.length > 0 && window._bmmTargetStatus) {
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+  } else {
+    btn.style.opacity = '0.5';
+    btn.style.pointerEvents = 'none';
+  }
+}
+
+function submitBatchRoomMaintenance() {
+  if (batchMaintSelectedRooms.length === 0) { showToast('请先选择要设置的房间', 'error'); return; }
+  if (!window._bmmTargetStatus) { showToast('请选择目标状态', 'error'); return; }
+  var reason = document.getElementById('bmm-reason').value;
+  var estTime = document.getElementById('bmm-est-time').value;
+  var notifyStaff = document.getElementById('bmm-notify-staff').checked;
+  var statusMap = { in: '入住', empty: '空房', maintenance: '维护中', alert: '告警' };
+  closeModal('batch-maint');
+  showToast('✅ 已为 ' + batchMaintSelectedRooms.length + ' 间房间设置为"' + statusMap[window._bmmTargetStatus] + '"状态' + (notifyStaff ? '，已通知服务人员' : ''), 'success');
+  batchMaintSelectedRooms = [];
+  window._bmmTargetStatus = null;
+}
+
+// 【改进v3-5】会员积分余额预警系统JS函数
+window.memberPointsThreshold = 500;
+window.memberPointsAlertEnabled = true;
+var memberBalanceAlertList = [
+  { name: '王五', phone: '137****5555', level: '银卡', points: 120, lastConsume: '2026-03-20', alert: true },
+  { name: '钱八', phone: '136****8888', level: '普通', points: 280, lastConsume: '2026-03-15', alert: true },
+  { name: '孙九', phone: '135****9999', level: '银卡', points: 450, lastConsume: '2026-03-22', alert: true }
+];
+
+function openMemberBalanceAlertConfig() {
+  var html = '<div class="modal-overlay" id="modal-mb-alert-config" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:460px;">';
+  html += '<div class="modal-header"><div class="modal-title">⚙️ 会员积分余额预警配置</div><button class="modal-close" onclick="closeModal(\'mb-alert-config\')">✕</button></div>';
+  html += '<div class="modal-body">';
+  html += '<div style="padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--blue);">';
+  html += '💡 当会员积分余额低于设定阈值时，系统将自动预警并通知相关人员</div>';
+  html += '<div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;margin-bottom:12px;">';
+  html += '<input type="checkbox" id="mbalert-enabled" ' + (window.memberPointsAlertEnabled ? 'checked' : '') + ' onchange="window.memberPointsAlertEnabled = this.checked" style="accent-color:var(--blue);width:16px;height:16px;">';
+  html += '启用积分余额预警功能</label></div>';
+  html += '<div class="form-group"><label class="form-label">积分余额预警阈值</label>';
+  html += '<div style="display:flex;align-items:center;gap:10px;">';
+  html += '<input type="range" id="mbalert-threshold-range" min="100" max="2000" step="50" value="' + window.memberPointsThreshold + '" style="flex:1;accent-color:var(--blue);" oninput="document.getElementById(\'mbalert-threshold-val\').textContent = this.value">';
+  html += '<span id="mbalert-threshold-val" style="font-weight:700;color:var(--blue);min-width:50px;">' + window.memberPointsThreshold + '</span></div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">会员积分低于此值时触发预警</div></div>';
+  html += '<div class="form-group"><label class="form-label">通知方式</label>';
+  html += '<div style="display:flex;flex-direction:column;gap:8px;padding:6px 0;">';
+  html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;"><input type="checkbox" id="mbalert-notify-feishu" checked style="accent-color:var(--blue);width:15px;height:15px;"> 📲 飞书通知管理员</label>';
+  html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;"><input type="checkbox" id="mbalert-notify-staff" checked style="accent-color:var(--blue);width:15px;height:15px;"> 📱 短信通知会员</label>';
+  html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;"><input type="checkbox" id="mbalert-show-badge" checked style="accent-color:var(--blue);width:15px;height:15px;"> 🏷️ 会员列表显示预警标识</label></div></div>';
+  html += '<div class="form-group"><label class="form-label">自动提醒周期</label>';
+  html += '<select class="form-select" id="mbalert-cycle" style="width:100%;padding:6px 10px;">';
+  html += '<option value="7">积分不足时立即通知，之后每7天提醒一次</option>';
+  html += '<option value="14">积分不足时立即通知，之后每14天提醒一次</option>';
+  html += '<option value="30">积分不足时仅通知一次</option>';
+  html += '</select></div>';
+  html += '<div style="padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-top:8px;">';
+  html += '<div style="font-size:12px;color:var(--orange);font-weight:600;margin-bottom:4px;">⚠️ 当前预警名单（共 ' + memberBalanceAlertList.length + ' 人）</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);">' + memberBalanceAlertList.map(function(m) { return m.name + '(' + m.points + '积分)'; }).join('、') + '</div></div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="closeModal(\'mb-alert-config\')">取消</button>';
+  html += '<button class="modal-btn primary" onclick="saveMemberBalanceAlertConfig()" style="background:var(--blue);color:white;border:none;">💾 保存配置</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function saveMemberBalanceAlertConfig() {
+  window.memberPointsThreshold = parseInt(document.getElementById('mbalert-threshold-range').value);
+  window.memberPointsAlertEnabled = document.getElementById('mbalert-enabled').checked;
+  closeModal('mb-alert-config');
+  // 更新预警卡片中的阈值显示
+  document.querySelectorAll('.card-title').forEach(function(el) {
+    if (el.textContent.includes('积分余额预警名单')) {
+      el.innerHTML = el.innerHTML.replace(/\d+ 积分/, window.memberPointsThreshold + ' 积分');
+    }
+  });
+  // 更新预警人数统计
+  var lowMembers = memberBalanceAlertList.filter(function(m) { return m.points < window.memberPointsThreshold; });
+  var countEl = document.getElementById('mba-low-count');
+  if (countEl) countEl.textContent = lowMembers.length;
+  showToast('✅ 预警配置已保存，阈值：' + window.memberPointsThreshold + ' 积分', 'success');
+}
+
+function showLowBalanceMemberList() {
+  var card = document.getElementById('mba-low-balance-card');
+  card.style.display = 'block';
+  var list = document.getElementById('mba-low-balance-list');
+  var lowMembers = memberBalanceAlertList.filter(function(m) { return m.points < window.memberPointsThreshold; });
+  if (lowMembers.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">暂无低于阈值的会员</div>';
+    return;
+  }
+  var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+  lowMembers.forEach(function(m) {
+    var levelColor = m.level === 'VIP' ? 'var(--purple)' : m.level === '金卡' ? 'var(--orange)' : m.level === '银卡' ? 'var(--blue)' : 'var(--text-muted)';
+    var levelBg = m.level === 'VIP' ? 'var(--purple-bg)' : m.level === '金卡' ? 'var(--orange-bg)' : m.level === '银卡' ? 'var(--blue-bg)' : 'var(--bg)';
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (m.points < 200 ? 'var(--red-bg)' : 'var(--orange-bg)') + ';border-radius:8px;border:1px solid ' + (m.points < 200 ? 'var(--red)' : 'var(--orange)') + ';">';
+    html += '<div style="flex:1;">';
+    html += '<div style="font-size:13px;font-weight:600;">' + m.name + ' <span class="tbadge" style="font-size:10px;background:' + levelBg + ';color:' + levelColor + ';">' + m.level + '</span></div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + m.phone + ' · 上次消费：' + m.lastConsume + '</div></div>';
+    html += '<div style="text-align:right;"><div style="font-size:18px;font-weight:700;color:' + (m.points < 200 ? 'var(--red)' : 'var(--orange)') + ';">' + m.points + '</div><div style="font-size:10px;color:var(--text-muted);">积分</div></div>';
+    html += '<button class="action-btn small" onclick="openMemberRechargeModalV3(-1)" style="padding:4px 8px;background:var(--orange);color:white;border:none;font-size:11px;">充值</button>';
+    html += '</div>';
+  });
+  html += '</div>';
+  list.innerHTML = html;
+}
+
+// 初始化会员预警数据（每5分钟自动检测）
+setInterval(function() {
+  if (window.memberPointsAlertEnabled) {
+    var lowMembers = memberBalanceAlertList.filter(function(m) { return m.points < window.memberPointsThreshold; });
+    var countEl = document.getElementById('mba-low-count');
+    if (countEl) countEl.textContent = lowMembers.length;
+  }
+}, 300000); // 每5分钟
+
 
     <!-- 【改进v3-2】会员余额充值完整弹窗（充值+积分+历史记录+支付方式） -->
     <div class="modal-overlay hidden" id="modal-member-recharge-v3">
@@ -4273,6 +4591,70 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       document.getElementById('ho-receive-time').textContent = new Date().toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\//g,'-');
       closeModal('handover-sign');
       showToast('✅ 交班已确认，接班人：' + receiver, 'success');
+    }
+    // 【改进v3-4】交接班数字签名增强函数
+    var handoverSignedName = '';
+    var handoverSignedTime = '';
+    function onHandoverSignerChange() {
+      var signer = document.getElementById('ho-signer');
+      clearHandoverSignature();
+    }
+    function initHandoverSignature() {
+      var signer = document.getElementById('ho-signer');
+      if (!signer || !signer.value) { showToast('请先选择接班人', 'error'); return; }
+      handoverSignedName = signer.options[signer.selectedIndex].text.split('（')[0];
+      handoverSignedTime = new Date().toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/\//g,'-');
+      document.getElementById('hos-signed-name').textContent = '已签名：' + handoverSignedName;
+      document.getElementById('hos-signed-time').textContent = '签名时间：' + handoverSignedTime;
+      document.getElementById('hos-signature-display').textContent = handoverSignedName;
+      document.getElementById('hos-signature-code').textContent = 'SIG-' + Math.random().toString(36).substr(2, 8).toUpperCase();
+      document.getElementById('hos-signature-area').style.display = 'none';
+      document.getElementById('hos-signature-confirm').style.display = 'block';
+      document.getElementById('hos-sig-code').style.display = 'block';
+      onHandoverCheckChange();
+    }
+    function clearHandoverSignature() {
+      handoverSignedName = '';
+      handoverSignedTime = '';
+      document.getElementById('hos-signature-area').style.display = 'flex';
+      document.getElementById('hos-signature-confirm').style.display = 'none';
+      document.getElementById('hos-sig-code').style.display = 'none';
+      onHandoverCheckChange();
+    }
+    function onHandoverCheckChange() {
+      var check = document.getElementById('ho-confirm-check');
+      var btn = document.getElementById('ho-confirm-btn');
+      if (!btn) return;
+      if (check && check.checked && handoverSignedName) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.pointerEvents = 'auto';
+      } else {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.pointerEvents = 'none';
+      }
+    }
+    function confirmHandoverWithSignature() {
+      var signer = document.getElementById('ho-signer');
+      var confirmCheck = document.getElementById('ho-confirm-check');
+      if (!signer || !signer.value) { showToast('请选择接班人', 'error'); return; }
+      if (!handoverSignedName) { showToast('请先完成数字签名', 'error'); return; }
+      if (!confirmCheck.checked) { showToast('请勾选确认协议', 'error'); return; }
+      var sigCode = document.getElementById('hos-signature-code').textContent;
+      var receiver = signer.value;
+      document.getElementById('ho-receiver').textContent = receiver + ' ✅已签名';
+      document.getElementById('ho-receive-time').textContent = handoverSignedTime;
+      // 签名记录
+      if (!window.handoverSignHistory) window.handoverSignHistory = [];
+      window.handoverSignHistory.push({
+        signer: handoverSignedName, receiver: receiver, time: handoverSignedTime,
+        sigCode: sigCode, remark: document.getElementById('ho-remark').value
+      });
+      closeModal('handover-sign');
+      showToast('✅ 交班已确认！签名验证码：' + sigCode, 'success');
+      handoverSignedName = '';
+      handoverSignedTime = '';
     }
     function exportHandoverReport() {
       var shift = document.getElementById('handover-shift-select') ? document.getElementById('handover-shift-select').value : 'morning';
@@ -5828,6 +6210,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <div style="display:flex;gap:8px;align-items:center;">
             <!-- 【改进5】工单自动派发规则配置入口 -->
             <button class="action-btn" onclick="openWorkorderAutoRuleModal()" style="padding:4px 10px;font-size:11px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⚙️ 自动派发</button>
+            <!-- 【改进v3-2】工单超时自动移交入口 -->
+            <button class="action-btn" onclick="checkWorkorderTimeoutAndTransfer()" style="padding:4px 10px;font-size:11px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">⏰ 超时移交</button>
+            <button class="action-btn" onclick="openWoTimeoutHistoryModal()" style="padding:4px 10px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📋 移交记录</button>
             <!-- 【新增改进】工单自动派发规则配置弹窗 -->
             <div class="modal-overlay hidden" id="modal-wo-auto-rule">
               <div class="modal" style="width:560px;">
@@ -6683,36 +7068,77 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 
     <!-- 交接班确认弹窗 -->
     <div class="modal-overlay hidden" id="modal-handover-sign">
-      <div class="modal" style="width:420px;">
+      <div class="modal" style="width:480px;">
         <div class="modal-header">
-          <div class="modal-title">✍️ 交接班确认</div>
+          <div class="modal-title">✍️ 交接班确认（数字签名版）</div>
           <button class="modal-close" onclick="closeModal('handover-sign')">✕</button>
         </div>
         <div class="modal-body">
           <div style="padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;font-size:13px;color:var(--blue);">
-            📋 请确认本班工作已完成，营收数据准确，待办事项已交接给下一班
+            📋 请确认本班工作已完成，营收数据准确，待办事项已交接给下一班。签名确认后具有法律效力。
+          </div>
+          <!-- 交班统计摘要 -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+            <div style="padding:8px;background:var(--green-bg);border-radius:6px;text-align:center;">
+              <div style="font-size:18px;font-weight:700;color:var(--green);" id="hos-revenue">¥1,420</div>
+              <div style="font-size:10px;color:var(--text-muted);">本班营收</div>
+            </div>
+            <div style="padding:8px;background:var(--blue-bg);border-radius:6px;text-align:center;">
+              <div style="font-size:18px;font-weight:700;color:var(--blue);" id="hos-checkin">5</div>
+              <div style="font-size:10px;color:var(--text-muted);">入住/退房</div>
+            </div>
+            <div style="padding:8px;background:var(--orange-bg);border-radius:6px;text-align:center;">
+              <div style="font-size:18px;font-weight:700;color:var(--orange);" id="hos-pending">2</div>
+              <div style="font-size:10px;color:var(--text-muted);">待办工单</div>
+            </div>
           </div>
           <div class="form-group">
-            <label class="form-label">接班人</label>
-            <select class="form-select" id="ho-signer">
+            <label class="form-label">接班人 <span class="required">*</span></label>
+            <select class="form-select" id="ho-signer" onchange="onHandoverSignerChange()">
               <option value="">请选择接班人</option>
               <option value="周敏">周敏（前厅接待）</option>
               <option value="吴倩">吴倩（客房主管）</option>
               <option value="郑强">郑强（清洁人员）</option>
+              <option value="赵飞">赵飞（前厅经理）</option>
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">交班备注</label>
             <textarea class="form-textarea" id="ho-remark" placeholder="如有特殊情况请在此说明…" style="min-height:80px;"></textarea>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-            <input type="checkbox" id="ho-confirm-check" style="accent-color:var(--blue);width:16px;height:16px;">
-            <label for="ho-confirm-check" style="font-size:13px;cursor:pointer;">我确认上述数据准确无误</label>
+          <!-- 【改进v3-4】数字签名区域：接班人确认签名 -->
+          <div style="margin-top:12px;">
+            <label class="form-label">🔐 接班人数字签名 <span class="required">*</span></label>
+            <div id="hos-signature-area" onclick="initHandoverSignature()" style="height:80px;border:2px dashed var(--border);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;background:var(--bg);">
+              <div style="font-size:24px;margin-bottom:4px;">✍️</div>
+              <div style="font-size:12px;color:var(--text-muted);">点击此处生成数字签名</div>
+            </div>
+            <div id="hos-signature-confirm" style="display:none;margin-top:8px;padding:8px 12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:var(--green);" id="hos-signed-name">已签名：周敏</div>
+                  <div style="font-size:11px;color:var(--text-muted);" id="hos-signed-time">签名时间：2026-03-27 19:56</div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <button class="action-btn small" onclick="clearHandoverSignature()" style="padding:3px 8px;font-size:11px;">重新签名</button>
+                  <span style="font-size:18px;color:var(--green);">✅</span>
+                </div>
+              </div>
+              <div style="margin-top:6px;padding:6px;background:white;border-radius:4px;font-family:serif;font-size:16px;color:var(--green);text-align:center;letter-spacing:2px;font-style:italic;" id="hos-signature-display">周 敏</div>
+            </div>
+            <!-- 签名随机码 -->
+            <div style="display:none;margin-top:6px;font-size:11px;color:var(--text-muted);" id="hos-sig-code">
+              签名验证码：<span style="font-family:monospace;color:var(--blue);" id="hos-signature-code"></span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:12px;">
+            <input type="checkbox" id="ho-confirm-check" onchange="onHandoverCheckChange()" style="accent-color:var(--blue);width:16px;height:16px;">
+            <label for="ho-confirm-check" style="font-size:13px;cursor:pointer;">我确认上述数据准确无误，签名具有法律效力</label>
           </div>
         </div>
         <div class="modal-footer">
           <button class="modal-btn secondary" onclick="closeModal('handover-sign')">取消</button>
-          <button class="modal-btn primary" onclick="confirmHandover()" style="background:var(--green);border-color:var(--green);">✅ 确认交班</button>
+          <button class="modal-btn primary" id="ho-confirm-btn" onclick="confirmHandoverWithSignature()" disabled style="background:var(--green);border-color:var(--green);opacity:0.5;pointer-events:none;">✅ 确认交班并签名</button>
         </div>
       </div>
     </div>
@@ -7802,6 +8228,41 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <div><div class="stat-num">¥28.6k</div><div class="stat-label">本月消费</div></div>
         </div>
       </div>
+      <!-- 【改进v3-5】会员积分余额预警系统：余额不足提醒+阈值配置+自动通知 -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+        <div style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;min-width:300px;">
+          <div style="font-size:20px;">⚠️</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--red);">积分余额预警</div>
+            <div style="font-size:11px;color:var(--text-muted);">共 <strong style="color:var(--red);" id="mba-low-count">3</strong> 位会员积分低于阈值</div>
+          </div>
+          <button class="action-btn small" onclick="openMemberBalanceAlertConfig()" style="padding:4px 10px;background:var(--red);color:white;border:none;font-size:11px;">⚙️ 阈值配置</button>
+          <button class="action-btn small" onclick="showLowBalanceMemberList()" style="padding:4px 10px;background:white;color:var(--red);border:1px solid var(--red);font-size:11px;">查看列表</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="padding:8px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;text-align:center;min-width:100px;">
+            <div style="font-size:18px;font-weight:700;color:var(--blue);">¥38.6k</div>
+            <div style="font-size:10px;color:var(--text-muted);">本月充值总额</div>
+          </div>
+          <div style="padding:8px 12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;text-align:center;min-width:100px;">
+            <div style="font-size:18px;font-weight:700;color:var(--green);">89%</div>
+            <div style="font-size:10px;color:var(--text-muted);">会员活跃率</div>
+          </div>
+          <div style="padding:8px 12px;background:var(--purple-bg);border:1px solid var(--purple);border-radius:8px;text-align:center;min-width:100px;">
+            <div style="font-size:18px;font-weight:700;color:var(--purple);">+42</div>
+            <div style="font-size:10px;color:var(--text-muted);">本月新增会员</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="mba-low-balance-card" style="display:none;margin-bottom:14px;border:2px solid var(--red);">
+        <div class="card-header" style="background:var(--red-bg);padding:10px 16px;">
+          <div class="card-title" style="color:var(--red);">⚠️ 积分余额预警名单（低于 ' + (window.memberPointsThreshold || 500) + ' 积分）</div>
+          <button class="action-btn small" onclick="document.getElementById('mba-low-balance-card').style.display='none'" style="padding:3px 8px;font-size:11px;background:white;color:var(--red);border:1px solid var(--red);">收起</button>
+        </div>
+        <div class="card-body" id="mba-low-balance-list">
+          <!-- JS动态渲染 -->
+        </div>
+      </div>
       <div class="card">
         <div class="card-header">
           <div class="card-title">👥 会员列表</div>
@@ -8266,10 +8727,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             </select>
           </div>
           <div class="card-body" style="padding:12px;">
-            <div id="floor-selector-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-              <div onclick="selectBuildingFloor(3, this)" class="floor-chip active" style="padding:7px 14px;background:var(--blue);color:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">3层 <span style="opacity:0.85;font-weight:400;">(8间)</span></div>
-              <div onclick="selectBuildingFloor(2, this)" class="floor-chip" style="padding:7px 14px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">2层 <span style="opacity:0.7;font-weight:400;">(5间)</span></div>
-              <div onclick="selectBuildingFloor(1, this)" class="floor-chip" style="padding:7px 14px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">1层 <span style="opacity:0.7;font-weight:400;">(3间)</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <div id="floor-selector-row" style="display:flex;gap:8px;flex-wrap:wrap;">
+                <div onclick="selectBuildingFloor(3, this)" class="floor-chip active" style="padding:7px 14px;background:var(--blue);color:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">3层 <span style="opacity:0.85;font-weight:400;">(8间)</span></div>
+                <div onclick="selectBuildingFloor(2, this)" class="floor-chip" style="padding:7px 14px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">2层 <span style="opacity:0.7;font-weight:400;">(5间)</span></div>
+                <div onclick="selectBuildingFloor(1, this)" class="floor-chip" style="padding:7px 14px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">1层 <span style="opacity:0.7;font-weight:400;">(3间)</span></div>
+              </div>
+              <!-- 【改进v3-3】楼层房间批量维护状态设置入口 -->
+              <button class="action-btn small" onclick="openBatchRoomMaintenanceModal()" style="padding:4px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);font-size:11px;">🔧 批量维护</button>
             </div>
             <div id="floor-room-quickgrid">
               <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">⬇️ 点击房间可直接进入房间详情</div>
@@ -8339,6 +8804,93 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             <span>🟢 在线设备：<strong id="bld-3d-online" style="color:var(--green);">14</strong> 台</span>
             <span>🔴 离线设备：<strong id="bld-3d-offline" style="color:var(--red);">2</strong> 台</span>
             <span>入住率：<strong id="bld-3d-occupancy" style="color:var(--blue);">75%</strong></span>
+          </div>
+        </div>
+      </div>
+      <!-- 【改进v3-1】楼栋能耗阈值独立配置：各楼栋可设置独立能耗告警阈值 -->
+      <div class="card" id="bld-energy-threshold-section">
+        <div class="card-header">
+          <div class="card-title">⚡ 楼栋能耗阈值配置</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select class="form-select" id="bld-energy-bld-select" onchange="renderBuildingEnergyThreshold()" style="padding:5px 10px;font-size:12px;width:130px;">
+              <option value="main">🏢 主楼</option>
+              <option value="east">🏢 东配楼</option>
+            </select>
+            <button class="action-btn small" onclick="openBuildingEnergyThresholdModal()" style="padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">⚙️ 配置阈值</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+            <div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;">
+              <div style="font-size:20px;font-weight:700;color:var(--blue);" id="bet-daily-threshold">5.0</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">日均能耗阈值(kWh)</div>
+            </div>
+            <div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;">
+              <div style="font-size:20px;font-weight:700;color:var(--orange);" id="bet-alert-ratio">80%</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">告警触发比例</div>
+            </div>
+            <div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;">
+              <div style="font-size:20px;font-weight:700;color:var(--green);" id="bet-actual-avg">3.2</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">实际日均(kWh)</div>
+            </div>
+            <div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;">
+              <div style="font-size:20px;font-weight:700;color:var(--red);" id="bet-alert-status">✅ 正常</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">当前状态</div>
+            </div>
+          </div>
+          <!-- 各楼栋能耗历史趋势 -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text);">📈 近7天各楼栋日均能耗趋势(kWh)</div>
+            <select class="form-select" id="bet-trend-range" onchange="renderBuildingEnergyTrend()" style="padding:4px 8px;font-size:11px;width:110px;">
+              <option value="7">近7天</option>
+              <option value="14">近14天</option>
+              <option value="30">近30天</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-end;height:80px;padding:8px;background:var(--bg);border-radius:8px;" id="bet-trend-chart">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;"><div style="width:100%;background:var(--blue);border-radius:3px 3px 0 0;height:64%;"></div><div style="font-size:9px;color:var(--text-muted);">03-21</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;"><div style="width:100%;background:var(--blue);border-radius:3px 3px 0 0;height:58%;"></div><div style="font-size:9px;color:var(--text-muted);">03-22</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;"><div style="width:100%;background:var(--blue);border-radius:3px 3px 0 0;height:72%;"></div><div style="font-size:9px;color:var(--text-muted);">03-23</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;"><div style="width:100%;background:var(--orange);border-radius:3px 3px 0 0;height:88%;"></div><div style="font-size:9px;color:var(--text-muted);">03-24</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;"><div style="width:100%;background:var(--orange);border-radius:3px 3px 0 0;height:95%;"></div><div style="font-size:9px;color:var(--text-muted);">03-25</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;"><div style="width:100%;background:var(--blue);border-radius:3px 3px 0 0;height:55%;"></div><div style="font-size:9px;color:var(--text-muted);">03-26</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;"><div style="width:100%;background:var(--blue);border-radius:3px 3px 0 0;height:48%;"></div><div style="font-size:9px;color:var(--text-muted);">今天</div></div>
+          </div>
+          <!-- 房间级能耗明细列表 -->
+          <div style="margin-top:12px;">
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px;">🚪 房间能耗明细（今日）</div>
+            <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;" id="bet-room-list">
+              <div style="padding:8px;background:var(--blue-bg);border-radius:6px;text-align:center;border:1px solid var(--blue);">
+                <div style="font-size:12px;font-weight:700;color:var(--blue);">301</div>
+                <div style="font-size:11px;color:var(--text-muted);">3.2kWh</div>
+                <div style="font-size:10px;color:var(--green);">✅ 正常</div>
+              </div>
+              <div style="padding:8px;background:var(--orange-bg);border-radius:6px;text-align:center;border:1px solid var(--orange);">
+                <div style="font-size:12px;font-weight:700;color:var(--orange);">302</div>
+                <div style="font-size:11px;color:var(--text-muted);">4.8kWh</div>
+                <div style="font-size:10px;color:var(--orange);">⚠️ 偏高</div>
+              </div>
+              <div style="padding:8px;background:var(--blue-bg);border-radius:6px;text-align:center;border:1px solid var(--blue);">
+                <div style="font-size:12px;font-weight:700;color:var(--blue);">303</div>
+                <div style="font-size:11px;color:var(--text-muted);">2.9kWh</div>
+                <div style="font-size:10px;color:var(--green);">✅ 正常</div>
+              </div>
+              <div style="padding:8px;background:var(--red-bg);border-radius:6px;text-align:center;border:1px solid var(--red);">
+                <div style="font-size:12px;font-weight:700;color:var(--red);">305</div>
+                <div style="font-size:11px;color:var(--text-muted);">5.3kWh</div>
+                <div style="font-size:10px;color:var(--red);">🚨 超标</div>
+              </div>
+              <div style="padding:8px;background:var(--blue-bg);border-radius:6px;text-align:center;border:1px solid var(--blue);">
+                <div style="font-size:12px;font-weight:700;color:var(--blue);">201</div>
+                <div style="font-size:11px;color:var(--text-muted);">2.1kWh</div>
+                <div style="font-size:10px;color:var(--green);">✅ 正常</div>
+              </div>
+              <div style="padding:8px;background:var(--blue-bg);border-radius:6px;text-align:center;border:1px solid var(--blue);">
+                <div style="font-size:12px;font-weight:700;color:var(--blue);">202</div>
+                <div style="font-size:11px;color:var(--text-muted);">3.0kWh</div>
+                <div style="font-size:10px;color:var(--green);">✅ 正常</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -15256,6 +15808,137 @@ function switchWorkorderToEdit() {
   openModal('workorder-edit');
 }
 
+// 【改进v3-2】工单超时自动移交系统：超时自动移交主管+手动触发移交
+var woTimeoutConfig = {
+  pending: 30,    // 待接受超时30分钟
+  processing: 120, // 处理中超时120分钟
+  supervisorId: '陈总'
+};
+var woTimeoutTransferHistory = []; // 移交记录
+
+function checkWorkorderTimeoutAndTransfer() {
+  var now = new Date();
+  var transferred = [];
+  workorderData.forEach(function(wo, idx) {
+    if (wo.status === 'done' || wo.status === 'closed' || !wo.createTime) return;
+    var createTime = new Date(wo.createTime.replace(' ', 'T'));
+    var elapsedMin = (now - createTime) / 60000;
+    var threshold = wo.status === 'pending' ? woTimeoutConfig.pending : woTimeoutConfig.processing;
+    if (elapsedMin > threshold && wo.assignee && wo.assignee !== woTimeoutConfig.supervisorId) {
+      transferred.push({ idx: idx, wo: wo, elapsed: Math.round(elapsedMin), threshold: threshold });
+    }
+  });
+  if (transferred.length > 0) {
+    openWoTimeoutTransferModal(transferred);
+  }
+  return transferred;
+}
+
+function openWoTimeoutTransferModal(transferredList) {
+  var html = '<div class="modal-overlay" id="modal-wo-timeout-transfer" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:540px;">';
+  html += '<div class="modal-header" style="background:var(--red-bg);border-color:var(--red);">';
+  html += '<div class="modal-title" style="color:var(--red);">⏰ 工单超时自动移交</div>';
+  html += '<button class="modal-close" onclick="closeModal(\'wo-timeout-transfer\')">✕</button></div>';
+  html += '<div class="modal-body" style="max-height:400px;overflow-y:auto;">';
+  html += '<div style="padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--orange);">';
+  html += '⚠️ 共 <strong>' + transferredList.length + '</strong> 个工单超时未处理，已自动标记，即将移交至主管（' + woTimeoutConfig.supervisorId + '）</div>';
+  html += '<table class="table" style="font-size:12px;">';
+  html += '<thead><tr><th>工单ID</th><th>类型</th><th>房间</th><th>当前处理人</th><th>超时</th><th>操作</th></tr></thead>';
+  html += '<tbody>';
+  transferredList.forEach(function(item) {
+    html += '<tr>';
+    html += '<td style="font-weight:600;">' + item.wo.id + '</td>';
+    html += '<td>' + item.wo.type + '</td>';
+    html += '<td>' + item.wo.room + '</td>';
+    html += '<td style="color:var(--orange);">' + (item.wo.assignee || '未分配') + '</td>';
+    html += '<td style="color:var(--red);font-weight:600;">+' + item.elapsed + '分钟</td>';
+    html += '<td><button class="action-btn small" onclick="executeWoTransfer(' + item.idx + ')" style="padding:3px 8px;font-size:11px;">移交</button></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  html += '<div style="margin-top:14px;padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:6px;">🔧 超时阈值设置</div>';
+  html += '<div style="display:flex;gap:16px;flex-wrap:wrap;">';
+  html += '<div style="flex:1;min-width:120px;"><label style="font-size:11px;color:var(--text-muted);">待接受超时</label>';
+  html += '<select class="form-select" id="wott-pending-threshold" onchange="updateWoTimeoutConfig()" style="padding:4px 8px;font-size:12px;width:100%;margin-top:2px;">';
+  html += '<option value="15">15分钟</option><option value="30" selected>30分钟</option><option value="60">1小时</option><option value="120">2小时</option></select></div>';
+  html += '<div style="flex:1;min-width:120px;"><label style="font-size:11px;color:var(--text-muted);">处理中超时</label>';
+  html += '<select class="form-select" id="wott-processing-threshold" onchange="updateWoTimeoutConfig()" style="padding:4px 8px;font-size:12px;width:100%;margin-top:2px;">';
+  html += '<option value="60">1小时</option><option value="120" selected>2小时</option><option value="240">4小时</option><option value="480">8小时</option></select></div>';
+  html += '</div></div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="closeModal(\'wo-timeout-transfer\')">稍后处理</button>';
+  html += '<button class="modal-btn" onclick="executeAllWoTransfers()" style="background:var(--orange);color:white;border:none;">⚡ 一键全部移交</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function updateWoTimeoutConfig() {
+  woTimeoutConfig.pending = parseInt(document.getElementById('wott-pending-threshold').value);
+  woTimeoutConfig.processing = parseInt(document.getElementById('wott-processing-threshold').value);
+}
+
+function executeWoTransfer(idx) {
+  var wo = workorderData[idx];
+  if (!wo) return;
+  var prevAssignee = wo.assignee || '未分配';
+  wo.assignee = woTimeoutConfig.supervisorId;
+  wo.transferCount = (wo.transferCount || 0) + 1;
+  woTimeoutTransferHistory.push({
+    woId: wo.id, from: prevAssignee, to: woTimeoutConfig.supervisorId,
+    time: new Date().toLocaleString('zh-CN'), reason: '超时未处理'
+  });
+  // 更新表格显示
+  var rows = document.querySelectorAll('#workorder-table-body tr');
+  rows.forEach(function(r) {
+    if (parseInt(r.dataset.idx) === idx) {
+      var assigneeCell = r.querySelector('td:nth-child(5)');
+      if (assigneeCell) assigneeCell.innerHTML = '<span style="color:var(--red);font-weight:600;">' + woTimeoutConfig.supervisorId + ' ⏰</span>';
+    }
+  });
+  showToast('✅ 工单 ' + wo.id + ' 已移交至 ' + woTimeoutConfig.supervisorId, 'success');
+}
+
+function executeAllWoTransfers() {
+  var rows = document.querySelectorAll('#modal-wo-timeout-transfer tbody tr');
+  var count = 0;
+  rows.forEach(function(r) {
+    var btn = r.querySelector('button');
+    if (btn && !btn.disabled) { btn.click(); count++; }
+  });
+  closeModal('wo-timeout-transfer');
+  showToast('⚡ 已一键移交 ' + count + ' 个超时工单至 ' + woTimeoutConfig.supervisorId, 'success');
+}
+
+function openWoTimeoutHistoryModal() {
+  var html = '<div class="modal-overlay" id="modal-wo-timeout-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+  html += '<div class="modal" style="width:520px;">';
+  html += '<div class="modal-header"><div class="modal-title">📋 工单超时移交记录</div><button class="modal-close" onclick="closeModal(\'wo-timeout-history\')">✕</button></div>';
+  html += '<div class="modal-body" style="max-height:350px;overflow-y:auto;">';
+  if (woTimeoutTransferHistory.length === 0) {
+    html += '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">暂无移交记录</div>';
+  } else {
+    html += '<table class="table" style="font-size:12px;">';
+    html += '<thead><tr><th>工单</th><th>原处理人</th><th>移交至</th><th>时间</th><th>原因</th></tr></thead><tbody>';
+    woTimeoutTransferHistory.forEach(function(h) {
+      html += '<tr>';
+      html += '<td style="font-weight:600;">' + h.woId + '</td>';
+      html += '<td style="color:var(--orange);">' + h.from + '</td>';
+      html += '<td style="color:var(--red);font-weight:600;">' + h.to + '</td>';
+      html += '<td style="font-size:11px;">' + h.time + '</td>';
+      html += '<td style="font-size:11px;">' + h.reason + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+  html += '<div class="modal-footer"><button class="modal-btn secondary" onclick="closeModal(\'wo-timeout-history\')">关闭</button>';
+  html += '<button class="modal-btn" onclick="checkWorkorderTimeoutAndTransfer()" style="background:var(--orange);color:white;border:none;">🔍 重新检测超时</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
 function submitWorkorderEdit() {
   var id = document.getElementById('woe-id').value;
   var type = document.getElementById('woe-type').value;
