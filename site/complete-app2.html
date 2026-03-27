@@ -507,6 +507,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     <div class="menu-group">
       <div class="menu-item" onclick="showPage('dashboard')"><span class="icon">📈</span><span>看板统计</span></div>
       <div class="menu-item" onclick="showPage('alert')"><span class="icon">🔔</span><span>告警记录</span></div>
+      <div class="menu-item" onclick="showPage('notif')"><span class="icon">🔔</span><span>通知中心</span></div>
       <div class="menu-item" onclick="showPage('log')"><span class="icon">📋</span><span>开锁记录</span></div>
     </div>
     <div class="menu-group-title" onclick="toggleGroup(this)">🚪 房间管理 <span class="group-arrow">▼</span></div>
@@ -710,20 +711,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
         <button class="btn" onclick="showPage('alert')">立即处理</button>
       </div>
+      <!-- 【改进1】首页统计卡片下钻：点击跳转到对应详情 -->
       <div class="stats-row" id="homepage-stats">
-        <div class="stat-card" style="cursor:pointer;" onclick="showPage('device')">
+        <div class="stat-card" style="cursor:pointer;" onclick="drilldownHomeStat('total','device')" title="点击查看房间列表">
           <div class="stat-icon" style="background: var(--blue-bg);">🏨</div>
           <div><div class="stat-num" id="home-stat-total">16</div><div class="stat-label">房间总数</div></div>
+          <div style="margin-left:auto;font-size:11px;color:var(--blue);opacity:0;">›</div>
         </div>
-        <div class="stat-card" style="cursor:pointer;" onclick="showPage('device')">
+        <div class="stat-card" style="cursor:pointer;" onclick="drilldownHomeStat('online','device')" title="点击查看在线设备">
           <div class="stat-icon" style="background: var(--green-bg);">🔓</div>
           <div><div class="stat-num" id="home-stat-online">11</div><div class="stat-label">设备在线</div></div>
+          <div style="margin-left:auto;font-size:11px;color:var(--green);opacity:0;">›</div>
         </div>
-        <div class="stat-card" style="cursor:pointer;" onclick="showPage('alert')">
+        <div class="stat-card" style="cursor:pointer;" onclick="drilldownHomeStat('alert','alert')" title="点击查看告警列表">
           <div class="stat-icon" style="background: var(--orange-bg);">⚡</div>
           <div><div class="stat-num" id="home-stat-alert">3</div><div class="stat-label">待处理告警</div></div>
+          <div style="margin-left:auto;font-size:11px;color:var(--orange);opacity:0;">›</div>
         </div>
-        <div class="stat-card" id="health-score-card" style="border:2px solid var(--green);">
+        <div class="stat-card" id="health-score-card" style="border:2px solid var(--green);cursor:pointer;" onclick="drilldownHomeStat('health','records')" title="点击查看设备运行记录">
           <div class="stat-icon" style="background: var(--green-bg);" id="health-icon-container">💚</div>
           <div>
             <div style="display:flex;align-items:baseline;gap:4px;">
@@ -733,10 +738,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             <div class="stat-label">设备健康度</div>
             <div style="font-size:10px;color:var(--text-muted);margin-top:2px;" id="health-detail">优秀 · 14台正常</div>
           </div>
+          <div style="margin-left:auto;font-size:11px;color:var(--green);opacity:0;">›</div>
         </div>
-        <div class="stat-card" id="home-stat-offline-card">
+        <div class="stat-card" id="home-stat-offline-card" style="cursor:pointer;" onclick="drilldownHomeStat('offline','alert')" title="点击查看离线设备">
           <div class="stat-icon" style="background: var(--red-bg);">📡</div>
           <div><div class="stat-num" id="home-stat-offline">2</div><div class="stat-label">设备离线</div></div>
+          <div style="margin-left:auto;font-size:11px;color:var(--red);opacity:0;">›</div>
         </div>
       </div>
       <!-- 【改进E】首页入住率热力图 -->
@@ -2902,6 +2909,31 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <div class="page-title">🏗️ 楼层管理 - 3层</div>
         <div class="page-sub">楼层平面图 · 实时房态 · <span id="floor-live-time" style="color:var(--blue);font-size:12px;">--</span></div>
       </div>
+      <!-- 【改进3】智能房间搜索栏：支持房型/状态/人数快速筛选 -->
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;padding:10px 16px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">
+        <span style="font-size:13px;font-weight:600;color:var(--blue);">🔍 智能找房：</span>
+        <input type="text" id="smart-room-search" class="form-input" placeholder="输入房间号快速定位…" style="width:160px;padding:6px 10px;font-size:12px;" oninput="smartRoomSearch(this.value)">
+        <select class="form-select" id="smart-floor-filter" style="padding:6px 10px;font-size:12px;width:110px;" onchange="smartRoomSearch(document.getElementById('smart-room-search').value)">
+          <option value="all">全部楼层</option>
+          <option value="3">3层</option>
+          <option value="2">2层</option>
+          <option value="1">1层</option>
+        </select>
+        <select class="form-select" id="smart-type-filter" style="padding:6px 10px;font-size:12px;width:120px;" onchange="smartRoomSearch(document.getElementById('smart-room-search').value)">
+          <option value="all">全部房型</option>
+          <option value="亲子间">🏠 亲子间</option>
+          <option value="大床房">🛏️ 大床房</option>
+          <option value="标准间">🛏️ 标准间</option>
+        </select>
+        <select class="form-select" id="smart-avail-filter" style="padding:6px 10px;font-size:12px;width:120px;" onchange="smartRoomSearch(document.getElementById('smart-room-search').value)">
+          <option value="all">全部状态</option>
+          <option value="empty">🟢 可入住</option>
+          <option value="in">🔵 入住中</option>
+          <option value="alert">🔴 告警/离线</option>
+        </select>
+        <button class="action-btn small" onclick="document.getElementById('smart-room-search').value='';document.getElementById('smart-floor-filter').value='all';document.getElementById('smart-type-filter').value='all';document.getElementById('smart-avail-filter').value='all';smartRoomSearch('')" style="padding:4px 10px;font-size:11px;">重置</button>
+        <span id="smart-search-result" style="margin-left:auto;font-size:12px;color:var(--blue);font-weight:600;display:none;"></span>
+      </div>
       <!-- 楼层快捷操作工具栏 -->
       <div style="display:flex;gap:10px;margin-bottom:16px;">
         <button class="action-btn" onclick="openAddFloorModal()" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">+ 新增楼层</button>
@@ -4660,6 +4692,67 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
               <button class="action-btn small" onclick="exportRecordsCSV()" style="padding:5px 12px;margin-left:8px;">📤 导出CSV</button>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Notification Center (v3新增：统一通知中心) -->
+    <div id="page-notif" class="page">
+      <div class="page-header">
+        <div class="page-title">🔔 通知中心</div>
+        <div class="page-sub">全部系统消息 · 分类筛选 · 已读/未读状态管理</div>
+      </div>
+      <!-- 通知统计卡片 -->
+      <div class="stats-row" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px;">
+        <div class="stat-card" style="cursor:pointer;" onclick="filterNotifByType('all', this)">
+          <div class="stat-icon" style="background:var(--blue-bg);">📨</div>
+          <div><div class="stat-num" id="notif-stat-all">12</div><div class="stat-label">全部通知</div></div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="filterNotifByType('alert', this)">
+          <div class="stat-icon" style="background:var(--red-bg);">🚨</div>
+          <div><div class="stat-num" id="notif-stat-alert">3</div><div class="stat-label">告警</div></div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="filterNotifByType('device', this)">
+          <div class="stat-icon" style="background:var(--orange-bg);">📱</div>
+          <div><div class="stat-num" id="notif-stat-device">4</div><div class="stat-label">设备消息</div></div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="filterNotifByType('workorder', this)">
+          <div class="stat-icon" style="background:var(--green-bg);">🛠️</div>
+          <div><div class="stat-num" id="notif-stat-workorder">2</div><div class="stat-label">工单消息</div></div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="filterNotifByType('unread', this)">
+          <div class="stat-icon" style="background:var(--purple-bg);">📬</div>
+          <div><div class="stat-num" id="notif-stat-unread">5</div><div class="stat-label">未读消息</div></div>
+        </div>
+      </div>
+      <!-- 通知工具栏 -->
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-body" style="padding:10px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <select class="form-select" id="notif-type-filter" style="width:130px;padding:6px 10px;font-size:12px;" onchange="applyNotifFilter()">
+            <option value="all">全部类型</option>
+            <option value="alert">🚨 告警</option>
+            <option value="device">📱 设备</option>
+            <option value="workorder">🛠️ 工单</option>
+            <option value="system">⚙️ 系统</option>
+          </select>
+          <select class="form-select" id="notif-status-filter" style="width:120px;padding:6px 10px;font-size:12px;" onchange="applyNotifFilter()">
+            <option value="all">全部状态</option>
+            <option value="unread">📬 未读</option>
+            <option value="read">✅ 已读</option>
+          </select>
+          <button class="action-btn small" onclick="markAllNotifRead()" style="padding:5px 12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">✅ 全部标为已读</button>
+          <button class="action-btn small red" onclick="clearAllNotif()" style="padding:5px 12px;">🗑️ 清空通知</button>
+          <span id="notif-filter-result" style="margin-left:auto;font-size:12px;color:var(--text-muted);"></span>
+        </div>
+      </div>
+      <!-- 通知列表 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📨 通知列表</div>
+          <div style="font-size:12px;color:var(--text-muted);" id="notif-list-count">共 12 条通知</div>
+        </div>
+        <div class="card-body" id="notif-list-body" style="padding:0;">
+          <!-- 通知项列表（JS动态渲染） -->
         </div>
       </div>
     </div>
@@ -7602,7 +7695,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         </div>
         <div class="form-group">
           <label class="form-label">预计离店日期</label>
-          <input type="date" class="form-input" id="ci-date-out" value="2026-03-27">
+          <input type="date" class="form-input" id="ci-date-out" value="2026-03-27" onchange="calculateCiPrice()">
+        </div>
+        <!-- 【改进4】实时房费计算：入住日期+离店日期自动计算天数和房价 -->
+        <div id="ci-price-preview" style="display:flex;gap:10px;align-items:center;margin-bottom:12px;padding:10px 14px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;">
+          <div style="font-size:12px;color:var(--green);font-weight:600;">💰 费用预估：</div>
+          <div style="font-size:12px;color:var(--text);"><span id="ci-nights-count">1</span> 晚 × <span id="ci-nightly-rate">298</span> 元 = <span style="font-weight:700;color:var(--green);font-size:14px;" id="ci-room-fee">¥298</span></div>
+          <div style="font-size:11px;color:var(--text-muted);margin-left:auto;">（基于亲子间标准价估算）</div>
         </div>
         <div style="padding:10px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:6px;font-size:12px;color:var(--orange);margin-bottom:8px;">
           ⚠️ 根据治安管理规定，入住人必须凭身份证登记，未携带身份证需填写临时住宿登记表
@@ -9645,6 +9744,101 @@ function addNotif(icon, iconBg, cat, title) {
   if (cat === 'device') updateGlobalAlertCount(1);
 }
 
+// 【改进5】通知中心完整功能：分类筛选+已读/未读状态管理+批量操作
+function initNotifCenter() {
+  renderNotifCenterList();
+}
+function renderNotifCenterList(filter) {
+  var container = document.getElementById('notif-list-body');
+  if (!container) return;
+  var typeFilter = document.getElementById('notif-type-filter') ? document.getElementById('notif-type-filter').value : 'all';
+  var statusFilter = document.getElementById('notif-status-filter') ? document.getElementById('notif-status-filter').value : 'all';
+  var filtered = notifData.filter(function(n) {
+    var matchType = typeFilter === 'all' || n.cat === typeFilter || (typeFilter === 'unread' && !n.read);
+    var matchStatus = statusFilter === 'all' || (statusFilter === 'unread' && !n.read) || (statusFilter === 'read' && n.read);
+    return matchType && matchStatus;
+  });
+  // Update stats
+  var total = notifData.length;
+  var unread = notifData.filter(function(n) { return !n.read; }).length;
+  var alerts = notifData.filter(function(n) { return n.cat === 'alert'; }).length;
+  var devices = notifData.filter(function(n) { return n.cat === 'device'; }).length;
+  var workorders = notifData.filter(function(n) { return n.cat === 'workorder'; }).length;
+  var allEl = document.getElementById('notif-stat-all');
+  var unreadEl = document.getElementById('notif-stat-unread');
+  var alertEl = document.getElementById('notif-stat-alert');
+  var deviceEl = document.getElementById('notif-stat-device');
+  var woEl = document.getElementById('notif-stat-workorder');
+  if (allEl) allEl.textContent = total;
+  if (unreadEl) unreadEl.textContent = unread;
+  if (alertEl) alertEl.textContent = alerts;
+  if (deviceEl) deviceEl.textContent = devices;
+  if (woEl) woEl.textContent = workorders;
+  var listCount = document.getElementById('notif-list-count');
+  if (listCount) listCount.textContent = '共 ' + filtered.length + ' 条通知';
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted);">🔔 暂无通知</div>';
+    return;
+  }
+  var html = '';
+  filtered.forEach(function(n) {
+    var catLabels = { device: '📱 设备', alert: '🚨 告警', workorder: '🛠️ 工单', checkin: '🏨 入住', system: '⚙️ 系统' };
+    var catColors = { device: 'var(--orange)', alert: 'var(--red)', workorder: 'var(--green)', checkin: 'var(--blue)', system: 'var(--purple)' };
+    html += '<div style="display:flex;align-items:flex-start;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);cursor:pointer;' + (n.read ? 'opacity:0.6;' : 'background:var(--blue-bg);') + '" onclick="handleNotifCenterClick(' + n.id + ')" id="nc-item-' + n.id + '">' +
+      '<div style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:' + (n.iconBg || catColors[n.cat] || 'var(--blue)') + ';color:white;">' + n.icon + '</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
+          '<span style="font-size:11px;padding:1px 6px;border-radius:4px;background:' + (catColors[n.cat] || 'var(--blue)') + ';color:white;opacity:0.8;">' + (catLabels[n.cat] || n.cat) + '</span>' +
+          (!n.read ? '<span style="width:6px;height:6px;background:var(--blue);border-radius:50%;flex-shrink:0;"></span>' : '') +
+        '</div>' +
+        '<div style="font-size:13px;font-weight:' + (n.read ? '400' : '600') + ';margin-bottom:4px;">' + n.title + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);">' + n.time + '</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0;">' +
+        (!n.read ? '<button class="action-btn small" onclick="event.stopPropagation();markNotifRead(' + n.id + ')" style="padding:3px 8px;font-size:10px;">✓ 已读</button>' : '') +
+        '<button class="action-btn small red" onclick="event.stopPropagation();deleteNotif(' + n.id + ')" style="padding:3px 8px;font-size:10px;">✕</button>' +
+      '</div>' +
+    '</div>';
+  });
+  container.innerHTML = html;
+}
+function filterNotifByType(type, el) {
+  document.querySelectorAll('#page-notif .stat-card').forEach(function(c) { c.style.border = ''; });
+  if (el) el.style.border = '2px solid var(--blue)';
+  var sel = document.getElementById('notif-type-filter');
+  if (type === 'unread') {
+    if (sel) sel.value = 'all';
+    var statusSel = document.getElementById('notif-status-filter');
+    if (statusSel) statusSel.value = 'unread';
+  } else if (type !== 'all') {
+    if (sel) sel.value = type;
+    var statusSel = document.getElementById('notif-status-filter');
+    if (statusSel) statusSel.value = 'all';
+  } else {
+    if (sel) sel.value = 'all';
+    var statusSel = document.getElementById('notif-status-filter');
+    if (statusSel) statusSel.value = 'all';
+  }
+  applyNotifFilter();
+}
+function applyNotifFilter() { renderNotifCenterList(); }
+function markAllNotifRead() { notifData.forEach(function(n) { n.read = true; }); renderNotifCenterList(); showToast('全部通知已标记为已读', 'success'); }
+function clearAllNotif() { if (!confirm('确定清空全部通知吗？')) return; notifData = []; renderNotifCenterList(); showToast('通知已清空', 'success'); }
+function markNotifRead(id) { var n = notifData.find(function(n) { return n.id === id; }); if (n) n.read = true; renderNotifCenterList(); }
+function deleteNotif(id) { notifData = notifData.filter(function(n) { return n.id !== id; }); renderNotifCenterList(); }
+function handleNotifCenterClick(id) {
+  var n = notifData.find(function(n) { return n.id === id; });
+  if (n && !n.read) { n.read = true; renderNotifCenterList(); }
+  if (n && n.cat === 'alert') showPage('alert');
+  else if (n && n.cat === 'device') showPage('device');
+  else if (n && n.cat === 'workorder') showPage('workorder');
+}
+function handleNotifAction(id, cat) { markNotifRead(id); if (cat === 'device') showPage('device'); else if (cat === 'workorder') showPage('workorder'); }
+// Auto-init notification center when page loads
+window.addEventListener('DOMContentLoaded', function() {
+  setTimeout(initNotifCenter, 300);
+});
+
 
 function filterAlertTable(status, el) {
   el.parentElement.querySelectorAll('.card-tab').forEach(t => t.classList.remove('active'));
@@ -10640,6 +10834,41 @@ function filterFloorShow(type) {
   document.querySelectorAll('#floor-map .room-card').forEach(function(card) {
     card.style.display = (type === 'all' || card.dataset.status === type) ? '' : 'none';
   });
+}
+
+// 【改进3】智能房间搜索：支持房间号+楼层+房型+实时可用性多条件组合筛选
+function smartRoomSearch(keyword) {
+  var kw = (keyword || document.getElementById('smart-room-search').value || '').toLowerCase().trim();
+  var floor = document.getElementById('smart-floor-filter').value;
+  var type = document.getElementById('smart-type-filter').value;
+  var avail = document.getElementById('smart-avail-filter').value;
+  var cards = document.querySelectorAll('#page-floor .room-card');
+  var matchCount = 0;
+  var matchRoom = null;
+  cards.forEach(function(card) {
+    var roomNum = card.querySelector('.room-num') ? card.querySelector('.room-num').textContent.trim() : '';
+    var floorAttr = card.dataset.floor || '';
+    var typeAttr = card.querySelector('.room-type') ? card.querySelector('.room-type').textContent.trim() : '';
+    var status = card.dataset.status || '';
+    var matchKw = !kw || roomNum.toLowerCase().includes(kw) || typeAttr.toLowerCase().includes(kw);
+    var matchFloor = floor === 'all' || floorAttr === floor;
+    var matchType = type === 'all' || typeAttr === type;
+    var matchAvail = avail === 'all' || (avail === 'empty' && status === 'empty') || (avail === 'in' && status === 'in') || (avail === 'alert' && (status === 'alert' || status === 'offline'));
+    var visible = matchKw && matchFloor && matchType && matchAvail;
+    card.style.display = visible ? '' : 'none';
+    if (visible) {
+      matchCount++;
+      if (kw && roomNum.toLowerCase().includes(kw)) matchRoom = roomNum;
+    }
+  });
+  var resultEl = document.getElementById('smart-search-result');
+  if (kw || floor !== 'all' || type !== 'all' || avail !== 'all') {
+    resultEl.style.display = '';
+    resultEl.textContent = '找到 ' + matchCount + ' 间' + (matchRoom ? '（含 ' + matchRoom + '）' : '');
+  } else {
+    resultEl.style.display = 'none';
+    resultEl.textContent = '';
+  }
 }
 
 // ======= 改进4: 楼栋→楼层→房间 级联筛选 =======
@@ -11753,6 +11982,27 @@ function changeCardCount(delta) {
   if (val < 0) val = 0;
   if (val > 5) val = 5;
   input.value = val;
+  calculateCiPrice();
+}
+// 【改进4】实时房费计算：自动根据入住/离店日期计算晚数和房价
+function calculateCiPrice() {
+  var dateIn = document.getElementById('ci-date-in') ? document.getElementById('ci-date-in').value : '';
+  var dateOut = document.getElementById('ci-date-out') ? document.getElementById('ci-date-out').value : '';
+  if (!dateIn || !dateOut) return;
+  var d1 = new Date(dateIn);
+  var d2 = new Date(dateOut);
+  var nights = Math.max(1, Math.round((d2 - d1) / (1000 * 60 * 60 * 24)));
+  // 根据房间类型获取标准房价（模拟）
+  var roomType = document.getElementById('ci-room-label') ? document.getElementById('ci-room-label').textContent.replace(/[0-9]/g, '').trim() : '亲子间';
+  var priceMap = { '亲子间': 298, '大床房': 238, '标准间': 168, '家庭套房': 458 };
+  var rate = priceMap[roomType] || 298;
+  var total = nights * rate;
+  var nightsEl = document.getElementById('ci-nights-count');
+  var rateEl = document.getElementById('ci-nightly-rate');
+  var feeEl = document.getElementById('ci-room-fee');
+  if (nightsEl) nightsEl.textContent = nights;
+  if (rateEl) rateEl.textContent = rate;
+  if (feeEl) feeEl.textContent = '¥' + total;
 }
 function submitCiFinal() {
   closeModal('checkin-new');
@@ -21184,22 +21434,54 @@ function saveRoomTypePrice() {
   showToast('房型价格配置已保存！系统将根据时段自动计算房价。', 'success');
 }
 
-// ======= 【改进6】首页统计卡片点击下钻功能 =======
-function initHomeStatsDrilldown() {
-  var statCards = document.querySelectorAll('#page-home .stat-card');
-  statCards.forEach(function(card, i) {
-    card.style.cursor = 'pointer';
-    card.addEventListener('click', function() {
-      var labels = ['入住中', '空房', '待清洁', '退房', '告警'];
-      var pages = ['room-detail', 'device', 'floor', 'records', 'alert'];
-      if (pages[i]) {
-        showPage(pages[i]);
-        showToast('已跳转到：' + labels[i], 'info');
-      }
-    });
-  });
+// ======= 【改进1】首页统计卡片下钻：点击跳转到对应详情 =======
+// stat类型 → 目标页面映射（支持状态过滤参数）
+var homeStatDrilldownMap = {
+  'total':   { page: 'floor',    filter: 'all',    label: '房间总数' },
+  'online':  { page: 'device',   filter: 'online', label: '在线设备' },
+  'alert':   { page: 'alert',    filter: null,      label: '待处理告警' },
+  'health':  { page: 'records',  filter: null,      label: '设备健康度' },
+  'offline': { page: 'device',   filter: 'offline', label: '离线设备' }
+};
+function drilldownHomeStat(statType, defaultPage) {
+  var mapping = homeStatDrilldownMap[statType];
+  if (!mapping) { showPage(defaultPage || 'home'); return; }
+  // 跳转到目标页面
+  showPage(mapping.page);
+  // 针对设备页面：根据stat类型自动设置筛选条件
+  if (mapping.page === 'device' && mapping.filter) {
+    showToast('已筛选：' + mapping.label, 'info');
+    // 通知设备页面执行对应筛选（通过自定义事件）
+    window.dispatchEvent(new CustomEvent('homeDrilldown', { detail: { stat: statType, filter: mapping.filter, page: mapping.page } }));
+  } else if (mapping.page === 'alert') {
+    showToast('已跳转至告警页面', 'info');
+  } else if (mapping.page === 'records') {
+    showToast('已跳转至历史记录页面', 'info');
+  } else {
+    showToast('已跳转至' + mapping.label + '页面', 'info');
+  }
 }
-document.addEventListener('DOMContentLoaded', initHomeStatsDrilldown);
+
+// 【改进2】监听首页下钻事件，自动筛选设备列表
+window.addEventListener('homeDrilldown', function(e) {
+  var detail = e.detail || {};
+  if (detail.page !== 'device') return;
+  var filter = detail.filter; // 'online' | 'offline'
+  // 设置下拉筛选
+  var sel = document.getElementById('device-status-filter');
+  if (sel) {
+    sel.value = filter;
+    applyDeviceSearch();
+  }
+  // 高亮对应Tab
+  var tabs = document.querySelectorAll('#device-filter-tabs .card-tab');
+  tabs.forEach(function(t) { t.classList.remove('active'); });
+  var filterMap = { online: '🟢 在线', offline: '🔴 离线', all: '全部', lowbattery: '🟡 低电量' };
+  tabs.forEach(function(t) {
+    if (filter && t.textContent.includes(filterMap[filter] || filter)) t.classList.add('active');
+    if (!filter && t.textContent === '全部') t.classList.add('active');
+  });
+});
 
 // ======= 【改进1】员工管理完整功能 =======
 var staffListData = [
