@@ -2134,7 +2134,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
             <div style="flex:1;min-width:200px;">
               <input type="text" id="kf-generated-pwd" class="form-input" placeholder="点击「生成密码」自动生成" readonly style="font-family:monospace;font-size:18px;font-weight:700;color:var(--blue);letter-spacing:3px;text-align:center;height:40px;">
             </div>
-            <div style="display:flex;gap:6px;">
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input type="text" id="kf-room-num" class="form-input" placeholder="房间号" value="301" style="width:70px;padding:6px 8px;font-size:12px;text-align:center;">
               <select class="form-select" id="kf-type" style="padding:6px 8px;font-size:12px;width:120px;">
                 <option value="temp">⏰ 临时密码</option>
                 <option value="one-time">🚫 一次性</option>
@@ -3493,6 +3494,444 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       document.getElementById('mrc-current-balance').textContent = '¥' + m.balance;
       showToast('✅ 充值成功！' + m.name + ' 充值¥' + currentRechargeAmount + '，实际到账¥' + actual + '（含赠送¥' + bonus + '）', 'success');
       setTimeout(function(){ closeModal('member-recharge-v3'); }, 1500);
+    }
+
+    // ============================================================
+    // 【改进1】密码水龙头增强：短信/微信/邮件一键分享给客人
+    // ============================================================
+    var lastGeneratedRoomPwd = { pwd: '', type: '', duration: 0, room: '', validUntil: '' };
+
+    function generateRoomTempPassword() {
+      var type = document.getElementById('kf-type').value;
+      var duration = parseInt(document.getElementById('kf-duration').value) || 4;
+      var room = document.getElementById('kf-room-num') ? document.getElementById('kf-room-num').value : '301';
+      var prefix = type === 'one-time' ? 'OT' : type === 'offline' ? 'OF' : 'TP';
+      var random = Math.floor(1000 + Math.random() * 9000);
+      var pwd = prefix + '-' + room + '-' + random;
+      var now = new Date();
+      var validUntil = new Date(now.getTime() + duration * 3600000);
+      var timeStr = validUntil.toTimeString().slice(0, 5);
+      document.getElementById('kf-generated-pwd').value = pwd;
+      document.getElementById('kf-send-btn').style.display = 'inline-flex';
+      document.getElementById('kf-status').style.display = 'none';
+      lastGeneratedRoomPwd = { pwd: pwd, type: type, duration: duration, room: room, validUntil: validUntil.toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) + ' 前有效' };
+      showToast('⚡ 密码已生成：' + pwd + '，' + lastGeneratedRoomPwd.validUntil, 'success');
+    }
+
+    function copyRoomTempPassword() {
+      var pwd = document.getElementById('kf-generated-pwd').value;
+      if (!pwd) { showToast('请先生成密码', 'error'); return; }
+      navigator.clipboard.writeText(pwd).then(function() {
+        document.getElementById('kf-status').style.display = 'inline';
+        setTimeout(function(){ document.getElementById('kf-status').style.display = 'none'; }, 3000);
+      }).catch(function() {
+        var input = document.getElementById('kf-generated-pwd');
+        input.select();
+        document.execCommand('copy');
+        document.getElementById('kf-status').style.display = 'inline';
+        setTimeout(function(){ document.getElementById('kf-status').style.display = 'none'; }, 3000);
+      });
+    }
+
+    function sendRoomTempPassword() {
+      var pwd = lastGeneratedRoomPwd.pwd;
+      if (!pwd) { showToast('请先生成密码', 'error'); return; }
+      openSendPwdModal(pwd);
+    }
+
+    function openSendPwdModal(pwd) {
+      var old = document.getElementById('modal-send-pwd');
+      if (old) old.remove();
+      var html = '<div class="modal-overlay" id="modal-send-pwd" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+      html += '<div class="modal" style="width:440px;background:white;border-radius:12px;">';
+      html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+      html += '<div style="font-size:15px;font-weight:700;">📱 发送密码至客人</div>';
+      html += '<button onclick="closeSendPwdModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+      html += '<div style="padding:20px 24px;">';
+      html += '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">💡 选择发送方式将密码安全送达客人</div>';
+      html += '<div class="form-group"><label class="form-label">📋 生成的密码</label>';
+      html += '<input type="text" class="form-input" value="' + pwd + '" readonly style="font-family:monospace;font-size:16px;font-weight:700;color:var(--blue);letter-spacing:2px;text-align:center;height:44px;"></div>';
+      html += '<div class="form-group"><label class="form-label">🏨 房间号</label>';
+      html += '<input type="text" class="form-input" id="sp-room" placeholder="如：301" value="' + (lastGeneratedRoomPwd.room || '301') + '" style="height:38px;"></div>';
+      html += '<div class="form-group"><label class="form-label">📞 客人手机号 <span class="required">*</span></label>';
+      html += '<input type="tel" class="form-input" id="sp-phone" placeholder="请输入客人手机号" maxlength="11" style="height:38px;"></div>';
+      html += '<div class="form-group"><label class="form-label">⏰ 密码有效期</label>';
+      html += '<div style="padding:8px 12px;background:var(--bg);border-radius:6px;font-size:13px;color:var(--text);">' + lastGeneratedRoomPwd.validUntil + '</div></div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">';
+      html += '<button onclick="doSendPwd(\'sms\')" style="padding:10px;border:2px solid var(--blue);border-radius:8px;background:var(--blue-bg);cursor:pointer;font-size:13px;font-weight:600;color:var(--blue);">💬 短信发送</button>';
+      html += '<button onclick="doSendPwd(\'wechat\')" style="padding:10px;border:2px solid var(--green);border-radius:8px;background:var(--green-bg);cursor:pointer;font-size:13px;font-weight:600;color:var(--green);">💚 微信推送</button>';
+      html += '</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
+      html += '<button onclick="doSendPwd(\'email\')" style="padding:10px;border:1px solid var(--border);border-radius:8px;background:white;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);">📧 邮件发送</button>';
+      html += '<button onclick="doSendPwd(\'link\')" style="padding:10px;border:1px solid var(--border);border-radius:8px;background:white;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);">🔗 生成链接</button>';
+      html += '</div>';
+      html += '<div id="sp-result" style="display:none;margin-top:14px;padding:10px;border-radius:8px;text-align:center;font-size:13px;font-weight:600;"></div>';
+      html += '</div>';
+      html += '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;"><button class="modal-btn secondary" onclick="closeSendPwdModal()">关闭</button></div>';
+      html += '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeSendPwdModal() { var m = document.getElementById('modal-send-pwd'); if (m) m.remove(); }
+    function doSendPwd(method) {
+      var phone = document.getElementById('sp-phone').value.trim();
+      var room = document.getElementById('sp-room').value.trim();
+      if (!phone) { showToast('请输入客人手机号', 'error'); return; }
+      if (!/^1\d{10}$/.test(phone)) { showToast('手机号格式不正确', 'error'); return; }
+      var resultEl = document.getElementById('sp-result');
+      var methodNames = {sms:'短信', wechat:'微信推送', email:'邮件', link:'链接'};
+      resultEl.style.display = 'block';
+      if (method === 'link') {
+        var link = 'https://lockclub.wangjile.cn/guest/pwd?code=' + encodeURIComponent(lastGeneratedRoomPwd.pwd) + '&room=' + encodeURIComponent(room);
+        resultEl.style.background = 'var(--blue-bg)';
+        resultEl.style.color = 'var(--blue)';
+        resultEl.innerHTML = '✅ 链接已生成！<br><input type="text" value="' + link + '" readonly style="width:100%;margin-top:8px;padding:6px;border:1px solid var(--blue);border-radius:6px;font-size:11px;">';
+        showToast('✅ 访问链接已生成', 'success');
+      } else {
+        resultEl.style.background = 'var(--green-bg)';
+        resultEl.style.color = 'var(--green)';
+        resultEl.textContent = '✅ ' + methodNames[method] + '发送成功！密码已发送至 ' + phone.substring(0,3) + '****' + phone.substring(7);
+        showToast('✅ ' + methodNames[method] + '发送成功！', 'success');
+        setTimeout(closeSendPwdModal, 2000);
+      }
+    }
+
+    // ============================================================
+    // 【改进2】设备远程重启确认弹窗 + 重启历史记录
+    // ============================================================
+    var deviceRestartHistory = [
+      {time:'2026-03-25 03:00:00', operator:'系统', result:'成功', duration:'12秒', reason:'计划重启'},
+      {time:'2026-03-20 03:00:00', operator:'系统', result:'成功', duration:'11秒', reason:'计划重启'},
+      {time:'2026-03-15 03:00:00', operator:'系统', result:'成功', duration:'13秒', reason:'计划重启'},
+      {time:'2026-03-10 14:22:00', operator:'赵飞', result:'成功', duration:'10秒', reason:'设备无响应'}
+    ];
+
+    function openDevActionPanel(action) {
+      if (action === 'restart') {
+        openDeviceRestartConfirmModal();
+      } else if (action === 'sync') {
+        doSyncNow();
+      } else if (action === 'unlock') {
+        openUnlockModal();
+      } else if (action === 'firmware') {
+        openFirmwareUpgradeModal();
+      }
+    }
+
+    function openDeviceRestartConfirmModal() {
+      var old = document.getElementById('modal-device-restart');
+      if (old) old.remove();
+      var html = '<div class="modal-overlay" id="modal-device-restart" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+      html += '<div class="modal" style="width:480px;background:white;border-radius:12px;">';
+      html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+      html += '<div style="font-size:15px;font-weight:700;">⚠️ 确认远程重启设备</div>';
+      html += '<button onclick="closeDeviceRestartModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+      html += '<div style="padding:20px 24px;">';
+      html += '<div style="padding:14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:16px;text-align:center;">';
+      html += '<div style="font-size:32px;margin-bottom:8px;">⚠️</div>';
+      html += '<div style="font-size:13px;font-weight:600;color:var(--orange);">远程重启将导致门锁临时离线</div>';
+      html += '<div style="font-size:12px;color:var(--orange);margin-top:4px;">重启期间（约10-15秒）门锁无法响应开锁请求</div></div>';
+      html += '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;">';
+      html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">设备信息</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">';
+      html += '<div><span style="color:var(--text-muted);">设备：</span><b>领握LH-807智能锁</b></div>';
+      html += '<div><span style="color:var(--text-muted);">房间：</span><b>301</b></div>';
+      html += '<div><span style="color:var(--text-muted);">电量：</span><b style="color:var(--orange);">28%</b></div>';
+      html += '<div><span style="color:var(--text-muted);">状态：</span><b>🟢 在线</b></div></div></div>';
+      html += '<div class="form-group"><label class="form-label">重启原因 <span class="required">*</span></label>';
+      html += '<select class="form-select" id="rst-reason" style="height:38px;font-size:13px;">';
+      html += '<option value="plan">📅 计划重启（每日凌晨定时）</option>';
+      html += '<option value="unresponsive">📡 设备无响应</option>';
+      html += '<option value="firmware">📦 固件更新后重启</option>';
+      html += '<option value="manual">✋ 手动重启</option>';
+      html += '<option value="other">📋 其他原因</option>';
+      html += '</select></div>';
+      html += '<div class="form-group"><label class="form-label">备注说明</label>';
+      html += '<input type="text" class="form-input" id="rst-remark" placeholder="可选备注信息" style="height:38px;font-size:13px;"></div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">';
+      html += '<input type="checkbox" id="rst-confirm" style="accent-color:var(--orange);width:16px;height:16px;">';
+      html += '<label for="rst-confirm" style="font-size:13px;color:var(--orange);cursor:pointer;">我已知悉远程重启将导致门锁临时离线</label></div>';
+      // 重启历史
+      html += '<div style="margin-top:16px;"><div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">📋 历史重启记录</div>';
+      html += '<div style="max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">';
+      deviceRestartHistory.forEach(function(r) {
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-bottom:1px solid var(--border);font-size:12px;">';
+        html += '<div style="flex:0 0 80px;color:var(--text-muted);">' + r.time.slice(5) + '</div>';
+        html += '<div style="flex:1;"><span style="color:var(--blue);">' + r.operator + '</span> · ' + r.reason + '</div>';
+        html += '<div><span style="color:' + (r.result==='成功'?'var(--green)':'var(--red)') + ';">' + r.result + '</span> ' + r.duration + '</div></div>';
+      });
+      html += '</div></div>';
+      html += '</div>';
+      html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+      html += '<button class="modal-btn secondary" onclick="closeDeviceRestartModal()">取消</button>';
+      html += '<button class="modal-btn primary" onclick="confirmDeviceRestart()" style="background:var(--orange);border-color:var(--orange);">⚡ 确认重启</button></div>';
+      html += '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeDeviceRestartModal() { var m = document.getElementById('modal-device-restart'); if (m) m.remove(); }
+    function confirmDeviceRestart() {
+      var confirm = document.getElementById('rst-confirm');
+      var reason = document.getElementById('rst-reason');
+      if (!confirm || !confirm.checked) { showToast('请勾选确认框', 'error'); return; }
+      closeDeviceRestartModal();
+      showToast('⚡ 正在发送重启指令...', 'info');
+      setTimeout(function() {
+        var now = new Date();
+        var timeStr = now.toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/\//g,'-');
+        var reasonText = reason ? reason.options[reason.selectedIndex].text : '手动重启';
+        deviceRestartHistory.unshift({time: timeStr, operator:'当前操作员', result:'成功', duration:'约12秒', reason: reasonText});
+        if (deviceRestartHistory.length > 20) deviceRestartHistory.pop();
+        showToast('✅ 设备重启成功！门锁已恢复在线', 'success');
+      }, 3000);
+    }
+
+    // ============================================================
+    // 【改进3】入住黑名单实时拦截：入住前自动检测黑名单客户
+    // ============================================================
+    function checkBlacklistBeforeCheckin(name, phone) {
+      var blacklistEntry = null;
+      for (var key in guestPreferenceData) {
+        if (guestPreferenceData[key].blacklist) {
+          if (name && name.indexOf(key) !== -1) { blacklistEntry = guestPreferenceData[key]; blacklistEntry.guestName = key; break; }
+        }
+      }
+      if (!blacklistEntry && phone) {
+        for (var key2 in guestBlacklistPhones) {
+          if (guestBlacklistPhones[key2] === phone) {
+            blacklistEntry = {guestName: key2, blacklist: true, blockReason: guestBlacklistPhones[key2 + '_reason'] || '多次违规', phone: phone};
+            break;
+          }
+        }
+      }
+      return blacklistEntry;
+    }
+
+    var guestBlacklistPhones = {
+      '钱八': '138****8888',
+      '钱八_reason': '多次恶意破坏房间设施',
+      '孙九': '139****9999',
+      '孙九_reason': '拖欠房费超过30天'
+    };
+
+    // 拦截弹窗
+    function openBlacklistBlockModal(entry) {
+      var old = document.getElementById('modal-blacklist-block');
+      if (old) old.remove();
+      var html = '<div class="modal-overlay" id="modal-blacklist-block" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999;">';
+      html += '<div class="modal" style="width:500px;background:white;border-radius:12px;border:3px solid var(--red);">';
+      html += '<div style="padding:24px;text-align:center;">';
+      html += '<div style="font-size:56px;margin-bottom:12px;">🚫</div>';
+      html += '<div style="font-size:20px;font-weight:700;color:var(--red);margin-bottom:8px;">⚠️ 黑名单客户警告</div>';
+      html += '<div style="font-size:14px;color:var(--text);margin-bottom:16px;">检测到入住客户在黑名单中，请谨慎处理</div>';
+      html += '<div style="padding:14px;background:var(--red-bg);border-radius:8px;margin-bottom:16px;text-align:left;">';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;">';
+      html += '<div><span style="color:var(--text-muted);">客户姓名：</span><b>' + entry.guestName + '</b></div>';
+      html += '<div><span style="color:var(--text-muted);">关联手机：</span><b>' + (entry.phone || '未知') + '</b></div></div>';
+      html += '<div style="margin-top:8px;font-size:13px;"><span style="color:var(--text-muted);">拉黑原因：</span><b style="color:var(--red);">' + (entry.blockReason || '严重违规') + '</b></div></div>';
+      html += '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--orange);text-align:left;">';
+      html += '⚠️ 该客户曾在酒店有不良记录，继续入住可能存在风险。建议联系上级确认后再办理。</div>';
+      html += '<div style="display:flex;gap:10px;justify-content:center;">';
+      html += '<button onclick="closeBlacklistBlockModal()" class="modal-btn secondary" style="padding:8px 20px;">返回修改</button>';
+      html += '<button onclick="overrideBlacklistCheckin(\'' + entry.guestName + '\')" class="modal-btn" style="background:var(--orange);border-color:var(--orange);color:white;padding:8px 20px;">⚠️ 确认入住（需授权）</button>';
+      html += '</div></div></div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeBlacklistBlockModal() { var m = document.getElementById('modal-blacklist-block'); if (m) m.remove(); }
+    function overrideBlacklistCheckin(name) {
+      closeBlacklistBlockModal();
+      showToast('⚠️ 已授权为 ' + name + ' 办理入住（授权码：OVR-' + Math.floor(1000+Math.random()*9000) + '）', 'warn');
+    }
+
+    // 修改 checkin 表单提交，添加黑名单检测
+    var originalSubmitCheckin = null; // will be hooked
+
+    // ============================================================
+    // 【改进4】批量固件升级进度跟踪弹窗
+    // ============================================================
+    var firmwareUpgradeTasks = [];
+
+    function openFirmwareUpgradeModal() {
+      var old = document.getElementById('modal-firmware-upgrade');
+      if (old) old.remove();
+      var html = '<div class="modal-overlay" id="modal-firmware-upgrade" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+      html += '<div class="modal" style="width:560px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">';
+      html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+      html += '<div style="font-size:15px;font-weight:700;">📦 批量固件升级</div>';
+      html += '<button onclick="closeFirmwareUpgradeModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+      html += '<div style="padding:20px 24px;">';
+      html += '<div style="padding:10px 14px;background:var(--purple-bg);border:1px solid var(--purple);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--purple);">💡 选择要升级的设备，批量推送固件更新，支持实时进度跟踪和失败重试</div>';
+      // 固件信息
+      html += '<div style="display:flex;gap:12px;margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">';
+      html += '<div style="flex:1;"><div style="font-size:11px;color:var(--text-muted);">当前版本</div><div style="font-size:13px;font-weight:600;">v2.3.1</div></div>';
+      html += '<div style="flex:1;"><div style="font-size:11px;color:var(--text-muted);">最新版本</div><div style="font-size:13px;font-weight:600;color:var(--purple);">v2.4.0</div></div>';
+      html += '<div style="flex:1;"><div style="font-size:11px;color:var(--text-muted);">需升级设备</div><div style="font-size:13px;font-weight:600;color:var(--orange);">5台</div></div>';
+      html += '</div>';
+      // 设备选择列表
+      html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">选择设备（<span id="fw-selected-count">0</span>/5）</div>';
+      html += '<div id="fw-device-list" style="max-height:200px;overflow-y:auto;margin-bottom:16px;border:1px solid var(--border);border-radius:8px;">';
+      var devices = [
+        {room:'301', type:'亲子间', status:'online', current:'v2.3.1', selected:true},
+        {room:'302', type:'亲子间', status:'online', current:'v2.3.1', selected:false},
+        {room:'303', type:'大床房', status:'offline', current:'v2.3.0', selected:false},
+        {room:'201', type:'标准间', status:'online', current:'v2.3.1', selected:false},
+        {room:'202', type:'大床房', status:'low', current:'v2.2.9', selected:false}
+      ];
+      devices.forEach(function(d, i) {
+        var disabled = d.status === 'offline' ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '';
+        var checked = d.selected ? 'checked' : '';
+        var statusIcon = d.status === 'online' ? '🟢' : d.status === 'low' ? '🟡' : '🔴';
+        html += '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;' + (d.status==='offline'?'background:#fafafa;':'') + '" ' + disabled + '>';
+        html += '<input type="checkbox" class="fw-device-check" data-room="' + d.room + '" ' + checked + ' ' + disabled + ' onchange="updateFwSelectedCount()" style="accent-color:var(--purple);width:16px;height:16px;">';
+        html += '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">' + d.room + ' - ' + d.type + '</div><div style="font-size:11px;color:var(--text-muted);">当前：' + d.current + ' · ' + statusIcon + ' ' + d.status + '</div></div></label>';
+      });
+      html += '</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
+      html += '<input type="checkbox" id="fw-select-all" onchange="toggleFwSelectAll(this.checked)" style="accent-color:var(--purple);width:15px;height:15px;">';
+      html += '<label for="fw-select-all" style="font-size:12px;cursor:pointer;">全选（排除离线设备）</label></div>';
+      // 升级进度（隐藏，升级时显示）
+      html += '<div id="fw-progress-area" style="display:none;">';
+      html += '<div style="margin-bottom:8px;display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);">';
+      html += '<span id="fw-progress-label">正在升级 0/0 台设备...</span><span id="fw-progress-pct">0%</span></div>';
+      html += '<div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:12px;">';
+      html += '<div id="fw-progress-bar" style="height:100%;background:var(--purple);width:0%;transition:width 0.5s;border-radius:5px;"></div></div>';
+      html += '<div id="fw-result-list" style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;"></div>';
+      html += '</div>';
+      html += '</div>';
+      html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+      html += '<button class="modal-btn secondary" onclick="closeFirmwareUpgradeModal()">取消</button>';
+      html += '<button class="modal-btn primary" id="fw-start-btn" onclick="startFirmwareUpgrade()" style="background:var(--purple);border-color:var(--purple);">📦 开始升级</button></div>';
+      html += '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeFirmwareUpgradeModal() { var m = document.getElementById('modal-firmware-upgrade'); if (m) m.remove(); }
+    function updateFwSelectedCount() {
+      var checks = document.querySelectorAll('.fw-device-check:not(:disabled):checked');
+      document.getElementById('fw-selected-count').textContent = checks.length;
+    }
+    function toggleFwSelectAll(checked) {
+      document.querySelectorAll('.fw-device-check:not(:disabled)').forEach(function(c){ c.checked = checked; });
+      updateFwSelectedCount();
+    }
+    function startFirmwareUpgrade() {
+      var checks = Array.prototype.slice.call(document.querySelectorAll('.fw-device-check:checked'));
+      if (checks.length === 0) { showToast('请至少选择一台设备', 'error'); return; }
+      var devices = checks.map(function(c){ return c.getAttribute('data-room'); });
+      var total = devices.length;
+      var current = 0;
+      var success = 0, fail = 0;
+      document.getElementById('fw-progress-area').style.display = 'block';
+      document.getElementById('fw-start-btn').disabled = true;
+      var resultList = document.getElementById('fw-result-list');
+      resultList.innerHTML = '';
+      var interval = setInterval(function() {
+        if (current >= total) {
+          clearInterval(interval);
+          document.getElementById('fw-start-btn').disabled = false;
+          document.getElementById('fw-start-btn').textContent = '✅ 升级完成';
+          showToast('📦 固件升级完成！成功 ' + success + ' 台，失败 ' + fail + ' 台', fail > 0 ? 'warn' : 'success');
+          return;
+        }
+        var room = devices[current];
+        var ok = Math.random() > 0.15;
+        if (ok) success++; else fail++;
+        var pct = Math.round(((current + 1) / total) * 100);
+        document.getElementById('fw-progress-label').textContent = '正在升级 ' + (current+1) + '/' + total + ' 台设备...';
+        document.getElementById('fw-progress-pct').textContent = pct + '%';
+        document.getElementById('fw-progress-bar').style.width = pct + '%';
+        var color = ok ? 'var(--green)' : 'var(--red)';
+        var bg = ok ? 'var(--green-bg)' : 'var(--red-bg)';
+        var icon = ok ? '✅' : '❌';
+        resultList.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);background:' + bg + ';font-size:12px;">' +
+          '<span style="font-size:16px;">' + icon + '</span>' +
+          '<div style="flex:1;"><b>' + room + '</b></div>' +
+          '<div style="color:' + color + ';font-weight:600;">' + (ok ? '升级成功 v2.4.0' : '升级失败(超时)') + '</div>' +
+          '</div>' + resultList.innerHTML;
+        current++;
+      }, 600);
+    }
+
+    // ============================================================
+    // 【改进5】能耗预算超支告警配置与实时监控
+    // ============================================================
+    var energyBudgetConfig = {
+      dailyBudget: 200,      // 日预算 kWh
+      monthlyBudget: 5000,   // 月预算 kWh
+      alertThreshold: 0.85,  // 告警阈值 85%
+      criticalThreshold: 0.95, // 严重告警阈值 95%
+      enabled: true
+    };
+    var energyBudgetAlerts = [
+      {time:'2026-03-25 20:30', type:'warn', room:'203', consume:185, budget:200, pct:92.5, message:'日能耗已达92.5%，接近预算'},
+      {time:'2026-03-20 19:00', type:'info', room:'201', consume:170, budget:200, pct:85, message:'日能耗已达85%，触发预警'}
+    ];
+
+    function openEnergyBudgetConfigModal() {
+      var old = document.getElementById('modal-energy-budget');
+      if (old) old.remove();
+      var cfg = energyBudgetConfig;
+      var html = '<div class="modal-overlay" id="modal-energy-budget" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">';
+      html += '<div class="modal" style="width:520px;background:white;border-radius:12px;">';
+      html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+      html += '<div style="font-size:15px;font-weight:700;">⚡ 能耗预算配置与告警监控</div>';
+      html += '<button onclick="closeEnergyBudgetModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+      html += '<div style="padding:20px 24px;">';
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">';
+      html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;">';
+      html += '<input type="checkbox" id="eb-enabled" ' + (cfg.enabled ? 'checked' : '') + ' onchange="energyBudgetConfig.enabled=this.checked" style="accent-color:var(--blue);width:18px;height:18px;">启用预算告警</label></div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
+      html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label" style="font-size:11px;">日预算 (kWh)</label>';
+      html += '<input type="number" class="form-input" id="eb-daily" value="' + cfg.dailyBudget + '" min="1" style="height:38px;font-size:14px;"></div>';
+      html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label" style="font-size:11px;">月预算 (kWh)</label>';
+      html += '<input type="number" class="form-input" id="eb-monthly" value="' + cfg.monthlyBudget + '" min="1" style="height:38px;font-size:14px;"></div></div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
+      html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label" style="font-size:11px;">⚠️ 预警阈值</label>';
+      html += '<div style="display:flex;align-items:center;gap:6px;"><input type="range" id="eb-warn-slider" min="60" max="99" value="' + (cfg.alertThreshold*100) + '" oninput="document.getElementById(\'eb-warn-val\').textContent=this.value+\'%\'" style="flex:1;accent-color:var(--orange);"><span id="eb-warn-val" style="font-size:12px;font-weight:600;color:var(--orange);min-width:36px;text-align:right;">' + (cfg.alertThreshold*100) + '%</span></div></div>';
+      html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label" style="font-size:11px;">🔴 严重告警阈值</label>';
+      html += '<div style="display:flex;align-items:center;gap:6px;"><input type="range" id="eb-crit-slider" min="80" max="100" value="' + (cfg.criticalThreshold*100) + '" oninput="document.getElementById(\'eb-crit-val\').textContent=this.value+\'%\'" style="flex:1;accent-color:var(--red);"><span id="eb-crit-val" style="font-size:12px;font-weight:600;color:var(--red);min-width:36px;text-align:right;">' + (cfg.criticalThreshold*100) + '%</span></div></div></div>';
+      // 当前实时状态
+      var todayKwh = 152.3;
+      var dailyPct = todayKwh / cfg.dailyBudget;
+      var dailyColor = dailyPct >= cfg.criticalThreshold ? 'var(--red)' : dailyPct >= cfg.alertThreshold ? 'var(--orange)' : 'var(--green)';
+      html += '<div style="padding:14px;background:var(--bg);border-radius:8px;margin-bottom:16px;">';
+      html += '<div style="font-size:12px;font-weight:600;margin-bottom:10px;">📊 今日实时能耗</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+      html += '<div style="flex:1;height:12px;background:var(--border);border-radius:6px;overflow:hidden;">';
+      html += '<div style="height:100%;width:' + Math.min(dailyPct*100, 100) + '%;background:' + dailyColor + ';border-radius:6px;transition:width 0.5s;"></div></div>';
+      html += '<span style="font-size:12px;font-weight:700;color:' + dailyColor + ';min-width:50px;text-align:right;">' + todayKwh.toFixed(1) + '/' + cfg.dailyBudget + ' kWh</span></div>';
+      html += '<div style="font-size:11px;color:var(--text-muted);">已达预算的 <b style="color:' + dailyColor + ';">' + Math.round(dailyPct*100) + '%</b>，' + (dailyPct >= cfg.alertThreshold ? '<span style="color:var(--orange);">⚠️ 接近预算</span>' : '✅ 正常') + '</div></div>';
+      // 告警历史
+      html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📋 告警历史</div>';
+      html += '<div style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">';
+      if (energyBudgetAlerts.length === 0) {
+        html += '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">暂无告警记录</div>';
+      } else {
+        energyBudgetAlerts.forEach(function(a) {
+          var rowBg = a.type === 'warn' ? 'var(--orange-bg)' : 'var(--blue-bg)';
+          var rowBorder = a.type === 'warn' ? 'var(--orange)' : 'var(--blue)';
+          html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);background:' + rowBg + ';border-left:3px solid ' + rowBorder + ';">';
+          html += '<div style="font-size:14px;">' + (a.type === 'warn' ? '⚠️' : '💡') + '</div>';
+          html += '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + a.message + '</div>';
+          html += '<div style="font-size:11px;color:var(--text-muted);">' + a.time + ' · 房间' + a.room + ' · ' + a.consume + '/' + a.budget + 'kWh</div></div>';
+          html += '<div style="font-size:12px;font-weight:700;color:' + (a.pct >= 90 ? 'var(--red)' : 'var(--orange)') + ';">' + a.pct + '%</div></div>';
+        });
+      }
+      html += '</div>';
+      html += '</div>';
+      html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">';
+      html += '<button class="modal-btn secondary" onclick="closeEnergyBudgetModal()">取消</button>';
+      html += '<button class="modal-btn primary" onclick="saveEnergyBudgetConfig()" style="background:var(--blue);border-color:var(--blue);">💾 保存配置</button></div>';
+      html += '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeEnergyBudgetModal() { var m = document.getElementById('modal-energy-budget'); if (m) m.remove(); }
+    function saveEnergyBudgetConfig() {
+      energyBudgetConfig.dailyBudget = parseInt(document.getElementById('eb-daily').value) || 200;
+      energyBudgetConfig.monthlyBudget = parseInt(document.getElementById('eb-monthly').value) || 5000;
+      var warnVal = parseInt(document.getElementById('eb-warn-val').textContent);
+      var critVal = parseInt(document.getElementById('eb-crit-val').textContent);
+      energyBudgetConfig.alertThreshold = warnVal / 100;
+      energyBudgetConfig.criticalThreshold = critVal / 100;
+      closeEnergyBudgetModal();
+      showToast('✅ 预算配置已保存，日预算' + energyBudgetConfig.dailyBudget + 'kWh，月预算' + energyBudgetConfig.monthlyBudget + 'kWh', 'success');
     }
     </script>
 
@@ -5715,6 +6154,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
         <button class="action-btn" onclick="exportEnergyData()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出能耗报表</button>
         <!-- 【改进5】分时电价配置入口 -->
         <button class="action-btn small" onclick="openEnergyTouConfigModal()" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⏰ 分时电价</button>
+        <!-- 【改进5】能耗预算配置入口 -->
+        <button class="action-btn small" onclick="openEnergyBudgetConfigModal()" style="padding:4px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">💰 预算配置</button>
         <div style="margin-left:auto;font-size:12px;color:var(--text-muted);">数据更新：<span id="energy-last-update" style="color:var(--blue);">--</span></div>
       </div>
       <div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
@@ -13721,6 +14162,12 @@ function submitCheckin() {
   var phone = document.getElementById('checkin-phone').value;
   if (!name || !phone) {
     showToast('请填写必填项（姓名和手机号）', 'error');
+    return;
+  }
+  // 【改进3】入住前黑名单检测
+  var blocked = checkBlacklistBeforeCheckin(name, phone);
+  if (blocked) {
+    openBlacklistBlockModal(blocked);
     return;
   }
   closeModal('checkin');
