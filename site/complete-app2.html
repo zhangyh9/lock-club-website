@@ -6162,6 +6162,8 @@ setInterval(function() {
         <button class="action-btn" onclick="openAddFloorRoomModal()">+ 快速添房间</button>
         <button class="action-btn" onclick="openModal('batch-import-rooms')" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📋 批量导入</button>
         <button class="action-btn" onclick="openBatchCleanModal()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">🧹 批量清洁</button>
+        <!-- 【改进V3-5】新增：房间批量状态设置按钮 -->
+        <button class="action-btn" onclick="openBatchRoomStatusModal()" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔧 批量状态</button>
         <!-- 改进1: 楼层视图切换 -->
         <div style="display:flex;gap:6px;margin-left:auto;">
           <button class="action-btn small" id="floor-view-grid" onclick="switchFloorView('grid',this)" style="padding:5px 12px;">📱 网格视图</button>
@@ -8500,6 +8502,15 @@ function openEditMemberLevelModalV2(idx) {
           <div><div class="stat-num">0</div><div class="stat-label">已禁用</div></div>
         </div>
       </div>
+      <!-- 【改进V3-4】新增：考勤统计快捷入口按钮 -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button class="action-btn" onclick="openStaffAttendancePanel()" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);padding:6px 14px;font-size:12px;">
+          📊 考勤月报
+        </button>
+        <button class="action-btn" onclick="openLeaveRequestModal()" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);padding:6px 14px;font-size:12px;">
+          📋 请假登记
+        </button>
+      </div>
       <!-- 员工搜索筛选工具栏 -->
       <div class="card" style="margin-bottom:12px;">
         <div class="card-body" style="padding:12px 20px;">
@@ -10018,6 +10029,8 @@ function openEditMemberLevelModalV2(idx) {
           <div class="card-title">🔢 密码列表</div>
           <button class="action-btn" onclick="openCreateKeypadModal()" style="padding:4px 12px;" id="btn-generate-keypad-new">+ 生成密码</button>
           <button class="action-btn" onclick="openKeypadProgrammingModal()" style="padding:4px 12px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);" id="btn-keypad-programming">🔐 密码编程</button>
+          <!-- 【改进V3-3】新增：批量密码操作按钮 -->
+          <button class="action-btn small" onclick="openBatchPasswordModal()" style="padding:4px 10px;font-size:11px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔢 批量操作</button>
         </div>
         <div class="card-header" style="border-top:1px solid var(--border);padding-top:12px;">
           <div class="card-tabs">
@@ -10376,6 +10389,8 @@ function openEditMemberLevelModalV2(idx) {
         <div class="card-header">
           <div class="card-title">🏢 楼栋信息管理</div>
           <button class="action-btn" onclick="openBuildingCRUDForm('add', '')" style="padding:4px 12px;font-size:12px;">+ 新增楼栋</button>
+          <!-- 【改进V3-2】新增：楼栋设备概览统计按钮 -->
+          <button class="action-btn small" onclick="openBuildingDeviceOverviewPanel('main')" style="padding:4px 10px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📡 设备概览</button>
         </div>
         <div class="card-body" style="padding:0;">
           <table class="table">
@@ -12021,6 +12036,8 @@ function openEditMemberLevelModalV2(idx) {
         <div class="card-header">
           <div class="card-title">📋 查房记录</div>
           <button class="action-btn small" onclick="openInspectRecordModal()" style="padding:4px 10px;font-size:11px;">+ 登记查房</button>
+          <!-- 【改进V3-1】新增：查看历史评分趋势按钮 -->
+          <button class="action-btn small" onclick="openInspectQualityModal('301')" style="padding:4px 10px;font-size:11px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📊 质量评分</button>
         </div>
         <div class="card-body" style="padding:0;">
           <table class="table">
@@ -46399,6 +46416,517 @@ function filterKanbanByHandler(handler) {
     }
   });
 }
+
+// ============================================================
+// 【改进V3-1】房务管理：查房质量评分系统（含多维评分+历史趋势）
+// ============================================================
+var inspectionQualityDB = {
+  '301': [
+    {date:'2026-03-27', score:92, cleaner:'郑强', inspector:'吴倩', dimensions:{cleanliness:95, amenities:90, ambiance:92, safety:90}, result:'合格'},
+    {date:'2026-03-24', score:85, cleaner:'郑强', inspector:'吴倩', dimensions:{cleanliness:88, amenities:82, ambiance:85, safety:84}, result:'合格'},
+    {date:'2026-03-20', score:78, cleaner:'孙华', inspector:'吴倩', dimensions:{cleanliness:80, amenities:75, ambiance:80, safety:78}, result:'复查合格'},
+  ],
+  '203': [
+    {date:'2026-03-27', score:65, cleaner:'孙华', inspector:'吴倩', dimensions:{cleanliness:60, amenities:68, ambiance:65, safety:70}, result:'异常'},
+    {date:'2026-03-23', score:88, cleaner:'孙华', inspector:'吴倩', dimensions:{cleanliness:90, amenities:85, ambiance:88, safety:88}, result:'合格'},
+  ]
+};
+
+function openInspectQualityModal(roomNum) {
+  var data = inspectionQualityDB[roomNum] || [];
+  var latest = data[0] || null;
+  var old = document.getElementById('modal-inspect-quality');
+  if (old) old.remove();
+
+  var trendHtml = '';
+  if (data.length > 1) {
+    var scores = data.map(function(d){ return d.score; });
+    var avg = Math.round(scores.reduce(function(a,b){ return a+b; }, 0) / scores.length);
+    var trend = latest.score - data[1].score;
+    var trendIcon = trend > 0 ? '📈' : trend < 0 ? '📉' : '➡️';
+    var trendColor = trend > 0 ? 'var(--green)' : trend < 0 ? 'var(--red)' : 'var(--text-muted)';
+    trendHtml = '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">' +
+      '<span style="font-size:11px;color:var(--text-muted);">历史均分：' + avg + '分</span>' +
+      '<span style="font-size:12px;font-weight:700;color:' + trendColor + ';">' + trendIcon + ' ' + Math.abs(trend) + '分</span></div>';
+  }
+
+  var dimLabels = ['清洁度', '物品配备', '环境氛围', '安全检查'];
+  var dimKeys = ['cleanliness', 'amenities', 'ambiance', 'safety'];
+  var dimColors = ['var(--blue)', 'var(--green)', 'var(--orange)', 'var(--purple)'];
+
+  var latestDimHtml = '';
+  if (latest) {
+    latestDimHtml = '<div style="margin-top:12px;">';
+    latestDimHtml += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📊 各维度评分</div>';
+    dimKeys.forEach(function(key, i) {
+      var val = latest.dimensions[key];
+      var pct = val;
+      var color = dimColors[i];
+      latestDimHtml += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+        '<span style="font-size:11px;color:var(--text-muted);width:60px;text-align:right;">' + dimLabels[i] + '</span>' +
+        '<div style="flex:1;height:12px;background:var(--bg);border-radius:4px;overflow:hidden;">' +
+        '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:4px;"></div></div>' +
+        '<span style="font-size:11px;font-weight:700;color:' + color + ';width:30px;text-align:right;">' + val + '</span></div>';
+    });
+    latestDimHtml += '</div>';
+  }
+
+  var historyHtml = '';
+  if (data.length > 0) {
+    historyHtml = '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">' +
+      '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📈 历史评分趋势</div>';
+    data.slice().reverse().forEach(function(d) {
+      var barColor = d.result === '异常' ? 'var(--red)' : d.result === '复查合格' ? 'var(--orange)' : 'var(--green)';
+      historyHtml += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;">' +
+        '<span style="width:60px;color:var(--text-muted);">' + d.date + '</span>' +
+        '<div style="flex:1;height:10px;background:var(--bg);border-radius:4px;overflow:hidden;">' +
+        '<div style="height:100%;width:' + d.score + '%;background:' + barColor + ';border-radius:4px;"></div></div>' +
+        '<span style="font-weight:700;color:' + barColor + ';width:28px;text-align:right;">' + d.score + '</span>' +
+        '<span style="color:var(--text-muted);">' + d.result + '</span></div>';
+    });
+    historyHtml += '</div>';
+  }
+
+  var html = '<div class="modal-overlay" id="modal-inspect-quality" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="width:100%;max-width:520px;background:white;border-radius:14px;overflow:hidden;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div><div style="font-size:17px;font-weight:700;">🏆 查房质量评分</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">房间 <strong>' + roomNum + '</strong> · 保洁：' + (latest ? latest.cleaner : '--') + '</div></div>' +
+    '<button onclick="document.getElementById(\'modal-inspect-quality\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    // 综合评分
+    '<div style="text-align:center;margin-bottom:16px;">' +
+    '<div style="width:72px;height:72px;background:' + (latest && latest.result === '异常' ? 'var(--red-bg)' : 'var(--green-bg)') + ';border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:' + (latest && latest.result === '异常' ? 'var(--red)' : 'var(--green)') + ';margin:0 auto 8px;">' + (latest ? latest.score : '--') + '</div>' +
+    '<div style="font-size:13px;font-weight:600;">综合评分 ' + (latest ? latest.score : '--') + '分</div>' +
+    '<div style="font-size:11px;color:' + (latest && latest.result === '异常' ? 'var(--red)' : 'var(--green)') + ';font-weight:600;">' + (latest ? (latest.result === '异常' ? '⚠️ 异常' : '✅ ' + latest.result) : '暂无评分') + '</div>' +
+    trendHtml + '</div>' +
+    latestDimHtml + historyHtml +
+    // 发起评分按钮
+    '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">' +
+    '<button class="action-btn" style="width:100%;background:var(--blue);color:white;border:none;padding:10px;" onclick="openNewInspectionScoreModal(\'' + roomNum + '\')">📝 发起查房评分</button></div>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openNewInspectionScoreModal(roomNum) {
+  document.getElementById('modal-inspect-quality').remove();
+  var old = document.getElementById('modal-new-inspection');
+  if (old) old.remove();
+
+  var dimLabels = ['清洁度', '物品配备', '环境氛围', '安全检查'];
+  var dimKeys = ['cleanliness', 'amenities', 'ambiance', 'safety'];
+  var dimDefaults = [85, 85, 85, 85];
+
+  var slidersHtml = '';
+  dimKeys.forEach(function(key, i) {
+    slidersHtml += '<div style="margin-bottom:14px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+      '<span style="font-size:13px;font-weight:600;">' + dimLabels[i] + '</span>' +
+      '<span id="nis-score-' + i + '" style="font-size:16px;font-weight:700;color:var(--blue);">' + dimDefaults[i] + '</span></div>' +
+      '<input type="range" min="0" max="100" value="' + dimDefaults[i] + '" ' +
+      'oninput="document.getElementById(\'nis-score-' + i + '\').textContent=this.value;updateNisAvg()" ' +
+      'style="width:100%;accent-color:var(--blue);height:6px;">' +
+      '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:2px;"><span>0</span><span>100</span></div></div>';
+  });
+
+  var html = '<div class="modal-overlay" id="modal-new-inspection" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="width:100%;max-width:480px;background:white;border-radius:14px;overflow:hidden;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:17px;font-weight:700;">📝 查房评分 - ' + roomNum + '</div>' +
+    '<button onclick="document.getElementById(\'modal-new-inspection\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div class="form-group"><label class="form-label">保洁员 <span class="required">*</span></label>' +
+    '<select class="form-select" id="nis-cleaner"><option value="">选择保洁员</option><option value="郑强">郑强</option><option value="孙华">孙华</option><option value="吴倩">吴倩</option></select></div>' +
+    '<div class="form-group"><label class="form-label">查房人 <span class="required">*</span></label>' +
+    '<select class="form-select" id="nis-inspector"><option value="">选择查房人</option><option value="吴倩">吴倩</option><option value="赵飞">赵飞</option><option value="周敏">周敏</option></select></div></div>' +
+    '<div style="margin-bottom:8px;padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;">' +
+    '<div style="font-size:11px;color:var(--blue);margin-bottom:4px;">综合评分</div>' +
+    '<div style="font-size:32px;font-weight:700;color:var(--blue);" id="nis-avg-score">85</div></div>' +
+    slidersHtml +
+    '<div class="form-group"><label class="form-label">查房结果</label>' +
+    '<select class="form-select" id="nis-result"><option value="合格">✅ 合格</option><option value="复查合格">🟡 复查合格</option><option value="异常">⚠️ 异常</option></select></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<textarea class="form-textarea" id="nis-note" placeholder="可选备注" style="min-height:60px;"></textarea></div>' +
+    '<button class="action-btn" style="width:100%;background:var(--blue);color:white;border:none;padding:10px;margin-top:8px;" onclick="submitNewInspection(\'' + roomNum + '\')">提交评分</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function updateNisAvg() {
+  var vals = [];
+  for (var i = 0; i < 4; i++) {
+    var el = document.getElementById('nis-score-' + i);
+    if (el) vals.push(parseInt(el.textContent) || 0);
+  }
+  var avg = Math.round(vals.reduce(function(a, b){ return a + b; }, 0) / vals.length);
+  var el = document.getElementById('nis-avg-score');
+  if (el) el.textContent = avg;
+}
+
+function submitNewInspection(roomNum) {
+  var cleaner = document.getElementById('nis-cleaner').value;
+  var inspector = document.getElementById('nis-inspector').value;
+  if (!cleaner || !inspector) { showToast('请选择保洁员和查房人', 'error'); return; }
+  var dims = {};
+  var dimKeys = ['cleanliness', 'amenities', 'ambiance', 'safety'];
+  for (var i = 0; i < 4; i++) {
+    var el = document.getElementById('nis-score-' + i);
+    dims[dimKeys[i]] = parseInt(el ? el.textContent : 85);
+  }
+  var avg = Math.round(Object.values(dims).reduce(function(a,b){ return a+b; }, 0) / 4);
+  var result = document.getElementById('nis-result').value;
+  var note = document.getElementById('nis-note').value;
+  var now = new Date();
+  var dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  var record = {date: dateStr, score: avg, cleaner: cleaner, inspector: inspector, dimensions: dims, result: result, note: note};
+  if (!inspectionQualityDB[roomNum]) inspectionQualityDB[roomNum] = [];
+  inspectionQualityDB[roomNum].unshift(record);
+  document.getElementById('modal-new-inspection').remove();
+  showToast('✅ 查房评分已提交：' + avg + '分', 'success');
+  addOpLog('inspect', inspector, '提交房间' + roomNum + '查房评分：' + avg + '分', '');
+}
+
+// ============================================================
+// 【改进V3-2】楼栋管理：楼栋设备概览统计面板（实时在线/离线/电量分布）
+// ============================================================
+function openBuildingDeviceOverviewPanel(bldId) {
+  var bldName = bldId === 'main' ? '主楼' : bldId === 'east' ? '东配楼' : bldId;
+  // 模拟设备数据
+  var devices = [
+    {room:'301', status:'online', battery:88, signal:-55}, {room:'302', status:'online', battery:75, signal:-62},
+    {room:'303', status:'offline', battery:15, signal:-95}, {room:'304', status:'online', battery:92, signal:-48},
+    {room:'305', status:'lowbattery', battery:12, signal:-70}, {room:'201', status:'online', battery:80, signal:-58},
+    {room:'202', status:'online', battery:65, signal:-65}, {room:'203', status:'offline', battery:30, signal:-90},
+  ];
+  var online = devices.filter(function(d){ return d.status === 'online'; }).length;
+  var offline = devices.filter(function(d){ return d.status === 'offline'; }).length;
+  var lowbat = devices.filter(function(d){ return d.status === 'lowbattery' || d.battery < 20; }).length;
+  var avgBat = Math.round(devices.reduce(function(a,d){ return a+d.battery; }, 0) / devices.length);
+  var avgSig = Math.round(devices.filter(function(d){ return d.status === 'online'; }).reduce(function(a,d){ return a+d.signal; }, 0) / Math.max(online,1));
+
+  var old = document.getElementById('modal-bld-dev-overview');
+  if (old) old.remove();
+
+  var rowsHtml = devices.map(function(d) {
+    var statusColor = d.status === 'online' ? 'var(--green)' : d.status === 'offline' ? 'var(--red)' : 'var(--orange)';
+    var statusText = d.status === 'online' ? '🟢 在线' : d.status === 'offline' ? '🔴 离线' : '🟡 低电量';
+    var batColor = d.battery >= 80 ? 'var(--green)' : d.battery >= 50 ? 'var(--blue)' : d.battery >= 20 ? 'var(--orange)' : 'var(--red)';
+    return '<tr><td><b>' + d.room + '</b></td><td><span style="color:' + statusColor + ';font-size:12px;font-weight:600;">' + statusText + '</span></td>' +
+      '<td><div style="display:flex;align-items:center;gap:6px;"><div style="width:50px;height:6px;background:var(--bg);border-radius:3px;overflow:hidden;"><div style="height:100%;width:' + d.battery + '%;background:' + batColor + ';border-radius:3px;"></div></div><span style="font-size:11px;font-weight:600;color:' + batColor + ';">' + d.battery + '%</span></div></td>' +
+      '<td><span style="font-size:11px;color:var(--text-muted);">' + d.signal + ' dBm</span></td></tr>';
+  }).join('');
+
+  var html = '<div class="modal-overlay" id="modal-bld-dev-overview" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="width:100%;max-width:600px;background:white;border-radius:14px;overflow:hidden;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div><div style="font-size:17px;font-weight:700;">📡 楼栋设备概览 - ' + bldName + '</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">实时设备状态监控</div></div>' +
+    '<button onclick="document.getElementById(\'modal-bld-dev-overview\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:16px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;border-bottom:1px solid var(--border);">' +
+    '<div style="text-align:center;padding:10px;background:var(--green-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + online + '</div><div style="font-size:11px;color:var(--text-muted);">在线</div></div>' +
+    '<div style="text-align:center;padding:10px;background:var(--red-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--red);">' + offline + '</div><div style="font-size:11px;color:var(--text-muted);">离线</div></div>' +
+    '<div style="text-align:center;padding:10px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--orange);">' + lowbat + '</div><div style="font-size:11px;color:var(--text-muted);">低电量</div></div>' +
+    '<div style="text-align:center;padding:10px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:22px;font-weight:700;color:var(--blue);">' + avgBat + '%</div><div style="font-size:11px;color:var(--text-muted);">平均电量</div></div></div>' +
+    '<div style="padding:14px 24px;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
+    '<div style="font-size:13px;font-weight:600;">📋 设备明细表</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);">平均信号：' + avgSig + ' dBm</div></div>' +
+    '<table class="table" style="font-size:12px;">' +
+    '<thead><tr><th>房间</th><th>状态</th><th>电量</th><th>信号</th></tr></thead>' +
+    '<tbody>' + rowsHtml + '</tbody></table></div>' +
+    '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">' +
+    '<button class="action-btn small" onclick="openBatchRoomMaintenanceModal()">🔧 批量维护</button>' +
+    '<button class="action-btn small" onclick="openDeviceBatchActionModal(\'sync\')">🔄 状态同步</button></div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// ============================================================
+// 【改进V3-3】密码管理：密码批量延期/禁用 + 即将过期预警
+// ============================================================
+function openBatchPasswordModal() {
+  var old = document.getElementById('modal-batch-password');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-batch-password" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="width:100%;max-width:460px;background:white;border-radius:14px;overflow:hidden;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:17px;font-weight:700;">🔢 批量密码操作</div>' +
+    '<button onclick="document.getElementById(\'modal-batch-password\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px 14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--orange);">⚠️ 批量操作将同时影响多条密码记录，请谨慎操作</div>' +
+    '<div class="form-group"><label class="form-label">批量操作类型</label>' +
+    '<select class="form-select" id="bp-action">' +
+    '<option value="extend">⏰ 批量延期</option>' +
+    '<option value="disable">🚫 批量禁用</option>' +
+    '<option value="enable">✅ 批量启用</option>' +
+    '<option value="delete">🗑️ 批量删除</option></select></div>' +
+    '<div class="form-group"><label class="form-label">筛选条件</label>' +
+    '<select class="form-select" id="bp-filter">' +
+    '<option value="all">全部密码</option>' +
+    '<option value="expired">已过期的密码</option>' +
+    '<option value="expiring">7天内即将过期</option>' +
+    '<option value="active">生效中的密码</option></select></div>' +
+    '<div class="form-group" id="bp-extend-group">' +
+    '<label class="form-label">延期天数</label>' +
+    '<select class="form-select" id="bp-days">' +
+    '<option value="7">延长7天</option>' +
+    '<option value="14">延长14天</option>' +
+    '<option value="30">延长30天</option>' +
+    '<option value="90">延长90天</option></select></div>' +
+    '<div class="form-group"><label class="form-label">操作原因</label>' +
+    '<input type="text" class="form-input" id="bp-reason" placeholder="输入操作原因（必填）"></div>' +
+    '<div id="bp-preview" style="padding:10px 12px;background:var(--bg);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--text-muted);">将处理 5 条密码记录</div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<button class="action-btn" style="flex:1;background:var(--red);color:white;border:none;" onclick="executeBatchPasswordOp()">⚠️ 确认执行</button>' +
+    '<button class="action-btn" style="flex:1;" onclick="document.getElementById(\'modal-batch-password\').remove()">取消</button></div>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+
+  // 预览更新
+  document.getElementById('bp-action').addEventListener('change', updateBatchPwdPreview);
+  document.getElementById('bp-filter').addEventListener('change', updateBatchPwdPreview);
+  updateBatchPwdPreview();
+}
+
+function updateBatchPwdPreview() {
+  var action = document.getElementById('bp-action').value;
+  var filter = document.getElementById('bp-filter').value;
+  var counts = {all: 28, expired: 8, expiring: 3, active: 15};
+  var count = counts[filter] || 0;
+  var actionTexts = {extend:'延期 ' + count + ' 条密码', disable:'禁用 ' + count + ' 条密码', enable:'启用 ' + count + ' 条密码', delete:'删除 ' + count + ' 条密码（不可恢复）'};
+  document.getElementById('bp-preview').textContent = actionTexts[action] || '将处理 ' + count + ' 条记录';
+  document.getElementById('bp-preview').style.color = action === 'delete' ? 'var(--red)' : 'var(--text-muted)';
+  var extendGroup = document.getElementById('bp-extend-group');
+  if (extendGroup) extendGroup.style.display = action === 'extend' ? 'block' : 'none';
+}
+
+function executeBatchPasswordOp() {
+  var action = document.getElementById('bp-action').value;
+  var filter = document.getElementById('bp-filter').value;
+  var reason = document.getElementById('bp-reason').value.trim();
+  if (!reason) { showToast('请填写操作原因', 'error'); return; }
+  var counts = {all: 28, expired: 8, expiring: 3, active: 15};
+  var count = counts[filter] || 0;
+  document.getElementById('modal-batch-password').remove();
+  var actionLabels = {extend:'批量延期', disable:'批量禁用', enable:'批量启用', delete:'批量删除'};
+  showToast('✅ ' + actionLabels[action] + '完成：' + count + '条记录已更新', 'success');
+  addOpLog('keypad', '赵飞', actionLabels[action] + '：' + reason, '影响' + count + '条记录');
+}
+
+// ============================================================
+// 【改进V3-4】员工管理：员工考勤统计面板（出勤率/迟到/请假统计）
+// ============================================================
+var attendanceData = {
+  '郑强': {present:22, absent:0, late:1, leave:1, overtime:3, checkin:'08:32', checkout:'18:15'},
+  '孙华': {present:21, absent:1, late:2, leave:1, overtime:2, checkin:'09:05', checkout:'17:50'},
+  '吴倩': {present:20, absent:2, late:0, leave:2, overtime:1, checkin:'08:45', checkout:'18:00'},
+  '赵飞': {present:23, absent:0, late:0, leave:1, overtime:4, checkin:'08:20', checkout:'18:30'},
+};
+
+function openStaffAttendancePanel() {
+  var old = document.getElementById('modal-staff-attendance');
+  if (old) old.remove();
+
+  var cardsHtml = Object.keys(attendanceData).map(function(name) {
+    var d = attendanceData[name];
+    var rate = Math.round(d.present / 23 * 100);
+    var rateColor = rate >= 95 ? 'var(--green)' : rate >= 85 ? 'var(--orange)' : 'var(--red)';
+    return '<div style="padding:14px;background:var(--bg);border-radius:8px;margin-bottom:8px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+      '<span style="font-size:14px;font-weight:700;">' + name + '</span>' +
+      '<span style="font-size:12px;font-weight:700;color:' + rateColor + ';">' + rate + '%出勤</span></div>' +
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">' +
+      '<div style="text-align:center;padding:6px;background:white;border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--green);">' + d.present + '</div><div style="font-size:10px;color:var(--text-muted);">出勤</div></div>' +
+      '<div style="text-align:center;padding:6px;background:white;border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--red);">' + d.late + '</div><div style="font-size:10px;color:var(--text-muted);">迟到</div></div>' +
+      '<div style="text-align:center;padding:6px;background:white;border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--orange);">' + d.leave + '</div><div style="font-size:10px;color:var(--text-muted);">请假</div></div>' +
+      '<div style="text-align:center;padding:6px;background:white;border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--purple);">' + d.overtime + '</div><div style="font-size:10px;color:var(--text-muted);">加班</div></div></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);display:flex;gap:12px;">' +
+      '<span>🕗 打卡：' + d.checkin + '</span><span>🕔 下班：' + d.checkout + '</span></div></div>';
+  }).join('');
+
+  // 月度汇总
+  var totalPresent = Object.values(attendanceData).reduce(function(a,d){ return a+d.present; }, 0);
+  var totalLate = Object.values(attendanceData).reduce(function(a,d){ return a+d.late; }, 0);
+  var totalLeave = Object.values(attendanceData).reduce(function(a,d){ return a+d.leave; }, 0);
+  var totalOT = Object.values(attendanceData).reduce(function(a,d){ return a+d.overtime; }, 0);
+
+  var html = '<div class="modal-overlay" id="modal-staff-attendance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="width:100%;max-width:540px;background:white;border-radius:14px;overflow:hidden;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div><div style="font-size:17px;font-weight:700;">📊 员工考勤月报</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">2026年3月 · 统计周期：03.01-03.27</div></div>' +
+    '<button onclick="document.getElementById(\'modal-staff-attendance\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:16px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;border-bottom:1px solid var(--border);">' +
+    '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + totalPresent + '</div><div style="font-size:11px;color:var(--text-muted);">出勤人次</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red);">' + totalLate + '</div><div style="font-size:11px;color:var(--text-muted);">迟到次数</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">' + totalLeave + '</div><div style="font-size:11px;color:var(--text-muted);">请假人次</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--purple);">' + totalOT + '</div><div style="font-size:11px;color:var(--text-muted);">加班人次</div></div></div>' +
+    '<div style="padding:16px 24px;max-height:360px;overflow-y:auto;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">👤 个人出勤明细</div>' +
+    cardsHtml + '</div>' +
+    '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">' +
+    '<button class="action-btn small" onclick="exportAttendanceReport()">📤 导出考勤报告</button>' +
+    '<button class="action-btn small" onclick="openLeaveRequestModal()">📋 请假登记</button></div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function exportAttendanceReport() {
+  showToast('📤 正在导出考勤报告...', 'info');
+  setTimeout(function(){ showToast('✅ 考勤报告已导出（CSV格式）', 'success'); }, 800);
+}
+
+function openLeaveRequestModal() {
+  var old = document.getElementById('modal-leave-request');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-leave-request" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;padding:20px;">' +
+    '<div style="width:100%;max-width:420px;background:white;border-radius:14px;overflow:hidden;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:17px;font-weight:700;">📋 请假登记</div>' +
+    '<button onclick="document.getElementById(\'modal-leave-request\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">员工姓名 <span class="required">*</span></label>' +
+    '<select class="form-select" id="lr-staff"><option value="">选择员工</option>' +
+    '<option value="郑强">郑强</option><option value="孙华">孙华</option><option value="吴倩">吴倩</option><option value="赵飞">赵飞</option></select></div>' +
+    '<div class="form-group"><label class="form-label">请假类型</label>' +
+    '<select class="form-select" id="lr-type">' +
+    '<option value="sick">🤒 病假</option><option value="personal">💼 事假</option>' +
+    '<option value="annual">🏖️ 年假</option><option value="other">📌 其他</option></select></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+    '<div class="form-group"><label class="form-label">开始日期</label><input type="date" class="form-input" id="lr-start"></div>' +
+    '<div class="form-group"><label class="form-label">结束日期</label><input type="date" class="form-input" id="lr-end"></div></div>' +
+    '<div class="form-group"><label class="form-label">时长（天）</label><input type="number" class="form-input" id="lr-days" placeholder="输入天数" min="0.5" step="0.5"></div>' +
+    '<div class="form-group"><label class="form-label">请假原因</label>' +
+    '<textarea class="form-textarea" id="lr-reason" placeholder="输入请假原因" style="min-height:60px;"></textarea></div>' +
+    '<button class="action-btn" style="width:100%;background:var(--blue);color:white;border:none;padding:10px;" onclick="submitLeaveRequest()">提交请假</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitLeaveRequest() {
+  var staff = document.getElementById('lr-staff').value;
+  var type = document.getElementById('lr-type');
+  var typeText = type ? type.options[type.selectedIndex].text : '';
+  var days = document.getElementById('lr-days').value;
+  var reason = document.getElementById('lr-reason').value.trim();
+  if (!staff) { showToast('请选择员工', 'error'); return; }
+  if (!days) { showToast('请填写请假天数', 'error'); return; }
+  document.getElementById('modal-leave-request').remove();
+  showToast('✅ 请假申请已提交：' + staff + ' ' + typeText + ' ' + days + '天', 'success');
+  addOpLog('leave', staff, '提交请假申请：' + typeText + ' ' + days + '天', reason || '');
+}
+
+// ============================================================
+// 【改进V3-5】楼层管理：房间批量维护状态设置（支持多选+状态切换+备注）
+// ============================================================
+function openBatchRoomStatusModal() {
+  var old = document.getElementById('modal-batch-room-status');
+  if (old) old.remove();
+
+  // 获取当前楼层房间
+  var rooms = [
+    {num:'301', type:'亲子间', status:'empty'}, {num:'302', type:'亲子间', status:'in'},
+    {num:'303', type:'亲子间', status:'alert'}, {num:'304', type:'亲子间', status:'empty'},
+    {num:'305', type:'亲子间', status:'maintenance'}, {num:'306', type:'亲子间', status:'in'},
+  ];
+  var statusOptions = [
+    {value:'normal', label:'🟢 正常', color:'var(--green)'},
+    {value:'maintenance', label:'🔧 维护中', color:'var(--orange)'},
+    {value:'dirty', label:'🧹 待清洁', color:'var(--blue)'},
+    {value:'repair', label:'🔨 维修中', color:'var(--red)'},
+  ];
+
+  var roomCardsHtml = rooms.map(function(r) {
+    return '<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-radius:6px;transition:background 0.15s;" onmouseover="this.style.background=\'var(--blue-bg)\'" onmouseout="this.style.background=\'\'">' +
+      '<input type="checkbox" class="brs-check" value="' + r.num + '" style="accent-color:var(--blue);width:15px;height:15px;">' +
+      '<span style="font-weight:600;font-size:13px;">' + r.num + '</span>' +
+      '<span style="font-size:11px;color:var(--text-muted);">' + r.type + '</span></label>';
+  }).join('');
+
+  var statusBtns = statusOptions.map(function(s) {
+    return '<button class="action-btn small brs-status-btn" data-status="' + s.value + '" ' +
+      'onclick="selectRoomStatus(\'' + s.value + '\', this)" ' +
+      'style="padding:6px 12px;font-size:12px;">' + s.label + '</button>';
+  }).join('');
+
+  var html = '<div class="modal-overlay" id="modal-batch-room-status" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div style="width:100%;max-width:520px;background:white;border-radius:14px;overflow:hidden;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div><div style="font-size:17px;font-weight:700;">🔧 批量设置房间状态</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">同时修改多条房间状态</div></div>' +
+    '<button onclick="document.getElementById(\'modal-batch-room-status\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:16px 24px;">' +
+    '<div style="margin-bottom:14px;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+    '<span style="font-size:13px;font-weight:600;">选择房间（<span id="brs-selected-count">0</span>）</span>' +
+    '<button class="action-btn small" onclick="toggleAllRoomSelect()" style="padding:3px 8px;font-size:11px;">全选</button></div>' +
+    '<div id="brs-room-list" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;max-height:180px;overflow-y:auto;padding:8px;background:var(--bg);border-radius:8px;">' +
+    roomCardsHtml + '</div></div>' +
+    '<div style="margin-bottom:14px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">设置状态为</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + statusBtns + '</div>' +
+    '<div id="brs-selected-status" style="margin-top:6px;font-size:11px;color:var(--text-muted);">请选择目标状态</div></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<input type="text" class="form-input" id="brs-note" placeholder="输入备注（可选）" style="padding:7px 10px;"></div>' +
+    '<div id="brs-preview" style="padding:10px 12px;background:var(--bg);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--text-muted);">将修改 0 个房间的状态</div>' +
+    '<button class="action-btn" id="brs-submit-btn" style="width:100%;background:var(--blue);color:white;border:none;padding:10px;" onclick="executeBatchRoomStatus()" disabled>确认修改</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+
+  // 监听选中变化
+  document.querySelectorAll('.brs-check').forEach(function(cb) {
+    cb.addEventListener('change', updateBrsPreview);
+  });
+}
+
+var brsSelectedStatus = null;
+
+function selectRoomStatus(status, btn) {
+  brsSelectedStatus = status;
+  document.querySelectorAll('.brs-status-btn').forEach(function(b) {
+    b.style.background = '';
+    b.style.color = '';
+    b.style.borderColor = '';
+  });
+  btn.style.background = 'var(--blue)';
+  btn.style.color = 'white';
+  btn.style.borderColor = 'var(--blue)';
+  var labels = {normal:'正常', maintenance:'维护中', dirty:'待清洁', repair:'维修中'};
+  document.getElementById('brs-selected-status').textContent = '已选择：' + (labels[status] || status);
+  updateBrsPreview();
+}
+
+function toggleAllRoomSelect() {
+  var allChecked = document.querySelectorAll('.brs-check:checked').length === document.querySelectorAll('.brs-check').length;
+  document.querySelectorAll('.brs-check').forEach(function(cb){ cb.checked = !allChecked; });
+  updateBrsPreview();
+}
+
+function updateBrsPreview() {
+  var count = document.querySelectorAll('.brs-check:checked').length;
+  document.getElementById('brs-selected-count').textContent = count;
+  var labels = {normal:'正常', maintenance:'维护中', dirty:'待清洁', repair:'维修中'};
+  var statusText = brsSelectedStatus ? labels[brsSelectedStatus] : '未选择';
+  document.getElementById('brs-preview').textContent = '将把 ' + count + ' 个房间设置为「' + statusText + '」';
+  var btn = document.getElementById('brs-submit-btn');
+  if (btn) {
+    btn.disabled = count === 0 || !brsSelectedStatus;
+    btn.style.opacity = (count === 0 || !brsSelectedStatus) ? '0.5' : '1';
+  }
+}
+
+function executeBatchRoomStatus() {
+  var checked = document.querySelectorAll('.brs-check:checked');
+  if (checked.length === 0 || !brsSelectedStatus) { showToast('请选择房间和目标状态', 'error'); return; }
+  var rooms = Array.from(checked).map(function(cb){ return cb.value; });
+  var note = document.getElementById('brs-note').value.trim();
+  var labels = {normal:'正常', maintenance:'维护中', dirty:'待清洁', repair:'维修中'};
+  document.getElementById('modal-batch-room-status').remove();
+  showToast('✅ 已将 ' + rooms.length + ' 个房间设置为「' + labels[brsSelectedStatus] + '」', 'success');
+  addOpLog('room', '赵飞', '批量设置房间状态：' + rooms.join(',') + ' → ' + labels[brsSelectedStatus], note || '');
+}
+
 </script>
 <script src="v3-improvements.js?v=20260328e"></script>
 </body>
