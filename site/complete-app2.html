@@ -35087,3 +35087,554 @@ function confirmHousekeepingDispatch() {
     showToast('⚠️ 请先为至少一间房间指定负责人员', 'warning');
   }
 }
+
+// ============================================================
+// 改进A: 设备健康度中心弹窗（page-building 引用但函数未定义）
+// 理由：首页快捷按钮「设备健康度」调用 openDeviceHealthCenterModal，但该函数不存在
+// 功能：展示所有设备健康评分排行、健康度分布、设备异常排行榜，支持批量操作
+// ============================================================
+function openDeviceHealthCenterModal() {
+  var existing = document.getElementById('modal-device-health');
+  if (existing) existing.remove();
+  var devices = [
+    {room:'301', uuid:'DEV-LK01', model:'领握LH-807', battery:92, signal:-67, uptime:'7天14小时', health:95, status:'online', issue:'无'},
+    {room:'302', uuid:'DEV-LK02', model:'领握LH-807', battery:78, signal:-72, uptime:'15天3小时', health:88, status:'online', issue:'电量偏低'},
+    {room:'305', uuid:'DEV-LK05', model:'领握LH-807', battery:45, signal:-81, uptime:'3天6小时', health:62, status:'offline', issue:'离线超过2小时'},
+    {room:'201', uuid:'DEV-LK08', model:'领握LH-807', battery:100, signal:-55, uptime:'22天8小时', health:99, status:'online', issue:'无'},
+    {room:'202', uuid:'DEV-LK09', model:'领握LH-807', battery:65, signal:-78, uptime:'5天2小时', health:81, status:'online', issue:'信号偏弱'},
+    {room:'303', uuid:'DEV-LK03', model:'领握LH-807', battery:15, signal:-83, uptime:'1天0小时', health:41, status:'critical', issue:'电量严重不足'},
+    {room:'203', uuid:'DEV-LK10', model:'领握LH-807', battery:88, signal:-62, uptime:'12天5小时', health:93, status:'online', issue:'无'},
+    {room:'304', uuid:'DEV-LK11', model:'领握LH-807', battery:71, signal:-69, uptime:'9天11小时', health:89, status:'online', issue:'无'}
+  ];
+  var healthDist = {excellent:0, good:0, fair:0, poor:0, critical:0};
+  devices.forEach(function(d) {
+    if (d.health >= 90) healthDist.excellent++;
+    else if (d.health >= 75) healthDist.good++;
+    else if (d.health >= 60) healthDist.fair++;
+    else if (d.health >= 40) healthDist.poor++;
+    else healthDist.critical++;
+  });
+  var totalDevices = devices.length;
+  var onlineCount = devices.filter(function(d){ return d.status === 'online' || d.status === 'offline'; }).length;
+  var criticalCount = devices.filter(function(d){ return d.status === 'critical' || d.health < 40; }).length;
+  var rowsHtml = devices.sort(function(a,b){ return a.health - b.health; }).map(function(d) {
+    var healthColor = d.health >= 90 ? 'var(--green)' : d.health >= 75 ? 'var(--blue)' : d.health >= 60 ? 'var(--orange)' : 'var(--red)';
+    var healthBg = d.health >= 90 ? 'var(--green-bg)' : d.health >= 75 ? 'var(--blue-bg)' : d.health >= 60 ? 'var(--orange-bg)' : 'var(--red-bg)';
+    var statusBadge = d.status === 'online' ? '<span style="padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:10px;">在线</span>' :
+                      d.status === 'offline' ? '<span style="padding:2px 6px;background:var(--text-muted);color:white;border-radius:4px;font-size:10px;">离线</span>' :
+                      '<span style="padding:2px 6px;background:var(--red-bg);color:var(--red);border-radius:4px;font-size:10px;">异常</span>';
+    return '<tr style="cursor:pointer;" onclick="openDeviceDetailModal(\'' + d.room + '\')">' +
+      '<td style="padding:8px 10px;font-size:12px;font-weight:700;">' + d.room + '</td>' +
+      '<td style="padding:8px 10px;font-size:11px;color:var(--text-muted);">' + d.uuid + '</td>' +
+      '<td style="padding:8px 10px;">' + statusBadge + '</td>' +
+      '<td style="padding:8px 10px;"><span style="padding:2px 8px;background:' + healthBg + ';color:' + healthColor + ';border-radius:8px;font-size:11px;font-weight:700;">' + d.health + '分</span></td>' +
+      '<td style="padding:8px 10px;font-size:11px;">🔋 ' + d.battery + '%</td>' +
+      '<td style="padding:8px 10px;font-size:11px;">📶 ' + d.signal + 'dBm</td>' +
+      '<td style="padding:8px 10px;font-size:11px;">' + d.uptime + '</td>' +
+      '<td style="padding:8px 10px;font-size:11px;color:' + (d.issue !== '无' ? 'var(--red)' : 'var(--text-muted)') + ';">' + d.issue + '</td></tr>';
+  }).join('');
+  var distHtml = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);">' + healthDist.excellent + '</div><div style="font-size:10px;color:var(--green);">优秀</div></div>' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);">' + healthDist.good + '</div><div style="font-size:10px;color:var(--blue);">良好</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);">' + healthDist.fair + '</div><div style="font-size:10px;color:var(--orange);">一般</div></div>' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--red);">' + healthDist.poor + '</div><div style="font-size:10px;color:var(--red);">较差</div></div>' +
+    '<div style="padding:12px;background:#fff1f0;border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:#cf1322;">' + healthDist.critical + '</div><div style="font-size:10px;color:#cf1322;">危险</div></div></div>';
+  var html = '<div class="modal-overlay" id="modal-device-health" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-health\').remove()">' +
+    '<div class="modal" style="width:820px;max-height:90vh;overflow-y:auto;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:28px;">🔧</div>' +
+    '<div><div style="font-size:16px;font-weight:700;">设备健康度中心</div><div style="font-size:11px;color:var(--text-muted);">实时设备健康评分 · 异常预警 · 批量维护</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-device-health\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:16px 20px;">' +
+    // 统计卡片
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);">' + totalDevices + '</div><div style="font-size:11px;color:var(--blue);">设备总数</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + onlineCount + '</div><div style="font-size:11px;color:var(--green);">在线设备</div></div>' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red);">' + criticalCount + '</div><div style="font-size:11px;color:var(--red);">需要维护</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">' + Math.round(devices.reduce(function(s,d){return s+d.health;},0)/totalDevices) + '%</div><div style="font-size:11px;color:var(--orange);">综合健康度</div></div></div>' +
+    // 健康度分布
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📊 健康度分布</div>' + distHtml +
+    // 操作按钮行
+    '<div style="display:flex;gap:8px;margin-bottom:14px;">' +
+    '<button class="action-btn" onclick="batchDeviceHealthFix()" style="padding:7px 14px;font-size:12px;background:var(--orange);color:white;border:none;">🔧 批量维护</button>' +
+    '<button class="action-btn" onclick="exportDeviceHealthReport()" style="padding:7px 14px;font-size:12px;">📤 导出报告</button>' +
+    '<button class="action-btn" onclick="refreshDeviceHealth()" style="padding:7px 14px;font-size:12px;">🔄 刷新</button></div>' +
+    // 设备列表
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">🏠 各房间设备健康度明细</div>' +
+    '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;">' +
+    '<table style="width:100%;border-collapse:collapse;min-width:600px;">' +
+    '<thead><tr style="background:var(--bg);"><th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">房间</th><th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">UUID</th><th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">状态</th><th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">健康度</th><th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">电量</th><th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">信号</th><th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">运行时长</th><th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">问题</th></tr></thead>' +
+    '<tbody>' + rowsHtml + '</tbody></table></div></div>' +
+    '<div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'modal-device-health\').remove()" class="modal-btn secondary">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function batchDeviceHealthFix() {
+  showToast('🔧 已为所有低电量设备安排批量换电池任务', 'success');
+  setTimeout(function(){ showToast('📱 已通知维修人员处理', 'info'); }, 800);
+}
+function exportDeviceHealthReport() {
+  showToast('📤 正在生成设备健康度报告...', 'info');
+  setTimeout(function(){ showToast('✅ 报告已导出至 Downloads/DeviceHealth_' + new Date().toLocaleDateString('zh-CN').replace(/\//g,'-') + '.pdf', 'success'); }, 1200);
+}
+function refreshDeviceHealth() {
+  showToast('🔄 正在刷新设备状态...', 'info');
+  setTimeout(function(){ showToast('✅ 设备状态已更新', 'success'); openDeviceHealthCenterModal(); }, 1500);
+}
+
+// ============================================================
+// 改进B: 楼栋CRUD管理弹窗（page-building 引用但函数未定义）
+// 理由：page-building 页面点击「楼栋管理」调用 openBuildingCRUDModal，但该函数不存在
+// 功能：楼栋的增删改查，支持添加新楼栋、编辑楼栋信息、删除楼栋
+// ============================================================
+var _buildingStore = [
+  {id:'main', name:'主楼', floors:3, rooms:16, address:'北京市朝阳区光华路甲1号', status:'active', remark:'主楼共3层，16间客房'},
+  {id:'east', name:'东配楼', floors:2, rooms:8, address:'北京市朝阳区光华路甲1号东侧', status:'active', remark:'东配楼共2层，8间客房'},
+  {id:'west', name:'西配楼', floors:1, rooms:4, address:'北京市朝阳区光华路甲1号西侧', status:'inactive', remark:'西配楼共1层，4间客房（暂时停用）'}
+];
+function openBuildingCRUDModal(tab) {
+  tab = tab || 'list';
+  var existing = document.getElementById('modal-building-crud');
+  if (existing) existing.remove();
+  var listRows = _buildingStore.map(function(b) {
+    var statusBadge = b.status === 'active' ? '<span style="padding:2px 8px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:11px;">使用中</span>' :
+                      '<span style="padding:2px 8px;background:var(--bg);color:var(--text-muted);border-radius:4px;font-size:11px;">已停用</span>';
+    return '<tr><td style="padding:10px 12px;font-size:13px;font-weight:700;">' + b.name + '</td>' +
+      '<td style="padding:10px 12px;font-size:12px;color:var(--text-muted);">' + b.floors + '层</td>' +
+      '<td style="padding:10px 12px;font-size:12px;color:var(--text-muted);">' + b.rooms + '间</td>' +
+      '<td style="padding:10px 12px;font-size:12px;color:var(--text-muted);">' + b.address + '</td>' +
+      '<td style="padding:10px 12px;">' + statusBadge + '</td>' +
+      '<td style="padding:10px 12px;font-size:12px;color:var(--text-muted);">' + b.remark + '</td>' +
+      '<td style="padding:10px 12px;"><button class="action-btn small" onclick="editBuilding(\'' + b.id + '\')" style="padding:4px 10px;font-size:11px;">✏️ 编辑</button></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-building-crud" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-building-crud\').remove()">' +
+    '<div class="modal" style="width:720px;max-height:88vh;overflow-y:auto;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:28px;">🏢</div>' +
+    '<div style="font-size:15px;font-weight:700;">楼栋管理</div></div>' +
+    '<button onclick="document.getElementById(\'modal-building-crud\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:16px 20px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">' +
+    '<div style="display:flex;gap:8px;">' +
+    '<button onclick="switchBuildingTab(\'list\')" id="btab-list" class="card-tab ' + (tab==='list'?'active':'') + '" style="padding:6px 14px;font-size:12px;background:var(--blue-bg);border-color:var(--blue);color:var(--blue);">📋 楼栋列表</button>' +
+    '<button onclick="switchBuildingTab(\'add\')" id="btab-add" class="card-tab ' + (tab==='add'?'active':'') + '" style="padding:6px 14px;font-size:12px;">➕ 添加楼栋</button></div>' +
+    '<button class="action-btn" onclick="switchBuildingTab(\'add\')" style="padding:7px 14px;font-size:12px;background:var(--blue);color:white;border:none;">➕ 新增楼栋</button></div>' +
+    // 列表视图
+    '<div id="building-list-view">' +
+    '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;">' +
+    '<table style="width:100%;border-collapse:collapse;min-width:500px;">' +
+    '<thead><tr style="background:var(--bg);"><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">楼栋名称</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">楼层数</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">房间数</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">地址</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">状态</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">备注</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">操作</th></tr></thead>' +
+    '<tbody>' + listRows + '</tbody></table></div></div>' +
+    // 添加视图
+    '<div id="building-add-view" style="display:' + (tab==='add'?'block':'none') + ';">' +
+    '<div style="padding:16px;background:var(--bg);border-radius:8px;">' +
+    '<div class="form-row" style="margin-bottom:12px;"><div class="form-group" style="margin-bottom:0;"><label class="form-label">楼栋名称 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="bld-name" placeholder="如：贵宾楼"></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">楼层数 <span class="required">*</span></label>' +
+    '<input type="number" class="form-input" id="bld-floors" placeholder="3" min="1" max="20"></div></div>' +
+    '<div class="form-row" style="margin-bottom:12px;"><div class="form-group" style="margin-bottom:0;"><label class="form-label">房间数</label>' +
+    '<input type="number" class="form-input" id="bld-rooms" placeholder="16" min="1" max="200"></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">状态</label>' +
+    '<select class="form-select" id="bld-status"><option value="active">使用中</option><option value="inactive">已停用</option></select></div></div>' +
+    '<div class="form-group" style="margin-bottom:12px;"><label class="form-label">地址</label>' +
+    '<input type="text" class="form-input" id="bld-address" placeholder="详细地址"></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">备注</label>' +
+    '<textarea class="form-textarea" id="bld-remark" placeholder="其他说明..."></textarea></div>' +
+    '<div style="display:flex;gap:8px;margin-top:14px;">' +
+    '<button class="modal-btn primary" onclick="saveNewBuilding()" style="padding:9px 20px;font-size:13px;">✅ 保存楼栋</button>' +
+    '<button class="modal-btn secondary" onclick="switchBuildingTab(\'list\')" style="padding:9px 20px;font-size:13px;">取消</button></div></div></div></div>' +
+    '<div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'modal-building-crud\').remove()" class="modal-btn secondary">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function switchBuildingTab(tab) {
+  document.getElementById('btab-list').classList.toggle('active', tab === 'list');
+  document.getElementById('btab-list').style.background = tab === 'list' ? 'var(--blue-bg)' : 'var(--bg)';
+  document.getElementById('btab-list').style.borderColor = tab === 'list' ? 'var(--blue)' : 'var(--border)';
+  document.getElementById('btab-list').style.color = tab === 'list' ? 'var(--blue)' : 'var(--text-light)';
+  document.getElementById('btab-add').classList.toggle('active', tab === 'add');
+  document.getElementById('btab-add').style.background = tab === 'add' ? 'var(--blue-bg)' : 'var(--bg)';
+  document.getElementById('btab-add').style.borderColor = tab === 'add' ? 'var(--blue)' : 'var(--border)';
+  document.getElementById('btab-add').style.color = tab === 'add' ? 'var(--blue)' : 'var(--text-light)';
+  document.getElementById('building-list-view').style.display = tab === 'list' ? 'block' : 'none';
+  document.getElementById('building-add-view').style.display = tab === 'add' ? 'block' : 'none';
+}
+function saveNewBuilding() {
+  var name = document.getElementById('bld-name').value.trim();
+  var floors = parseInt(document.getElementById('bld-floors').value);
+  var rooms = parseInt(document.getElementById('bld-rooms').value) || floors * 5;
+  var address = document.getElementById('bld-address').value.trim();
+  var status = document.getElementById('bld-status').value;
+  var remark = document.getElementById('bld-remark').value.trim();
+  if (!name) { showToast('请填写楼栋名称', 'error'); return; }
+  if (!floors) { showToast('请填写楼层数', 'error'); return; }
+  var newId = 'bld_' + Date.now();
+  _buildingStore.push({id:newId, name:name, floors:floors, rooms:rooms, address:address, status:status, remark:remark});
+  showToast('✅ 楼栋「' + name + '」添加成功', 'success');
+  openBuildingCRUDModal('list');
+}
+function editBuilding(id) {
+  var b = _buildingStore.find(function(x){ return x.id === id; });
+  if (!b) return;
+  var html = '<div class="modal-overlay" id="modal-edit-building" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:480px;">' +
+    '<div class="modal-header"><div class="modal-title">✏️ 编辑楼栋 - ' + b.name + '</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-edit-building\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group"><label class="form-label">楼栋名称</label><input type="text" class="form-input" id="edit-bld-name" value="' + b.name + '"></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">楼层数</label><input type="number" class="form-input" id="edit-bld-floors" value="' + b.floors + '"></div>' +
+    '<div class="form-group"><label class="form-label">房间数</label><input type="number" class="form-input" id="edit-bld-rooms" value="' + b.rooms + '"></div></div>' +
+    '<div class="form-group"><label class="form-label">地址</label><input type="text" class="form-input" id="edit-bld-address" value="' + b.address + '"></div>' +
+    '<div class="form-group"><label class="form-label">状态</label><select class="form-select" id="edit-bld-status"><option value="active" ' + (b.status==='active'?'selected':'') + '>使用中</option><option value="inactive" ' + (b.status==='inactive'?'selected':'') + '>已停用</option></select></div>' +
+    '<div class="form-group"><label class="form-label">备注</label><textarea class="form-textarea" id="edit-bld-remark">' + b.remark + '</textarea></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="deleteBuilding(\'' + b.id + '\')" style="background:var(--red-bg);color:var(--red);border-color:var(--red);margin-right:auto;">🗑️ 删除</button>' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-edit-building\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="doUpdateBuilding(\'' + b.id + '\')">保存修改</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function doUpdateBuilding(id) {
+  var b = _buildingStore.find(function(x){ return x.id === id; });
+  if (!b) return;
+  b.name = document.getElementById('edit-bld-name').value.trim() || b.name;
+  b.floors = parseInt(document.getElementById('edit-bld-floors').value) || b.floors;
+  b.rooms = parseInt(document.getElementById('edit-bld-rooms').value) || b.rooms;
+  b.address = document.getElementById('edit-bld-address').value.trim();
+  b.status = document.getElementById('edit-bld-status').value;
+  b.remark = document.getElementById('edit-bld-remark').value.trim();
+  showToast('✅ 楼栋信息已更新', 'success');
+  document.getElementById('modal-edit-building').remove();
+  openBuildingCRUDModal('list');
+}
+function deleteBuilding(id) {
+  var b = _buildingStore.find(function(x){ return x.id === id; });
+  if (!b) return;
+  if (!confirm('确定要删除楼栋「' + b.name + '」吗？删除后不可恢复。')) return;
+  _buildingStore = _buildingStore.filter(function(x){ return x.id !== id; });
+  showToast('🗑️ 楼栋「' + b.name + '」已删除', 'success');
+  document.getElementById('modal-edit-building').remove();
+  openBuildingCRUDModal('list');
+}
+
+// ============================================================
+// 改进C: 批量分配房间弹窗（page-building 引用但函数未定义）
+// 理由：page-building 页面点击「批量分配房间」调用 openBatchRoomAllocationModal，但该函数不存在
+// 功能：选择多个房间，批量分配房型、楼层、状态
+// ============================================================
+function openBatchRoomAllocationModal() {
+  var existing = document.getElementById('modal-batch-allocate');
+  if (existing) existing.remove();
+  var roomList = [
+    {room:'101',type:'标准间',floor:1,status:'空房'},
+    {room:'102',type:'标准间',floor:1,status:'空房'},
+    {room:'201',type:'大床房',floor:2,status:'入住'},
+    {room:'202',type:'大床房',floor:2,status:'入住'},
+    {room:'301',type:'亲子间',floor:3,status:'入住'},
+    {room:'302',type:'亲子间',floor:3,status:'空房'},
+    {room:'303',type:'亲子间',floor:3,status:'维修'},
+    {room:'304',type:'亲子间',floor:3,status:'空房'}
+  ];
+  var selectedRooms = [];
+  var roomRows = roomList.map(function(r) {
+    var typeOptions = '<option value="标准间">标准间</option><option value="大床房">大床房</option><option value="亲子间">亲子间</option><option value="套房">套房</option>';
+    var statusOptions = '<option value="空房">空房</option><option value="入住">入住</option><option value="维修">维修</option><option value="停售">停售</option>';
+    return '<tr id="alloc-row-' + r.room + '">' +
+      '<td style="padding:8px 10px;"><input type="checkbox" onchange="toggleAllocRoom(\'' + r.room + '\', this.checked)" style="width:16px;height:16px;cursor:pointer;"></td>' +
+      '<td style="padding:8px 10px;font-weight:700;font-size:12px;">' + r.room + '</td>' +
+      '<td style="padding:8px 10px;"><select class="form-select" id="alloc-type-' + r.room + '" style="padding:4px 8px;font-size:11px;width:90px;">' + typeOptions + '</select></td>' +
+      '<td style="padding:8px 10px;font-size:12px;color:var(--text-muted);">第' + r.floor + '层</td>' +
+      '<td style="padding:8px 10px;"><select class="form-select" id="alloc-status-' + r.room + '" style="padding:4px 8px;font-size:11px;width:80px;">' + statusOptions + '</select></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-batch-allocate" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-allocate\').remove()">' +
+    '<div class="modal" style="width:620px;max-height:88vh;overflow-y:auto;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:28px;">📋</div>' +
+    '<div><div style="font-size:15px;font-weight:700;">批量分配房间</div><div style="font-size:11px;color:var(--text-muted);">勾选房间后批量设置房型和状态</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-batch-allocate\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:16px 20px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+    '<div style="font-size:12px;color:var(--text-muted);">已选择：<span id="alloc-count" style="font-weight:700;color:var(--blue);">0</span> 间</div>' +
+    '<div style="display:flex;gap:6px;">' +
+    '<button class="action-btn small" onclick="selectAllAllocRooms()" style="padding:4px 10px;font-size:11px;">全选</button>' +
+    '<button class="action-btn small" onclick="clearAllAllocRooms()" style="padding:4px 10px;font-size:11px;">清空</button></div></div>' +
+    '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:16px;">' +
+    '<table style="width:100%;border-collapse:collapse;min-width:400px;">' +
+    '<thead><tr style="background:var(--bg);"><th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);width:40px;"></th><th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">房间号</th><th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">房型</th><th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">楼层</th><th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">状态</th></tr></thead>' +
+    '<tbody>' + roomRows + '</tbody></table></div>' +
+    // 批量操作区
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">⚡ 批量设置</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">批量设置房型</label>' +
+    '<select class="form-select" id="batch-set-type"><option value="">不同步设置</option><option value="标准间">标准间</option><option value="大床房">大床房</option><option value="亲子间">亲子间</option><option value="套房">套房</option></select></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">批量设置状态</label>' +
+    '<select class="form-select" id="batch-set-status"><option value="">不同步设置</option><option value="空房">空房</option><option value="入住">入住</option><option value="维修">维修</option><option value="停售">停售</option></select></div></div></div>' +
+    '<div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-batch-allocate\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="executeBatchAllocation()">✅ 确认分配</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  window._allocRooms = [];
+}
+function toggleAllocRoom(room, checked) {
+  if (checked) {
+    if (_allocRooms.indexOf(room) === -1) _allocRooms.push(room);
+  } else {
+    _allocRooms = _allocRooms.filter(function(r){ return r !== room; });
+  }
+  document.getElementById('alloc-count').textContent = _allocRooms.length;
+}
+function selectAllAllocRooms() {
+  document.querySelectorAll('#modal-batch-allocate input[type="checkbox"]').forEach(function(cb){ cb.checked = true; });
+  _allocRooms = Array.from({length:8},function(_,i){ return String(101+i).slice(-3); });
+  document.getElementById('alloc-count').textContent = _allocRooms.length;
+}
+function clearAllAllocRooms() {
+  document.querySelectorAll('#modal-batch-allocate input[type="checkbox"]').forEach(function(cb){ cb.checked = false; });
+  _allocRooms = [];
+  document.getElementById('alloc-count').textContent = 0;
+}
+function executeBatchAllocation() {
+  if (_allocRooms.length === 0) { showToast('请先勾选要分配的房间', 'error'); return; }
+  var typeVal = document.getElementById('batch-set-type').value;
+  var statusVal = document.getElementById('batch-set-status').value;
+  if (!typeVal && !statusVal) { showToast('请至少选择一项要批量设置的内容', 'error'); return; }
+  var changed = [];
+  _allocRooms.forEach(function(room) {
+    if (typeVal) document.getElementById('alloc-type-' + room).value = typeVal;
+    if (statusVal) document.getElementById('alloc-status-' + room).value = statusVal;
+    changed.push(room);
+  });
+  showToast('✅ 已为 ' + changed.length + ' 间房间更新配置', 'success');
+  setTimeout(function(){ document.getElementById('modal-batch-allocate').remove(); }, 800);
+}
+
+// ============================================================
+// 改进D: 设备批量固件升级进度弹窗
+// 理由：批量设备操作弹窗中点击「固件升级」后缺少升级进度展示
+// 功能：模拟OTA批量升级过程，展示每台设备的升级进度和结果
+// ============================================================
+function executeBatchFirmwareUpgrade() {
+  var existing = document.getElementById('modal-firmware-progress');
+  if (existing) existing.remove();
+  var devices = [
+    {room:'301', uuid:'DEV-LK01', fw:'v2.3.9 → v2.4.1', result:'success'},
+    {room:'302', uuid:'DEV-LK02', fw:'v2.4.0 → v2.4.1', result:'success'},
+    {room:'305', uuid:'DEV-LK05', fw:'v2.3.9 → v2.4.1', result:'pending'},
+    {room:'201', uuid:'DEV-LK08', fw:'v2.4.1 → v2.4.1', result:'already'},
+    {room:'202', uuid:'DEV-LK09', fw:'v2.3.8 → v2.4.1', result:'pending'}
+  ];
+  var rows = devices.map(function(d) {
+    var statusIcon = d.result === 'success' ? '✅' : d.result === 'already' ? '⏭️' : '<span id="fp-' + d.room + '">⏳</span>';
+    var statusText = d.result === 'success' ? '<span style="color:var(--green);">升级成功</span>' :
+                     d.result === 'already' ? '<span style="color:var(--text-muted);">已是最新</span>' :
+                     '<span style="color:var(--blue);">等待中...</span>';
+    return '<tr>' +
+      '<td style="padding:8px 12px;font-weight:700;font-size:12px;">' + d.room + '</td>' +
+      '<td style="padding:8px 12px;font-size:11px;color:var(--text-muted);">' + d.uuid + '</td>' +
+      '<td style="padding:8px 12px;font-size:11px;">' + d.fw + '</td>' +
+      '<td style="padding:8px 12px;font-size:12px;">' + statusIcon + ' ' + statusText + '</td>' +
+      '<td style="padding:8px 12px;"><div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;width:80px;"><div id="fpbar-' + d.room + '" style="height:100%;width:0%;background:var(--blue);border-radius:3px;transition:width 1.5s;"></div></div></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-firmware-progress" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:640px;max-height:88vh;overflow-y:auto;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:28px;">📡</div>' +
+    '<div><div style="font-size:15px;font-weight:700;">批量固件升级中...</div><div style="font-size:11px;color:var(--text-muted);">OTA升级 · 请勿关闭页面</div></div></div></div>' +
+    '<div style="padding:16px 20px;">' +
+    '<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:14px;">' +
+    '<div style="font-size:20px;animation:pulse 1s infinite;">⏳</div>' +
+    '<div style="flex:1;"><div style="font-size:13px;font-weight:600;color:var(--blue);">正在推送固件包 V2.4.1 至 ' + devices.length + ' 台设备...</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">预计耗时：约 <span id="fp-eta">15</span> 秒</div></div></div>' +
+    '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;">' +
+    '<table style="width:100%;border-collapse:collapse;">' +
+    '<thead><tr style="background:var(--bg);"><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">房间</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">UUID</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">升级内容</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">状态</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">进度</th></tr></thead>' +
+    '<tbody id="fp-tbody">' + rows + '</tbody></table></div>' +
+    '<div style="margin-top:14px;padding:10px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-muted);">📝 本次升级包含：续航优化、信号稳定性修复、安全补丁（CVE-2026-0142）</div></div>' +
+    '<div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'modal-firmware-progress\').remove()" class="modal-btn secondary">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  // 模拟升级进度
+  var pendingDevs = devices.filter(function(d){ return d.result === 'pending'; });
+  var delay = 500;
+  pendingDevs.forEach(function(d, i) {
+    setTimeout(function() {
+      var icon = document.getElementById('fp-' + d.room);
+      var bar = document.getElementById('fpbar-' + d.room);
+      if (icon) icon.textContent = '✅';
+      if (bar) bar.style.width = '100%';
+      var row = icon ? icon.closest('tr') : null;
+      if (row) {
+        var statusCell = row.querySelector('td:nth-child(4)');
+        if (statusCell) statusCell.innerHTML = '<span style="color:var(--green);">✅ 升级成功</span>';
+      }
+    }, delay + i * 2500);
+  });
+  var totalDelay = delay + pendingDevs.length * 2500 + 1000;
+  setTimeout(function() {
+    var etaEl = document.getElementById('fp-eta');
+    if (etaEl) etaEl.textContent = '0';
+    showToast('📡 批量固件升级完成！', 'success');
+  }, totalDelay);
+}
+
+// ============================================================
+// 改进E: 房型管理弹窗（page-building 引用但函数未定义）
+// 理由：page-building 页面有「房型管理」按钮但无对应函数
+// 功能：房型的增删改查，支持添加/编辑/删除房型
+// ============================================================
+var _roomTypeStore = [
+  {id:'std', name:'标准间', area:25, beds:'1.5米大床×1', capacity:2, price:168, remark:'经济实惠'},
+  {id:'dbl', name:'大床房', area:30, beds:'1.8米大床×1', capacity:2, price:198, remark:'商务首选'},
+  {id:'fam', name:'亲子间', area:35, beds:'1.5米大床×1 + 1.2米床×1', capacity:3, price:288, remark:'适合家庭'},
+  {id:'ste', name:'套房', area:50, beds:'1.8米大床×1 + 沙发床×1', capacity:4, price:468, remark:'豪华配置'}
+];
+function openRoomTypeManagementModal() {
+  var existing = document.getElementById('modal-room-type');
+  if (existing) existing.remove();
+  var rows = _roomTypeStore.map(function(t) {
+    return '<tr>' +
+      '<td style="padding:10px 12px;font-weight:700;font-size:13px;">' + t.name + '</td>' +
+      '<td style="padding:10px 12px;font-size:12px;color:var(--text-muted);">' + t.area + '㎡</td>' +
+      '<td style="padding:10px 12px;font-size:12px;color:var(--text-muted);">' + t.beds + '</td>' +
+      '<td style="padding:10px 12px;font-size:12px;">' + t.capacity + '人</td>' +
+      '<td style="padding:10px 12px;font-size:13px;font-weight:700;color:var(--green);">¥' + t.price + '</td>' +
+      '<td style="padding:10px 12px;font-size:12px;color:var(--text-muted);">' + t.remark + '</td>' +
+      '<td style="padding:10px 12px;"><button class="action-btn small" onclick="editRoomType(\'' + t.id + '\')" style="padding:4px 10px;font-size:11px;">✏️ 编辑</button></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-room-type" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-room-type\').remove()">' +
+    '<div class="modal" style="width:720px;max-height:88vh;overflow-y:auto;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:28px;">🏠</div>' +
+    '<div style="font-size:15px;font-weight:700;">房型管理</div></div>' +
+    '<button onclick="document.getElementById(\'modal-room-type\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:16px 20px;">' +
+    '<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">' +
+    '<button class="action-btn" onclick="showAddRoomTypeForm()" style="padding:7px 14px;font-size:12px;background:var(--blue);color:white;border:none;">➕ 添加房型</button></div>' +
+    '<div id="room-type-list-view">' +
+    '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;">' +
+    '<table style="width:100%;border-collapse:collapse;min-width:500px;">' +
+    '<thead><tr style="background:var(--bg);"><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">房型</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">面积</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">床型</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">可住</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">价格</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">备注</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">操作</th></tr></thead>' +
+    '<tbody id="rt-tbody">' + rows + '</tbody></table></div></div>' +
+    '<div id="room-type-add-view" style="display:none;padding:16px;background:var(--bg);border-radius:8px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">➕ 添加新房型</div>' +
+    '<div class="form-row" style="margin-bottom:10px;"><div class="form-group" style="margin-bottom:0;"><label class="form-label">房型名称</label><input type="text" class="form-input" id="rt-name" placeholder="如：豪华套房"></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">面积（㎡）</label><input type="number" class="form-input" id="rt-area" placeholder="50"></div></div>' +
+    '<div class="form-row" style="margin-bottom:10px;"><div class="form-group" style="margin-bottom:0;"><label class="form-label">床型</label><input type="text" class="form-input" id="rt-beds" placeholder="1.8米大床×1"></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">可住人数</label><input type="number" class="form-input" id="rt-cap" placeholder="4"></div></div>' +
+    '<div class="form-row" style="margin-bottom:10px;"><div class="form-group" style="margin-bottom:0;"><label class="form-label">价格（元/晚）</label><input type="number" class="form-input" id="rt-price" placeholder="468"></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">备注</label><input type="text" class="form-input" id="rt-remark" placeholder="简要说明"></div></div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<button class="modal-btn primary" onclick="saveNewRoomType()" style="padding:8px 16px;font-size:12px;">✅ 保存</button>' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'room-type-add-view\').style.display=\'none\';document.getElementById(\'room-type-list-view\').style.display=\'block\'" style="padding:8px 16px;font-size:12px;">取消</button></div></div></div>' +
+    '<div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'modal-room-type\').remove()" class="modal-btn secondary">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function showAddRoomTypeForm() {
+  document.getElementById('room-type-list-view').style.display = 'none';
+  document.getElementById('room-type-add-view').style.display = 'block';
+}
+function saveNewRoomType() {
+  var name = document.getElementById('rt-name').value.trim();
+  var area = parseInt(document.getElementById('rt-area').value);
+  var beds = document.getElementById('rt-beds').value.trim();
+  var cap = parseInt(document.getElementById('rt-cap').value);
+  var price = parseInt(document.getElementById('rt-price').value);
+  var remark = document.getElementById('rt-remark').value.trim();
+  if (!name || !price) { showToast('请填写房型名称和价格', 'error'); return; }
+  var newId = 'rt_' + Date.now();
+  _roomTypeStore.push({id:newId, name:name, area:area||0, beds:beds, capacity:cap||2, price:price, remark:remark});
+  showToast('✅ 房型「' + name + '」添加成功', 'success');
+  openRoomTypeManagementModal();
+}
+function editRoomType(id) {
+  var t = _roomTypeStore.find(function(x){ return x.id === id; });
+  if (!t) return;
+  var html = '<div class="modal-overlay" id="modal-edit-roomtype" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:420px;">' +
+    '<div class="modal-header"><div class="modal-title">✏️ 编辑房型</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-edit-roomtype\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group"><label class="form-label">房型名称</label><input type="text" class="form-input" id="edit-rt-name" value="' + t.name + '"></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">面积（㎡）</label><input type="number" class="form-input" id="edit-rt-area" value="' + t.area + '"></div>' +
+    '<div class="form-group"><label class="form-label">价格</label><input type="number" class="form-input" id="edit-rt-price" value="' + t.price + '"></div></div>' +
+    '<div class="form-group"><label class="form-label">床型</label><input type="text" class="form-input" id="edit-rt-beds" value="' + t.beds + '"></div>' +
+    '<div class="form-group"><label class="form-label">可住人数</label><input type="number" class="form-input" id="edit-rt-cap" value="' + t.capacity + '"></div>' +
+    '<div class="form-group"><label class="form-label">备注</label><textarea class="form-textarea" id="edit-rt-remark">' + t.remark + '</textarea></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="deleteRoomType(\'' + t.id + '\')" style="background:var(--red-bg);color:var(--red);border-color:var(--red);margin-right:auto;">🗑️ 删除</button>' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-edit-roomtype\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="doUpdateRoomType(\'' + t.id + '\')">保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function doUpdateRoomType(id) {
+  var t = _roomTypeStore.find(function(x){ return x.id === id; });
+  if (!t) return;
+  t.name = document.getElementById('edit-rt-name').value.trim() || t.name;
+  t.area = parseInt(document.getElementById('edit-rt-area').value) || t.area;
+  t.price = parseInt(document.getElementById('edit-rt-price').value) || t.price;
+  t.beds = document.getElementById('edit-rt-beds').value.trim();
+  t.capacity = parseInt(document.getElementById('edit-rt-cap').value) || t.capacity;
+  t.remark = document.getElementById('edit-rt-remark').value.trim();
+  showToast('✅ 房型信息已更新', 'success');
+  document.getElementById('modal-edit-roomtype').remove();
+  openRoomTypeManagementModal();
+}
+function deleteRoomType(id) {
+  var t = _roomTypeStore.find(function(x){ return x.id === id; });
+  if (!t) return;
+  if (!confirm('确定要删除房型「' + t.name + '」吗？')) return;
+  _roomTypeStore = _roomTypeStore.filter(function(x){ return x.id !== id; });
+  showToast('🗑️ 房型「' + t.name + '」已删除', 'success');
+  document.getElementById('modal-edit-roomtype').remove();
+  openRoomTypeManagementModal();
+}
+
+// ============================================================
+// 补充: 完善批量设备操作中的固件升级执行逻辑
+// ============================================================
+function selectBatchOp(op) {
+  // 高亮选中状态
+  document.querySelectorAll('.batch-op-card').forEach(function(el) {
+    el.style.borderColor = 'var(--border)';
+    el.style.background = 'white';
+  });
+  var activeEl = document.getElementById('bop-' + op);
+  if (activeEl) {
+    activeEl.style.borderColor = 'var(--blue)';
+    activeEl.style.background = 'var(--blue-bg)';
+  }
+  // 显示对应面板
+  document.getElementById('batch-config-panel').style.display = op === 'config' ? 'block' : 'none';
+  document.getElementById('batch-restart-panel').style.display = op === 'restart' ? 'block' : 'none';
+  document.getElementById('batch-firmware-panel').style.display = op === 'firmware' ? 'block' : 'none';
+  window._selectedBatchOp = op;
+}
+function executeBatchOp() {
+  var op = window._selectedBatchOp;
+  if (!op) { showToast('请先选择批量操作类型', 'error'); return; }
+  if (selectedDevices.length === 0) { showToast('请先勾选要操作的设备', 'error'); return; }
+  if (op === 'firmware') {
+    document.getElementById('modal-device-batch').remove();
+    executeBatchFirmwareUpgrade();
+  } else if (op === 'restart') {
+    showToast('🔄 已向 ' + selectedDevices.length + ' 台设备发送重启指令...', 'info');
+    setTimeout(function() {
+      showToast('✅ ' + selectedDevices.length + ' 台设备重启成功', 'success');
+      document.getElementById('modal-device-batch').remove();
+    }, 2500);
+  } else if (op === 'config') {
+    var timeout = document.getElementById('batch-cfg-timeout').value;
+    var battery = document.getElementById('batch-cfg-battery').value;
+    var interval = document.getElementById('batch-cfg-interval').value;
+    showToast('⚙️ 已向 ' + selectedDevices.length + ' 台设备同步配置参数', 'success');
+    setTimeout(function() {
+      showToast('✅ 参数配置完成（超时' + timeout + 's / 低电量' + battery + '% / 同步' + interval + '）', 'success');
+      document.getElementById('modal-device-batch').remove();
+    }, 1200);
+  }
+}
