@@ -36997,3 +36997,524 @@ function confirmNightAudit() {
   document.getElementById('modal-night-audit').remove();
   showToast('🌙 夜审报表已确认提交，数据已归档', 'success');
 }
+
+// ======= 【物联后台V3改进1】预登记入住管理队列 =======
+// 理由：现有modal-batch-checkin是完整的批量入住弹窗，但openBatchCheckinModal函数未定义，导致无法从菜单/其他入口触发预登记管理流程。
+// 功能：管理预登记队列（待确认→已确认→已入住状态流转），支持新增、确认、入住、取消操作。
+var _preregStore = [
+  {id:'PR001',name:'孙琦',phone:'136****9012',room:'306',roomType:'标准间',nights:2,status:'pending',createTime:'03-29 08:30',notes:'无早餐'},
+  {id:'PR002',name:'周娜',phone:'137****7823',room:'307',roomType:'标准间',nights:3,status:'confirmed',createTime:'03-29 07:15',notes:'高楼层'},
+  {id:'PR003',name:'吴铭',phone:'138****4455',room:'305',roomType:'亲子间',nights:1,status:'pending',createTime:'03-29 06:50',notes:'需加床'},
+  {id:'PR004',name:'郑龙',phone:'139****6678',room:'202',roomType:'大床房',nights:2,status:'checkedin',createTime:'03-28 20:00',notes:''}
+];
+var _preregCurrentTab = 'all';
+
+function openBatchCheckinModal() {
+  var existing = document.getElementById('modal-prereg-queue');
+  if (existing) existing.remove();
+  _preregCurrentTab = 'all';
+  renderPreregQueue();
+}
+
+function renderPreregQueue() {
+  var existing = document.getElementById('modal-prereg-queue');
+  if (existing) existing.remove();
+  var filtered = _preregCurrentTab === 'all' ? _preregStore : _preregStore.filter(function(r) { return r.status === _preregCurrentTab; });
+  var pendingCount = _preregStore.filter(function(r) { return r.status === 'pending'; }).length;
+  var confirmedCount = _preregStore.filter(function(r) { return r.status === 'confirmed'; }).length;
+  var checkedinCount = _preregStore.filter(function(r) { return r.status === 'checkedin'; }).length;
+  var rows = filtered.map(function(r) {
+    var statusMap = {
+      pending: {label:'待确认', color:'var(--orange)', bg:'var(--orange-bg)'},
+      confirmed: {label:'已确认', color:'var(--blue)', bg:'var(--blue-bg)'},
+      checkedin: {label:'已入住', color:'var(--green)', bg:'var(--green-bg)'},
+      cancelled: {label:'已取消', color:'var(--text-muted)', bg:'var(--bg)'}
+    };
+    var s = statusMap[r.status] || statusMap.pending;
+    var actionHtml = '';
+    if (r.status === 'pending') {
+      actionHtml = '<button class="action-btn small" onclick="confirmPrereg(\'' + r.id + '\')" style="padding:3px 8px;font-size:11px;background:var(--blue);color:white;border:none;">确认</button>' +
+        '<button class="action-btn small" onclick="cancelPrereg(\'' + r.id + '\')" style="padding:3px 8px;font-size:11px;background:var(--red-bg);color:var(--red);border-color:var(--red);">取消</button>';
+    } else if (r.status === 'confirmed') {
+      actionHtml = '<button class="action-btn small" onclick="checkinPrereg(\'' + r.id + '\')" style="padding:3px 8px;font-size:11px;background:var(--green);color:white;border:none;">办理入住</button>';
+    } else if (r.status === 'checkedin') {
+      actionHtml = '<span style="font-size:11px;color:var(--green);">✓ 已完成</span>';
+    } else {
+      actionHtml = '<span style="font-size:11px;color:var(--text-muted);">—</span>';
+    }
+    return '<div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--border);" id="prereg-row-' + r.id + '">' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">' +
+      '<span style="font-size:14px;font-weight:700;color:var(--blue);">' + r.room + '</span>' +
+      '<span style="font-size:13px;font-weight:600;">' + r.name + '</span>' +
+      '<span style="padding:2px 6px;background:' + s.bg + ';color:' + s.color + ';border-radius:8px;font-size:10px;font-weight:600;">' + s.label + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + r.roomType + ' · ' + r.nights + '晚 · ' + r.phone + (r.notes ? ' · ' + r.notes : '') + '</div></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);flex-shrink:0;">' + r.createTime + '</div>' +
+      '<div style="display:flex;gap:6px;flex-shrink:0;">' + actionHtml + '</div></div>';
+  }).join('');
+  var tabsHtml = '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
+    '<button onclick="switchPreregTab(\'all\',this)" class="prereg-tab ' + (_preregCurrentTab === 'all' ? 'active' : '') + '" style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;border:none;font-weight:600;background:' + (_preregCurrentTab === 'all' ? 'var(--blue)' : 'var(--bg)') + ';color:' + (_preregCurrentTab === 'all' ? 'white' : 'var(--text)') + ';">全部 <b>' + _preregStore.length + '</b></button>' +
+    '<button onclick="switchPreregTab(\'pending\',this)" class="prereg-tab ' + (_preregCurrentTab === 'pending' ? 'active' : '') + '" style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;border:none;font-weight:600;background:' + (_preregCurrentTab === 'pending' ? 'var(--orange)' : 'var(--bg)') + ';color:' + (_preregCurrentTab === 'pending' ? 'white' : 'var(--text)') + ';">待确认 <b>' + pendingCount + '</b></button>' +
+    '<button onclick="switchPreregTab(\'confirmed\',this)" class="prereg-tab ' + (_preregCurrentTab === 'confirmed' ? 'active' : '') + '" style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;border:none;font-weight:600;background:' + (_preregCurrentTab === 'confirmed' ? 'var(--blue)' : 'var(--bg)') + ';color:' + (_preregCurrentTab === 'confirmed' ? 'white' : 'var(--text)') + ';">已确认 <b>' + confirmedCount + '</b></button>' +
+    '<button onclick="switchPreregTab(\'checkedin\',this)" class="prereg-tab ' + (_preregCurrentTab === 'checkedin' ? 'active' : '') + '" style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;border:none;font-weight:600;background:' + (_preregCurrentTab === 'checkedin' ? 'var(--green)' : 'var(--bg)') + ';color:' + (_preregCurrentTab === 'checkedin' ? 'white' : 'var(--text)') + ';">已入住 <b>' + checkedinCount + '</b></button></div>';
+  var html = '<div class="modal-overlay" id="modal-prereg-queue" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-prereg-queue\').remove()">' +
+    '<div class="modal" style="width:720px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">📋</div><div><div style="font-size:15px;font-weight:700;">预登记入住管理</div><div style="font-size:11px;color:var(--text-muted);">管理预登记状态流转：待确认 → 已确认 → 已入住</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-prereg-queue\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">' + tabsHtml +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">' +
+    '<div style="font-size:11px;color:var(--text-muted);">共 <b>' + filtered.length + '</b> 条记录</div>' +
+    '<button onclick="openAddPreregModal()" style="padding:6px 12px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">➕ 新增预登记</button></div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 20px;" id="prereg-list">' + (rows || '<div style="padding:40px;text-align:center;color:var(--text-muted);">暂无记录</div>') + '</div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-prereg-queue\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="openHomepageBatchCheckin()" style="background:var(--blue);color:white;border:none;">批量办理入住</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function switchPreregTab(tab, btn) {
+  _preregCurrentTab = tab;
+  renderPreregQueue();
+}
+
+function confirmPrereg(id) {
+  var item = _preregStore.find(function(r) { return r.id === id; });
+  if (item) { item.status = 'confirmed'; }
+  showToast('✅ 预登记 ' + id + ' 已确认', 'success');
+  renderPreregQueue();
+}
+
+function cancelPrereg(id) {
+  var item = _preregStore.find(function(r) { return r.id === id; });
+  if (item) { item.status = 'cancelled'; }
+  showToast('❌ 预登记 ' + id + ' 已取消', 'warn');
+  renderPreregQueue();
+}
+
+function checkinPrereg(id) {
+  var item = _preregStore.find(function(r) { return r.id === id; });
+  if (item) { item.status = 'checkedin'; }
+  showToast('🏨 ' + id + ' 已完成入住登记', 'success');
+  renderPreregQueue();
+}
+
+function openAddPreregModal() {
+  var existing = document.getElementById('modal-add-prereg');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-add-prereg" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-add-prereg\').remove()">' +
+    '<div class="modal" style="width:480px;max-height:90vh;overflow-y:auto;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">➕ 新增预登记</div>' +
+    '<button onclick="document.getElementById(\'modal-add-prereg\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:16px 20px;">' +
+    '<div class="form-group"><label class="form-label">入住人姓名 <span class="required">*</span></label><input type="text" class="form-input" id="apr-name" placeholder="请输入姓名"></div>' +
+    '<div class="form-group"><label class="form-label">手机号 <span class="required">*</span></label><input type="tel" class="form-input" id="apr-phone" placeholder="请输入手机号"></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">房间号</label><input type="text" class="form-input" id="apr-room" placeholder="如 305"></div>' +
+    '<div class="form-group"><label class="form-label">房型</label><select class="form-select" id="apr-type"><option value="亲子间">亲子间</option><option value="大床房">大床房</option><option value="标准间">标准间</option><option value="家庭套房">家庭套房</option></select></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">入住天数</label><select class="form-select" id="apr-nights"><option value="1">1晚</option><option value="2" selected>2晚</option><option value="3">3晚</option></select></div>' +
+    '<div class="form-group"><label class="form-label">备注</label><input type="text" class="form-input" id="apr-notes" placeholder="特殊要求（选填）"></div></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-add-prereg\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="submitAddPrereg()" style="background:var(--blue);color:white;border:none;">确认添加</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitAddPrereg() {
+  var name = document.getElementById('apr-name').value.trim();
+  var phone = document.getElementById('apr-phone').value.trim();
+  if (!name || !phone) { showToast('请填写必填项', 'warn'); return; }
+  var newId = 'PR' + String(_preregStore.length + 1).padStart(3, '0');
+  var now = new Date();
+  var timeStr = (now.getMonth() + 1) + '-' + now.getDate() + ' ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  _preregStore.unshift({
+    id: newId, name: name, phone: phone,
+    room: document.getElementById('apr-room').value.trim() || '--',
+    roomType: document.getElementById('apr-type').value,
+    nights: parseInt(document.getElementById('apr-nights').value),
+    status: 'pending', createTime: timeStr,
+    notes: document.getElementById('apr-notes').value.trim()
+  });
+  document.getElementById('modal-add-prereg').remove();
+  showToast('✅ 预登记 ' + newId + ' 已添加', 'success');
+  renderPreregQueue();
+}
+
+// ======= 【物联后台V3改进2】押金智能管理面板 =======
+// 理由：openDepositManagementModal函数仅被调用但body为空，无法查看押金状态、待退款列表和押金流水。
+// 功能：展示押金账户总览、待退款队列、押金流水记录，支持按状态筛选和快速退款操作。
+var _depositStore = [
+  {id:'D001',name:'张三',room:'301',amount:100,type:'已付',payMethod:'微信',status:'占用中',time:'03-28 10:30'},
+  {id:'D002',name:'李四',room:'302',amount:100,type:'已付',payMethod:'支付宝',status:'占用中',time:'03-27 14:20'},
+  {id:'D003',name:'王五',room:'201',amount:100,type:'已付',payMethod:'现金',status:'待退款',time:'03-27 09:00'},
+  {id:'D004',name:'钱七',room:'203',amount:200,type:'已付',payMethod:'微信',status:'已退款',time:'03-26 11:30'},
+  {id:'D005',name:'孙琦',room:'305',amount:100,type:'已付',payMethod:'刷卡',status:'待退款',time:'03-28 08:45'}
+];
+var _depositFilter = 'all';
+
+function openDepositManagementModal() {
+  var existing = document.getElementById('modal-deposit-mgmt');
+  if (existing) existing.remove();
+  _depositFilter = 'all';
+  renderDepositMgmt();
+}
+
+function renderDepositMgmt() {
+  var existing = document.getElementById('modal-deposit-mgmt');
+  if (existing) existing.remove();
+  var filtered = _depositFilter === 'all' ? _depositStore : _depositStore.filter(function(d) { return d.status === _depositFilter; });
+  var totalDeposits = _depositStore.filter(function(d) { return d.status !== '已退款'; }).reduce(function(s, d) { return s + d.amount; }, 0);
+  var pendingRefund = _depositStore.filter(function(d) { return d.status === '待退款'; }).reduce(function(s, d) { return s + d.amount; }, 0);
+  var refundCount = _depositStore.filter(function(d) { return d.status === '待退款'; }).length;
+  var statusMap = {
+    '占用中': {color:'var(--blue)', bg:'var(--blue-bg)'},
+    '待退款': {color:'var(--orange)', bg:'var(--orange-bg)'},
+    '已退款': {color:'var(--green)', bg:'var(--green-bg)'}
+  };
+  var rows = filtered.map(function(d) {
+    var s = statusMap[d.status] || statusMap['占用中'];
+    var actionHtml = d.status === '待退款'
+      ? '<button class="action-btn small" onclick="processRefund(\'' + d.id + '\')" style="padding:3px 8px;font-size:11px;background:var(--green);color:white;border:none;">确认退款</button>'
+      : d.status === '占用中'
+      ? '<span style="font-size:11px;color:var(--blue);">使用中</span>'
+      : '<span style="font-size:11px;color:var(--green);">✓ 已退</span>';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);" id="dep-row-' + d.id + '">' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">' +
+      '<span style="font-size:13px;font-weight:700;color:var(--blue);">' + d.room + '</span>' +
+      '<span style="font-size:13px;font-weight:600;">' + d.name + '</span>' +
+      '<span style="padding:2px 6px;background:' + s.bg + ';color:' + s.color + ';border-radius:8px;font-size:10px;font-weight:600;">' + d.status + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + d.payMethod + ' · ' + d.time + '</div></div>' +
+      '<div style="font-size:16px;font-weight:700;color:var(--green);flex-shrink:0;">¥' + d.amount + '</div>' +
+      '<div style="flex-shrink:0;">' + actionHtml + '</div></div>';
+  }).join('');
+  var tabsHtml = '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
+    ['all','占用中','待退款','已退款'].map(function(tab) {
+      var count = tab === 'all' ? _depositStore.length : _depositStore.filter(function(d) { return d.status === tab; }).length;
+      var isActive = _depositFilter === tab;
+      return '<button onclick="switchDepositTab(\'' + tab + '\',this)" style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;border:none;font-weight:600;background:' + (isActive ? 'var(--blue)' : 'var(--bg)') + ';color:' + (isActive ? 'white' : 'var(--text)') + ';">' + (tab === 'all' ? '全部' : tab) + ' <b>' + count + '</b></button>';
+    }).join('') + '</div>';
+  var html = '<div class="modal-overlay" id="modal-deposit-mgmt" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-deposit-mgmt\').remove()">' +
+    '<div class="modal" style="width:680px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">💰</div><div><div style="font-size:15px;font-weight:700;">押金智能管理</div><div style="font-size:11px;color:var(--text-muted);">押金收取/退款全流程管理</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-deposit-mgmt\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:14px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:10px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);">¥' + totalDeposits + '</div><div style="font-size:11px;color:var(--blue);">押金总额（占用中）</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:10px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">¥' + pendingRefund + '</div><div style="font-size:11px;color:var(--orange);">待退款金额</div></div>' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:10px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red);">' + refundCount + '</div><div style="font-size:11px;color:var(--red);">待处理退款</div></div></div>' +
+    tabsHtml + '</div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 20px;" id="deposit-list">' + (rows || '<div style="padding:40px;text-align:center;color:var(--text-muted);">暂无记录</div>') + '</div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-deposit-mgmt\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function switchDepositTab(tab, btn) {
+  _depositFilter = tab;
+  renderDepositMgmt();
+}
+
+function processRefund(id) {
+  var item = _depositStore.find(function(d) { return d.id === id; });
+  if (item) { item.status = '已退款'; }
+  showToast('✅ 押金退款处理成功', 'success');
+  renderDepositMgmt();
+}
+
+// ======= 【物联后台V3改进3】SLA超时规则可视化配置 =======
+// 理由：工单系统有SLA超时概念，但openSlaRulesConfigModal函数未定义，无法配置各类型工单的SLA时限。
+// 功能：可视化展示SLA规则列表，支持新增/编辑/删除SLA规则，实时预览规则匹配结果。
+var _slaRules = [
+  {id:'SLA001',type:'客户投诉',priority:'high',slaMinutes:30,escalateMinutes:60,enabled:true},
+  {id:'SLA002',type:'设备维修',priority:'high',slaMinutes:60,escalateMinutes:120,enabled:true},
+  {id:'SLA003',type:'设备维修',priority:'medium',slaMinutes:120,escalateMinutes:240,enabled:true},
+  {id:'SLA004',type:'前台服务',priority:'low',slaMinutes:180,escalateMinutes:360,enabled:false},
+  {id:'SLA005',type:'工程维修',priority:'high',slaMinutes:45,escalateMinutes:90,enabled:true}
+];
+
+function openSlaRulesConfigModal() {
+  var existing = document.getElementById('modal-sla-rules');
+  if (existing) existing.remove();
+  renderSlaRules();
+}
+
+function renderSlaRules() {
+  var existing = document.getElementById('modal-sla-rules');
+  if (existing) existing.remove();
+  var rows = _slaRules.map(function(r) {
+    var prioMap = {high:{color:'var(--red)',bg:'var(--red-bg)',label:'紧急'},
+      medium:{color:'var(--orange)',bg:'var(--orange-bg)',label:'一般'},
+      low:{color:'var(--green)',bg:'var(--green-bg)',label:'低'}};
+    var p = prioMap[r.priority] || prioMap.medium;
+    return '<div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--border);">' +
+      '<div style="width:6px;height:40px;background:' + p.color + ';border-radius:3px;flex-shrink:0;"></div>' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">' +
+      '<span style="font-size:13px;font-weight:700;">' + r.type + '</span>' +
+      '<span style="padding:2px 6px;background:' + p.bg + ';color:' + p.color + ';border-radius:8px;font-size:10px;font-weight:600;">' + p.label + '</span>' +
+      '<span style="padding:2px 6px;background:' + (r.enabled ? 'var(--green-bg)' : 'var(--bg)') + ';color:' + (r.enabled ? 'var(--green)' : 'var(--text-muted)') + ';border-radius:8px;font-size:10px;">' + (r.enabled ? '✓ 已启用' : '✕ 已停用') + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">SLA时限：' + r.slaMinutes + '分钟 · 升级时限：' + r.escalateMinutes + '分钟</div></div>' +
+      '<div style="display:flex;gap:6px;flex-shrink:0;">' +
+      '<button class="action-btn small" onclick="editSlaRule(\'' + r.id + '\')" style="padding:3px 8px;font-size:11px;">编辑</button>' +
+      '<button class="action-btn small" onclick="toggleSlaRule(\'' + r.id + '\')" style="padding:3px 8px;font-size:11px;background:' + (r.enabled ? 'var(--orange-bg)' : 'var(--green-bg)') + ';color:' + (r.enabled ? 'var(--orange)' : 'var(--green)') + ';border:none;">' + (r.enabled ? '停用' : '启用') + '</button></div></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-sla-rules" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-sla-rules\').remove()">' +
+    '<div class="modal" style="width:640px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">⚖️</div><div><div style="font-size:15px;font-weight:700;">SLA超时规则配置</div><div style="font-size:11px;color:var(--text-muted);">工单服务等级协议 · SLA时限 · 升级触发规则</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-sla-rules\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:12px 20px;border-bottom:1px solid var(--border);background:var(--orange-bg);flex-shrink:0;">' +
+    '<div style="font-size:12px;color:var(--orange);">⚠️ SLA规则修改后，新工单立即生效；进行中的工单按原规则执行</div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 20px;" id="sla-rules-list">' + rows + '</div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;flex-shrink:0;">' +
+    '<button class="modal-btn" onclick="openAddSlaRuleModal()" style="background:var(--blue);color:white;border:none;">➕ 新增规则</button>' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-sla-rules\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function toggleSlaRule(id) {
+  var rule = _slaRules.find(function(r) { return r.id === id; });
+  if (rule) { rule.enabled = !rule.enabled; }
+  renderSlaRules();
+}
+
+function editSlaRule(id) {
+  var rule = _slaRules.find(function(r) { return r.id === id; });
+  if (!rule) return;
+  var newType = prompt('工单类型：', rule.type);
+  if (!newType) return;
+  var newSla = prompt('SLA时限（分钟）：', rule.slaMinutes);
+  if (!newSla) return;
+  rule.type = newType;
+  rule.slaMinutes = parseInt(newSla);
+  showToast('✅ SLA规则已更新', 'success');
+  renderSlaRules();
+}
+
+function openAddSlaRuleModal() {
+  var newId = 'SLA' + String(_slaRules.length + 1).padStart(3, '0');
+  var newType = prompt('工单类型（如：工程维修）：');
+  if (!newType) return;
+  var newSla = parseInt(prompt('SLA时限（分钟）：', '60') || '60');
+  var newEscalate = parseInt(prompt('升级时限（分钟）：', '120') || '120');
+  _slaRules.push({id: newId, type: newType, priority: 'medium', slaMinutes: newSla, escalateMinutes: newEscalate, enabled: true});
+  showToast('✅ SLA规则 ' + newId + ' 已添加', 'success');
+  renderSlaRules();
+}
+
+// ======= 【物联后台V3改进4】能耗预测弹窗 =======
+// 理由：能耗分析中心弹窗里有「能耗预测」按钮，但openEnergyForecastModal函数未定义。
+// 功能：基于历史数据预测未来7日用电量，展示预测趋势和节能目标达成路径。
+var _energyForecastData = [
+  {date:'03-29',kwh:42.5,predicted:false,cost:21.25,weather:'☀️ 晴'},
+  {date:'03-30',kwh:null,predicted:true,value:44.2,cost:22.10,weather:'🌤 多云'},
+  {date:'03-31',kwh:null,predicted:true,value:41.8,cost:20.90,weather:'🌧 小雨'},
+  {date:'04-01',kwh:null,predicted:true,value:46.5,cost:23.25,weather:'☀️ 晴'},
+  {date:'04-02',kwh:null,predicted:true,value:43.0,cost:21.50,weather:'🌤 多云'},
+  {date:'04-03',kwh:null,predicted:true,value:47.2,cost:23.60,weather:'☀️ 晴'},
+  {date:'04-04',kwh:null,predicted:true,value:45.0,cost:22.50,weather:'🌤 多云'}
+];
+
+function openEnergyForecastModal() {
+  var existing = document.getElementById('modal-energy-forecast');
+  if (existing) existing.remove();
+  var recentKwh = _energyForecastData.filter(function(d) { return !d.predicted; }).reduce(function(s, d) { return s + d.kwh; }, 0);
+  var predictKwh = _energyForecastData.filter(function(d) { return d.predicted; }).reduce(function(s, d) { return s + d.value; }, 0);
+  var targetKwh = 280; // 月度节能目标（7天）
+  var maxVal = Math.max.apply(null, _energyForecastData.map(function(d) { return d.predicted ? d.value : d.kwh; }));
+  var bars = _energyForecastData.map(function(d) {
+    var val = d.predicted ? d.value : d.kwh;
+    var h = Math.round((val / maxVal) * 80);
+    var isPredicted = d.predicted;
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">' +
+      '<div style="font-size:11px;font-weight:600;color:' + (isPredicted ? 'var(--orange)' : 'var(--blue)') + ';">' + (isPredicted ? val.toFixed(1) : val.toFixed(1)) + '</div>' +
+      '<div style="width:24px;background:' + (isPredicted ? 'var(--orange-bg);border:2px solid var(--orange)' : 'var(--blue)') + ';border-radius:3px;height:' + h + 'px;opacity:' + (isPredicted ? '0.8' : '1') + ';"></div>' +
+      '<div style="font-size:9px;color:var(--text-muted);text-align:center;">' + d.date + '<br>' + d.weather + '</div>' +
+      (isPredicted ? '<div style="font-size:9px;color:var(--orange);font-weight:600;">预测</div>' : '<div style="font-size:9px;color:var(--blue);font-weight:600;">实际</div>') + '</div>';
+  }).join('');
+  var adviceItems = [
+    {floor:'3F客房层',issue:'周末预测用电量较高',advice:'建议退房后自动断电+限制空调高功率运行'},
+    {floor:'2F走廊',issue:'预测期间多云天气',advice:'可减少照明开启数量，节省约 8kWh/天'},
+    {floor:'1F大堂',issue:'周末预计入住率75%',advice:'提前开启节能模式，空调温度调高2°C'}
+  ];
+  var adviceHtml = adviceItems.map(function(a) {
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:8px;">' +
+      '<span style="font-size:16px;flex-shrink:0;">💡</span>' +
+      '<div><div style="font-size:12px;font-weight:600;margin-bottom:2px;">' + a.floor + ' · ' + a.issue + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + a.advice + '</div></div></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-energy-forecast" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-forecast\').remove()">' +
+    '<div class="modal" style="width:700px;max-height:90vh;overflow-y:auto;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">📈</div><div><div style="font-size:15px;font-weight:700;">能耗趋势预测</div><div style="font-size:11px;color:var(--text-muted);">基于历史数据+天气因素预测未来7日用电量</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-energy-forecast\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:16px 24px;">' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);">' + recentKwh.toFixed(1) + ' kWh</div><div style="font-size:11px;color:var(--blue);">近2日实际用电</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);">' + predictKwh.toFixed(1) + ' kWh</div><div style="font-size:11px;color:var(--orange);">未来7日预测用电</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);">¥' + (predictKwh * 0.5).toFixed(0) + '</div><div style="font-size:11px;color:var(--green);">预测电费合计</div></div></div>' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:10px;">📊 用电量趋势对比（实际 vs 预测）</div>' +
+    '<div style="display:flex;gap:4px;align-items:flex-end;padding:16px;background:var(--bg);border-radius:8px;margin-bottom:16px;height:120px;">' + bars + '</div>' +
+    '<div style="display:flex;gap:16px;margin-bottom:12px;font-size:11px;color:var(--text-muted);">' +
+    '<div style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;background:var(--blue);border-radius:2px;"></span>实际用电</div>' +
+    '<div style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;background:var(--orange-bg);border:2px solid var(--orange);border-radius:2px;"></span>预测用电</div></div>' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:10px;">💡 节能优化建议</div>' +
+    adviceHtml +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-energy-forecast\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="exportEnergyForecastReport()" style="background:var(--green);color:white;border:none;">📤 导出预测报告</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function exportEnergyForecastReport() {
+  showToast('📤 能耗预测报告已导出（未来7日趋势数据）', 'success');
+}
+
+// ======= 【物联后台V3改进5】发票管理完整流程 =======
+// 理由：openInvoiceManagementModal函数存在但body内容不完整，缺少发票申请、开票历史、状态管理和作废功能。
+// 功能：完整的发票申请、审核、开票历史追踪和作废流程。
+var _invoiceStore = [
+  {id:'INV-2026032801',name:'张三',company:'北京科技有限公司',taxNo:'91110108MA00XXXX1X',amount:736,type:'增值税普通',status:'已开票',createTime:'03-28 14:30',invoiceNo:'FP12890001'},
+  {id:'INV-2026032701',name:'李四',company:'',taxNo:'',amount:368,type:'个人',status:'已开票',createTime:'03-27 10:15',invoiceNo:'FP12890002'},
+  {id:'INV-2026032901',name:'王五',company:'上海贸易有限公司',taxNo:'91310115MA1H7XXXX',amount:1104,type:'增值税专用',status:'待审核',createTime:'03-29 08:00',invoiceNo:''},
+  {id:'INV-2026032802',name:'孙琦',company:'',taxNo:'',amount:200,type:'个人',status:'已作废',createTime:'03-28 16:45',invoiceNo:'FP12890003'}
+];
+var _invoiceFilter = 'all';
+
+function openInvoiceManagementModal() {
+  var existing = document.getElementById('modal-invoice-mgmt');
+  if (existing) existing.remove();
+  _invoiceFilter = 'all';
+  renderInvoiceMgmt();
+}
+
+function renderInvoiceMgmt() {
+  var existing = document.getElementById('modal-invoice-mgmt');
+  if (existing) existing.remove();
+  var filtered = _invoiceFilter === 'all' ? _invoiceStore : _invoiceStore.filter(function(i) { return i.status === _invoiceFilter; });
+  var totalAmount = filtered.reduce(function(s, i) { return s + i.amount; }, 0);
+  var pendingCount = _invoiceStore.filter(function(i) { return i.status === '待审核'; }).length;
+  var statusMap = {
+    '待审核': {color:'var(--orange)', bg:'var(--orange-bg)'},
+    '已开票': {color:'var(--green)', bg:'var(--green-bg)'},
+    '已作废': {color:'var(--red)', bg:'var(--red-bg)'}
+  };
+  var rows = filtered.map(function(inv) {
+    var s = statusMap[inv.status] || statusMap['待审核'];
+    var actionHtml = '';
+    if (inv.status === '待审核') {
+      actionHtml = '<button class="action-btn small" onclick="approveInvoice(\'' + inv.id + '\')" style="padding:3px 8px;font-size:11px;background:var(--blue);color:white;border:none;">审核通过</button>' +
+        '<button class="action-btn small" onclick="rejectInvoice(\'' + inv.id + '\')" style="padding:3px 8px;font-size:11px;background:var(--red-bg);color:var(--red);border-color:var(--red);">拒绝</button>';
+    } else if (inv.status === '已开票') {
+      actionHtml = '<button class="action-btn small" onclick="voidInvoice(\'' + inv.id + '\')" style="padding:3px 8px;font-size:11px;background:var(--red-bg);color:var(--red);border-color:var(--red);">作废</button>';
+    } else {
+      actionHtml = '<span style="font-size:11px;color:var(--text-muted);">—</span>';
+    }
+    return '<div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--border);" id="inv-row-' + inv.id + '">' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">' +
+      '<span style="font-size:12px;font-weight:700;color:var(--blue);">' + inv.id + '</span>' +
+      '<span style="font-size:12px;font-weight:600;">' + inv.name + '</span>' +
+      '<span style="padding:2px 6px;background:' + s.bg + ';color:' + s.color + ';border-radius:8px;font-size:10px;font-weight:600;">' + inv.status + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + (inv.company || '个人') + (inv.taxNo ? ' · ' + inv.taxNo : '') + '</div></div>' +
+      '<div style="text-align:right;flex-shrink:0;margin-right:8px;">' +
+      '<div style="font-size:14px;font-weight:700;color:var(--blue);">¥' + inv.amount + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);">' + inv.type + (inv.invoiceNo ? ' · ' + inv.invoiceNo : '') + '</div></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);flex-shrink:0;">' + inv.createTime + '</div>' +
+      '<div style="display:flex;gap:6px;flex-shrink:0;">' + actionHtml + '</div></div>';
+  }).join('');
+  var tabsHtml = '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
+    ['all','待审核','已开票','已作废'].map(function(tab) {
+      var count = tab === 'all' ? _invoiceStore.length : _invoiceStore.filter(function(i) { return i.status === tab; }).length;
+      var isActive = _invoiceFilter === tab;
+      return '<button onclick="switchInvoiceTab(\'' + tab + '\',this)" style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;border:none;font-weight:600;background:' + (isActive ? 'var(--blue)' : 'var(--bg)') + ';color:' + (isActive ? 'white' : 'var(--text)') + ';">' + (tab === 'all' ? '全部' : tab) + ' <b>' + count + '</b></button>';
+    }).join('') + '</div>';
+  var html = '<div class="modal-overlay" id="modal-invoice-mgmt" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-mgmt\').remove()">' +
+    '<div class="modal" style="width:760px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">📄</div><div><div style="font-size:15px;font-weight:700;">发票管理</div><div style="font-size:11px;color:var(--text-muted);">发票申请 · 审核开票 · 作废全流程</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-invoice-mgmt\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:14px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);">¥' + totalAmount + '</div><div style="font-size:11px;color:var(--blue);">发票总额（当前筛选）</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);">' + pendingCount + '</div><div style="font-size:11px;color:var(--orange);">待审核申请</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);">' + (_invoiceStore.filter(function(i) { return i.status === '已开票'; }).length) + '</div><div style="font-size:11px;color:var(--green);">已开票记录</div></div></div>' +
+    tabsHtml + '</div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 20px;" id="invoice-list">' + (rows || '<div style="padding:40px;text-align:center;color:var(--text-muted);">暂无记录</div>') + '</div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-mgmt\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="openAddInvoiceModal()" style="background:var(--blue);color:white;border:none;">➕ 新增发票申请</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function switchInvoiceTab(tab, btn) {
+  _invoiceFilter = tab;
+  renderInvoiceMgmt();
+}
+
+function approveInvoice(id) {
+  var item = _invoiceStore.find(function(i) { return i.id === id; });
+  if (item) {
+    item.status = '已开票';
+    item.invoiceNo = 'FP' + String(Math.floor(Math.random() * 90000000 + 10000000));
+  }
+  showToast('✅ 发票 ' + id + ' 已审核通过，开票号：' + item.invoiceNo, 'success');
+  renderInvoiceMgmt();
+}
+
+function rejectInvoice(id) {
+  var item = _invoiceStore.find(function(i) { return i.id === id; });
+  if (item) { item.status = '已作废'; }
+  showToast('❌ 发票 ' + id + ' 已拒绝', 'warn');
+  renderInvoiceMgmt();
+}
+
+function voidInvoice(id) {
+  if (!confirm('确定要作废发票 ' + id + ' 吗？')) return;
+  var item = _invoiceStore.find(function(i) { return i.id === id; });
+  if (item) { item.status = '已作废'; }
+  showToast('🗑 发票 ' + id + ' 已作废', 'warn');
+  renderInvoiceMgmt();
+}
+
+function openAddInvoiceModal() {
+  var existing = document.getElementById('modal-add-invoice');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-add-invoice" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-add-invoice\').remove()">' +
+    '<div class="modal" style="width:500px;max-height:90vh;overflow-y:auto;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">➕ 新增发票申请</div>' +
+    '<button onclick="document.getElementById(\'modal-add-invoice\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:16px 20px;">' +
+    '<div class="form-group"><label class="form-label">客人姓名 <span class="required">*</span></label><input type="text" class="form-input" id="ai-name" placeholder="请输入姓名"></div>' +
+    '<div class="form-group"><label class="form-label">发票金额 <span class="required">*</span></label><input type="number" class="form-input" id="ai-amount" placeholder="请输入金额（元）" value="0"></div>' +
+    '<div class="form-group"><label class="form-label">发票类型</label>' +
+    '<select class="form-select" id="ai-type"><option value="个人">个人（不填公司信息）</option><option value="增值税普通">增值税普通发票</option><option value="增值税专用">增值税专用发票</option></select></div>' +
+    '<div class="form-group"><label class="form-label">公司名称（企业必填）</label><input type="text" class="form-input" id="ai-company" placeholder="请输入公司全称（个人发票可不填）"></div>' +
+    '<div class="form-group"><label class="form-label">税号（企业必填）</label><input type="text" class="form-input" id="ai-taxno" placeholder="请输入纳税人识别号"></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-add-invoice\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="submitAddInvoice()" style="background:var(--blue);color:white;border:none;">提交申请</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitAddInvoice() {
+  var name = document.getElementById('ai-name').value.trim();
+  var amount = parseInt(document.getElementById('ai-amount').value) || 0;
+  if (!name || amount <= 0) { showToast('请填写必填项（姓名和金额）', 'warn'); return; }
+  var newId = 'INV-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + String(_invoiceStore.length + 1).padStart(2, '0');
+  var now = new Date();
+  var timeStr = (now.getMonth() + 1) + '-' + now.getDate() + ' ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  _invoiceStore.unshift({
+    id: newId, name: name,
+    company: document.getElementById('ai-company').value.trim(),
+    taxNo: document.getElementById('ai-taxno').value.trim(),
+    amount: amount, type: document.getElementById('ai-type').value,
+    status: '待审核', createTime: timeStr, invoiceNo: ''
+  });
+  document.getElementById('modal-add-invoice').remove();
+  showToast('✅ 发票申请 ' + newId + ' 已提交，等待审核', 'success');
+  renderInvoiceMgmt();
+}
