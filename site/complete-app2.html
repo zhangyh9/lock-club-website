@@ -1497,7 +1497,10 @@ function showToast(msg, type) {
       </script>
 
       <!-- 【改进1】首页统计卡片下钻：点击跳转到对应详情 -->
-      <div class="stats-row" id="homepage-stats">
+      <div class="stats-row" id="homepage-stats" style="position:relative;">
+        <div id="home-update-timestamp" style="position:absolute;top:4px;right:8px;font-size:10px;color:var(--text-muted);z-index:1;">
+          <span style="color:var(--blue);">🔄</span> 数据刷新: <span id="home-last-update">--:--:--</span>
+        </div>
         <div class="stat-card" style="cursor:pointer;" onclick="drilldownHomeStat('total','device')" title="点击查看房间列表">
           <div class="stat-icon" style="background: var(--blue-bg);">🏨</div>
           <div><div class="stat-num" id="home-stat-total">16</div><div class="stat-label">房间总数</div></div>
@@ -4329,16 +4332,181 @@ function showToast(msg, type) {
       });
     }
     function openKeyDetailModal(keyId) {
-      showToast('查看钥匙 ' + keyId + ' 详情（功能演示）', 'info');
+      // 完善钥匙详情弹窗
+      var keyData = {
+        'KEY-301-001': {id:'KEY-301-001',type:'phone',holder:'张三',room:'301',validFrom:'2026-03-28 12:00',validTo:'2026-03-30 12:00',status:'active',unlockCount:12,lastUsed:'2026-03-28 10:32',createTime:'2026-03-28 12:00',issuer:'前台-周敏'},
+        'KEY-301-002': {id:'KEY-301-002',type:'phone',holder:'李四',room:'301',validFrom:'2026-03-28 14:00',validTo:'2026-03-30 12:00',status:'active',unlockCount:3,lastUsed:'2026-03-28 16:20',createTime:'2026-03-28 14:00',issuer:'前台-周敏'},
+        'CARD-301-001': {id:'CARD-301-001',type:'card',holder:'张三',room:'301',validFrom:'2026-03-28 12:00',validTo:'2026-03-30 12:00',status:'active',unlockCount:8,lastUsed:'2026-03-28 09:15',createTime:'2026-03-28 12:00',issuer:'前台-周敏'}
+      };
+      var key = keyData[keyId] || {id:keyId,type:'card',holder:'未知',room:'301',validFrom:'--',validTo:'--',status:'unknown',unlockCount:0,lastUsed:'--',createTime:'--',issuer:'--'};
+      var statusMap = {active:'生效中',disabled:'已禁用',expired:'已过期'};
+      var typeIcon = {phone:'📱',card:'💳',password:'🔐'}[key.type] || '🔑';
+      var existing = document.getElementById('modal-key-detail');
+      if (existing) existing.remove();
+      var html = '<div class="modal-overlay" id="modal-key-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99998;" onclick="if(event.target===this)document.getElementById(\'modal-key-detail\').remove()">' +
+        '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
+        '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div style="font-size:15px;font-weight:700;">' + typeIcon + ' 钥匙详情 - ' + keyId + '</div>' +
+        '<button onclick="document.getElementById(\'modal-key-detail\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+        '<div style="padding:20px;">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+        '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">持有人</div><div style="font-size:14px;font-weight:700;color:var(--blue);">' + key.holder + '</div></div>' +
+        '<div style="padding:10px;background:var(--green-bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">状态</div><div style="font-size:14px;font-weight:700;color:var(--green);">' + statusMap[key.status] + '</div></div>' +
+        '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">开锁次数</div><div style="font-size:14px;font-weight:700;">' + key.unlockCount + '次</div></div>' +
+        '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">最后使用</div><div style="font-size:14px;font-weight:700;">' + key.lastUsed + '</div></div>' +
+        '<div style="padding:10px;background:var(--bg);border-radius:8px;grid-column:1/-1;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">有效期</div><div style="font-size:14px;font-weight:700;">' + key.validFrom + ' 至 ' + key.validTo + '</div></div>' +
+        '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">发行时间</div><div style="font-size:14px;font-weight:700;">' + key.createTime + '</div></div>' +
+        '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">发行人</div><div style="font-size:14px;font-weight:700;">' + key.issuer + '</div></div></div>' +
+        '</div>' +
+        '<div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+        '<button onclick="document.getElementById(\'modal-key-detail\').remove()" class="modal-btn secondary" style="padding:8px 20px;">关闭</button>' +
+        '<button onclick="openDisableKeyModal(\'' + keyId + '\')" class="modal-btn" style="background:var(--red);color:white;border:none;padding:8px 20px;">⚠️ 禁用钥匙</button>' +
+        '<button onclick="openRenewKeyModal(\'' + keyId + '\')" class="modal-btn primary" style="background:var(--blue);color:white;border:none;padding:8px 20px;">🔄 续期</button></div>' +
+        '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
     }
     function openDisableKeyModal(keyId) {
-      var confirmed = confirm('确认禁用钥匙 ' + keyId + '？禁用后该钥匙将立即失效。');
-      if (confirmed) {
-        showToast('钥匙 ' + keyId + ' 已禁用', 'success');
-      }
+      document.getElementById('modal-key-detail') && document.getElementById('modal-key-detail').remove();
+      var existing = document.getElementById('modal-key-disable');
+      if (existing) existing.remove();
+      var html = '<div class="modal-overlay" id="modal-key-disable" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-key-disable\').remove()">' +
+        '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
+        '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div style="font-size:15px;font-weight:700;color:var(--red);">⚠️ 确认禁用钥匙</div>' +
+        '<button onclick="document.getElementById(\'modal-key-disable\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+        '<div style="padding:20px 24px;">' +
+        '<div style="padding:12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:16px;font-size:13px;color:var(--red);">' +
+        '⚠️ 禁用钥匙 <strong>' + keyId + '</strong> 后，该钥匙将立即失效，无法再开锁。请确认此操作。</div>' +
+        '<div class="form-group"><label class="form-label">禁用原因 <span class="required">*</span></label>' +
+        '<select class="form-select" id="key-disable-reason"><option value="">请选择原因</option><option value="挂失">钥匙挂失</option><option value="客人退房">客人退房</option><option value="员工离职">员工离职</option><option value="权限变更">权限变更</option><option value="其他">其他原因</option></select></div>' +
+        '<div class="form-group"><label class="form-label">备注</label>' +
+        '<textarea class="form-textarea" id="key-disable-notes" placeholder="可选" style="min-height:60px;"></textarea></div>' +
+        '</div>' +
+        '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+        '<button onclick="document.getElementById(\'modal-key-disable\').remove()" class="modal-btn secondary" style="padding:8px 20px;">取消</button>' +
+        '<button onclick="confirmDisableKey(\'' + keyId + '\')" class="modal-btn primary" style="background:var(--red);color:white;border:none;padding:8px 20px;">⚠️ 确认禁用</button></div>' +
+        '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function confirmDisableKey(keyId) {
+      var reason = document.getElementById('key-disable-reason').value;
+      if (!reason) { showToast('请选择禁用原因', 'error'); return; }
+      var notes = document.getElementById('key-disable-notes').value;
+      document.getElementById('modal-key-disable').remove();
+      showToast('🔐 钥匙 ' + keyId + ' 已禁用（原因：' + reason + '）', 'success');
+      addNotif('🔐', 'var(--red)', 'key', '钥匙 ' + keyId + ' 已禁用，原因：' + reason);
+    }
+    function openRenewKeyModal(keyId) {
+      document.getElementById('modal-key-detail') && document.getElementById('modal-key-detail').remove();
+      var existing = document.getElementById('modal-key-renew');
+      if (existing) existing.remove();
+      var html = '<div class="modal-overlay" id="modal-key-renew" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-key-renew\').remove()">' +
+        '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
+        '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div style="font-size:15px;font-weight:700;">🔄 续期钥匙 - ' + keyId + '</div>' +
+        '<button onclick="document.getElementById(\'modal-key-renew\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+        '<div style="padding:20px 24px;">' +
+        '<div style="padding:10px 12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">💡 续期将延长钥匙有效期，权限和其他设置保持不变</div>' +
+        '<div class="form-row"><div class="form-group"><label class="form-label">当前到期时间</label><input type="text" class="form-input" value="2026-03-30 12:00" readonly style="background:var(--bg);"></div>' +
+        '<div class="form-group"><label class="form-label">续期至</label><input type="date" class="form-input" id="key-renew-date" value="2026-04-05"></div></div>' +
+        '<div class="form-group"><label class="form-label">续期时长</label>' +
+        '<select class="form-select" id="key-renew-period"><option value="1">1天</option><option value="3">3天</option><option value="7" selected>7天</option><option value="30">30天</option><option value="90">90天</option></select></div>' +
+        '</div>' +
+        '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+        '<button onclick="document.getElementById(\'modal-key-renew\').remove()" class="modal-btn secondary" style="padding:8px 20px;">取消</button>' +
+        '<button onclick="confirmRenewKey(\'' + keyId + '\')" class="modal-btn primary" style="background:var(--blue);color:white;border:none;padding:8px 20px;">✅ 确认续期</button></div>' +
+        '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function confirmRenewKey(keyId) {
+      var date = document.getElementById('key-renew-date').value;
+      var period = document.getElementById('key-renew-period').value;
+      document.getElementById('modal-key-renew').remove();
+      showToast('✅ 钥匙 ' + keyId + ' 已续期至 ' + date + '（+' + period + '天）', 'success');
+      addNotif('🔄', 'var(--blue)', 'key', '钥匙 ' + keyId + ' 已续期至 ' + date);
     }
     function openAddKeyModal() {
-      showToast('打开添加钥匙弹窗（功能演示）', 'info');
+      var existing = document.getElementById('modal-add-key');
+      if (existing) existing.remove();
+      var html = '<div class="modal-overlay" id="modal-add-key" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99998;" onclick="if(event.target===this)document.getElementById(\'modal-add-key\').remove()">' +
+        '<div class="modal" style="width:500px;background:white;border-radius:12px;">' +
+        '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div style="font-size:15px;font-weight:700;">🔑 发行新钥匙</div>' +
+        '<button onclick="document.getElementById(\'modal-add-key\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+        '<div style="padding:20px;">' +
+        '<div class="form-group"><label class="form-label">钥匙类型 <span class="required">*</span></label>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px;">' +
+        '<label id="ktype-phone" onclick="selectKeyType(\'phone\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;border:2px solid var(--blue);border-radius:8px;cursor:pointer;background:var(--blue-bg);">' +
+        '<input type="radio" name="ktype" value="phone" checked style="display:none;">' +
+        '<div style="font-size:28px;">📱</div><div style="font-size:12px;font-weight:600;color:var(--blue);">手机开锁</div><div style="font-size:10px;color:var(--text-muted);">APP/小程序</div></label>' +
+        '<label id="ktype-card" onclick="selectKeyType(\'card\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:white;">' +
+        '<input type="radio" name="ktype" value="card" style="display:none;">' +
+        '<div style="font-size:28px;">💳</div><div style="font-size:12px;font-weight:600;">门卡</div><div style="font-size:10px;color:var(--text-muted);">IC/磁条卡</div></label>' +
+        '<label id="ktype-password" onclick="selectKeyType(\'password\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:white;">' +
+        '<input type="radio" name="ktype" value="password" style="display:none;">' +
+        '<div style="font-size:28px;">🔢</div><div style="font-size:12px;font-weight:600;">临时密码</div><div style="font-size:10px;color:var(--text-muted);">限时一次性</div></label></div></div>' +
+        '<div class="form-row"><div class="form-group"><label class="form-label">持有人姓名 <span class="required">*</span></label>' +
+        '<input type="text" class="form-input" id="key-holder" placeholder="请输入姓名"></div>' +
+        '<div class="form-group"><label class="form-label">手机号</label>' +
+        '<input type="tel" class="form-input" id="key-phone" placeholder="用于开锁验证"></div></div>' +
+        '<div class="form-row"><div class="form-group"><label class="form-label">房间号 <span class="required">*</span></label>' +
+        '<select class="form-select" id="key-room"><option value="301">301 - 亲子间</option><option value="302">302 - 亲子间</option><option value="303">303 - 亲子间</option><option value="304">304 - 亲子间</option><option value="305">305 - 亲子间</option><option value="201">201 - 大床房</option><option value="202">202 - 大床房</option><option value="203">203 - 大床房</option></select></div>' +
+        '<div class="form-group"><label class="form-label">钥匙用途</label>' +
+        '<select class="form-select" id="key-purpose"><option value="guest">入住客人</option><option value="family">同住家人</option><option value="staff">员工</option><option value="clean">保洁</option><option value="repair">维修</option><option value="temp">临时访客</option></select></div></div>' +
+        '<div class="form-row"><div class="form-group"><label class="form-label">生效时间</label>' +
+        '<input type="datetime-local" class="form-input" id="key-start" value="2026-03-28T12:00"></div>' +
+        '<div class="form-group"><label class="form-label">失效时间 <span class="required">*</span></label>' +
+        '<input type="datetime-local" class="form-input" id="key-end" value="2026-04-04T12:00"></div></div>' +
+        '<div class="form-group"><label class="form-label">备注</label>' +
+        '<input type="text" class="form-input" id="key-notes" placeholder="可选备注"></div>' +
+        '<div style="padding:10px 12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;font-size:12px;color:var(--green);">✅ 发行后将立即生成钥匙并可使用，钥匙信息将同步到对应的设备</div>' +
+        '</div>' +
+        '<div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+        '<button onclick="document.getElementById(\'modal-add-key\').remove()" class="modal-btn secondary" style="padding:8px 20px;">取消</button>' +
+        '<button onclick="submitAddKey()" class="modal-btn primary" style="background:var(--blue);color:white;border:none;padding:8px 24px;font-size:15px;">✅ 确认发行</button></div>' +
+        '</div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function selectKeyType(type) {
+      var types = ['phone','card','password'];
+      var colors = {phone:'blue',card:'green',password:'purple'};
+      types.forEach(function(t) {
+        var el = document.getElementById('ktype-' + t);
+        if (!el) return;
+        if (t === type) {
+          el.style.borderColor = 'var(--' + colors[t] + ')';
+          el.style.background = 'var(--' + colors[t] + '-bg)';
+          el.querySelector('input').checked = true;
+        } else {
+          el.style.borderColor = 'var(--border)';
+          el.style.background = 'white';
+        }
+      });
+    }
+    function submitAddKey() {
+      var holder = document.getElementById('key-holder').value.trim();
+      var room = document.getElementById('key-room').value;
+      var type = 'phone';
+      document.querySelectorAll('[name="ktype"]').forEach(function(r) { if (r.checked) type = r.value; });
+      if (!holder) { showToast('请输入持有人姓名', 'error'); return; }
+      var endTime = document.getElementById('key-end').value;
+      if (!endTime) { showToast('请选择失效时间', 'error'); return; }
+      var keyId = (type === 'card' ? 'CARD' : type === 'password' ? 'PWD' : 'KEY') + '-' + room + '-' + String(Date.now()).slice(-3);
+      document.getElementById('modal-add-key').remove();
+      showToast('✅ 钥匙 ' + keyId + ' 已发行给 ' + holder + '，有效期至 ' + endTime, 'success');
+      addNotif('🔑', 'var(--green)', 'key', '新钥匙 ' + keyId + ' 已发行（持有人：' + holder + '）');
+    }
+    // 快速面板发行门卡（来自openRoomQuickPanel）
+    function openAddKeycardModal() { openAddKeyModal(); }
+    // 快速面板临时密码（来自openRoomQuickPanel）
+    function openAddTempPwdModal() {
+      var room = currentQPData.room || '301';
+      document.getElementById('tp-room').textContent = room;
+      document.getElementById('tp-pwd-display').textContent = '------';
+      document.getElementById('tp-pwd-copy').style.display = 'none';
+      document.getElementById('tp-expire-time').textContent = '有效期至：--';
+      document.getElementById('tp-pwd-note').value = '';
+      openModal('temp-pwd');
     }
     </script>
 
@@ -17117,6 +17285,129 @@ function saveSystemConfig() {
 // ====== 【改进5】退房结算完整功能 ======
 var _cosData = null;
 var _cosPaymentMethod = 'wechat';
+// ============================================================
+// 【物联后台 v3.5 改进 4 - 完整退房表单（openCheckoutFullModal）实现】
+// 理由：openCheckoutFullModal 被引用5次以上但函数未定义，导致"立即退房"/"提前退房"按钮为死代码。
+// 功能：完整退房流程弹窗，含费用明细表（房费/押金/杂费）、多种支付方式、备注填写、退房确认、钥匙失效、通知发送。
+// ============================================================
+
+function openCheckoutFullModal(room, name, scheduledTime) {
+  var existing = document.getElementById('modal-checkout-full');
+  if (existing) existing.remove();
+  var roomTypeMap = { '301':'亲子间','302':'亲子间','303':'亲子间','304':'亲子间','305':'亲子间','201':'大床房','202':'大床房','203':'大床房' };
+  var priceMap = { '亲子间':298,'大床房':238,'标准间':168,'家庭套房':458 };
+  var roomType = roomTypeMap[room] || '大床房';
+  var price = priceMap[roomType] || 238;
+  var checkinDate = '2026-03-' + (28 - Math.floor(Math.random() * 3));
+  var nights = 2;
+  var roomFee = nights * price;
+  var deposit = 100;
+  var minibarCharge = Math.floor(Math.random() * 80);
+  var damageCharge = 0;
+  var totalFee = roomFee + minibarCharge + damageCharge;
+  var refund = deposit >= totalFee ? deposit - totalFee : 0;
+  var payAmount = deposit < totalFee ? totalFee - deposit : 0;
+
+  var html = '<div class="modal-overlay" id="modal-checkout-full" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99998;" onclick="if(event.target===this)document.getElementById(\'modal-checkout-full\').remove()">' +
+    '<div class="modal" style="width:560px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🚪 办理退房 - ' + room + '房间</div>' +
+    '<button onclick="document.getElementById(\'modal-checkout-full\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:16px 20px;">' +
+    // 客人信息
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--blue);">房号</div><div style="font-size:18px;font-weight:700;color:var(--blue);">' + room + '</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--green);">客人</div><div style="font-size:14px;font-weight:700;color:var(--green);">' + name + '</div></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--orange);">房型</div><div style="font-size:14px;font-weight:700;color:var(--orange);">' + roomType + '</div></div>' +
+    '<div style="padding:10px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--purple);">入住</div><div style="font-size:14px;font-weight:700;color:var(--purple);">' + checkinDate + '</div></div></div>' +
+
+    // 费用明细
+    '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;">💰 费用明细</div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;">' +
+    '<div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;"><span>房费（' + nights + '晚 × ¥' + price + '）</span><span style="font-weight:600;">¥' + roomFee + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;"><span>迷你吧消费</span><span style="font-weight:600;color:var(--orange);">¥' + minibarCharge + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;"><span>赔偿/损坏费</span><span style="font-weight:600;color:var(--red);">¥' + damageCharge + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:10px 14px;font-size:13px;background:var(--bg);"><span style="font-weight:700;">费用合计</span><span style="font-weight:700;color:var(--blue);font-size:15px;">¥' + totalFee + '</span></div></div>' +
+
+    // 押金与结算
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--blue);">押金已付</div><div style="font-size:16px;font-weight:700;color:var(--blue);">¥' + deposit + '</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--green);">' + (refund > 0 ? '应退押金' : '无需退款') + '</div><div style="font-size:16px;font-weight:700;color:var(--green);">' + (refund > 0 ? '¥' + refund : '—') + '</div></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--orange);">' + (payAmount > 0 ? '需补缴' : '已结清') + '</div><div style="font-size:16px;font-weight:700;color:var(--orange);">' + (payAmount > 0 ? '¥' + payAmount : '¥0') + '</div></div></div>' +
+
+    // 支付方式
+    '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;">💳 支付方式</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">' +
+    '<label id="pay-wechat" onclick="selectCheckoutPay(\'wechat\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:2px solid var(--green);border-radius:8px;cursor:pointer;background:var(--green-bg);">' +
+    '<input type="radio" name="co-pay" value="wechat" checked style="display:none;"><div style="font-size:22px;">💚</div><div style="font-size:12px;font-weight:600;color:var(--green);">微信</div></label>' +
+    '<label id="pay-alipay" onclick="selectCheckoutPay(\'alipay\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:white;">' +
+    '<input type="radio" name="co-pay" value="alipay" style="display:none;"><div style="font-size:22px;">💙</div><div style="font-size:12px;font-weight:600;">支付宝</div></label>' +
+    '<label id="pay-cash" onclick="selectCheckoutPay(\'cash\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:white;">' +
+    '<input type="radio" name="co-pay" value="cash" style="display:none;"><div style="font-size:22px;">💵</div><div style="font-size:12px;font-weight:600;">现金</div></label>' +
+    '<label id="pay-card" onclick="selectCheckoutPay(\'card\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:white;">' +
+    '<input type="radio" name="co-pay" value="card" style="display:none;"><div style="font-size:22px;">💳</div><div style="font-size:12px;font-weight:600;">银行卡</div></label></div>' +
+
+    // 退房备注
+    '<div class="form-group"><label class="form-label">📝 退房备注</label>' +
+    '<textarea class="form-textarea" id="co-full-notes" placeholder="可选：物品损坏、提前离店、特殊需求等" style="min-height:60px;"></textarea></div>' +
+
+    // 退房后动作确认
+    '<div style="padding:10px 12px;background:var(--orange-bg);border-radius:8px;margin-bottom:12px;font-size:12px;color:var(--orange);">⚠️ 退房确认后：房间自动转"待清洁"状态，所有钥匙权限立即失效，系统自动发送离店通知</div>' +
+    '</div>' +
+    '<div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'modal-checkout-full\').remove()" class="modal-btn secondary" style="padding:8px 20px;">取消</button>' +
+    '<button onclick="confirmCheckoutFull(\'' + room + '\',\'' + name + '\')" class="modal-btn primary" style="background:var(--blue);color:white;border:none;padding:8px 24px;font-size:15px;">✅ 确认退房</button></div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function selectCheckoutPay(method) {
+  var methods = ['wechat','alipay','cash','card'];
+  var colors = {wechat:'green',alipay:'blue',cash:'orange',card:'purple'};
+  methods.forEach(function(m) {
+    var el = document.getElementById('pay-' + m);
+    if (!el) return;
+    if (m === method) {
+      el.style.borderColor = 'var(--' + colors[m] + ')';
+      el.style.background = 'var(--' + colors[m] + '-bg)';
+      el.querySelector('input').checked = true;
+    } else {
+      el.style.borderColor = 'var(--border)';
+      el.style.background = 'white';
+    }
+  });
+}
+
+function confirmCheckoutFull(room, name) {
+  var notes = document.getElementById('co-full-notes') ? document.getElementById('co-full-notes').value : '';
+  var payMethod = '微信';
+  document.querySelectorAll('[name="co-pay"]').forEach(function(r) { if (r.checked) payMethod = r.value; });
+  var payLabel = {wechat:'微信',alipay:'支付宝',cash:'现金',card:'银行卡'}[payMethod] || payMethod;
+  document.getElementById('modal-checkout-full').remove();
+  showToast('✅ 退房成功！' + name + '已退房，房间' + room + '已转为待清洁状态', 'success');
+  addNotif('🚪', 'var(--blue)', 'checkout', '房间' + room + '(' + name + ')已退房，支付方式：' + payLabel);
+  // 触发清洁任务自动下发
+  addNotif('🧹', 'var(--green)', 'housekeeping', '房间' + room + '退房，清洁任务已自动下发');
+  // 更新首页房间卡片
+  var cards = document.querySelectorAll('#home-occupancy-grid .room-card');
+  cards.forEach(function(card) {
+    var numEl = card.querySelector('.room-num');
+    if (numEl && numEl.textContent === room) {
+      card.classList.remove('dirty');
+      card.dataset.dirty = 'true';
+      card.dataset.status = 'empty';
+      var badge = card.querySelector('.room-badge');
+      if (badge) { badge.textContent = '待清洁'; badge.className = 'room-badge badge-dirty'; }
+    }
+  });
+  // 更新房务管理统计
+  var dirtyCountEl = document.getElementById('hk-dirty-count');
+  if (dirtyCountEl) {
+    var newCount = parseInt(dirtyCountEl.textContent || '0') + 1;
+    dirtyCountEl.textContent = newCount;
+  }
+}
+
 function openCheckoutSettleModal(room, name, nights, pricePerNight) {
   _cosData = {room:room, name:name, nights:nights||2, pricePerNight:pricePerNight||128};
   var roomFee = (nights||2) * (pricePerNight||128);
@@ -23945,6 +24236,19 @@ function openCheckinModal() {
   resetCheckinForm();
   openModal('checkin');
 }
+// 快速入住（从房间快速面板发起，自动填入房间号）
+function openQuickCheckinModalForRoom(roomNum) {
+  resetCheckinForm();
+  var roomSelect = document.getElementById('checkin-room-select');
+  if (roomSelect) {
+    // 尝试选中指定房间
+    var options = roomSelect.querySelectorAll('option');
+    options.forEach(function(opt) { if (opt.value === roomNum) opt.selected = true; });
+    roomSelect.value = roomNum;
+  }
+  openModal('checkin');
+  showToast('🏨 正在为房间 ' + roomNum + ' 办理入住', 'info');
+}
 function resetCheckinForm() {
   document.getElementById('checkin-name').value = '';
   document.getElementById('checkin-phone').value = '';
@@ -24179,6 +24483,300 @@ function submitAlertProcess() {
   closeModal('alert');
   showToast('告警已处理：' + selectedSolution + (note ? '，备注：' + note : ''), 'success');
 }
+
+// ============================================================
+// 【物联后台 v3.5 改进 - 房间快速面板功能完善】
+// 理由：doQuickUnlock/doQuickCheckin/doQuickCheckout/doQuickClean/doQuickTempPwd/goToRoomDetail/switchRqpTab
+//       函数全部缺失，快速面板按钮为死代码。原系统有完整的快速操作能力。
+// 改进1：实现所有缺失的快速面板操作函数 + Tab状态切换 + 退房黑名单检测
+// ============================================================
+
+// 快速面板当前房间数据
+var currentQPData = { room: '', type: '', status: '', lock: '', power: '', keys: '' };
+
+// 快速面板Tab切换
+function switchRqpTab(tab, el) {
+  document.getElementById('rqp-content-info').style.display = tab === 'info' ? '' : 'none';
+  document.getElementById('rqp-content-keys').style.display = tab === 'keys' ? '' : 'none';
+  document.getElementById('rqp-tab-info').style.color = tab === 'info' ? 'var(--blue)' : 'var(--text-muted)';
+  document.getElementById('rqp-tab-info').style.borderBottom = tab === 'info' ? '2px solid var(--blue)' : '2px solid transparent';
+  document.getElementById('rqp-tab-keys').style.color = tab === 'keys' ? 'var(--blue)' : 'var(--text-muted)';
+  document.getElementById('rqp-tab-keys').style.borderBottom = tab === 'keys' ? '2px solid var(--blue)' : '2px solid transparent';
+}
+
+// 打开快速面板（增强版，填充完整数据）
+function openRoomQuickPanel(roomNum, roomType, status, lockStatus, powerStatus, keyCount) {
+  currentQPData = { room: roomNum, type: roomType, status: status, lock: lockStatus, power: powerStatus, keys: keyCount };
+  document.getElementById('rqp-title').textContent = '🚪 房间 ' + roomNum + ' - ' + roomType;
+  document.getElementById('rqp-room').textContent = roomNum;
+  document.getElementById('rqp-type').textContent = roomType;
+  var statusMap = { in: '在住', empty: '空房', alert: '告警', maintain: '维护中', disabled: '已停用' };
+  var statusColorMap = { in: 'var(--blue)', empty: 'var(--green)', alert: 'var(--red)', maintain: 'var(--orange)', disabled: 'var(--text-muted)' };
+  document.getElementById('rqp-status').textContent = statusMap[status] || status;
+  document.getElementById('rqp-status').style.color = statusColorMap[status] || 'var(--text)';
+  document.getElementById('rqp-lock').textContent = lockStatus;
+  document.getElementById('rqp-power').textContent = powerStatus;
+  // 设备模拟数据
+  var batteryMap = { '301':'88%','302':'--','303':'--','304':'72%','305':'28%','201':'95%','202':'80%','203':'65%' };
+  var signalMap = { '301':'-48 dBm','302':'--','303':'--','304':'-55 dBm','305':'-72 dBm','201':'-42 dBm','202':'-60 dBm','203':'-68 dBm' };
+  var bat = batteryMap[roomNum] || '85%';
+  var sig = signalMap[roomNum] || '-50 dBm';
+  var batColor = bat === '--' ? 'var(--text-muted)' : (parseInt(bat) < 30 ? 'var(--red)' : 'var(--green)');
+  document.getElementById('rqp-battery').textContent = bat;
+  document.getElementById('rqp-battery').style.color = batColor;
+  document.getElementById('rqp-signal').textContent = sig;
+  // 入住客人信息
+  var guestMap = {
+    '301': { name: '张三', phone: '138****8888', checkin: '2026-03-26' },
+    '304': { name: '李四', phone: '139****9999', checkin: '2026-03-25' },
+    '305': { name: '王五', phone: '137****5555', checkin: '2026-03-27' },
+    '201': { name: '赵六', phone: '136****6666', checkin: '2026-03-26' },
+    '203': { name: '钱七', phone: '135****7777', checkin: '2026-03-28' }
+  };
+  var guest = guestMap[roomNum];
+  if (status === 'in' && guest) {
+    document.getElementById('rqp-guest-section').style.display = '';
+    document.getElementById('rqp-guest-name').textContent = guest.name;
+    document.getElementById('rqp-guest-phone').textContent = guest.phone;
+    document.getElementById('rqp-guest-checkin').textContent = guest.checkin;
+    document.getElementById('rqp-checkin-btn').style.display = 'none';
+    document.getElementById('rqp-checkout-btn').style.display = '';
+  } else {
+    document.getElementById('rqp-guest-section').style.display = 'none';
+    document.getElementById('rqp-checkin-btn').style.display = '';
+    document.getElementById('rqp-checkout-btn').style.display = 'none';
+  }
+  document.getElementById('rqp-keys').textContent = keyCount || '0张';
+  // 默认显示Info Tab
+  switchRqpTab('info', document.getElementById('rqp-tab-info'));
+  openModal('room-quick');
+}
+
+// 快速开锁
+function doQuickUnlock() {
+  var room = currentQPData.room;
+  var count = 5;
+  openModal('unlock');
+  document.getElementById('unlock-countdown').textContent = count;
+  document.getElementById('unlock-countdown-box').style.display = 'block';
+  showToast('🔓 正在向房间 ' + room + ' 下发开锁指令…', 'info');
+  if (unlockCountdownTimer) clearInterval(unlockCountdownTimer);
+  unlockCountdownTimer = setInterval(function() {
+    count--;
+    if (count <= 0) {
+      clearInterval(unlockCountdownTimer);
+      document.getElementById('unlock-countdown-box').style.display = 'none';
+      closeModal('unlock');
+      showToast('✅ 房间 ' + room + ' 开锁成功', 'success');
+      addNotif('🔓', 'var(--green)', 'unlock', '房间 ' + room + ' 开锁成功');
+    } else {
+      document.getElementById('unlock-countdown').textContent = count;
+    }
+  }, 1000);
+}
+
+// 快速临时密码
+function doQuickTempPwd() {
+  var room = currentQPData.room;
+  document.getElementById('tp-room').textContent = room;
+  document.getElementById('tp-pwd-display').textContent = '------';
+  document.getElementById('tp-pwd-copy').style.display = 'none';
+  document.getElementById('tp-expire-time').textContent = '有效期至：--';
+  document.getElementById('tp-pwd-note').value = '';
+  openModal('temp-pwd');
+}
+
+// 生成临时密码
+function generateTempPassword() {
+  var validity = parseInt(document.getElementById('tp-validity').value);
+  var chars = '0123456789';
+  var pwd = '';
+  for (var i = 0; i < 6; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+  document.getElementById('tp-pwd-display').textContent = pwd;
+  var now = new Date();
+  var expire = new Date(now.getTime() + validity * 3600000);
+  var expireStr = expire.toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('tp-expire-time').textContent = '有效期至：' + expireStr;
+  document.getElementById('tp-pwd-copy').style.display = '';
+  showToast('🎲 临时密码已生成，有效期' + validity + '小时', 'success');
+}
+
+function copyTempPassword() {
+  var pwd = document.getElementById('tp-pwd-display').textContent;
+  if (pwd && pwd !== '------') {
+    navigator.clipboard.writeText(pwd).then(function() {
+      showToast('📋 密码 ' + pwd + ' 已复制到剪贴板', 'success');
+    }).catch(function() {
+      showToast('📋 密码 ' + pwd + '（请手动复制）', 'info');
+    });
+  }
+}
+
+// 跳转房间详情
+function goToRoomDetail() {
+  closeModal('room-quick');
+  showPage('history');
+  showToast('📋 正在加载房间 ' + currentQPData.room + ' 的历史记录…', 'info');
+}
+
+// 快速入住（从快速面板发起）
+function doQuickCheckin() {
+  closeModal('room-quick');
+  showPage('home');
+  openQuickCheckinModalForRoom(currentQPData.room);
+}
+
+// 快速退房（从快速面板发起，含黑名单检测）
+function doQuickCheckout() {
+  var room = currentQPData.room;
+  var guest = {
+    '301': { name: '张三', phone: '138****8888' },
+    '304': { name: '李四', phone: '139****9999' },
+    '305': { name: '王五', phone: '137****5555' },
+    '201': { name: '赵六', phone: '136****6666' },
+    '203': { name: '钱七', phone: '135****7777' }
+  }[room];
+  if (!guest) { showToast('房间 ' + room + ' 当前无入住客人', 'warn'); return; }
+  // 退房前黑名单复核检测
+  var blocked = false;
+  for (var key in guestBlacklistPhones) {
+    if (guestBlacklistPhones[key] === guest.phone || key.indexOf(guest.name) !== -1) {
+      blocked = true; break;
+    }
+  }
+  if (blocked) {
+    openModal('room-quick');
+    showToast('⚠️ 退房客户 ' + guest.name + ' 触发黑名单复核，请确认后退房', 'warn');
+    openCheckoutConfirmModal(room, guest);
+    return;
+  }
+  openCheckoutConfirmModal(room, guest);
+}
+
+// 退房确认模态框
+function openCheckoutConfirmModal(room, guest) {
+  var existing = document.getElementById('modal-checkout-confirm');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-checkout-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-checkout-confirm\').remove()">' +
+    '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🚪 确认退房 - ' + room + '房间</div>' +
+    '<button onclick="document.getElementById(\'modal-checkout-confirm\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:14px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;text-align:center;">' +
+    '<div style="font-size:13px;color:var(--blue);font-weight:600;">当前入住客人</div>' +
+    '<div style="font-size:20px;font-weight:700;color:var(--blue);margin-top:4px;">' + (guest ? guest.name : '--') + '</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + (guest ? guest.phone : '--') + '</div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);">房号</div><div style="font-size:16px;font-weight:700;">' + room + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);">房间状态</div><div style="font-size:16px;font-weight:700;color:var(--blue);">在住</div></div></div>' +
+    '<div style="padding:10px 12px;background:var(--orange-bg);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--orange);">⚠️ 退房后房间将自动转为"待清洁"状态，所有钥匙权限将失效</div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<textarea class="form-textarea" id="co-notes" placeholder="可选：退房备注，如物品损坏、提前离店等" style="min-height:60px;"></textarea></div>' +
+    '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-checkout-confirm\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmQuickCheckout(\'' + room + '\')" style="background:var(--blue);color:white;border:none;">✅ 确认退房</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function confirmQuickCheckout(room) {
+  var notes = document.getElementById('co-notes') ? document.getElementById('co-notes').value : '';
+  document.getElementById('modal-checkout-confirm').remove();
+  closeModal('room-quick');
+  showToast('✅ 房间 ' + room + ' 退房成功，房间已转为待清洁状态', 'success');
+  addNotif('🚪', 'var(--blue)', 'checkout', '房间 ' + room + ' 已退房' + (notes ? '，备注：' + notes : ''));
+  // 更新首页房间卡片状态
+  var cards = document.querySelectorAll('#home-occupancy-grid .room-card');
+  cards.forEach(function(card) {
+    var numEl = card.querySelector('.room-num');
+    if (numEl && numEl.textContent === room) {
+      card.classList.remove('dirty');
+      card.dataset.dirty = 'true';
+      card.dataset.status = 'empty';
+      var badge = card.querySelector('.room-badge');
+      if (badge) { badge.textContent = '待清洁'; badge.className = 'room-badge badge-dirty'; }
+    }
+  });
+}
+
+// 快速清洁标记
+function doQuickClean() {
+  var room = currentQPData.room;
+  closeModal('room-quick');
+  showToast('🧹 房间 ' + room + ' 已标记为"清洁中"，保洁员已收到任务通知', 'success');
+  addNotif('🧹', 'var(--green)', 'housekeeping', '房间 ' + room + ' 清洁任务已下发');
+}
+
+// 统一添加到通知中心
+function addNotif(icon, color, type, text) {
+  if (typeof notifStore !== 'undefined') {
+    var now = new Date();
+    var timeStr = now.toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\//g,'-');
+    notifStore.unshift({id: 'N' + Date.now(), icon: icon, color: color, type: type, text: text, time: timeStr, read: false});
+    updateNotifBadge && updateNotifBadge();
+  }
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 3 - 通知中心实时推送模拟（WebSocket长连接）】
+// 理由：通知中心完全静态，无法实时接收新通知。与原系统的WebSocket推送机制有差距。
+// 改进：模拟WebSocket长连接推送，每30秒随机推送一条设备/工单/系统通知，
+//       支持未读计数badge实时更新、声音提示、新通知顶部弹窗提醒。
+// ============================================================
+
+var notifSoundEnabled = true;
+
+// 模拟WebSocket连接建立
+function initNotifWebSocket() {
+  addNotif('🔌', 'var(--blue)', 'system', '通知通道已连接，实时推送已开启');
+}
+
+// 模拟收到服务器推送
+function simulateNotifPush() {
+  var pushMessages = [
+    { icon: '📡', color: 'var(--green)', type: 'device', text: '房间201门锁已恢复在线' },
+    { icon: '🔋', color: 'var(--orange)', type: 'device', text: '房间305电量低于20%，请尽快更换电池' },
+    { icon: '🛠️', color: 'var(--blue)', type: 'workorder', text: '新工单：房间302客户投诉热水不稳' },
+    { icon: '⚠️', color: 'var(--red)', type: 'alert', text: '房间303设备已离线超过1小时' },
+    { icon: '🔑', color: 'var(--green)', type: 'unlock', text: '房间301于10:32成功开锁（手机方式）' },
+    { icon: '🧹', color: 'var(--blue)', type: 'housekeeping', text: '房间305保洁任务已完成，已转为可入住' },
+    { icon: '🔧', color: 'var(--orange)', type: 'device', text: '房间202门锁信号偏弱（-78dBm），建议检查' },
+    { icon: '📋', color: 'var(--purple)', type: 'system', text: '系统将于今晚02:00进行例行维护' }
+  ];
+  var msg = pushMessages[Math.floor(Math.random() * pushMessages.length)];
+  addNotif(msg.icon, msg.color, msg.type, msg.text);
+  // 未读计数更新
+  var badge = document.getElementById('notif-badge');
+  if (badge) {
+    var cnt = parseInt(badge.textContent || '0') + 1;
+    badge.textContent = cnt;
+    badge.style.display = '';
+  }
+  // 声音提示（浏览器Notification API）
+  if (notifSoundEnabled && 'Notification' in window && Notification.permission === 'granted') {
+    new Notification('领锁物联后台', { body: msg.text, icon: '🔔' });
+  }
+  // 顶部新通知Toast（仅当不在通知中心页面时）
+  if (currentPage !== 'notif') {
+    showToast(msg.icon + ' ' + msg.text, msg.type === 'alert' || msg.type === 'device' ? 'warn' : 'info');
+  }
+}
+
+// 首次访问请求通知权限
+function requestNotifPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+// 启动通知推送模拟（每30秒一次）
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    initNotifWebSocket();
+    setInterval(simulateNotifPush, 30000); // 每30秒推送一条
+    requestNotifPermission();
+  }, 2000);
+});
 
 // ======= 改进4: 远程开锁确认 =======
 function openUnlockModal() {
@@ -26982,6 +27580,82 @@ function exportUnlockStatsCSV() {
   showToast('📤 开锁统计数据已导出为CSV', 'success');
 }
 
+// ============================================================
+// 【物联后台 v3.5 改进 2 - 首页实时房态数据自动刷新】
+// 理由：首页房间卡片静态数据，永不更新。与原系统的实时心跳机制有差距。
+// 改进：每30秒自动刷新一次设备状态（模拟设备上下线+电量变化），并自动更新首页统计数字
+// ============================================================
+
+var deviceRealtimeState = {
+  '301': { online: true, battery: 88, signal: -48, lock: '已反锁', power: '空调开启' },
+  '302': { online: false, battery: 45, signal: -75, lock: '已反锁', power: '未取电' },
+  '303': { online: false, battery: 18, signal: -90, lock: '未知', power: '未知' },
+  '304': { online: true, battery: 72, signal: -55, lock: '已反锁', power: '空调节能' },
+  '305': { online: true, battery: 28, signal: -72, lock: '电量28%', power: '未取电' },
+  '306': { online: false, battery: 95, signal: -40, lock: '已停用', power: '未取电' },
+  '201': { online: true, battery: 95, signal: -42, lock: '已反锁', power: '空调开启' },
+  '202': { online: true, battery: 80, signal: -60, lock: '已反锁', power: '未取电' },
+  '203': { online: true, battery: 65, signal: -68, lock: '已反锁', power: '空调节能' }
+};
+
+function startDevicePolling() {
+  // 每30秒模拟设备状态变化
+  setInterval(function() {
+    var rooms = Object.keys(deviceRealtimeState);
+    var room = rooms[Math.floor(Math.random() * rooms.length)];
+    var dev = deviceRealtimeState[room];
+    // 随机变化：电量±1-3%，偶尔信号波动
+    var batChange = Math.floor(Math.random() * 3) + 1;
+    if (Math.random() > 0.5) batChange = -batChange;
+    dev.battery = Math.max(5, Math.min(100, dev.battery + batChange));
+    dev.signal = dev.signal + (Math.random() > 0.5 ? 1 : -1) * Math.floor(Math.random() * 3);
+    if (dev.battery < 20) {
+      // 低电量时偶尔触发告警通知
+      if (Math.random() < 0.1) {
+        addNotif('⚠️', 'var(--orange)', 'device', '房间 ' + room + ' 电量过低：' + dev.battery + '%');
+        showToast('⚠️ 房间 ' + room + ' 电量过低（' + dev.battery + '%）', 'warn');
+      }
+    }
+    // 更新首页卡片
+    updateHomepageRoomCard(room, dev);
+    // 更新统计
+    updateHomepageStats();
+    // 更新时间戳
+    var nowEl = document.getElementById('home-last-update');
+    if (nowEl) nowEl.textContent = new Date().toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  }, 30000);
+}
+
+function updateHomepageRoomCard(room, dev) {
+  var cards = document.querySelectorAll('#home-occupancy-grid .room-card');
+  cards.forEach(function(card) {
+    var numEl = card.querySelector('.room-num');
+    if (!numEl || numEl.textContent !== room) return;
+    var batteryEl = card.querySelector('.room-battery');
+    if (batteryEl) {
+      batteryEl.textContent = '🔋 ' + dev.battery + '%';
+      batteryEl.style.color = dev.battery < 20 ? 'var(--red)' : dev.battery < 50 ? 'var(--orange)' : 'var(--green)';
+    }
+    var statusEl = card.querySelector('.room-badge');
+    if (statusEl && !dev.online) {
+      statusEl.textContent = '离线';
+      statusEl.className = 'room-badge badge-alert';
+    }
+  });
+}
+
+function updateHomepageStats() {
+  var onlineCount = Object.values(deviceRealtimeState).filter(function(d) { return d.online; }).length;
+  var lowBatCount = Object.values(deviceRealtimeState).filter(function(d) { return d.battery < 30 && d.online; }).length;
+  var offlineCount = Object.values(deviceRealtimeState).filter(function(d) { return !d.online; }).length;
+  var onlineEl = document.getElementById('home-stat-online');
+  var lowBatEl = document.getElementById('home-stat-lowbat');
+  var offlineEl = document.getElementById('home-stat-offline');
+  if (onlineEl) onlineEl.textContent = onlineCount + '台';
+  if (lowBatEl) lowBatEl.textContent = lowBatCount + '台';
+  if (offlineEl) offlineEl.textContent = offlineCount + '台';
+}
+
 // 初始化：页面加载后渲染统计面板
 document.addEventListener('DOMContentLoaded', function() {
   // 延迟初始化确保DOM已就绪
@@ -26993,6 +27667,11 @@ document.addEventListener('DOMContentLoaded', function() {
     renderInvoiceTable && renderInvoiceTable();
     // 初始化SLA倒计时（每10秒刷新）
     setInterval(function() { renderWorkorderSLAMiniList && renderWorkorderSLAMiniList(); }, 10000);
+    // 启动设备状态轮询（每30秒）
+    startDevicePolling();
+    // 更新时间戳
+    var nowEl = document.getElementById('home-last-update');
+    if (nowEl) nowEl.textContent = new Date().toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
   }, 300);
 });
 
