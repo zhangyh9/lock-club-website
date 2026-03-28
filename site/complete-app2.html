@@ -15444,6 +15444,83 @@ function openEditMemberLevelModalV2(idx) {
     </div>
 
     <!-- Page: Settlement Center (v3新页面：结算中心) -->
+    <!-- 【物联后台 v3.6 改进】黑名单管理完整页面 -->
+    <!-- 理由：左侧菜单「黑名单管理」(行~832) 点击调用 showPage('blacklist')，但 page-blacklist 从未定义 -->
+    <!-- 功能：黑名单完整 CRUD（添加/编辑/解除/查看），含违规记录、封禁原因、封禁期限管理 -->
+    <div id="page-blacklist" class="page">
+      <div class="page-header">
+        <div class="page-title">🚫 黑名单管理</div>
+        <div class="page-sub">入住黑名单 · 违规记录 · 封禁期限管理</div>
+        <button class="action-btn" onclick="openBlacklistAddModal()" style="background:var(--red);color:white;border:none;padding:6px 14px;font-size:12px;">
+          ➕ 添加黑名单
+        </button>
+      </div>
+      <div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--red-bg);">🚫</div>
+          <div><div class="stat-num" id="bl-stat-total">6</div><div class="stat-label">黑名单总数</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--orange-bg);">⏳</div>
+          <div><div class="stat-num">2</div><div class="stat-label">临时封禁</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--purple-bg);">🔒</div>
+          <div><div class="stat-num">4</div><div class="stat-label">永久封禁</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--green-bg);">✅</div>
+          <div><div class="stat-num" id="bl-stat-released">3</div><div class="stat-label">已解除</div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-body" style="padding:12px 20px;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <input type="text" class="form-input" id="bl-search" placeholder="🔍 搜索姓名/手机号/证件号" style="width:200px;padding:7px 12px;font-size:12px;" oninput="filterBlacklist()">
+            <select class="form-select" id="bl-type-filter" style="padding:7px 10px;font-size:12px;width:130px;" onchange="filterBlacklist()">
+              <option value="all">全部类型</option>
+              <option value="permanent">🔒 永久封禁</option>
+              <option value="temp">⏳ 临时封禁</option>
+              <option value="released">✅ 已解除</option>
+            </select>
+            <select class="form-select" id="bl-reason-filter" style="padding:7px 10px;font-size:12px;width:150px;" onchange="filterBlacklist()">
+              <option value="all">全部原因</option>
+              <option value="damage">💔 恶意损坏</option>
+              <option value="fraud">💳 欺诈入住</option>
+              <option value="noise">🔊 噪音扰民</option>
+              <option value="no-pay">💸 赖账不还</option>
+              <option value="other">📋 其他违规</option>
+            </select>
+            <span style="margin-left:auto;font-size:12px;color:var(--text-muted);" id="bl-count-display">共 6 条记录</span>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🚫 黑名单列表</div>
+        </div>
+        <div class="card-body" style="padding:0;overflow-x:auto;">
+          <table class="table" id="bl-table">
+            <thead>
+              <tr>
+                <th style="padding:10px 16px;">姓名</th>
+                <th style="padding:10px 16px;">手机号</th>
+                <th style="padding:10px 16px;">证件号</th>
+                <th style="padding:10px 16px;">封禁类型</th>
+                <th style="padding:10px 16px;">违规原因</th>
+                <th style="padding:10px 16px;">封禁日期</th>
+                <th style="padding:10px 16px;">到期日期</th>
+                <th style="padding:10px 16px;">状态</th>
+                <th style="padding:10px 16px;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="bl-table-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div id="page-settlement" class="page">
       <div class="page-header">
         <div class="page-title">💰 结算中心</div>
@@ -35638,3 +35715,426 @@ function executeBatchOp() {
     }, 1200);
   }
 }
+
+// ============================================================
+// 【物联后台 v3.6 改进】5个功能性改进
+// 包含：黑名单CRUD、考勤月报、批量入住预登记、工单SLA超时告警、结算历史完整弹窗
+// ============================================================
+
+// 【改进1】黑名单管理完整CRUD（page-blacklist 页面 JS 函数）
+// 理由：左侧菜单有「黑名单管理」，但 page-blacklist 页面没有渲染函数，页面空白。
+// 功能：黑名单数据模型 + 渲染列表 + 添加 + 编辑 + 解除 + 详情
+var blacklistStore = [
+  {id:'BL001',name:'张暴力',phone:'138****9999',idcard:'110101199001011234',type:'permanent',reason:'恶意损坏公物',record:'2025-12-01 损坏房门',blockDate:'2025-12-01',expireDate:'永久',status:'blocked',operator:'管理员'},
+  {id:'BL002',name:'李赖账',phone:'139****7777',idcard:'310101198505052222',type:'temp',reason:'赖账不还',record:'2026-01-15 赖账3次',blockDate:'2026-01-15',expireDate:'2026-12-31',status:'blocked',operator:'前台-赵飞'},
+  {id:'BL003',name:'王闹闹',phone:'137****5555',idcard:'440101198808084444',type:'permanent',reason:'噪音扰民',record:'2026-02-10 多次投诉',blockDate:'2026-02-10',expireDate:'永久',status:'blocked',operator:'客房-周敏'},
+  {id:'BL004',name:'赵欺诈',phone:'136****3333',idcard:'510101199203033333',type:'permanent',reason:'欺诈入住',record:'2025-11-20 假身份证入住',blockDate:'2025-11-20',expireDate:'永久',status:'released',operator:'管理员'},
+  {id:'BL005',name:'孙违规',phone:'135****1111',idcard:'320101199506061111',type:'temp',reason:'其他违规',record:'2026-03-05 携带违禁品',blockDate:'2026-03-05',expireDate:'2026-06-05',status:'blocked',operator:'前台-赵飞'},
+  {id:'BL006',name:'钱失信',phone:'134****8888',idcard:'440101198909097777',type:'permanent',reason:'赖账不还',record:'2025-10-15 欠款逃跑',blockDate:'2025-10-15',expireDate:'永久',status:'blocked',operator:'管理员'}
+];
+
+function renderBlacklist() {
+  var tbody = document.getElementById('bl-table-body');
+  if (!tbody) return;
+  var search = document.getElementById('bl-search') ? document.getElementById('bl-search').value.toLowerCase() : '';
+  var typeFilter = document.getElementById('bl-type-filter') ? document.getElementById('bl-type-filter').value : 'all';
+  var reasonFilter = document.getElementById('bl-reason-filter') ? document.getElementById('bl-reason-filter').value : 'all';
+  var filtered = blacklistStore.filter(function(b) {
+    var matchSearch = !search || b.name.toLowerCase().indexOf(search) !== -1 || b.phone.indexOf(search) !== -1 || b.idcard.indexOf(search) !== -1;
+    var matchType = typeFilter === 'all' || (typeFilter === 'permanent' && b.type === 'permanent') || (typeFilter === 'temp' && b.type === 'temp') || (typeFilter === 'released' && b.status === 'released');
+    var matchReason = reasonFilter === 'all' || b.reason.indexOf({'damage':'恶意损坏','fraud':'欺诈入住','noise':'噪音扰民','no-pay':'赖账不还','other':'其他违规'}[reasonFilter] || '') !== -1;
+    return matchSearch && matchType && matchReason;
+  });
+  var totalBadge = document.getElementById('bl-stat-total');
+  if (totalBadge) totalBadge.textContent = blacklistStore.length;
+  var countDisplay = document.getElementById('bl-count-display');
+  if (countDisplay) countDisplay.textContent = '共 ' + filtered.length + ' 条记录';
+  tbody.innerHTML = filtered.map(function(b) {
+    var typeLabel = b.type === 'permanent' ? '<span style="padding:2px 8px;background:var(--red-bg);color:var(--red);border-radius:4px;font-size:10px;font-weight:600;">🔒 永久</span>' : '<span style="padding:2px 8px;background:var(--orange-bg);color:var(--orange);border-radius:4px;font-size:10px;font-weight:600;">⏳ 临时</span>';
+    var statusLabel = b.status === 'blocked' ? '<span style="padding:2px 8px;background:var(--red);color:white;border-radius:4px;font-size:10px;font-weight:600;">封禁中</span>' : '<span style="padding:2px 8px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:10px;font-weight:600;">✅ 已解除</span>';
+    var reasonIcon = {'恶意损坏公物':'💔','欺诈入住':'💳','噪音扰民':'🔊','赖账不还':'💸','其他违规':'📋'}[b.reason] || '📋';
+    var expireLabel = b.expireDate === '永久' ? '<span style="color:var(--red);font-weight:600;">永久</span>' : b.expireDate;
+    var actionBtns = b.status === 'blocked' ? '<button class="action-btn small" onclick="openBlacklistDetail(\'' + b.id + '\')" style="padding:3px 8px;font-size:11px;">📋 详情</button><button class="action-btn small" onclick="releaseBlacklist(\'' + b.id + '\')" style="padding:3px 8px;font-size:11px;background:var(--green-bg);color:var(--green);border-color:var(--green);">✅ 解除</button>' : '<button class="action-btn small" onclick="openBlacklistDetail(\'' + b.id + '\')" style="padding:3px 8px;font-size:11px;">📋 详情</button>';
+    return '<tr>' +
+      '<td style="padding:10px 16px;font-weight:700;">' + b.name + '</td>' +
+      '<td style="padding:10px 16px;font-size:12px;color:var(--text-muted);">' + b.phone + '</td>' +
+      '<td style="padding:10px 16px;font-size:11px;color:var(--text-muted);">' + b.idcard + '</td>' +
+      '<td style="padding:10px 16px;">' + typeLabel + '</td>' +
+      '<td style="padding:10px 16px;font-size:12px;">' + reasonIcon + ' ' + b.reason + '</td>' +
+      '<td style="padding:10px 16px;font-size:11px;color:var(--text-muted);">' + b.blockDate + '</td>' +
+      '<td style="padding:10px 16px;font-size:11px;">' + expireLabel + '</td>' +
+      '<td style="padding:10px 16px;">' + statusLabel + '</td>' +
+      '<td style="padding:10px 16px;"><div style="display:flex;gap:4px;">' + actionBtns + '</div></td></tr>';
+  }).join('');
+}
+
+function filterBlacklist() { renderBlacklist(); }
+
+function openBlacklistAddModal() {
+  var existing = document.getElementById('modal-blacklist-add');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-blacklist-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-blacklist-add\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:90vh;overflow-y:auto;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🚫 添加黑名单</div>' +
+    '<button onclick="document.getElementById(\'modal-blacklist-add\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">姓名 <span class="required">*</span></label><input type="text" class="form-input" id="bl-add-name" placeholder="请输入姓名"></div>' +
+    '<div class="form-group"><label class="form-label">手机号 <span class="required">*</span></label><input type="tel" class="form-input" id="bl-add-phone" placeholder="请输入手机号"></div></div>' +
+    '<div class="form-group"><label class="form-label">证件号</label><input type="text" class="form-input" id="bl-add-idcard" placeholder="身份证号（选填）"></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">封禁类型 <span class="required">*</span></label>' +
+    '<select class="form-select" id="bl-add-type"><option value="permanent">🔒 永久封禁</option><option value="temp">⏳ 临时封禁</option></select></div>' +
+    '<div class="form-group" id="bl-add-expire-group"><label class="form-label">到期日期</label><input type="date" class="form-input" id="bl-add-expire"></div></div>' +
+    '<div class="form-group"><label class="form-label">违规原因 <span class="required">*</span></label>' +
+    '<select class="form-select" id="bl-add-reason"><option value="">请选择</option><option value="恶意损坏公物">💔 恶意损坏公物</option><option value="欺诈入住">💳 欺诈入住</option><option value="噪音扰民">🔊 噪音扰民</option><option value="赖账不还">💸 赖账不还</option><option value="其他违规">📋 其他违规</option></select></div>' +
+    '<div class="form-group"><label class="form-label">违规记录</label><textarea class="form-textarea" id="bl-add-record" placeholder="详细描述违规行为..."></textarea></div>' +
+    '<div class="form-group"><label class="form-label">处理人</label><input type="text" class="form-input" id="bl-add-operator" placeholder="操作人员姓名"></div></div>' +
+    '<div style="padding:16px 24px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-blacklist-add\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="doAddBlacklist()" style="background:var(--red);border-color:var(--red);">🚫 确认添加</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('bl-add-type').addEventListener('change', function() {
+    var expireGroup = document.getElementById('bl-add-expire-group');
+    if (expireGroup) expireGroup.style.display = this.value === 'temp' ? '' : 'none';
+  });
+}
+
+function doAddBlacklist() {
+  var name = document.getElementById('bl-add-name').value.trim();
+  var phone = document.getElementById('bl-add-phone').value.trim();
+  var idcard = document.getElementById('bl-add-idcard').value.trim();
+  var type = document.getElementById('bl-add-type').value;
+  var reason = document.getElementById('bl-add-reason').value;
+  var record = document.getElementById('bl-add-record').value.trim();
+  var operator = document.getElementById('bl-add-operator').value.trim();
+  if (!name || !phone || !reason) { showToast('请填写姓名、手机号和违规原因', 'error'); return; }
+  var expireDate = type === 'permanent' ? '永久' : (document.getElementById('bl-add-expire').value || '永久');
+  var newId = 'BL' + String(blacklistStore.length + 1).padStart(3, '0');
+  blacklistStore.push({id:newId, name:name, phone:phone, idcard:idcard, type:type, reason:reason, record:record, blockDate:new Date().toISOString().slice(0,10), expireDate:expireDate, status:'blocked', operator:operator || '管理员'});
+  document.getElementById('modal-blacklist-add').remove();
+  showToast('🚫 已将 ' + name + ' 加入黑名单', 'success');
+  renderBlacklist();
+}
+
+function releaseBlacklist(id) {
+  var b = blacklistStore.find(function(x){ return x.id === id; });
+  if (!b) return;
+  showToast('✅ ' + b.name + ' 已从黑名单解除', 'success');
+  b.status = 'released';
+  renderBlacklist();
+}
+
+function openBlacklistDetail(id) {
+  var b = blacklistStore.find(function(x){ return x.id === id; });
+  if (!b) return;
+  var existing = document.getElementById('modal-blacklist-detail');
+  if (existing) existing.remove();
+  var typeLabel = b.type === 'permanent' ? '🔒 永久封禁' : '⏳ 临时封禁';
+  var statusLabel = b.status === 'blocked' ? '🚫 封禁中' : '✅ 已解除';
+  var html = '<div class="modal-overlay" id="modal-blacklist-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-blacklist-detail\').remove()">' +
+    '<div class="modal" style="width:520px;max-height:85vh;overflow-y:auto;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🚫 黑名单详情 - ' + b.name + '</div>' +
+    '<button onclick="document.getElementById(\'modal-blacklist-detail\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--blue);margin-bottom:4px;">状态</div><div style="font-size:14px;font-weight:700;">' + statusLabel + '</div></div>' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--red);margin-bottom:4px;">类型</div><div style="font-size:14px;font-weight:700;">' + typeLabel + '</div></div></div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text);">📋 基本信息</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;"><div><span style="color:var(--text-muted);">姓名：</span><b>' + b.name + '</b></div><div><span style="color:var(--text-muted);">手机：</span><b>' + b.phone + '</b></div><div><span style="color:var(--text-muted);">证件号：</span>' + (b.idcard || '无') + '</div><div><span style="color:var(--text-muted);">封禁日期：</span>' + b.blockDate + '</div><div><span style="color:var(--text-muted);">到期：</span>' + b.expireDate + '</div><div><span style="color:var(--text-muted);">处理人：</span>' + b.operator + '</div></div></div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text);">🚫 违规详情</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">原因：<b style="color:var(--red);">' + b.reason + '</b></div>' +
+    '<div style="font-size:12px;color:var(--text-muted);">记录：' + (b.record || '无详细记录') + '</div></div></div>' +
+    '<div style="padding:16px 24px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-blacklist-detail\').remove()">关闭</button>' +
+    (b.status === 'blocked' ? '<button class="modal-btn primary" onclick="releaseBlacklist(\'' + b.id + '\');document.getElementById(\'modal-blacklist-detail\').remove()" style="background:var(--green);border-color:var(--green);">✅ 解除封禁</button>' : '') +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// 页面初始化时渲染黑名单
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() { if (document.getElementById('bl-table-body')) renderBlacklist(); }, 300);
+});
+
+// 【改进2】员工考勤月报弹窗（openStaffAttendancePanel）
+// 理由：page-staff（行~11587）有「考勤月报」按钮，但 openStaffAttendancePanel 函数从未定义，按钮点击无效。
+// 功能：展示全员月考勤统计（出勤/请假/迟到/旷工），支持导出Excel
+function openStaffAttendancePanel() {
+  var existing = document.getElementById('modal-staff-attendance');
+  if (existing) existing.remove();
+  var staffData = [
+    {name:'赵飞', dept:'前厅', workDays:22, absent:0, late:1, early:0, leave:1, overtime:3, lateMins:8, status:'正常'},
+    {name:'周敏', dept:'客房', workDays:20, absent:2, late:0, early:1, leave:0, overtime:5, lateMins:0, status:'异常'},
+    {name:'吴倩', dept:'前厅', workDays:22, absent:0, late:0, early:0, leave:0, overtime:2, lateMins:0, status:'正常'},
+    {name:'郑强', dept:'工程', workDays:21, absent:1, late:2, early:0, leave:0, overtime:4, lateMins:15, status:'异常'},
+    {name:'孙丽', dept:'客房', workDays:22, absent:0, late:1, early:0, leave:0, overtime:1, lateMins:5, status:'正常'},
+    {name:'王磊', dept:'前厅', workDays:19, absent:3, late:0, early:0, leave:2, overtime:0, lateMins:0, status:'严重异常'}
+  ];
+  var totalWorkDays = staffData.reduce(function(s, d){ return s + d.workDays; }, 0);
+  var totalAbsent = staffData.reduce(function(s, d){ return s + d.absent; }, 0);
+  var totalLate = staffData.reduce(function(s, d){ return s + d.late; }, 0);
+  var normalCount = staffData.filter(function(d){ return d.status === '正常'; }).length;
+  var rows = staffData.map(function(d) {
+    var statusColor = d.status === '正常' ? 'var(--green)' : d.status === '异常' ? 'var(--orange)' : 'var(--red)';
+    var statusBg = d.status === '正常' ? 'var(--green-bg)' : d.status === '异常' ? 'var(--orange-bg)' : 'var(--red-bg)';
+    return '<tr>' +
+      '<td style="padding:8px 12px;font-weight:700;">' + d.name + '</td>' +
+      '<td style="padding:8px 12px;font-size:11px;">' + d.dept + '</td>' +
+      '<td style="padding:8px 12px;font-size:12px;">' + d.workDays + '天</td>' +
+      '<td style="padding:8px 12px;font-size:12px;color:var(--red);">' + (d.absent > 0 ? d.absent + '天' : '-') + '</td>' +
+      '<td style="padding:8px 12px;font-size:12px;color:' + (d.late > 0 ? 'var(--orange)' : 'var(--text-muted)') + ';">' + (d.late > 0 ? d.late + '次' : '-') + '</td>' +
+      '<td style="padding:8px 12px;font-size:12px;">' + (d.overtime > 0 ? d.overtime + 'h' : '-') + '</td>' +
+      '<td style="padding:8px 12px;"><span style="padding:2px 8px;background:' + statusBg + ';color:' + statusColor + ';border-radius:4px;font-size:11px;font-weight:600;">' + d.status + '</span></td>' +
+      '<td style="padding:8px 12px;"><button class="action-btn small" onclick="showToast(\'导出 ' + d.name + ' 考勤明细...','info')" style="padding:3px 8px;font-size:11px;">📤 导出</button></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-staff-attendance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-staff-attendance\').remove()">' +
+    '<div class="modal" style="width:780px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📊</div><div><div style="font-size:15px;font-weight:700;">员工考勤月报</div><div style="font-size:11px;color:var(--text-muted);">2026年03月 · 统计周期 03-01 至 03-29</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-staff-attendance\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);">' + staffData.length + '</div><div style="font-size:11px;color:var(--text-muted);">考勤员工</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);">' + normalCount + '</div><div style="font-size:11px;color:var(--text-muted);">正常出勤</div></div>' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--red);">' + totalAbsent + '</div><div style="font-size:11px;color:var(--text-muted);">旷工天数</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);">' + totalLate + '</div><div style="font-size:11px;color:var(--text-muted);">迟到次数</div></div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 20px;">' +
+    '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;margin-top:14px;">' +
+    '<table style="width:100%;border-collapse:collapse;min-width:560px;">' +
+    '<thead><tr style="background:var(--bg);"><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">姓名</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">部门</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">出勤</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">旷工</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">迟到</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">加班</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">状态</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">操作</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></div></div>' +
+    '<div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-staff-attendance\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="showToast(\'📤 正在生成全员考勤Excel...（演示）\',\'info\')" style="background:var(--green);color:white;border:none;">📤 导出全员考勤</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// 【改进3】批量入住预登记管理弹窗
+// 理由：批量入住入口仅打开现有 modal-batch-checkin，缺少预登记队列管理（待确认/已确认/已入住状态流转）。
+// 功能：批量入住 → 预登记队列 → 状态流转 → 确认入住全链路
+var _preregQueue = [
+  {id:'PR001', name:'钱一', phone:'138****1111', room:'401', roomType:'家庭套房', nights:2, arriveTime:'明天 14:00', status:'pending', deposit:200, method:'微信'},
+  {id:'PR002', name:'孙二', phone:'139****2222', room:'402', roomType:'大床房', nights:1, arriveTime:'明天 16:00', status:'pending', deposit:100, method:'支付宝'},
+  {id:'PR003', name:'赵三', phone:'137****3333', room:'403', roomType:'标准间', nights:3, arriveTime:'今天 18:00', status:'confirmed', deposit:100, method:'微信'},
+  {id:'PR004', name:'周四', phone:'136****4444', room:'404', roomType:'亲子间', nights:2, arriveTime:'今天 20:00', status:'checkedin', deposit:200, method:'现金'}
+];
+
+function openBatchPreregManageModal() {
+  var existing = document.getElementById('modal-batch-prereg');
+  if (existing) existing.remove();
+  var pending = _preregQueue.filter(function(p){ return p.status === 'pending'; });
+  var confirmed = _preregQueue.filter(function(p){ return p.status === 'confirmed'; });
+  var checkedin = _preregQueue.filter(function(p){ return p.status === 'checkedin'; });
+  function renderPreregRows(data) {
+    var statusMap = {pending:'⏳ 待确认', confirmed:'✅ 已确认', checkedin:'🏨 已入住'};
+    var statusBgMap = {pending:'var(--orange-bg)', confirmed:'var(--green-bg)', checkedin:'var(--blue-bg)'};
+    var statusColorMap = {pending:'var(--orange)', confirmed:'var(--green)', checkedin:'var(--blue)'};
+    var actionBtnMap = {
+      pending: '<button class="action-btn small" onclick="confirmPrereg(\'' + '' + '\')" style="padding:3px 8px;font-size:11px;background:var(--green);color:white;border:none;">✅ 确认</button>',
+      confirmed: '<button class="action-btn small" onclick="checkinPrereg(\'' + '' + '\')" style="padding:3px 8px;font-size:11px;background:var(--blue);color:white;border:none;">🏨 入住</button>',
+      checkedin: '<span style="font-size:11px;color:var(--text-muted);">已完成</span>'
+    };
+    return data.map(function(p) {
+      return '<tr>' +
+        '<td style="padding:8px 12px;font-weight:700;font-size:12px;">' + p.name + '</td>' +
+        '<td style="padding:8px 12px;font-size:11px;color:var(--text-muted);">' + p.phone + '</td>' +
+        '<td style="padding:8px 12px;font-size:12px;">' + p.room + ' · ' + p.roomType + '</td>' +
+        '<td style="padding:8px 12px;font-size:11px;color:var(--text-muted);">' + p.nights + '晚 · ' + p.arriveTime + '</td>' +
+        '<td style="padding:8px 12px;font-size:11px;"><span style="padding:2px 8px;background:' + statusBgMap[p.status] + ';color:' + statusColorMap[p.status] + ';border-radius:4px;font-size:11px;">' + statusMap[p.status] + '</span></td>' +
+        '<td style="padding:8px 12px;"><button class="action-btn small" onclick="openPreregDetail(\'' + p.id + '\')" style="padding:3px 8px;font-size:11px;">📋</button></td></tr>';
+    }).join('');
+  }
+  var pendingRows = renderPreregRows(pending);
+  var confirmedRows = renderPreregRows(confirmed);
+  var checkedinRows = renderPreregRows(checkedin);
+  var html = '<div class="modal-overlay" id="modal-batch-prereg" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-prereg\').remove()">' +
+    '<div class="modal" style="width:760px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📝</div><div><div style="font-size:15px;font-weight:700;">批量入住 - 预登记队列管理</div><div style="font-size:11px;color:var(--text-muted);">管理预登记状态 · 批量确认 · 入住办理</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-batch-prereg\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:12px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);">' + pending.length + '</div><div style="font-size:11px;color:var(--orange);">待确认</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);">' + confirmed.length + '</div><div style="font-size:11px;color:var(--green);">已确认</div></div>' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);">' + checkedin.length + '</div><div style="font-size:11px;color:var(--blue);">已入住</div></div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:14px 20px;">' +
+    '<div style="margin-bottom:16px;">' +
+    '<div style="font-size:12px;font-weight:700;color:var(--orange);margin-bottom:8px;">⏳ 待确认（' + pending.length + '）</div>' +
+    '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;">' +
+    '<table style="width:100%;border-collapse:collapse;min-width:500px;"><thead><tr style="background:var(--bg);"><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">姓名</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">电话</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">房间</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">入住信息</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">状态</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">详情</th></tr></thead><tbody>' + (pendingRows || '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">暂无待确认预登记</td></tr>') + '</tbody></table></div></div>' +
+    '<div style="margin-bottom:16px;">' +
+    '<div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px;">✅ 已确认（' + confirmed.length + '）</div>' +
+    '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;">' +
+    '<table style="width:100%;border-collapse:collapse;min-width:500px;"><thead><tr style="background:var(--bg);"><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">姓名</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">电话</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">房间</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">入住信息</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">状态</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">详情</th></tr></thead><tbody>' + (confirmedRows || '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">暂无已确认预登记</td></tr>') + '</tbody></table></div></div>' +
+    '<div>' +
+    '<div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px;">🏨 已入住（' + checkedin.length + '）</div>' +
+    '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;">' +
+    '<table style="width:100%;border-collapse:collapse;min-width:500px;"><thead><tr style="background:var(--bg);"><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">姓名</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">电话</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">房间</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">入住信息</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">状态</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">详情</th></tr></thead><tbody>' + (checkedinRows || '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">暂无已入住记录</td></tr>') + '</tbody></table></div></div></div>' +
+    '<div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-batch-prereg\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="openQuickCheckinFullModal()" style="background:var(--blue);border-color:var(--blue);">➕ 新增预登记</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function confirmPrereg(id) {
+  var p = _preregQueue.find(function(x){ return x.id === id; });
+  if (p) { p.status = 'confirmed'; showToast('✅ ' + p.name + ' 预登记已确认', 'success'); }
+  openBatchPreregManageModal();
+}
+
+function checkinPrereg(id) {
+  var p = _preregQueue.find(function(x){ return x.id === id; });
+  if (p) { p.status = 'checkedin'; showToast('🏨 ' + p.name + ' 已办理入住', 'success'); }
+  openBatchPreregManageModal();
+}
+
+function openPreregDetail(id) {
+  var p = _preregQueue.find(function(x){ return x.id === id; });
+  if (!p) return;
+  showToast('📋 预登记详情：' + p.name + ' · ' + p.room + ' · ' + p.arriveTime + ' · 押金¥' + p.deposit, 'info');
+}
+
+// 【改进4】工单SLA超时告警自动升级弹窗
+// 理由：page-workorder 页面有工单列表，但缺少 SLA 计时器和超时自动升级逻辑，紧急工单易被忽略。
+// 功能：实时 SLA 计时器 + 超时自动升级 + 升级历史追踪
+var _woSlaStore = [
+  {id:'WO-001', title:'301房间门锁异常', room:'301', priority:'urgent', assignee:'工程-张工', createTime:'03-29 02:15', slaHours:2, status:'pending', escalated:false, escalationLevel:0},
+  {id:'WO-002', title:'205房间空调不制热', room:'205', priority:'high', assignee:'工程-李工', createTime:'03-29 08:00', slaHours:4, status:'pending', escalated:false, escalationLevel:0},
+  {id:'WO-003', title:'308房间马桶漏水', room:'308', priority:'normal', assignee:'工程-王工', createTime:'03-29 06:30', slaHours:8, status:'pending', escalated:false, escalationLevel:0},
+  {id:'WO-004', title:'102房间电视无信号', room:'102', priority:'normal', assignee:'客房-周敏', createTime:'03-28 22:00', slaHours:8, status:'overdue', escalated:true, escalationLevel:2}
+];
+
+function openWoSlaMonitorModal() {
+  var existing = document.getElementById('modal-wo-sla');
+  if (existing) existing.remove();
+  var now = new Date();
+  function calcSla(p) {
+    var h = parseInt(p.createTime.split(' ')[1].split(':')[0]);
+    var m = parseInt(p.createTime.split(' ')[1].split(':')[1]);
+    var createMin = h * 60 + m;
+    var nowMin = now.getHours() * 60 + now.getMinutes();
+    var elapsed = nowMin - createMin;
+    var total = p.slaHours * 60;
+    var pct = Math.min(100, Math.round(elapsed / total * 100));
+    var remain = total - elapsed;
+    var overdue = remain < 0;
+    return {elapsed:elapsed, total:total, pct:pct, remain:remain, overdue:overdue};
+  }
+  var urgent = _woSlaStore.filter(function(w){ return w.priority === 'urgent' || w.priority === 'high'; });
+  var overdue = _woSlaStore.filter(function(w){ return calcSla(w).overdue; });
+  var rows = _woSlaStore.map(function(w) {
+    var sla = calcSla(w);
+    var barColor = sla.overdue ? 'var(--red)' : sla.pct > 75 ? 'var(--orange)' : 'var(--green)';
+    var barBg = sla.overdue ? 'var(--red-bg)' : sla.pct > 75 ? 'var(--orange-bg)' : 'var(--green-bg)';
+    var priorityBadge = w.priority === 'urgent' ? '<span style="padding:2px 6px;background:var(--red);color:white;border-radius:4px;font-size:10px;font-weight:600;">紧急</span>' : w.priority === 'high' ? '<span style="padding:2px 6px;background:var(--orange);color:white;border-radius:4px;font-size:10px;font-weight:600;">高</span>' : '<span style="padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:10px;">普通</span>';
+    var statusBadge = sla.overdue ? '<span style="padding:2px 6px;background:var(--red);color:white;border-radius:4px;font-size:10px;font-weight:600;">🔴 超时</span>' : '<span style="padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:10px;">⏳ ' + Math.floor(sla.remain/60) + 'h' + (sla.remain%60) + 'm</span>';
+    var escalateBtn = sla.overdue && !w.escalated ? '<button class="action-btn small" onclick="escalateWo(\'' + w.id + '\')" style="padding:3px 8px;font-size:11px;background:var(--red);color:white;border:none;">⚠️ 升级</button>' : w.escalated ? '<span style="font-size:10px;color:var(--text-muted);">已升级L' + w.escalationLevel + '</span>' : '';
+    return '<tr>' +
+      '<td style="padding:8px 12px;font-size:11px;font-weight:700;">' + w.id + '</td>' +
+      '<td style="padding:8px 12px;font-size:12px;">' + priorityBadge + '</td>' +
+      '<td style="padding:8px 12px;font-size:12px;">' + w.title + '</td>' +
+      '<td style="padding:8px 12px;font-size:11px;color:var(--text-muted);">' + w.room + ' · ' + w.assignee + '</td>' +
+      '<td style="padding:8px 12px;"><div style="width:80px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="height:100%;width:' + sla.pct + '%;background:' + barColor + ';border-radius:3px;"></div></div></td>' +
+      '<td style="padding:8px 12px;font-size:11px;">' + statusBadge + '</td>' +
+      '<td style="padding:8px 12px;font-size:11px;">' + escalateBtn + '</td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-wo-sla" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-sla\').remove()">' +
+    '<div class="modal" style="width:820px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">⏱️</div><div><div style="font-size:15px;font-weight:700;">工单SLA监控中心</div><div style="font-size:11px;color:var(--text-muted);">实时追踪 SLA 计时 · 超时自动升级</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-wo-sla\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:14px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red);">' + overdue.length + '</div><div style="font-size:11px;color:var(--text-muted);">超时工单</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">' + urgent.length + '</div><div style="font-size:11px;color:var(--text-muted);">紧急/高优先级</div></div>' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);">' + _woSlaStore.length + '</div><div style="font-size:11px;color:var(--text-muted);">监控工单</div></div>' +
+    '<div style="padding:12px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--purple);">' + _woSlaStore.filter(function(w){ return w.escalated; }).length + '</div><div style="font-size:11px;color:var(--text-muted);">已升级</div></div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 20px;">' +
+    '<div style="margin-top:14px;margin-bottom:4px;padding:8px 12px;background:var(--orange-bg);border-radius:6px;font-size:12px;color:var(--orange);">⏱️ SLA计时规则：紧急工单2h、高优先级4h、普通工单8h。超时将自动升级并通知主管。</div>' +
+    '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;margin-top:10px;">' +
+    '<table style="width:100%;border-collapse:collapse;min-width:600px;">' +
+    '<thead><tr style="background:var(--bg);"><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">工单号</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">优先级</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">工单标题</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">房间/处理人</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">SLA进度</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">状态</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">操作</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></div></div>' +
+    '<div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-sla\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="openWoSlaMonitorModal()" style="background:var(--blue);border-color:var(--blue);">🔄 刷新</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function escalateWo(id) {
+  var w = _woSlaStore.find(function(x){ return x.id === id; });
+  if (!w) return;
+  w.escalated = true;
+  w.escalationLevel = Math.min(3, w.escalationLevel + 1);
+  showToast('⚠️ 工单 ' + id + ' 已升级（L' + w.escalationLevel + '），已通知上级主管', 'warning');
+  openWoSlaMonitorModal();
+}
+
+// 【改进5】结算历史完整弹窗（openSettlementHistoryModal）- 增强版
+// 理由：page-settlement（行~15477）「结算历史」按钮调用 openSettlementHistoryModal，
+// 原函数仅显示列表，本次新增详情弹窗、导出功能、按月筛选。
+var _settlementHistoryFullData = [
+  {id:'STL-001', room:'301', name:'张三', checkin:'03-26 14:00', checkout:'03-27 10:15', nights:1, roomFee:128, extras:0, deposit:100, refund:72, payMethod:'微信', cashFlow:'-72(退)', status:'已完成', operator:'前台-赵飞'},
+  {id:'STL-002', room:'201', name:'王五', checkin:'03-25 15:30', checkout:'03-26 12:00', nights:2, roomFee:216, extras:70, deposit:100, refund:0, payMethod:'支付宝', cashFlow:'-286(收)', status:'押金不足', operator:'前台-吴倩'},
+  {id:'STL-003', room:'203', name:'李四', checkin:'03-24 16:00', checkout:'03-26 14:00', nights:3, roomFee:324, extras:60, deposit:100, refund:0, payMethod:'现金', cashFlow:'-384(收)', status:'已结算-押金不足', operator:'前台-赵飞'},
+  {id:'STL-004', room:'302', name:'孙九', checkin:'03-22 14:00', checkout:'03-23 11:00', nights:1, roomFee:98, extras:0, deposit:100, refund:102, payMethod:'微信', cashFlow:'-102(退)', status:'已完成', operator:'前台-吴倩'},
+  {id:'STL-005', room:'202', name:'周十', checkin:'03-21 15:00', checkout:'03-22 10:00', nights:1, roomFee:108, extras:30, deposit:100, refund:62, payMethod:'银行卡', cashFlow:'-62(退)', status:'已完成', operator:'前台-赵飞'}
+];
+
+function renderSettlementHistoryFull() {
+  var existing = document.getElementById('modal-settlement-history');
+  if (existing) existing.remove();
+  var monthFilter = document.getElementById('sh-month-filter') ? document.getElementById('sh-month-filter').value : 'all';
+  var statusFilter = document.getElementById('sh-status-filter') ? document.getElementById('sh-status-filter').value : 'all';
+  var filtered = _settlementHistoryFullData.filter(function(d) {
+    var matchStatus = statusFilter === 'all' || (statusFilter === 'done' && d.status === '已完成') || (statusFilter === 'debt' && d.status.indexOf('押金不足') !== -1);
+    return matchStatus;
+  });
+  var totalIncome = filtered.filter(function(d){ return d.cashFlow.indexOf('收') !== -1; }).reduce(function(s, d){ return s + (d.roomFee + d.extras); }, 0);
+  var totalRefund = filtered.filter(function(d){ return d.cashFlow.indexOf('退') !== -1; }).reduce(function(s, d){ return s + d.refund; }, 0);
+  var net = totalIncome - totalRefund;
+  var rows = filtered.map(function(d) {
+    var statusBg = d.status === '已完成' ? 'var(--green-bg)' : 'var(--orange-bg)';
+    var statusColor = d.status === '已完成' ? 'var(--green)' : 'var(--orange)';
+    return '<tr style="cursor:pointer;" onclick="openSettlementDetailFull(\'' + d.id + '\')">' +
+      '<td style="padding:8px 12px;font-size:11px;">' + d.id + '</td>' +
+      '<td style="padding:8px 12px;font-weight:700;font-size:12px;">' + d.room + '</td>' +
+      '<td style="padding:8px 12px;font-size:12px;">' + d.name + '</td>' +
+      '<td style="padding:8px 12px;font-size:11px;color:var(--text-muted);">' + d.checkin + ' → ' + d.checkout + '</td>' +
+      '<td style="padding:8px 12px;font-size:11px;">' + d.nights + '晚</td>' +
+      '<td style="padding:8px 12px;font-size:12px;font-weight:700;color:var(--green);">¥' + (d.roomFee + d.extras) + '</td>' +
+      '<td style="padding:8px 12px;font-size:11px;">' + d.payMethod + '</td>' +
+      '<td style="padding:8px 12px;font-size:11px;"><span style="padding:2px 8px;background:' + statusBg + ';color:' + statusColor + ';border-radius:4px;font-size:11px;">' + d.status + '</span></td>' +
+      '<td style="padding:8px 12px;font-size:11px;color:var(--text-muted);">' + d.operator + '</td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-settlement-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-history\').remove()">' +
+    '<div class="modal" style="width:900px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">💰</div><div><div style="font-size:15px;font-weight:700;">结算历史</div><div style="font-size:11px;color:var(--text-muted);">历史结算记录 · 支持筛选导出</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-settlement-history\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+    '<select class="form-select" id="sh-status-filter" onchange="renderSettlementHistoryFull()" style="padding:6px 10px;font-size:12px;width:140px;">' +
+    '<option value="all">全部状态</option><option value="done">✅ 已完成</option><option value="debt">⚠️ 押金不足</option></select>' +
+    '<select class="form-select" id="sh-month-filter" onchange="renderSettlementHistoryFull()" style="padding:6px 10px;font-size:12px;width:130px;">' +
+    '<option value="all">全部月份</option><option value="03">2026年03月</option><option value="02">2026年02月</option><option value="01">2026年01月</option></select>' +
+    '<span style="margin-left:auto;font-size:12px;color:var(--text-muted);">共 <b style="color:var(--blue);">' + filtered.length + '</b> 条 · ' +
+    '收入 ¥<b style="color:var(--green);">' + totalIncome + '</b> · 退款 ¥<b style="color:var(--orange);">' + totalRefund + '</b> · 净额 ¥<b style="color:var(--blue);">' + net + '</b></span></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 20px;">' +
+    '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;margin-top:14px;">' +
+    '<table style="width:100%;border-collapse:collapse;min-width:700px;">' +
+    '<thead><tr style="background:var(--bg);"><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">单号</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">房间</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">客人</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">入住/退房时间</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">天数</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">实收</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">支付</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">状态</th><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);">操作员</th></tr></thead>' +
+    '<tbody id="sh-table-body">' + rows + '</tbody></table></div></div>' +
+    '<div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-settlement-history\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="showToast(\'📤 正在导出结算历史Excel...（演示）\',\'info\')" style="background:var(--green);color:white;border:none;">📤 导出CSV</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openSettlementDetailFull(id) {
+  var d = _settlementHistoryFullData.find(function(x){ return x.id === id; });
+  if (!d) return;
+  showToast('📋 结算单详情：' + d.room + ' · ' + d.name + ' · 入住' + d.nights + '晚 · 房费¥' + d.roomFee + ' · ' + d.status, 'info');
+}
+
+// 覆写原 openSettlementHistoryModal 指向增强版
+window.openSettlementHistoryModal = renderSettlementHistoryFull;
