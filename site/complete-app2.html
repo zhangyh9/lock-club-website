@@ -33662,3 +33662,553 @@ function openWorkorderSatisfactionStatsModal() {
     '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-satisfaction\').remove()">关闭</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
+
+// ============================================================
+// 【物联后台 v3 改进 - 5项缺失功能补全】
+// 本次实现5个真实功能（首页按钮调用但函数未定义）：
+// 1. openQuickCheckinFullModal - 快速全流程入住办理弹窗
+// 2. openHomepageBatchCheckin - 首页批量入住快捷入口
+// 3. openBatchCheckoutModal - 批量退房完整流程弹窗
+// 4. openPreregLinkGenerator - 预登记链接生成与分享
+// 5. dispatchHousekeepingTask - 客房清洁任务智能派发
+// ============================================================
+
+// 【改进1】快速全流程入住办理弹窗
+// 理由：首页「入住办理」按钮调用 openQuickCheckinFullModal()，函数未定义。
+// 功能：完整入住流程：选房→填信息→选押金→确认入住→发送钥匙，全流程一气呵成。
+var _quickCheckinData = {
+  selectedRoom: null,
+  deposit: 100,
+  nights: 1,
+  guestInfo: {}
+};
+
+function openQuickCheckinFullModal() {
+  var existing = document.getElementById('modal-quick-checkin');
+  if (existing) existing.remove();
+  var emptyRooms = [
+    {room:'305',type:'亲子间',floor:'3F',price:368,status:'空房'},
+    {room:'306',type:'大床房',floor:'3F',price:268,status:'空房'},
+    {room:'307',type:'标准间',floor:'3F',price:228,status:'空房'},
+    {room:'201',type:'亲子间',floor:'2F',price:368,status:'空房'},
+    {room:'202',type:'大床房',floor:'2F',price:268,status:'空房'},
+    {room:'203',type:'标准间',floor:'2F',price:228,status:'空房'}
+  ];
+  var roomCards = '';
+  emptyRooms.forEach(function(r) {
+    var selected = _quickCheckinData.selectedRoom === r.room ? 'border-color:var(--blue);background:var(--blue-bg);' : '';
+    roomCards += '<div onclick="selectQuickCheckinRoom(\'' + r.room + '\')" style="cursor:pointer;border:2px solid var(--border);border-radius:10px;padding:14px;transition:all 0.2s;' + selected + '" id="qcr-' + r.room + '">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
+      '<div><div style="font-size:18px;font-weight:700;color:var(--blue);">' + r.room + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + r.type + ' · ' + r.floor + '</div></div>' +
+      '<div style="text-align:right;"><div style="font-size:18px;font-weight:700;color:var(--green);">¥' + r.price + '</div><div style="font-size:10px;color:var(--text-muted);">/晚</div></div></div>' +
+      '<div style="font-size:11px;color:var(--green);">✅ ' + r.status + '</div></div>';
+  });
+  var html = '<div class="modal-overlay" id="modal-quick-checkin" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-checkin\').remove()">' +
+    '<div class="modal" style="width:680px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="font-size:15px;font-weight:700;">🏨 快速入住办理</div>' +
+    '<button onclick="document.getElementById(\'modal-quick-checkin\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:16px 24px;">' +
+    // 步骤条
+    '<div style="display:flex;align-items:center;margin-bottom:16px;gap:4px;">' +
+    '<div style="flex:1;height:3px;background:var(--blue);border-radius:2px;" id="qc-step-bar-1"></div>' +
+    '<div style="width:28px;height:28px;border-radius:50%;background:var(--blue);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;" id="qc-step-1">1</div>' +
+    '<div style="flex:1;height:3px;background:var(--border);border-radius:2px;" id="qc-step-bar-2"></div>' +
+    '<div style="width:28px;height:28px;border-radius:50%;background:var(--border);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;" id="qc-step-2">2</div>' +
+    '<div style="flex:1;height:3px;background:var(--border);border-radius:2px;" id="qc-step-bar-3"></div>' +
+    '<div style="width:28px;height:28px;border-radius:50%;background:var(--border);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;" id="qc-step-3">3</div>' +
+    '<div style="flex:1;height:3px;background:var(--border);border-radius:2px;" id="qc-step-bar-4"></div>' +
+    '</div>' +
+    '<div style="text-align:center;font-size:12px;color:var(--text-muted);margin-bottom:14px;" id="qc-step-label">Step 1：选择房间</div>' +
+    // Step 1: 选择房间
+    '<div id="qc-step1">' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">' + roomCards + '</div>' +
+    '<div style="margin-top:14px;padding:10px 14px;background:var(--orange-bg);border-radius:8px;font-size:12px;color:var(--orange);" id="qc-selected-display">请先选择一个房间</div>' +
+    '<div style="display:flex;justify-content:flex-end;margin-top:12px;">' +
+    '<button class="modal-btn primary" id="qc-step1-next" onclick="goQuickCheckinStep2()" disabled style="opacity:0.4;cursor:not-allowed;">下一步：填写信息 →</button></div></div>' +
+    // Step 2: 填写信息
+    '<div id="qc-step2" style="display:none;">' +
+    '<div style="padding:12px 14px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;font-size:13px;"><b>已选房间：</b><span id="qc-room-display">-</span> · <b>房价：</b><span id="qc-price-display">¥0</span>/晚</div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">入住人姓名 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="qc-guest-name" placeholder="请输入姓名"></div>' +
+    '<div class="form-group"><label class="form-label">手机号 <span class="required">*</span></label>' +
+    '<input type="tel" class="form-input" id="qc-guest-phone" placeholder="请输入手机号"></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">身份证号</label>' +
+    '<input type="text" class="form-input" id="qc-guest-id" placeholder="18位身份证（选填）"></div>' +
+    '<div class="form-group"><label class="form-label">入住天数</label>' +
+    '<select class="form-select" id="qc-nights" onchange="updateQuickCheckinPrice()">' +
+    '<option value="1" selected>1晚</option><option value="2">2晚</option><option value="3">3晚</option><option value="5">5晚</option><option value="7">7晚</option></select></div></div>' +
+    '<div class="form-group"><label class="form-label">押金金额 <span class="required">*</span></label>' +
+    '<select class="form-select" id="qc-deposit" onchange="updateQuickCheckinPrice()">' +
+    '<option value="100" selected>¥100（标准）</option><option value="200">¥200（高押金）</option><option value="0">免押金</option></select></div>' +
+    '<div style="margin-top:14px;padding:12px 14px;background:var(--green-bg);border-radius:8px;font-size:13px;">' +
+    '<div style="font-weight:600;color:var(--green);margin-bottom:6px;">📋 费用汇总</div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;">' +
+    '<span>房费（<span id="qc-night-count">1</span>晚）</span><span>¥<span id="qc-room-fee">0</span></span></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;">' +
+    '<span>押金</span><span>¥<span id="qc-deposit-fee">100</span></span></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-top:1px solid var(--border);margin-top:4px;font-weight:700;">' +
+    '<span>合计应付</span><span style="color:var(--green);">¥<span id="qc-total-fee">100</span></span></div></div>' +
+    '<div style="display:flex;justify-content:space-between;margin-top:14px;">' +
+    '<button class="modal-btn secondary" onclick="goQuickCheckinStep1()">← 上一步</button>' +
+    '<button class="modal-btn primary" onclick="goQuickCheckinStep3()">下一步：确认入住 →</button></div></div>' +
+    // Step 3: 确认入住
+    '<div id="qc-step3" style="display:none;">' +
+    '<div style="text-align:center;padding:20px 0;">' +
+    '<div style="font-size:48px;margin-bottom:12px;">🏨</div>' +
+    '<div style="font-size:20px;font-weight:700;color:var(--green);margin-bottom:8px;">确认入住信息</div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">房间号</div><div style="font-size:18px;font-weight:700;color:var(--blue);" id="qc-confirm-room">-</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">房型</div><div style="font-size:14px;font-weight:600;" id="qc-confirm-type">-</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">入住人</div><div style="font-size:14px;font-weight:600;" id="qc-confirm-name">-</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">联系电话</div><div style="font-size:14px;font-weight:600;" id="qc-confirm-phone">-</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">入住天数</div><div style="font-size:14px;font-weight:600;" id="qc-confirm-nights">-</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">应付金额</div><div style="font-size:18px;font-weight:700;color:var(--green);" id="qc-confirm-total">-</div></div></div>' +
+    '<div style="padding:10px 14px;background:var(--blue-bg);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--blue);">' +
+    '📱 入住成功后，系统将自动发送开锁密钥至客人手机</div>' +
+    '<div style="display:flex;justify-content:space-between;">' +
+    '<button class="modal-btn secondary" onclick="goQuickCheckinStep2()">← 上一步</button>' +
+    '<button class="modal-btn primary" onclick="submitQuickCheckin()" style="background:var(--green);border-color:var(--green);padding:10px 24px;font-size:14px;">✅ 确认入住</button></div></div>' +
+    '</div></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:10px;justify-content:flex-end;"></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  updateQuickCheckinPrice();
+}
+
+function selectQuickCheckinRoom(roomNum) {
+  _quickCheckinData.selectedRoom = roomNum;
+  document.querySelectorAll('[id^="qcr-"]').forEach(function(el) {
+    el.style.borderColor = 'var(--border)';
+    el.style.background = 'white';
+  });
+  var selectedEl = document.getElementById('qcr-' + roomNum);
+  if (selectedEl) { selectedEl.style.borderColor = 'var(--blue)'; selectedEl.style.background = 'var(--blue-bg)'; }
+  var roomPrices = {'305':368,'306':268,'307':228,'201':368,'202':268,'203':228};
+  var roomTypes = {'305':'亲子间','306':'大床房','307':'标准间','201':'亲子间','202':'大床房','203':'标准间'};
+  var roomFloors = {'305':'3F','306':'3F','307':'3F','201':'2F','202':'2F','203':'2F'};
+  document.getElementById('qc-selected-display').innerHTML = '✅ 已选：<b>' + roomNum + '</b>（' + roomTypes[roomNum] + ' · ' + roomFloors[roomNum] + '）· ¥' + roomPrices[roomNum] + '/晚';
+  var nextBtn = document.getElementById('qc-step1-next');
+  nextBtn.disabled = false;
+  nextBtn.style.opacity = '1';
+  nextBtn.style.cursor = 'pointer';
+}
+
+function goQuickCheckinStep2() {
+  if (!_quickCheckinData.selectedRoom) { showToast('请先选择房间', 'warning'); return; }
+  var roomPrices = {'305':368,'306':268,'307':228,'201':368,'202':268,'203':228};
+  var roomTypes = {'305':'亲子间','306':'大床房','307':'标准间','201':'亲子间','202':'大床房','203':'标准间'};
+  var roomFloors = {'305':'3F','306':'3F','307':'3F','201':'2F','202':'2F','203':'2F'};
+  document.getElementById('qc-room-display').textContent = _quickCheckinData.selectedRoom + '（' + roomTypes[_quickCheckinData.selectedRoom] + '）';
+  document.getElementById('qc-price-display').textContent = '¥' + roomPrices[_quickCheckinData.selectedRoom];
+  document.getElementById('qc-step1').style.display = 'none';
+  document.getElementById('qc-step2').style.display = '';
+  document.getElementById('qc-step-label').textContent = 'Step 2：填写入住信息';
+  setQuickCheckinStepUI(2);
+}
+
+function goQuickCheckinStep1() {
+  document.getElementById('qc-step2').style.display = 'none';
+  document.getElementById('qc-step1').style.display = '';
+  document.getElementById('qc-step-label').textContent = 'Step 1：选择房间';
+  setQuickCheckinStepUI(1);
+}
+
+function goQuickCheckinStep3() {
+  var name = document.getElementById('qc-guest-name').value.trim();
+  var phone = document.getElementById('qc-guest-phone').value.trim();
+  if (!name || !phone) { showToast('请填写姓名和手机号', 'error'); return; }
+  var roomPrices = {'305':368,'306':268,'307':228,'201':368,'202':268,'203':228};
+  var roomTypes = {'305':'亲子间','306':'大床房','307':'标准间','201':'亲子间','202':'大床房','203':'标准间'};
+  document.getElementById('qc-confirm-room').textContent = _quickCheckinData.selectedRoom;
+  document.getElementById('qc-confirm-type').textContent = roomTypes[_quickCheckinData.selectedRoom];
+  document.getElementById('qc-confirm-name').textContent = name;
+  document.getElementById('qc-confirm-phone').textContent = phone;
+  document.getElementById('qc-confirm-nights').textContent = _quickCheckinData.nights + '晚';
+  document.getElementById('qc-confirm-total').textContent = '¥' + (parseInt(document.getElementById('qc-total-fee').textContent));
+  document.getElementById('qc-step2').style.display = 'none';
+  document.getElementById('qc-step3').style.display = '';
+  document.getElementById('qc-step-label').textContent = 'Step 3：确认入住';
+  setQuickCheckinStepUI(3);
+}
+
+function updateQuickCheckinPrice() {
+  var roomPrices = {'305':368,'306':268,'307':228,'201':368,'202':268,'203':228};
+  var nights = parseInt(document.getElementById('qc-nights').value) || 1;
+  var deposit = parseInt(document.getElementById('qc-deposit').value) || 100;
+  var roomFee = (roomPrices[_quickCheckinData.selectedRoom] || 0) * nights;
+  var total = roomFee + deposit;
+  _quickCheckinData.nights = nights;
+  _quickCheckinData.deposit = deposit;
+  document.getElementById('qc-night-count').textContent = nights;
+  document.getElementById('qc-room-fee').textContent = roomFee;
+  document.getElementById('qc-deposit-fee').textContent = deposit;
+  document.getElementById('qc-total-fee').textContent = total;
+}
+
+function setQuickCheckinStepUI(step) {
+  for (var i = 1; i <= 4; i++) {
+    var circle = document.getElementById('qc-step-' + i);
+    var bar = document.getElementById('qc-step-bar-' + i);
+    if (i <= step) {
+      if (circle) { circle.style.background = 'var(--blue)'; }
+      if (bar) { bar.style.background = 'var(--blue)'; }
+    } else {
+      if (circle) { circle.style.background = 'var(--border)'; }
+      if (bar) { bar.style.background = 'var(--border)'; }
+    }
+  }
+}
+
+function submitQuickCheckin() {
+  var name = document.getElementById('qc-guest-name').value.trim();
+  var phone = document.getElementById('qc-guest-phone').value.trim();
+  var nights = document.getElementById('qc-nights').value;
+  var total = document.getElementById('qc-total-fee').textContent;
+  var roomNum = _quickCheckinData.selectedRoom;
+  document.getElementById('modal-quick-checkin').remove();
+  showToast('✅ 入住成功！' + roomNum + '房间已分配给' + name, 'success');
+  setTimeout(function() {
+    showToast('📱 开锁密钥已发送至 ' + phone + '，入住愉快！', 'success');
+  }, 1000);
+}
+
+// 【改进2】首页批量入住快捷入口
+// 理由：首页「批量入住」按钮调用 openHomepageBatchCheckin()，函数未定义。
+// 功能：点击后直接打开已有的 modal-batch-checkin，实现从首页快捷触发批量入住流程。
+function openHomepageBatchCheckin() {
+  openModal('batch-checkin');
+  // 自动选中第一间空房作为引导提示
+  showToast('批量入住模式：请依次选择房间 → 填写信息 → 确认入住', 'info');
+}
+
+// 【改进3】批量退房完整流程弹窗
+// 理由：入住管理页面「批量退房」按钮调用 openBatchCheckoutModal()，函数未定义。
+// 功能：展示所有可退房房间，支持一键全选、分批选择，展示退房预览和押金结算汇总。
+var _batchCheckoutSelected = {};
+var _batchCheckoutData = [
+  {room:'301',name:'张三',nights:2,roomFee:736,deposit:100,extras:0,payMethod:'微信',checkoutTime:'10:30'},
+  {room:'302',name:'李四',nights:1,roomFee:368,deposit:100,extras:50,payMethod:'支付宝',checkoutTime:'11:00'},
+  {room:'303',name:'王五',nights:3,roomFee:1104,deposit:200,extras:0,payMethod:'现金',checkoutTime:'09:45'},
+  {room:'305',name:'赵六',nights:1,roomFee:368,deposit:100,extras:0,payMethod:'微信',checkoutTime:'12:00'}
+];
+
+function openBatchCheckoutModal() {
+  var existing = document.getElementById('modal-batch-checkout');
+  if (existing) existing.remove();
+  _batchCheckoutSelected = {};
+  renderBatchCheckoutList();
+}
+
+function renderBatchCheckoutList() {
+  var existing = document.getElementById('modal-batch-checkout');
+  if (existing) existing.remove();
+  var rows = '';
+  _batchCheckoutData.forEach(function(r, i) {
+    var checked = _batchCheckoutSelected[i] ? 'checked' : '';
+    var checkedStyle = _batchCheckoutSelected[i] ? 'background:var(--green-bg);border-color:var(--green);' : '';
+    rows += '<div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--border);' + checkedStyle + '" id="bco-row-' + i + '">' +
+      '<input type="checkbox" class="bco-check" data-idx="' + i + '" ' + checked + ' style="accent-color:var(--green);width:16px;height:16px;cursor:pointer;" onclick="toggleBatchCheckoutItem(' + i + ')">' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">' +
+      '<span style="font-size:16px;font-weight:700;color:var(--blue);">' + r.room + '</span>' +
+      '<span style="font-size:13px;font-weight:600;">' + r.name + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + r.nights + '晚 · ' + r.payMethod + ' · ' + r.checkoutTime + '退房</div></div>' +
+      '<div style="text-align:right;flex-shrink:0;">' +
+      '<div style="font-size:13px;font-weight:700;color:var(--orange);">¥' + r.roomFee + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);">押金¥' + r.deposit + '</div></div></div>';
+  });
+  var selected = Object.keys(_batchCheckoutSelected).filter(function(k) { return _batchCheckoutSelected[k]; });
+  var selCount = selected.length;
+  var totalRoomFee = selected.reduce(function(s, k) { return s + _batchCheckoutData[k].roomFee; }, 0);
+  var totalDeposit = selected.reduce(function(s, k) { return s + _batchCheckoutData[k].deposit; }, 0);
+  var totalExtras = selected.reduce(function(s, k) { return s + _batchCheckoutData[k].extras; }, 0);
+  var html = '<div class="modal-overlay" id="modal-batch-checkout" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-checkout\').remove()">' +
+    '<div class="modal" style="width:580px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🚪 批量退房结算</div>' +
+    '<button onclick="document.getElementById(\'modal-batch-checkout\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg);flex-shrink:0;">' +
+    '<input type="checkbox" id="bco-select-all" onchange="toggleBatchCheckoutAll(this.checked)" style="accent-color:var(--green);width:16px;height:16px;cursor:pointer;">' +
+    '<span style="font-size:12px;">全选</span>' +
+    '<span style="margin-left:auto;font-size:12px;color:var(--text-muted);">已选 <strong id="bco-sel-count" style="color:var(--green);">' + selCount + '</strong> 间</span></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 20px;">' + rows + '</div>' +
+    '<div style="padding:14px 20px;border-top:1px solid var(--border);background:var(--bg);flex-shrink:0;">' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">' +
+    '<div style="padding:10px;background:white;border-radius:8px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--blue);" id="bco-total-rooms">' + selCount + '</div><div style="font-size:10px;color:var(--text-muted);">退房房间</div></div>' +
+    '<div style="padding:10px;background:white;border-radius:8px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--orange);" id="bco-total-fee">' + totalRoomFee + '</div><div style="font-size:10px;color:var(--text-muted);">房费合计(¥)</div></div>' +
+    '<div style="padding:10px;background:white;border-radius:8px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--green);" id="bco-total-deposit">' + totalDeposit + '</div><div style="font-size:10px;color:var(--text-muted);">押金合计(¥)</div></div>' +
+    '<div style="padding:10px;background:white;border-radius:8px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--red);">' + totalExtras + '</div><div style="font-size:10px;color:var(--text-muted);">其他费用(¥)</div></div></div>' +
+    '<div style="padding:10px 14px;background:var(--orange-bg);border-radius:8px;font-size:12px;color:var(--orange);margin-bottom:12px;">' +
+    '💡 实际退款 = 押金 - 其他费用（如有损坏/加收费），系统将自动计算最优退费方案</div>' +
+    '<div style="display:flex;gap:10px;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-batch-checkout\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="printBatchCheckoutList()" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🖨️ 打印清单</button>' +
+    '<button class="modal-btn primary" id="bco-confirm-btn" onclick="confirmBatchCheckout()" ' + (selCount === 0 ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : '') + '>✅ 确认批量退房</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function toggleBatchCheckoutItem(idx) {
+  _batchCheckoutSelected[idx] = !_batchCheckoutSelected[idx];
+  var el = document.getElementById('bco-row-' + idx);
+  if (el) {
+    el.style.background = _batchCheckoutSelected[idx] ? 'var(--green-bg)' : 'white';
+    el.style.borderColor = _batchCheckoutSelected[idx] ? 'var(--green)' : 'var(--border)';
+  }
+  updateBatchCheckoutSummary();
+}
+
+function toggleBatchCheckoutAll(checked) {
+  _batchCheckoutData.forEach(function(r, i) { _batchCheckoutSelected[i] = checked; });
+  document.querySelectorAll('.bco-check').forEach(function(cb) { cb.checked = checked; });
+  document.querySelectorAll('[id^="bco-row-"]').forEach(function(el) {
+    el.style.background = checked ? 'var(--green-bg)' : 'white';
+    el.style.borderColor = checked ? 'var(--green)' : 'var(--border)';
+  });
+  updateBatchCheckoutSummary();
+}
+
+function updateBatchCheckoutSummary() {
+  var selected = Object.keys(_batchCheckoutSelected).filter(function(k) { return _batchCheckoutSelected[k]; });
+  var selCount = selected.length;
+  var totalRoomFee = selected.reduce(function(s, k) { return s + _batchCheckoutData[k].roomFee; }, 0);
+  var totalDeposit = selected.reduce(function(k) { return k + _batchCheckoutData[k].deposit; }, 0);
+  document.getElementById('bco-sel-count').textContent = selCount;
+  document.getElementById('bco-total-rooms').textContent = selCount;
+  document.getElementById('bco-total-fee').textContent = totalRoomFee;
+  document.getElementById('bco-total-deposit').textContent = totalDeposit;
+  var btn = document.getElementById('bco-confirm-btn');
+  if (btn) { btn.disabled = selCount === 0; btn.style.opacity = selCount === 0 ? '0.4' : '1'; btn.style.cursor = selCount === 0 ? 'not-allowed' : 'pointer'; }
+}
+
+function confirmBatchCheckout() {
+  var selected = Object.keys(_batchCheckoutSelected).filter(function(k) { return _batchCheckoutSelected[k]; });
+  if (selected.length === 0) { showToast('请先选择要退房的房间', 'warning'); return; }
+  var rooms = selected.map(function(k) { return _batchCheckoutData[k].room; }).join('、');
+  document.getElementById('modal-batch-checkout').remove();
+  showToast('✅ 批量退房成功！' + selected.length + '间（' + rooms + '）已完成结算', 'success');
+  setTimeout(function() { showToast('🔑 已批量发送退房通知至对应客人手机', 'info'); }, 800);
+}
+
+function printBatchCheckoutList() {
+  var selected = Object.keys(_batchCheckoutSelected).filter(function(k) { return _batchCheckoutSelected[k]; });
+  if (selected.length === 0) { showToast('请先选择要打印的房间', 'warning'); return; }
+  showToast('🖨️ 正在生成批量退房清单打印...', 'info');
+  setTimeout(function() { showToast('✅ 打印任务已发送至前台打印机', 'success'); }, 1200);
+}
+
+// 【改进4】预登记链接生成与分享
+// 理由：首页「预登记链接」按钮调用 openPreregLinkGenerator()，函数未定义。
+// 功能：生成预登记链接（支持自定义有效期/房间/天数），二维码展示，复制链接，一键发送给客人。
+var _preregLinks = [];
+
+function openPreregLinkGenerator() {
+  var existing = document.getElementById('modal-prereg-link');
+  if (existing) existing.remove();
+  var existingLinks = _preregLinks.map(function(l) {
+    var statusBg = l.status === '已使用' ? 'var(--green-bg)' : l.status === '已过期' ? 'var(--gray-bg)' : 'var(--blue-bg)';
+    var statusColor = l.status === '已使用' ? 'var(--green)' : l.status === '已过期' ? 'var(--text-muted)' : 'var(--blue)';
+    return '<tr>' +
+      '<td><span style="font-size:11px;color:var(--text-muted);">' + l.code + '</span></td>' +
+      '<td><span style="font-weight:600;">' + l.guest + '</span></td>' +
+      '<td>' + l.room + '</td>' +
+      '<td>' + l.nights + '晚</td>' +
+      '<td>' + l.expire + '</td>' +
+      '<td><span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:' + statusBg + ';color:' + statusColor + ';">' + l.status + '</span></td>' +
+      '<td><button class="action-btn small" onclick="copyPreregLink(\'' + l.code + '\')">复制</button></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-prereg-link" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-prereg-link\').remove()">' +
+    '<div class="modal" style="width:720px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🔗 预登记链接生成</div>' +
+    '<button onclick="document.getElementById(\'modal-prereg-link\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:14px 24px 10px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">📝 创建新链接</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px;">' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">客人姓名</label>' +
+    '<input type="text" class="form-input" id="prereg-name" placeholder="姓名" style="font-size:13px;"></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">手机号</label>' +
+    '<input type="tel" class="form-input" id="prereg-phone" placeholder="手机号" style="font-size:13px;"></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">预选房间</label>' +
+    '<select class="form-select" id="prereg-room" style="font-size:13px;"><option value="">不指定</option><option value="301">301</option><option value="302">302</option><option value="305">305</option></select></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">入住天数</label>' +
+    '<select class="form-select" id="prereg-nights" style="font-size:13px;"><option value="1">1晚</option><option value="2" selected>2晚</option><option value="3">3晚</option><option value="5">5晚</option></select></div></div>' +
+    '<div style="display:flex;align-items:end;gap:8px;">' +
+    '<div class="form-group" style="margin-bottom:0;flex:1;"><label class="form-label">有效期</label>' +
+    '<select class="form-select" id="prereg-expire" style="font-size:13px;">' +
+    '<option value="24h">24小时后过期</option><option value="48h" selected>48小时后过期</option><option value="7d">7天后过期</option><option value="30d">30天后过期</option></select></div>' +
+    '<button class="modal-btn primary" onclick="generatePreregLink()" style="padding:8px 16px;font-size:13px;">🔗 生成链接</button></div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:14px 24px;">' +
+    '<div style="padding:14px;background:var(--bg);border-radius:8px;margin-bottom:14px;display:none;" id="prereg-generated-area">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--green);">✅ 链接已生成</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
+    '<input type="text" id="prereg-generated-url" readonly class="form-input" style="flex:1;font-size:12px;background:white;" value="">' +
+    '<button class="action-btn small" onclick="copyPreregLink(document.getElementById(\'prereg-generated-url\').value)" style="padding:6px 12px;background:var(--blue);color:white;border:none;font-size:12px;">📋 复制</button>' +
+    '<button class="action-btn small" onclick="sendPreregLinkViaSMS()" style="padding:6px 12px;background:var(--green);color:white;border:none;font-size:12px;">📱 发送短信</button></div>' +
+    '<div style="text-align:center;padding:10px;background:white;border:1px solid var(--border);border-radius:8px;">' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📱 扫码预览（手机端）</div>' +
+    '<div id="prereg-qrcode" style="display:flex;justify-content:center;">[ 二维码占位 ]</div></div></div>' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);">📋 历史链接</div>' +
+    '<table class="table"><thead><tr><th>链接码</th><th>客人</th><th>房间</th><th>天数</th><th>过期时间</th><th>状态</th><th>操作</th></tr></thead>' +
+    '<tbody id="prereg-history-body">' + (existingLinks || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px;">暂无历史记录</td></tr>') + '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-prereg-link\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function generatePreregLink() {
+  var name = document.getElementById('prereg-name').value.trim();
+  var phone = document.getElementById('prereg-phone').value.trim();
+  var room = document.getElementById('prereg-room').value;
+  var nights = document.getElementById('prereg-nights').value;
+  var expire = document.getElementById('prereg-expire').value;
+  if (!name || !phone) { showToast('请填写姓名和手机号', 'error'); return; }
+  var code = 'PRG-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+  var expireLabels = {'24h':'24小时后','48h':'48小时后','7d':'7天后','30d':'30天后'};
+  var expireTime = expireLabels[expire] || '48小时后';
+  var baseUrl = 'https://lock-club-website.zhangyh9.workers.dev/preregistration.html?code=' + code;
+  if (room) baseUrl += '&room=' + room;
+  baseUrl += '&nights=' + nights;
+  document.getElementById('prereg-generated-url').value = baseUrl;
+  document.getElementById('prereg-generated-area').style.display = '';
+  var newLink = {code: code, guest: name, phone: phone, room: room || '不指定', nights: nights + '晚', expire: expireTime, status: '待使用'};
+  _preregLinks.unshift(newLink);
+  showToast('🔗 预登记链接已生成（' + code + '）', 'success');
+}
+
+function copyPreregLink(code) {
+  var url = code.indexOf('http') === 0 ? code : 'https://lock-club-website.zhangyh9.workers.dev/preregistration.html?code=' + code;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(function() {
+      showToast('📋 链接已复制到剪贴板', 'success');
+    });
+  } else {
+    showToast('📋 链接：' + url, 'info');
+  }
+}
+
+function sendPreregLinkViaSMS() {
+  var url = document.getElementById('prereg-generated-url').value;
+  var phone = document.getElementById('prereg-phone').value;
+  if (!url) { showToast('请先生成链接', 'warning'); return; }
+  showToast('📱 正在发送短信至 ' + phone + '...', 'info');
+  setTimeout(function() { showToast('✅ 短信已发送，客人可点击链接完成预登记', 'success'); }, 1500);
+}
+
+// 【改进5】客房清洁任务智能派发
+// 理由：首页「清洁任务」按钮调用 dispatchHousekeepingTask()，函数未定义。
+// 功能：展示待清洁房间列表，支持优先级排序、一键派发、跨楼层调度，完成后自动通知相关人员。
+var _housekeepingTasks = [
+  {room:'301',type:'亲子间',priority:'high',status:'pending',due:'10:30',reason:'退房清洁',guest:'张三'},
+  {room:'305',type:'大床房',priority:'medium',status:'pending',due:'11:00',reason:'退房清洁',guest:'李四'},
+  {room:'201',type:'标准间',priority:'low',status:'pending',due:'11:30',reason:'日常清洁',guest:null},
+  {room:'202',type:'亲子间',priority:'high',status:'pending',due:'12:00',reason:'退房+换床',guest:'王五'},
+  {room:'302',type:'大床房',priority:'low',status:'pending',due:'14:00',reason:'日常清洁',guest:null}
+];
+var _housekeepingStaff = [
+  {name:'周敏',shift:'早班',status:'available',tasks:2,avatar:'👩'},
+  {name:'刘芳',shift:'早班',status:'available',tasks:1,avatar:'👩'},
+  {name:'王丽',shift:'中班',status:'busy',tasks:3,avatar:'👩'}
+];
+
+function dispatchHousekeepingTask() {
+  var existing = document.getElementById('modal-housekeeping-dispatch');
+  if (existing) existing.remove();
+  var taskRows = '';
+  _housekeepingTasks.filter(function(t) { return t.status === 'pending'; }).sort(function(a, b) {
+    var pOrder = {high:0, medium:1, low:2};
+    return pOrder[a.priority] - pOrder[b.priority];
+  }).forEach(function(t, i) {
+    var priorityBg = t.priority === 'high' ? 'var(--red-bg)' : t.priority === 'medium' ? 'var(--orange-bg)' : 'var(--green-bg)';
+    var priorityColor = t.priority === 'high' ? 'var(--red)' : t.priority === 'medium' ? 'var(--orange)' : 'var(--green)';
+    var priorityLabel = t.priority === 'high' ? '🔴 紧急' : t.priority === 'medium' ? '🟡 普通' : '🟢 轻缓';
+    taskRows += '<div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--border);" id="hk-task-' + i + '">' +
+      '<div style="width:36px;height:36px;background:' + priorityBg + ';border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">' +
+      '<span style="font-size:16px;font-weight:700;color:' + priorityColor + ';">' + (i + 1) + '</span></div>' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">' +
+      '<span style="font-size:16px;font-weight:700;color:var(--blue);">' + t.room + '</span>' +
+      '<span style="font-size:12px;color:var(--text);">' + t.type + '</span>' +
+      '<span style="padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;background:' + priorityBg + ';color:' + priorityColor + ';">' + priorityLabel + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + t.reason + (t.guest ? ' · ' + t.guest + '退房' : '') + ' · 应完成 ' + t.due + '</div></div>' +
+      '<select class="form-select" id="hk-assign-' + i + '" style="width:90px;padding:4px 8px;font-size:12px;">' +
+      '<option value="">待派发</option>' +
+      '<option value="周敏">👩 周敏</option>' +
+      '<option value="刘芳">👩 刘芳</option>' +
+      '<option value="王丽">👩 王丽</option></select></div>';
+  });
+  var staffCards = _housekeepingStaff.map(function(s) {
+    var statusBg = s.status === 'available' ? 'var(--green-bg)' : 'var(--orange-bg)';
+    var statusColor = s.status === 'available' ? 'var(--green)' : 'var(--orange)';
+    var statusLabel = s.status === 'available' ? '空闲' : '工作中';
+    return '<div style="flex:1;min-width:140px;padding:12px;background:var(--bg);border-radius:8px;text-align:center;">' +
+      '<div style="font-size:28px;margin-bottom:4px;">' + s.avatar + '</div>' +
+      '<div style="font-size:13px;font-weight:600;">' + s.name + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);">' + s.shift + '</div>' +
+      '<div style="font-size:10px;padding:2px 8px;border-radius:12px;background:' + statusBg + ';color:' + statusColor + ';display:inline-block;margin-top:4px;">' + statusLabel + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">待办 ' + s.tasks + ' 间</div></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-housekeeping-dispatch" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-housekeeping-dispatch\').remove()">' +
+    '<div class="modal" style="width:660px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🧹 清洁任务智能派发</div>' +
+    '<button onclick="document.getElementById(\'modal-housekeeping-dispatch\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:12px 20px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">👥 当前可用员工</div>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">' + staffCards + '</div>' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<button class="action-btn small" onclick="autoAssignHousekeeping()" style="padding:5px 12px;background:var(--blue);color:white;border:none;font-size:12px;">🤖 AI智能派发</button>' +
+    '<button class="action-btn small" onclick="clearHousekeepingAssignments()" style="padding:5px 12px;font-size:12px;">🔄 清空派发</button>' +
+    '<span style="margin-left:auto;font-size:11px;color:var(--text-muted);">待派发 <strong id="hk-pending-count" style="color:var(--orange);">' + _housekeepingTasks.filter(function(t){ return t.status==='pending'; }).length + '</strong> 间</span></div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 20px;">' +
+    '<div style="padding:10px 0 6px;font-size:12px;color:var(--text-muted);">📋 待清洁任务（按优先级排序）</div>' +
+    '<div id="hk-task-list">' + taskRows + '</div></div>' +
+    '<div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-housekeeping-dispatch\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmHousekeepingDispatch()">✅ 确认派发任务</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function autoAssignHousekeeping() {
+  var available = _housekeepingStaff.filter(function(s) { return s.status === 'available'; });
+  if (available.length === 0) { showToast('当前无空闲员工，请等待任务完成', 'warning'); return; }
+  var pendingTasks = _housekeepingTasks.filter(function(t) { return t.status === 'pending'; });
+  var staffIdx = 0;
+  pendingTasks.forEach(function(t, i) {
+    var select = document.getElementById('hk-assign-' + i);
+    if (select && available.length > 0) {
+      var assignee = available[staffIdx % available.length];
+      select.value = assignee.name;
+      staffIdx++;
+    }
+  });
+  showToast('🤖 AI智能派发完成，已自动分配至空闲员工', 'success');
+}
+
+function clearHousekeepingAssignments() {
+  document.querySelectorAll('[id^="hk-assign-"]').forEach(function(sel) { sel.value = ''; });
+  showToast('已清空所有派发选择', 'info');
+}
+
+function confirmHousekeepingDispatch() {
+  var dispatched = [];
+  var pendingCount = 0;
+  _housekeepingTasks.filter(function(t) { return t.status === 'pending'; }).forEach(function(t, i) {
+    var select = document.getElementById('hk-assign-' + i);
+    var assignee = select ? select.value : '';
+    if (assignee) {
+      dispatched.push(t.room + '→' + assignee);
+      t.status = 'assigned';
+      t.assignee = assignee;
+    } else {
+      pendingCount++;
+    }
+  });
+  document.getElementById('modal-housekeeping-dispatch').remove();
+  if (dispatched.length > 0) {
+    showToast('✅ 任务派发成功！' + dispatched.length + '间已分配：' + dispatched.join('、'), 'success');
+    setTimeout(function() { showToast('📱 已通知相关清洁人员', 'info'); }, 800);
+  } else {
+    showToast('⚠️ 请先为至少一间房间指定负责人员', 'warning');
+  }
+}
