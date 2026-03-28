@@ -698,7 +698,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
           <span>预登记链接</span>
         </button>
         <!-- 【改进5】一键检测按钮 -->
-        <button class="quick-btn" onclick="openDeviceDiagnosticV2('301')" style="flex:1;padding:16px;background:linear-gradient(135deg,#722ed1,#b37feb);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(114,46,209,0.3);transition:all 0.2s;">
+        <button class="quick-btn" onclick="openDeviceDiagnosticV2Enhanced('301')" style="flex:1;padding:16px;background:linear-gradient(135deg,#722ed1,#b37feb);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(114,46,209,0.3);transition:all 0.2s;">
           <span style="font-size:20px;">🔍</span>
           <span>一键检测</span>
         </button>
@@ -8942,6 +8942,7 @@ function openEditMemberLevelModalV2(idx) {
               </div>
             </div>
             <button class="action-btn" onclick="openCreateWorkorderModal()" style="padding:4px 12px;">+ 创建工单</button>
+            <button class="action-btn small" onclick="openWorkorderCreateV2()" style="padding:4px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);" title="带SLA计时的新建工单">+ 创建SLA工单</button>
             <button class="action-btn" onclick="openWoAutoRuleModal()" style="padding:4px 12px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);margin-left:4px;" title="自动派发规则">⚙️ 自动派发</button>
             <button class="action-btn" onclick="batchAcceptWorkorders()" id="wo-batch-accept-btn" style="display:none;padding:4px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);margin-left:8px;">✅ 批量接受 (<span id="wo-batch-count">0</span>)</button>
             <button class="action-btn" onclick="batchCloseWorkorders()" id="wo-batch-close-btn" style="display:none;padding:4px 12px;background:var(--gray-bg);color:var(--text-muted);border-color:var(--border);margin-left:4px;">🚪 批量关闭</button>
@@ -9711,6 +9712,7 @@ function openEditMemberLevelModalV2(idx) {
         <button class="action-btn primary" onclick="exportHandoverReport()" style="background:var(--blue);color:white;border:none;padding:6px 14px;font-size:13px;">📤 导出报表</button>
         <button class="action-btn" onclick="exportHandoverReportCSV()" style="padding:6px 14px;font-size:13px;">📊 导出CSV</button>
         <button class="action-btn" onclick="openHandoverSignModal()" style="padding:6px 14px;font-size:13px;">✍️ 确认交班</button>
+        <button class="action-btn" onclick="openHandoverConfirmModal()" style="padding:6px 14px;font-size:13px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🔐 电子交接确认</button>
       </div>
       <!-- 营收统计卡片 -->
       <div class="stats-row" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px;">
@@ -11147,6 +11149,7 @@ function openEditMemberLevelModalV2(idx) {
       <div class="page-header">
         <div class="page-title">👑 会员管理</div>
         <div class="page-sub">会员等级权益 · 入住历史 · 消费记录</div>
+        <button class="action-btn small" onclick="openMemberChurnRiskModal()" style="padding:4px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);margin-left:auto;">⚠️ 流失预警</button>
       </div>
       <!-- 【改进C】会员等级权益说明面板 + 升级规则配置入口 -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
@@ -58177,6 +58180,533 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   }, 1200);
+});
+
+// ============================================================
+// 【改进v3-1】设备智能诊断与自动恢复引擎
+// 理由：原诊断仅展示状态，缺少一键自动修复能力。增强为带动画进度条、自动修复操作面板和实时日志
+// ============================================================
+function openDeviceDiagnosticV2Enhanced(roomNum) {
+  var old = document.getElementById('modal-diag-enhanced');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-diag-enhanced" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:600px;max-height:88vh;display:flex;flex-direction:column;">';
+  html += '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">';
+  html += '<div><div style="font-size:15px;font-weight:700;">🔍 设备智能诊断与自动修复 - ' + (roomNum || '301') + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">深度检测 · 一键自动修复 · 健康评分</div></div>';
+  html += '<button onclick="document.getElementById(\'modal-diag-enhanced\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="overflow-y:auto;flex:1;padding:16px 24px;">';
+  // 健康评分
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">';
+  html += '<div style="padding:14px;background:linear-gradient(135deg,#1890ff,#69c0ff);border-radius:10px;text-align:center;color:white;">';
+  html += '<div style="font-size:30px;font-weight:700;" id="de-health-score">--</div>';
+  html += '<div style="font-size:11px;opacity:0.9;">健康评分</div></div>';
+  html += '<div style="padding:14px;background:var(--green-bg);border-radius:10px;text-align:center;">';
+  html += '<div style="font-size:20px;font-weight:700;color:var(--green);" id="de-status">待检测</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);">设备状态</div></div>';
+  html += '<div style="padding:14px;background:var(--orange-bg);border-radius:10px;text-align:center;">';
+  html += '<div style="font-size:20px;font-weight:700;color:var(--orange);" id="de-issues">0项</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);">发现问题</div></div></div>';
+  // 进度条
+  html += '<div style="margin-bottom:14px;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
+  html += '<div style="font-size:12px;font-weight:600;">🔄 诊断进度</div>';
+  html += '<div style="display:flex;align-items:center;gap:8px;">';
+  html += '<div id="de-progress-bar" style="width:120px;height:8px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="width:0%;height:100%;background:var(--blue);border-radius:4px;transition:width 0.4s;"></div></div>';
+  html += '<span style="font-size:11px;color:var(--blue);font-weight:600;min-width:35px;" id="de-progress-pct">0%</span></div></div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);padding:8px 10px;background:var(--bg);border-radius:6px;" id="de-current-step">点击"开始深度诊断"启动全面检测</div></div>';
+  // 诊断项目
+  html += '<div style="margin-bottom:14px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">📊 诊断项目（点击项目可单独运行检测）</div>';
+  var diagItems = [
+    {name:'网络连接', icon:'📡', status:'pending', detail:'信号强度 -62dBm，延迟18ms', warn:false},
+    {name:'电池状态', icon:'🔋', status:'pending', detail:'当前电量88%，电压3.23V', warn:false},
+    {name:'固件版本', icon:'📦', status:'pending', detail:'v2.3.1 已是最新版本', warn:false},
+    {name:'开锁模块', icon:'🔓', status:'pending', detail:'上周开锁成功率 100%', warn:false},
+    {name:'物理结构', icon:'🔧', status:'pending', detail:'门锁螺丝松动，建议检查', warn:true},
+    {name:'历史故障', icon:'📋', status:'pending', detail:'近30天无故障记录', warn:false}
+  ];
+  diagItems.forEach(function(item, idx) {
+    var statusColors = {pending:'var(--border)', pass:'var(--green)', warn:'var(--orange)', fail:'var(--red)'};
+    var statusIcons = {pending:'⏳', pass:'✅', warn:'⚠️', fail:'❌'};
+    html += '<div id="de-item-' + idx + '" onclick="runSingleDiagItem(' + idx + ')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all 0.2s;border:1px solid var(--border);" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'var(--border)\'">';
+    html += '<span style="font-size:16px;">' + item.icon + '</span>';
+    html += '<div style="flex:1;"><div style="font-size:12px;font-weight:600;" id="de-item-name-' + idx + '">' + item.name + '</div><div style="font-size:11px;color:var(--text-muted);" id="de-item-detail-' + idx + '">' + item.detail + '</div></div>';
+    html += '<span id="de-item-status-' + idx + '" style="font-size:12px;color:var(--border);">' + statusIcons.pending + ' 待检测</span>';
+    if (item.warn) {
+      html += '<button onclick="event.stopPropagation();showToast(\'已生成维修工单\',\'info\')" style="padding:3px 8px;font-size:10px;background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange);border-radius:6px;cursor:pointer;">处理</button>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+  // 自动修复
+  html += '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:14px;">';
+  html += '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;">⚡ 自动修复操作（执行后实时日志）</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">';
+  var fixActions = [
+    {label:'🔄 重启设备', desc:'清除临时故障', color:'var(--orange)', key:'restart'},
+    {label:'🔋 校准电池', desc:'修正电量计量', color:'var(--green)', key:'battery'},
+    {label:'📡 重置网络', desc:'重新注册网络', color:'var(--blue)', key:'network'},
+    {label:'🔧 结构检查', desc:'生成检查工单', color:'var(--purple)', key:'struct'}
+  ];
+  fixActions.forEach(function(fa) {
+    html += '<button onclick="runAutoFixEnhanced(\'' + fa.key + '\', this)" style="padding:8px 10px;background:white;border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:left;font-size:11px;transition:all 0.2s;">';
+    html += '<div style="font-weight:600;color:' + fa.color + ';">' + fa.label + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + fa.desc + '</div></button>';
+  });
+  html += '</div></div>';
+  // 实时日志
+  html += '<div style="padding:12px;background:#1a1a2e;border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">📜 实时操作日志</div>';
+  html += '<div id="de-fix-log" style="max-height:90px;overflow-y:auto;font-size:11px;color:#00ff88;font-family:monospace;line-height:1.8;">[系统] 等待执行自动修复操作...<br></div></div>';
+  html += '</div>';
+  html += '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;flex-shrink:0;">';
+  html += '<button class="modal-btn" id="de-start-btn" onclick="startDeepDiagnosticEnhanced()" style="background:var(--blue);color:white;border:none;padding:9px 18px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">🔍 开始深度诊断</button>';
+  html += '<div style="display:flex;gap:10px;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-diag-enhanced\').remove()">关闭</button>';
+  html += '<button class="modal-btn" onclick="showToast(\'诊断报告已发送至工程部\',\'success\')" style="background:var(--green);color:white;border:none;">📤 发送报告</button></div></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+var _diagStepsEnhanced = [
+  {label:'正在检测网络连接...', delay:400, icon:'📡'},
+  {label:'正在分析电池健康度...', delay:700, icon:'🔋'},
+  {label:'正在校验固件版本...', delay:1000, icon:'📦'},
+  {label:'正在测试开锁模块...', delay:1300, icon:'🔓'},
+  {label:'正在检测物理结构...', delay:1600, icon:'🔧'},
+  {label:'正在分析历史故障...', delay:1900, icon:'📋'},
+  {label:'生成诊断报告...', delay:2200, icon:'📝'}
+];
+
+function startDeepDiagnosticEnhanced() {
+  var btn = document.getElementById('de-start-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '🔄 诊断中...'; btn.style.opacity = '0.7'; }
+  var progressBar = document.querySelector('#de-progress-bar div');
+  var progressPct = document.getElementById('de-progress-pct');
+  var currentStep = document.getElementById('de-current-step');
+  var fixLog = document.getElementById('de-fix-log');
+  var totalSteps = _diagStepsEnhanced.length;
+  var current = 0;
+  var issuesFound = 0;
+  function runStep() {
+    if (current >= totalSteps) {
+      if (currentStep) currentStep.textContent = '✅ 诊断完成！发现' + issuesFound + '项问题';
+      if (progressBar) { progressBar.style.width = '100%'; progressBar.style.background = issuesFound > 0 ? 'var(--orange)' : 'var(--green)'; }
+      if (progressPct) progressPct.textContent = '100%';
+      if (progressPct) progressPct.style.color = issuesFound > 0 ? 'var(--orange)' : 'var(--green)';
+      var scoreEl = document.getElementById('de-health-score');
+      if (scoreEl) scoreEl.textContent = issuesFound > 0 ? '85' : '98';
+      var statusEl = document.getElementById('de-status');
+      if (statusEl) { statusEl.textContent = issuesFound > 0 ? '⚠️ 良好' : '🟢 优秀'; statusEl.style.color = issuesFound > 0 ? 'var(--orange)' : 'var(--green)'; }
+      var issuesEl = document.getElementById('de-issues');
+      if (issuesEl) issuesEl.textContent = issuesFound + '项';
+      if (fixLog) fixLog.innerHTML = '[' + getTimeStr() + '] ✅ 诊断完成。健康评分：' + (issuesFound > 0 ? '85' : '98') + '分<br>' + fixLog.innerHTML;
+      var startBtn = document.getElementById('de-start-btn');
+      if (startBtn) { startBtn.disabled = false; startBtn.textContent = '🔍 再次诊断'; startBtn.style.opacity = '1'; }
+      return;
+    }
+    var step = _diagStepsEnhanced[current];
+    if (currentStep) currentStep.textContent = step.icon + ' ' + step.label;
+    if (progressBar) progressBar.style.width = Math.round((current / totalSteps) * 100) + '%';
+    if (progressPct) progressPct.textContent = Math.round((current / totalSteps) * 100) + '%';
+    var statusEl = document.getElementById('de-item-status-' + current);
+    if (statusEl) {
+      var isWarn = current === 4; // 物理结构警告
+      statusEl.textContent = isWarn ? '⚠️ 警告' : '✅ 正常';
+      statusEl.style.color = isWarn ? 'var(--orange)' : 'var(--green)';
+      var itemEl = document.getElementById('de-item-' + current);
+      if (itemEl) itemEl.style.borderColor = isWarn ? 'var(--orange)' : 'var(--green)';
+      if (isWarn) issuesFound++;
+    }
+    if (fixLog) fixLog.innerHTML = '[' + getTimeStr() + '] ' + step.icon + ' ' + step.label + ' - ' + (current === 4 ? '⚠️ 发现问题' : '✅ 通过') + '<br>' + fixLog.innerHTML;
+    current++;
+    setTimeout(runStep, 350);
+  }
+  runStep();
+}
+
+function runSingleDiagItem(idx) {
+  var statusEl = document.getElementById('de-item-status-' + idx);
+  if (!statusEl || statusEl.textContent.includes('正常') || statusEl.textContent.includes('警告')) return;
+  statusEl.textContent = '🔄 检测中...';
+  statusEl.style.color = 'var(--blue)';
+  setTimeout(function() {
+    var isWarn = idx === 4;
+    statusEl.textContent = isWarn ? '⚠️ 警告' : '✅ 正常';
+    statusEl.style.color = isWarn ? 'var(--orange)' : 'var(--green)';
+    var itemEl = document.getElementById('de-item-' + idx);
+    if (itemEl) itemEl.style.borderColor = isWarn ? 'var(--orange)' : 'var(--green)';
+    var fixLog = document.getElementById('de-fix-log');
+    if (fixLog) fixLog.innerHTML = '[' + getTimeStr() + '] ' + (isWarn ? '⚠️' : '✅') + ' ' + document.getElementById('de-item-name-' + idx).textContent + ' 检测' + (isWarn ? '发现异常' : '通过') + '<br>' + fixLog.innerHTML;
+  }, 800);
+}
+
+var _fixLogsEnhanced = {
+  restart: ['正在发送重启指令...', '设备连接已断开', '等待设备重新注册...', '✅ 重启成功，设备恢复在线'],
+  battery: ['正在读取电池计量数据...', '计算校正因子...', '写入电池校准参数...', '✅ 电池校准完成，电量计量已修正'],
+  network: ['正在注销当前网络会话...', '清除网络缓存...', '重新搜索WiFi网络...', '注册网络成功，信号强度正常', '✅ 网络重置完成'],
+  struct: ['正在创建门锁结构检查工单...', '工单号：WO-20260328-001', '分配给工程人员：赵飞', '预计30分钟内上门', '✅ 工单已创建并通知']
+};
+
+function runAutoFixEnhanced(key, btnEl) {
+  if (btnEl) { btnEl.disabled = true; btnEl.style.opacity = '0.5'; }
+  var fixLog = document.getElementById('de-fix-log');
+  var lines = _fixLogsEnhanced[key] || ['执行中...'];
+  var i = 0;
+  function addLine() {
+    if (i >= lines.length) {
+      if (fixLog) fixLog.innerHTML = '[' + getTimeStr() + '] ✅ 【' + btnEl.querySelector('div').textContent + '】操作完成<br>' + fixLog.innerHTML;
+      showToast('✅ ' + (btnEl.querySelector('div').textContent) + ' 完成', 'success');
+      if (btnEl) { btnEl.disabled = false; btnEl.style.opacity = '1'; }
+      return;
+    }
+    if (fixLog) fixLog.innerHTML = '[' + getTimeStr() + '] ' + lines[i] + '<br>' + fixLog.innerHTML;
+    i++;
+    setTimeout(addLine, 600);
+  }
+  addLine();
+}
+
+function getTimeStr() {
+  var d = new Date();
+  return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0') + ':' + d.getSeconds().toString().padStart(2,'0');
+}
+
+// ============================================================
+// 【改进v3-2】工单SLA实时计时器 + 超时视觉警示
+// 理由：原工单只有状态标签，缺少SLA倒计时和超时红色闪烁警示
+// ============================================================
+function initWorkorderSLATimers() {
+  // 每10秒更新一次SLA计时器
+  setInterval(function() {
+    document.querySelectorAll('.wo-sla-timer').forEach(function(el) {
+      var endTime = parseInt(el.dataset.endTime) || 0;
+      if (!endTime) return;
+      var now = Date.now();
+      var remaining = endTime - now;
+      var hours = Math.floor(remaining / 3600000);
+      var minutes = Math.floor((remaining % 3600000) / 60000);
+      if (remaining <= 0) {
+        el.textContent = '⏰ 已超时！';
+        el.style.color = 'var(--red)';
+        el.style.fontWeight = '700';
+        el.style.animation = 'offlinePulse 1.5s ease-in-out infinite';
+      } else {
+        el.textContent = '剩余 ' + hours + 'h ' + minutes + 'm';
+        el.style.color = remaining < 3600000 ? 'var(--orange)' : 'var(--text-muted)';
+        el.style.animation = remaining < 3600000 ? 'offlinePulse 2s ease-in-out infinite' : 'none';
+      }
+    });
+  }, 10000);
+}
+
+function openWorkorderCreateV2() {
+  var old = document.getElementById('modal-wo-create-v2');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-wo-create-v2" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:520px;">';
+  html += '<div class="modal-header">';
+  html += '<div class="modal-title">🛠️ 创建服务工单（带SLA计时）</div>';
+  html += '<button class="modal-close" onclick="closeModal(\'wo-create-v2\')">✕</button></div>';
+  html += '<div class="modal-body">';
+  html += '<div class="form-group"><label class="form-label">房间号 *</label>';
+  html += '<select class="form-select" id="wo-room-select" style="width:100%;padding:8px 12px;font-size:13px;">';
+  var rooms = ['301-亲子间','302-亲子间','303-亲子间','304-亲子间','305-亲子间','201-大床房','202-大床房','203-大床房','101-单间','102-单间'];
+  rooms.forEach(function(r) { html += '<option value="' + r + '">' + r + '</option>'; });
+  html += '</select></div>';
+  html += '<div class="form-group"><label class="form-label">工单类型 *</label>';
+  html += '<select class="form-select" id="wo-type-select" style="width:100%;padding:8px 12px;font-size:13px;" onchange="updateWoSLA()">';
+  var types = [
+    {v:'clean',label:'🧹 清洁服务', sla:60},
+    {v:'repair',label:'🔧 设备维修', sla:120},
+    {v:'maintain',label:'🔍 例行维护', sla:240},
+    {v:'checkin',label:'🏨 入住协助', sla:30},
+    {v:'checkout',label:'🏁 退房检查', sla:45}
+  ];
+  types.forEach(function(t) { html += '<option value="' + t.v + '" data-sla="' + t.sla + '">' + t.label + '</option>'; });
+  html += '</select></div>';
+  html += '<div class="form-group"><label class="form-label">紧急程度</label>';
+  html += '<div style="display:flex;gap:8px;">';
+  var levels = [{v:'low',label:'🔵 普通',color:'var(--blue)'},{v:'medium',label:'🟡 紧急',color:'var(--orange)'},{v:'high',label:'🔴 加急',color:'var(--red)'}];
+  levels.forEach(function(lv, i) {
+    html += '<label onclick="document.querySelectorAll(\'.wo-level-btn\').forEach(function(b){b.style.borderColor=\'var(--border)\';b.style.background=\'white\';});this.style.borderColor=\'' + lv.color + '\';this.style.background=\'var(--bg)\'" class="wo-level-btn" style="flex:1;padding:8px;text-align:center;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;' + (i===0?'border-color:' + lv.color + ';background:var(--bg);':'') + '">' + lv.label + '</label>';
+  });
+  html += '</div></div>';
+  html += '<div style="padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:12px;">';
+  html += '<div style="font-size:12px;color:var(--blue);margin-bottom:4px;">⏱️ SLA响应时限</div>';
+  html += '<div style="font-size:18px;font-weight:700;color:var(--blue);" id="wo-sla-display">60 分钟</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);" id="wo-sla-deadline">最迟完成时间：' + getSlaDeadlineStr(60) + '</div></div>';
+  html += '<div class="form-group"><label class="form-label">详细描述 *</label>';
+  html += '<textarea class="form-textarea" id="wo-desc-v2" placeholder="请详细描述需要处理的问题..." style="min-height:80px;font-size:12px;"></textarea></div>';
+  html += '<div class="form-group"><label class="form-label">派发给</label>';
+  html += '<select class="form-select" id="wo-assignee-select" style="width:100%;padding:8px 12px;font-size:13px;">';
+  var staff = ['赵飞（工程部）','钱七（客房部）','孙九（前厅部）','自动派单'];
+  staff.forEach(function(s) { html += '<option value="' + s + '">' + s + '</option>'; });
+  html += '</select></div></div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="closeModal(\'wo-create-v2\')">取消</button>';
+  html += '<button class="modal-btn primary" onclick="submitWorkorderV2()" style="background:var(--blue);border-color:var(--blue);color:white;">✅ 创建工单</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function updateWoSLA() {
+  var sel = document.getElementById('wo-type-select');
+  if (!sel) return;
+  var opt = sel.options[sel.selectedIndex];
+  var sla = parseInt(opt.dataset.sla) || 60;
+  document.getElementById('wo-sla-display').textContent = sla + ' 分钟';
+  document.getElementById('wo-sla-deadline').textContent = '最迟完成时间：' + getSlaDeadlineStr(sla);
+}
+
+function getSlaDeadlineStr(minutes) {
+  var d = new Date(Date.now() + minutes * 60000);
+  return d.getMonth()+1 + '月' + d.getDate() + '日 ' + d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+}
+
+function submitWorkorderV2() {
+  var desc = document.getElementById('wo-desc-v2').value;
+  if (!desc.trim()) { showToast('请填写工单描述', 'error'); return; }
+  var room = document.getElementById('wo-room-select').value;
+  var type = document.getElementById('wo-type-select');
+  var typeLabel = type.options[type.selectedIndex].text;
+  var sla = parseInt(type.options[type.selectedIndex].dataset.sla) || 60;
+  closeModal('wo-create-v2');
+  showToast('✅ 工单已创建，SLA时限' + sla + '分钟', 'success');
+}
+
+// ============================================================
+// 【改进v3-3】能耗预算超额告警与自动调控引擎
+// 理由：原能耗页面缺少预算概念和超额自动断电能力，增加预算配置和超额智能调控
+// ============================================================
+function openEnergyBudgetConfigModalV2() {
+  var old = document.getElementById('modal-energy-budget-v2');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-energy-budget-v2" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:560px;">';
+  html += '<div class="modal-header">';
+  html += '<div class="modal-title">💰 能耗预算配置与超额自动调控</div>';
+  html += '<button class="modal-close" onclick="closeModal(\'energy-budget-v2\')">✕</button></div>';
+  html += '<div class="modal-body">';
+  // 当前预算状态
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">';
+  html += '<div style="padding:14px;background:var(--blue-bg);border-radius:10px;text-align:center;">';
+  html += '<div style="font-size:26px;font-weight:700;color:var(--blue);">¥2,860</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);">今日已用电费</div></div>';
+  html += '<div style="padding:14px;background:var(--green-bg);border-radius:10px;text-align:center;">';
+  html += '<div style="font-size:26px;font-weight:700;color:var(--green);">¥3,500</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);">今日预算上限</div></div></div>';
+  // 预算配置
+  html += '<div style="margin-bottom:14px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">📊 预算阈值设置</div>';
+  var budgetItems = [
+    {label:'日预算上限', value:3500, unit:'元', color:'var(--green)'},
+    {label:'单房日用电上限', value:50, unit:'元', color:'var(--blue)'},
+    {label:'月预算上限', value:80000, unit:'元', color:'var(--purple)'},
+    {label:'节能目标(较上月)', value:10, unit:'%', color:'var(--orange)'}
+  ];
+  budgetItems.forEach(function(item) {
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">';
+    html += '<div style="width:130px;font-size:12px;color:var(--text-muted);">' + item.label + '</div>';
+    html += '<div style="flex:1;display:flex;align-items:center;gap:6px;">';
+    html += '<input type="number" value="' + item.value + '" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;">';
+    html += '<span style="font-size:12px;color:var(--text-muted);">' + item.unit + '</span></div></div>';
+  });
+  html += '</div>';
+  // 超额自动调控策略
+  html += '<div style="margin-bottom:14px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">⚡ 超额自动调控策略</div>';
+  var strategies = [
+    {label:'超额90%时', action:'推送告警通知', color:'var(--orange)', active:true},
+    {label:'超额100%时', action:'自动降低空调功率至50%', color:'var(--red)', active:true},
+    {label:'超额120%时', action:'自动切断非必要电源', color:'var(--red)', active:false},
+    {label:'低于预算80%时', action:'发送节能奖励提示', color:'var(--green)', active:false}
+  ];
+  strategies.forEach(function(s) {
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:' + (s.active ? s.color.replace('var(--)', 'rgba(').replace(')', ',0.08)') : 'var(--bg)') + ';border:1px solid ' + (s.active ? s.color : 'var(--border)') + ';border-radius:8px;margin-bottom:6px;">';
+    html += '<input type="checkbox" ' + (s.active ? 'checked' : '') + ' style="accent-color:' + s.color + ';width:16px;height:16px;">';
+    html += '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + s.label + '</div><div style="font-size:11px;color:var(--text-muted);">' + s.action + '</div></div>';
+    html += '<span style="font-size:10px;padding:2px 8px;background:' + (s.active ? s.color : 'var(--bg)') + ';color:' + (s.active ? 'white' : 'var(--text-muted)') + ';border-radius:10px;">' + (s.active ? '已启用' : '已禁用') + '</span></div>';
+  });
+  html += '</div>';
+  // 实时调控日志
+  html += '<div style="padding:12px;background:var(--bg);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:6px;">📜 调控日志</div>';
+  html += '<div id="energy-budget-log" style="font-size:11px;color:var(--text-muted);max-height:60px;overflow-y:auto;">';
+  html += '[10:05] 今日用电¥2,860，达到预算的81.7%，状态正常<br>';
+  html += '[昨日] 当日用电¥3,420，超出预算，触发空调功率调控1次</div></div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="closeModal(\'energy-budget-v2\')">取消</button>';
+  html += '<button class="modal-btn primary" onclick="saveEnergyBudgetConfig()" style="background:var(--blue);border-color:var(--blue);color:white;">💾 保存配置</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function saveEnergyBudgetConfig() {
+  closeModal('energy-budget-v2');
+  showToast('✅ 能耗预算配置已保存，自动调控策略已更新', 'success');
+}
+
+// ============================================================
+// 【改进v3-4】交接班电子确认与待办移交机制
+// 理由：原交接班只有报表展示，缺少交接确认流程和待办事项移交
+// ============================================================
+function openHandoverConfirmModal() {
+  var old = document.getElementById('modal-handover-confirm');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-handover-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:620px;max-height:88vh;display:flex;flex-direction:column;">';
+  html += '<div class="modal-header">';
+  html += '<div class="modal-title">🔐 交接班电子确认</div>';
+  html += '<button class="modal-close" onclick="closeModal(\'handover-confirm\')">✕</button></div>';
+  html += '<div style="overflow-y:auto;flex:1;padding:16px 24px;">';
+  // 交接信息
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">';
+  html += '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;">';
+  html += '<div style="font-size:20px;font-weight:700;color:var(--blue);">早班</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);">交班班次</div></div>';
+  html += '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;">';
+  html += '<div style="font-size:20px;font-weight:700;color:var(--green);">赵飞</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);">交班人</div></div>';
+  html += '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;">';
+  html += '<div style="font-size:20px;font-weight:700;color:var(--orange);">钱七</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);">接班人</div></div></div>';
+  // 待交接事项
+  html += '<div style="margin-bottom:14px;">';
+  html += '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">📋 待交接事项（' + (3+2) + '项）</div>';
+  var handoverItems = [
+    {icon:'🔴', text:'301房间设备离线超过10小时，需跟进工程处理', urgent:true},
+    {icon:'🟡', text:'305房间低电量告警，需更换电池', urgent:false},
+    {icon:'🟡', text:'WO-001 清洁工单进行中，客户12点前返回', urgent:false},
+    {icon:'🔵', text:'202房间客户申请延迟退房至14:00', urgent:false},
+    {icon:'🔵', text:'明日有3间客房预订，押金未到账，需跟进', urgent:false}
+  ];
+  handoverItems.forEach(function(item) {
+    html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:' + (item.urgent ? 'var(--red-bg)' : 'var(--bg)') + ';border:1px solid ' + (item.urgent ? 'var(--red)' : 'var(--border)') + ';border-radius:8px;margin-bottom:6px;">';
+    html += '<input type="checkbox" id="hw-item-' + (Math.random()+'').slice(2) + ' style="accent-color:var(--blue);width:16px;height:16px;margin-top:2px;flex-shrink:0;">';
+    html += '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + item.icon + ' ' + item.text + '</div></div>';
+    if (item.urgent) html += '<span style="font-size:10px;padding:2px 6px;background:var(--red);color:white;border-radius:10px;">紧急</span>';
+    html += '</div>';
+  });
+  html += '</div>';
+  // 交接备注
+  html += '<div class="form-group" style="margin-bottom:14px;">';
+  html += '<label class="form-label">交接备注</label>';
+  html += '<textarea class="form-textarea" id="handover-note" placeholder="填写需要特别注意的事项..." style="min-height:70px;font-size:12px;"></textarea></div>';
+  // 确认签字区
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">';
+  html += '<div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;text-align:center;">';
+  html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">交班人签字</div>';
+  html += '<div style="font-size:18px;color:var(--blue);font-weight:700;">赵飞</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">10:05:32</div></div>';
+  html += '<div style="padding:14px;background:var(--bg);border:1px dashed var(--border);border-radius:8px;text-align:center;">';
+  html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">接班人签字（待确认）</div>';
+  html += '<div style="font-size:18px;color:var(--border);font-weight:700;">____________</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">等待签字...</div></div></div>';
+  // 统计
+  html += '<div style="padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;">';
+  html += '<div style="font-size:12px;color:var(--green);font-weight:600;margin-bottom:6px;">✅ 交接班统计</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px;">';
+  html += '<div><span style="color:var(--text-muted);">待处理告警</span><br><b style="color:var(--red);">2项</b></div>';
+  html += '<div><span style="color:var(--text-muted);">进行中工单</span><br><b style="color:var(--orange);">3项</b></div>';
+  html += '<div><span style="color:var(--text-muted);">入住房间</span><br><b style="color:var(--blue);">12间</b></div>';
+  html += '<div><span style="color:var(--text-muted);">空房</span><br><b style="color:var(--green);">4间</b></div></div></div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="closeModal(\'handover-confirm\')">取消</button>';
+  html += '<button class="modal-btn" onclick="showToast(\'交接班已确认！已通知钱七\',\'success\')" style="background:var(--green);color:white;border:none;">✅ 确认交接</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// ============================================================
+// 【改进v3-5】会员流失预警与挽回系统
+// 理由：原会员管理只有列表，缺少流失风险预警和挽回激励功能
+// ============================================================
+function openMemberChurnRiskModal() {
+  var old = document.getElementById('modal-member-churn');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-member-churn" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">';
+  html += '<div class="modal" style="width:640px;max-height:88vh;display:flex;flex-direction:column;">';
+  html += '<div class="modal-header">';
+  html += '<div class="modal-title">⚠️ 会员流失预警与挽回</div>';
+  html += '<button class="modal-close" onclick="closeModal(\'member-churn\')">✕</button></div>';
+  html += '<div style="overflow-y:auto;flex:1;padding:16px 24px;">';
+  // 预警统计
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">';
+  var churnStats = [
+    {num:'8', label:'高流失风险会员', color:'var(--red)', bg:'var(--red-bg)'},
+    {num:'15', label:'中流失风险会员', color:'var(--orange)', bg:'var(--orange-bg)'},
+    {num:'3', label:'已流失会员', color:'var(--gray)', bg:'var(--bg)'}
+  ];
+  churnStats.forEach(function(s) {
+    html += '<div style="padding:14px;background:' + s.bg + ';border-radius:10px;text-align:center;">';
+    html += '<div style="font-size:28px;font-weight:700;color:' + s.color + ';">' + s.num + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">' + s.label + '</div></div>';
+  });
+  html += '</div>';
+  // 流失风险列表
+  html += '<div style="margin-bottom:14px;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">';
+  html += '<div style="font-size:13px;font-weight:600;">🚨 高风险流失会员（近30天无消费且降级风险）</div>';
+  html += '<button class="action-btn small" onclick="sendChurnRecoveryBatch()" style="padding:4px 10px;font-size:11px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 批量发送挽回优惠</button></div>';
+  var churnMembers = [
+    {name:'李四', phone:'137****5555', level:'银卡', lastDate:'2026-02-28', days:28, riskScore:85, reason:'连续28天无消费，等级即将降级'},
+    {name:'王五', phone:'138****8888', level:'金卡', lastDate:'2026-03-01', days:27, riskScore:72, reason:'本月消费下降70%，有流失倾向'},
+    {name:'孙七', phone:'139****3333', level:'银卡', lastDate:'2026-02-25', days:31, riskScore:91, reason:'会员到期前30天未续费'},
+    {name:'周八', phone:'136****6666', level:'普通', lastDate:'2026-03-05', days:23, riskScore:65, reason:'注册后仅消费1次，长期不活跃'}
+  ];
+  churnMembers.forEach(function(m) {
+    var riskColor = m.riskScore >= 80 ? 'var(--red)' : m.riskScore >= 60 ? 'var(--orange)' : 'var(--blue)';
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;">';
+    html += '<div style="width:36px;height:36px;background:' + riskColor + ';border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;">' + m.name[0] + '</div>';
+    html += '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">' + m.name + ' <span style="font-size:11px;color:var(--text-muted);">' + m.phone + '</span> <span style="font-size:11px;padding:1px 6px;background:var(--blue-bg);color:var(--blue);border-radius:10px;">' + m.level + '</span></div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">最后消费：' + m.lastDate + '（' + m.days + '天前） · ' + m.reason + '</div></div>';
+    html += '<div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:' + riskColor + ';">' + m.riskScore + '</div><div style="font-size:10px;color:var(--text-muted);">风险分</div></div>';
+    html += '<button onclick="sendChurnRecovery(\'' + m.name + '\')" class="action-btn small" style="padding:5px 10px;font-size:11px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🎁 发送优惠</button>';
+    html += '</div>';
+  });
+  html += '</div>';
+  // 挽回策略
+  html += '<div style="padding:14px;background:var(--purple-bg);border:1px solid var(--purple);border-radius:8px;margin-bottom:14px;">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--purple);margin-bottom:8px;">💡 智能挽回策略推荐</div>';
+  var strategies = [
+    {level:'银卡降级风险', offer:'续费8折 + 100元代金券', expect:'挽回率约65%'},
+    {level:'金卡消费下降', offer:'专属套餐限时8折', expect:'挽回率约70%'},
+    {level:'到期前30天', offer:'续费送双倍积分', expect:'挽回率约55%'},
+    {level:'长期不活跃', offer:'新人回归礼包¥50', expect:'挽回率约40%'}
+  ];
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+  strategies.forEach(function(s) {
+    html += '<div style="padding:10px 12px;background:white;border-radius:6px;font-size:11px;">';
+    html += '<div style="font-weight:600;color:var(--text);margin-bottom:4px;">' + s.level + '</div>';
+    html += '<div style="color:var(--green);">' + s.offer + '</div>';
+    html += '<div style="color:var(--text-muted);margin-top:2px;">预期' + s.expect + '</div></div>';
+  });
+  html += '</div></div>';
+  // 挽回记录
+  html += '<div style="padding:12px;background:var(--bg);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:6px;">📜 最近挽回记录</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);">';
+  html += '[03-26] 向王五发送"金卡专属套餐8折"优惠 → 客户已领取，待消费<br>';
+  html += '[03-25] 向李四发送"续费8折+100元代金券" → 客户已续费 ✅<br>';
+  html += '[03-23] 向孙七发送"续费送双倍积分" → 客户未响应，已发送提醒</div></div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="modal-btn secondary" onclick="closeModal(\'member-churn\')">关闭</button>';
+  html += '<button class="modal-btn primary" onclick="sendChurnRecoveryBatch()" style="background:var(--green);border-color:var(--green);color:white;">🎁 批量发送挽回优惠</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function sendChurnRecovery(name) {
+  showToast('✅ 已向' + name + '发送专属挽回优惠', 'success');
+}
+
+function sendChurnRecoveryBatch() {
+  showToast('📤 已向8位高风险会员批量发送挽回优惠短信', 'success');
+}
+
+// 初始化工单SLA计时器
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(initWorkorderSLATimers, 2000);
 });
 
 </script>
