@@ -29658,3 +29658,608 @@ function deleteMemberLevel(idx) {
   showToast('已删除 ' + lv.level, 'info');
   openMemberLevelConfigModal();
 }
+
+// ============================================================
+// 【物联后台 v3.6 改进】缺失的核心弹窗函数补全
+// 5项功能性改进：发票开具 / 夜审报表 / 押金管理 / 员工排班 / 服务评价
+// ============================================================
+
+// ========== 改进1：发票开具完整弹窗（openInvoiceCreateModal） ==========
+function openInvoiceCreateModal() {
+  var existing = document.getElementById('modal-invoice-create');
+  if (existing) existing.remove();
+  var rooms = [];
+  for (var bi = 0; bi < bldStore.length; bi++) {
+    bldStore[bi].rooms.forEach(function(r) {
+      if (r.status === 'checked-in' || r.status === 'occupied') {
+        rooms.push({num: r.num, name: r.guestName || '散客', phone: r.phone || '--', type: r.type || '标准间'});
+      }
+    });
+  }
+  var roomOptions = rooms.length > 0
+    ? rooms.map(function(r){ return '<option value="'+r.num+'">'+r.num+' · '+r.name+' · '+r.type+'</option>'; }).join('')
+    : '<option value="">当前无入住房间</option>';
+  var invNum = 'INV-' + Date.now().toString().slice(-8);
+  var today = new Date().toLocaleDateString('zh-CN');
+  var html = '<div class="modal-overlay" id="modal-invoice-create" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-create\').remove()">' +
+    '<div class="modal" style="width:540px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">🧾 开具发票</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-invoice-create\').remove()">✕</button></div>' +
+    '<div class="modal-body" style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">' +
+    '<div class="form-group"><label class="form-label">发票号码</label>' +
+    '<input type="text" id="inv-num" class="form-input" value="'+invNum+'" style="background:var(--bg);" readonly></div>' +
+    '<div class="form-group"><label class="form-label">开票日期</label>' +
+    '<input type="text" id="inv-date" class="form-input" value="'+today+'" style="background:var(--bg);" readonly></div></div>' +
+    '<div class="form-group"><label class="form-label">房间号 <span style="color:var(--red);">*</span></label>' +
+    '<select id="inv-room" class="form-select" onchange="onInvoiceRoomChange()">' +
+    '<option value="">请选择房间</option>' + roomOptions + '</select></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">' +
+    '<div class="form-group"><label class="form-label">客人姓名</label>' +
+    '<input type="text" id="inv-guest" class="form-input" placeholder="请输入客人姓名"></div>' +
+    '<div class="form-group"><label class="form-label">联系电话</label>' +
+    '<input type="tel" id="inv-phone" class="form-input" placeholder="请输入电话"></div></div>' +
+    '<div class="form-group"><label class="form-label">发票类型 <span style="color:var(--red);">*</span></label>' +
+    '<select id="inv-type" class="form-select">' +
+    '<option value="VAT_NORMAL">增值税普通发票</option>' +
+    '<option value="VAT_SPECIAL">增值税专用发票</option>' +
+    '<option value="ELECTRONIC">电子普通发票</option>' +
+    '<option value="INVOICE">收据</option></select></div>' +
+    '<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;">' +
+    '<div class="form-group"><label class="form-label">发票抬头 <span style="color:var(--red);">*</span></label>' +
+    '<input type="text" id="inv-title" class="form-input" placeholder="个人或公司名称"></div>' +
+    '<div class="form-group"><label class="form-label">税号</label>' +
+    '<input type="text" id="inv-tax" class="form-input" placeholder="如需报销请填写"></div></div>' +
+    '<div class="form-group"><label class="form-label">开票金额（元） <span style="color:var(--red);">*</span></label>' +
+    '<input type="number" id="inv-amount" class="form-input" placeholder="0.00" min="0" step="0.01" oninput="calcTaxAmount()"></div>' +
+    '<div class="form-group"><label class="form-label">税率</label>' +
+    '<select id="inv-taxrate" class="form-select" onchange="calcTaxAmount()">' +
+    '<option value="0">0% 不征税</option>' +
+    '<option value="0.01">1% 免税</option>' +
+    '<option value="0.03" selected>3% 简易征收</option>' +
+    '<option value="0.06">6% 现代服务</option>' +
+    '<option value="0.09">9% 建筑/运输</option>' +
+    '<option value="0.13">13% 货物销售</option></select></div>' +
+    '<div id="inv-tax-calc" style="padding:10px 14px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;font-size:13px;">' +
+    '<span style="color:var(--blue);">税额：<strong id="inv-tax-amount">¥0.00</strong></span>' +
+    '<span style="color:var(--blue);">价税合计：<strong id="inv-total-amount">¥0.00</strong></span></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">备注</label>' +
+    '<textarea id="inv-note" class="form-textarea" placeholder="可选备注信息..." style="min-height:50px;"></textarea></div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-create\').remove()">取消</button>' +
+    '<button class="modal-btn secondary" onclick="saveInvoiceDraft()" style="color:var(--text-light);">💾 暂存</button>' +
+    '<button class="modal-btn primary" onclick="submitInvoiceCreate()">✅ 确认开具</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function onInvoiceRoomChange() {
+  var roomNum = document.getElementById('inv-room').value;
+  for (var bi = 0; bi < bldStore.length; bi++) {
+    var r = bldStore[bi].rooms.find(function(x){ return x.num === roomNum; });
+    if (r) {
+      if (document.getElementById('inv-guest')) document.getElementById('inv-guest').value = r.guestName || '';
+      if (document.getElementById('inv-phone')) document.getElementById('inv-phone').value = r.phone || '';
+      break;
+    }
+  }
+}
+function calcTaxAmount() {
+  var amount = parseFloat(document.getElementById('inv-amount').value) || 0;
+  var rate = parseFloat(document.getElementById('inv-taxrate').value) || 0;
+  var tax = amount * rate;
+  var total = amount + tax;
+  document.getElementById('inv-tax-amount').textContent = '¥' + tax.toFixed(2);
+  document.getElementById('inv-total-amount').textContent = '¥' + total.toFixed(2);
+}
+function saveInvoiceDraft() {
+  showToast('💾 发票草稿已暂存', 'success');
+}
+function submitInvoiceCreate() {
+  var title = document.getElementById('inv-title').value.trim();
+  var amount = parseFloat(document.getElementById('inv-amount').value) || 0;
+  var invType = document.getElementById('inv-type').value;
+  if (!title) { showToast('请填写发票抬头', 'error'); return; }
+  if (amount <= 0) { showToast('请填写有效的开票金额', 'error'); return; }
+  var invId = document.getElementById('inv-num').value;
+  var date = document.getElementById('inv-date').value;
+  var tax = (amount * parseFloat(document.getElementById('inv-taxrate').value)).toFixed(2);
+  var total = (amount + parseFloat(tax)).toFixed(2);
+  document.getElementById('modal-invoice-create').remove();
+  showToast('🧾 发票 ' + invId + ' 开具成功，价税合计 ' + total + ' 元', 'success');
+  if (typeof renderInvoiceTable === 'function') renderInvoiceTable();
+}
+
+// ========== 改进2：夜审报表完整弹窗（openNightAuditFullModal） ==========
+function openNightAuditFullModal() {
+  var existing = document.getElementById('modal-night-audit');
+  if (existing) existing.remove();
+  var tonight = new Date();
+  var dateStr = tonight.toLocaleDateString('zh-CN');
+  var timeStr = tonight.toLocaleTimeString('zh-CN');
+  // 模拟夜审数据
+  var auditData = {
+    occupied: 42, vacant: 18, maintenance: 3, dirty: 5,
+    expectedArrivals: 8, expectedDepartures: 12, noShow: 2,
+    revenue: 38650, avgRate: 528,
+    cash: 3200, wechat: 18500, alipay: 12450, card: 4500,
+    unpaidBalance: 12400, overpaidDeposit: 3800,
+    checkins: [], checkouts: [], adjustments: [], alerts: []
+  };
+  // 模拟入住/退房记录
+  var sampleRooms = ['301','302','305','401','402','501'];
+  sampleRooms.forEach(function(r, i) {
+    if (i < 4) auditData.checkins.push({room: r, guest: ['李明','王芳','张伟','陈静'][i], time: '14:00-18:00', rate: [528,488,568,448][i]});
+    auditData.checkouts.push({room: r, guest: ['赵敏','周杰','吴婷','刘洋'][i], time: '12:00前', rate: [488,528,448,568][i], status: i < 3 ? '已结' : '未结'});
+  });
+  auditData.adjustments = [
+    {desc: '302房间 迷你吧消费', amount: -86},
+    {desc: '405房间 加床费', amount: 200},
+    {desc: '508房间 损坏赔偿', amount: -300}
+  ];
+  auditData.alerts = [
+    {type: 'WAKEUP', room: '305', msg: '无人入住但门磁触发'},
+    {type: 'LOWBATTERY', room: '402', msg: '门锁电量低于20%'},
+    {type: 'TEMP', room: '501', msg: '空调温度异常'}
+  ];
+  var alertsHtml = auditData.alerts.map(function(a) {
+    var color = a.type === 'WAKEUP' ? 'var(--orange)' : a.type === 'LOWBATTERY' ? 'var(--red)' : 'var(--blue)';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border-radius:6px;margin-bottom:6px;">' +
+      '<span style="font-size:14px;">' + (a.type==='WAKEUP'?'🔔':a.type==='LOWBATTERY'?'🔋':'🌡️') + '</span>' +
+      '<span style="font-size:12px;color:'+color+';">' + a.room + ' · ' + a.msg + '</span></div>';
+  }).join('');
+  var checkinRows = auditData.checkins.map(function(c) {
+    return '<tr><td style="padding:6px 8px;font-size:12px;">'+c.room+'</td><td style="padding:6px 8px;font-size:12px;">'+c.guest+'</td>' +
+      '<td style="padding:6px 8px;font-size:12px;">'+c.time+'</td><td style="padding:6px 8px;font-size:12px;color:var(--green);">¥'+c.rate+'</td></tr>';
+  }).join('');
+  var checkoutRows = auditData.checkouts.map(function(c) {
+    var statusColor = c.status === '已结' ? 'var(--green)' : 'var(--red)';
+    return '<tr><td style="padding:6px 8px;font-size:12px;">'+c.room+'</td><td style="padding:6px 8px;font-size:12px;">'+c.guest+'</td>' +
+      '<td style="padding:6px 8px;font-size:12px;">'+c.time+'</td><td style="padding:6px 8px;font-size:12px;">¥'+c.rate+'</td>' +
+      '<td style="padding:6px 8px;font-size:12px;color:'+statusColor+';">'+c.status+'</td></tr>';
+  }).join('');
+  var adjRows = auditData.adjustments.map(function(a) {
+    var cls = a.amount >= 0 ? 'var(--green)' : 'var(--red)';
+    return '<tr><td style="padding:6px 8px;font-size:12px;">'+a.desc+'</td>' +
+      '<td style="padding:6px 8px;font-size:12px;color:'+cls+';">' + (a.amount>=0?'+':'¥') + Math.abs(a.amount) + '</td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-night-audit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:820px;max-height:90vh;overflow-y:auto;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div><div style="font-size:15px;font-weight:700;">🌙 夜审报表 · ' + dateStr + '</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">生成时间：' + timeStr + ' · 操作员：赵飞</div></div>' +
+    '<button onclick="document.getElementById(\'modal-night-audit\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:16px 20px;">' +
+    // 核心指标
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--blue);margin-bottom:4px;">入住/空房</div><div style="font-size:20px;font-weight:700;color:var(--blue);">'+auditData.occupied+'/'+auditData.vacant+'</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px;">间</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--green);margin-bottom:4px;">预计到/离</div><div style="font-size:20px;font-weight:700;color:var(--green);">'+auditData.expectedArrivals+'/'+auditData.expectedDepartures+'</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px;">间 · NOSHOW:'+auditData.noShow+'</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--orange);margin-bottom:4px;">今日营收</div><div style="font-size:20px;font-weight:700;color:var(--orange);">¥'+(auditData.revenue/10000).toFixed(1)+'w</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px;">均价¥'+auditData.avgRate+'</div></div>' +
+    '<div style="padding:12px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--purple);margin-bottom:4px;">待结/多收</div><div style="font-size:20px;font-weight:700;color:var(--purple);">¥'+(auditData.unpaidBalance/1000)+'k</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px;">多收押金¥'+auditData.overpaidDeposit+'</div></div></div>' +
+    // 明细tabs
+    '<div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;">' +
+    '<button id="audit-tab-checkin" class="card-tab active" onclick="switchAuditTab(this,\'checkin\')" style="padding:6px 14px;font-size:12px;border-radius:6px;border:none;cursor:pointer;background:var(--blue);color:white;font-weight:600;">📥 入住 '+auditData.checkins.length+'</button>' +
+    '<button class="card-tab" onclick="switchAuditTab(this,\'checkout\')" style="padding:6px 14px;font-size:12px;border-radius:6px;border:none;cursor:pointer;background:var(--bg);color:var(--text);">📤 退房 '+auditData.checkouts.length+'</button>' +
+    '<button class="card-tab" onclick="switchAuditTab(this,\'adjust\')" style="padding:6px 14px;font-size:12px;border-radius:6px;border:none;cursor:pointer;background:var(--bg);color:var(--text);">📊 调账</button>' +
+    '<button class="card-tab" onclick="switchAuditTab(this,\'alert\');" style="padding:6px 14px;font-size:12px;border-radius:6px;border:none;cursor:pointer;background:var(--bg);color:var(--text);">🚨 告警</button></div>' +
+    // Tab内容
+    '<div id="audit-content-checkin"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+    '<tr style="background:var(--bg);"><th style="padding:6px 8px;text-align:left;font-weight:600;">房号</th><th style="padding:6px 8px;text-align:left;font-weight:600;">客人</th><th style="padding:6px 8px;text-align:left;font-weight:600;">时段</th><th style="padding:6px 8px;text-align:left;font-weight:600;">房价</th></tr>' + checkinRows + '</table></div>' +
+    '<div id="audit-content-checkout" style="display:none;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+    '<tr style="background:var(--bg);"><th style="padding:6px 8px;text-align:left;font-weight:600;">房号</th><th style="padding:6px 8px;text-align:left;font-weight:600;">客人</th><th style="padding:6px 8px;text-align:left;font-weight:600;">离店</th><th style="padding:6px 8px;text-align:left;font-weight:600;">房价</th><th style="padding:6px 8px;text-align:left;font-weight:600;">结算</th></tr>' + checkoutRows + '</table></div>' +
+    '<div id="audit-content-adjust" style="display:none;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+    '<tr style="background:var(--bg);"><th style="padding:6px 8px;text-align:left;font-weight:600;">调账说明</th><th style="padding:6px 8px;text-align:left;font-weight:600;">金额</th></tr>' + adjRows + '</table></div>' +
+    '<div id="audit-content-alert" style="display:none;">' + alertsHtml + '</div>' +
+    // 收款分布
+    '<div style="margin-top:14px;padding:12px;background:var(--bg);border-radius:8px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">💳 收款分布</div>' +
+    '<div style="display:flex;gap:8px;font-size:12px;">' +
+    '<div style="flex:1;padding:8px;background:white;border-radius:6px;text-align:center;"><div style="color:var(--text-muted);">现金</div><div style="font-weight:700;">¥'+auditData.cash.toLocaleString()+'</div></div>' +
+    '<div style="flex:1;padding:8px;background:white;border-radius:6px;text-align:center;"><div style="color:var(--green);">微信</div><div style="font-weight:700;color:var(--green);">¥'+auditData.wechat.toLocaleString()+'</div></div>' +
+    '<div style="flex:1;padding:8px;background:white;border-radius:6px;text-align:center;"><div style="color:var(--blue);">支付宝</div><div style="font-weight:700;color:var(--blue);">¥'+auditData.alipay.toLocaleString()+'</div></div>' +
+    '<div style="flex:1;padding:8px;background:white;border-radius:6px;text-align:center;"><div style="color:var(--purple);">银行卡</div><div style="font-weight:700;color:var(--purple);">¥'+auditData.card.toLocaleString()+'</div></div></div></div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="printNightAudit()">🖨️ 打印报表</button>' +
+    '<button class="modal-btn secondary" onclick="exportNightAuditData()">📤 导出数据</button>' +
+    '<button class="modal-btn primary" onclick="confirmNightAudit()">✅ 执行夜审</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function switchAuditTab(btn, tab) {
+  document.querySelectorAll('#modal-night-audit .card-tab').forEach(function(b){ b.classList.remove('active'); b.style.background='var(--bg)'; b.style.color='var(--text)'; });
+  btn.classList.add('active'); btn.style.background='var(--blue)'; btn.style.color='white';
+  var contentIds = ['checkin','checkout','adjust','alert'];
+  contentIds.forEach(function(id){
+    var el = document.getElementById('audit-content-' + id);
+    if (el) el.style.display = id === tab ? 'block' : 'none';
+  });
+}
+function printNightAudit() { showToast('🖨️ 正在生成打印报表，请稍候...', 'info'); }
+function exportNightAuditData() { showToast('📤 夜审数据导出中...', 'info'); }
+function confirmNightAudit() {
+  document.getElementById('modal-night-audit').remove();
+  showToast('✅ 夜审执行完成，所有数据已归档', 'success');
+}
+
+// ========== 改进3：押金管理完整弹窗（openDepositManagementModal） ==========
+var _depositStore = [
+  {id:'DP001', room:'301', guest:'李明', amount:1000, type:'押金', payMethod:'微信', status:'已退还', time:'2026-03-28 14:20', operator:'赵飞'},
+  {id:'DP002', room:'302', guest:'王芳', amount:1000, type:'押金', payMethod:'现金', status:'未退还', time:'2026-03-28 15:10', operator:'赵飞'},
+  {id:'DP003', room:'305', guest:'张伟', amount:1500, type:'押金', payMethod:'支付宝', status:'已扣除', time:'2026-03-28 16:00', operator:'钱一', deductReason:'房间损坏'},
+  {id:'DP004', room:'401', guest:'陈静', amount:1000, type:'押金', payMethod:'微信', status:'已退还', time:'2026-03-28 17:30', operator:'钱一'},
+  {id:'DP005', room:'402', guest:'周杰', amount:1000, type:'押金', payMethod:'银行卡', status:'未退还', time:'2026-03-28 18:00', operator:'孙二'}
+];
+function openDepositManagementModal() {
+  var existing = document.getElementById('modal-deposit');
+  if (existing) existing.remove();
+  var totalCollected = _depositStore.filter(function(d){ return d.payMethod; }).reduce(function(s,d){ return s + d.amount; }, 0);
+  var totalReturned = _depositStore.filter(function(d){ return d.status === '已退还'}).reduce(function(s,d){ return s + d.amount; }, 0);
+  var totalUnreturned = _depositStore.filter(function(d){ return d.status === '未退还'}).reduce(function(s,d){ return s + d.amount; }, 0);
+  var totalDeducted = _depositStore.filter(function(d){ return d.status === '已扣除'}).reduce(function(s,d){ return s + d.amount; }, 0);
+  var rows = _depositStore.map(function(d) {
+    var statusColor = d.status === '已退还' ? 'var(--green)' : d.status === '未退还' ? 'var(--orange)' : 'var(--red)';
+    var deductInfo = d.deductReason ? '<br><span style="font-size:10px;color:var(--red);">扣除原因：'+d.deductReason+'</span>' : '';
+    return '<tr style="border-bottom:1px solid var(--border);">' +
+      '<td style="padding:8px 10px;font-size:12px;">'+d.room+'</td>' +
+      '<td style="padding:8px 10px;font-size:12px;">'+d.guest+'</td>' +
+      '<td style="padding:8px 10px;font-size:12px;color:var(--blue);font-weight:600;">¥'+d.amount+'</td>' +
+      '<td style="padding:8px 10px;font-size:12px;">'+d.payMethod+'</td>' +
+      '<td style="padding:8px 10px;font-size:12px;color:'+statusColor+';">'+d.status+deductInfo+'</td>' +
+      '<td style="padding:8px 10px;font-size:11px;color:var(--text-muted);">'+d.time+'</td>' +
+      '<td style="padding:8px 10px;font-size:12px;">'+(d.status==='未退还'?'<button class="action-btn small" onclick="processDepositReturn(\''+d.id+'\')" style="padding:3px 8px;font-size:11px;">退还</button>':'—')+'</td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-deposit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-deposit\').remove()">' +
+    '<div class="modal" style="width:900px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">💰 押金管理</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-deposit\').remove()">✕</button></div>' +
+    '<div class="modal-body" style="padding:16px 20px;">' +
+    // 统计卡片
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--blue);margin-bottom:4px;">收取总额</div><div style="font-size:20px;font-weight:700;color:var(--blue);">¥'+totalCollected.toLocaleString()+'</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--green);margin-bottom:4px;">已退金额</div><div style="font-size:20px;font-weight:700;color:var(--green);">¥'+totalReturned.toLocaleString()+'</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--orange);margin-bottom:4px;">待退金额</div><div style="font-size:20px;font-weight:700;color:var(--orange);">¥'+totalUnreturned.toLocaleString()+'</div></div>' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--red);margin-bottom:4px;">扣除金额</div><div style="font-size:20px;font-weight:700;color:var(--red);">¥'+totalDeducted.toLocaleString()+'</div></div></div>' +
+    // 操作栏
+    '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">' +
+    '<select id="deposit-filter" onchange="renderDepositTable()" style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;">' +
+    '<option value="all">全部状态</option><option value="未退还">待退还</option><option value="已退还">已退还</option><option value="已扣除">已扣除</option></select>' +
+    '<input type="text" id="deposit-search" oninput="renderDepositTable()" placeholder="搜索房间/姓名..." style="flex:1;padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;">' +
+    '<button class="action-btn small" onclick="openDepositReceiveModal()" style="padding:5px 12px;font-size:12px;background:var(--green);color:white;border:none;border-radius:6px;">➕ 收取押金</button></div>' +
+    // 表格
+    '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:700px;">' +
+    '<tr style="background:var(--bg);font-size:12px;">' +
+    '<th style="padding:8px 10px;text-align:left;font-weight:600;">房间</th><th style="padding:8px 10px;text-align:left;font-weight:600;">客人</th>' +
+    '<th style="padding:8px 10px;text-align:left;font-weight:600;">金额</th><th style="padding:8px 10px;text-align:left;font-weight:600;">方式</th>' +
+    '<th style="padding:8px 10px;text-align:left;font-weight:600;">状态</th><th style="padding:8px 10px;text-align:left;font-weight:600;">时间</th><th style="padding:8px 10px;text-align:left;font-weight:600;">操作</th></tr>' +
+    '<tbody id="deposit-table-body">' + rows + '</tbody></table></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-deposit\').remove()">关闭</button>' +
+    '<button class="modal-btn secondary" onclick="exportDepositData()">📤 导出</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function renderDepositTable() {
+  var filter = document.getElementById('deposit-filter') ? document.getElementById('deposit-filter').value : 'all';
+  var search = document.getElementById('deposit-search') ? document.getElementById('deposit-search').value.toLowerCase() : '';
+  var filtered = _depositStore.filter(function(d) {
+    var matchFilter = filter === 'all' || d.status === filter;
+    var matchSearch = !search || d.room.toLowerCase().indexOf(search) > -1 || d.guest.toLowerCase().indexOf(search) > -1;
+    return matchFilter && matchSearch;
+  });
+  var rows = filtered.map(function(d) {
+    var statusColor = d.status === '已退还' ? 'var(--green)' : d.status === '未退还' ? 'var(--orange)' : 'var(--red)';
+    var deductInfo = d.deductReason ? '<br><span style="font-size:10px;color:var(--red);">扣除原因：'+d.deductReason+'</span>' : '';
+    return '<tr style="border-bottom:1px solid var(--border);">' +
+      '<td style="padding:8px 10px;font-size:12px;">'+d.room+'</td>' +
+      '<td style="padding:8px 10px;font-size:12px;">'+d.guest+'</td>' +
+      '<td style="padding:8px 10px;font-size:12px;color:var(--blue);font-weight:600;">¥'+d.amount+'</td>' +
+      '<td style="padding:8px 10px;font-size:12px;">'+d.payMethod+'</td>' +
+      '<td style="padding:8px 10px;font-size:12px;color:'+statusColor+';">'+d.status+deductInfo+'</td>' +
+      '<td style="padding:8px 10px;font-size:11px;color:var(--text-muted);">'+d.time+'</td>' +
+      '<td style="padding:8px 10px;font-size:12px;">'+(d.status==='未退还'?'<button class="action-btn small" onclick="processDepositReturn(\''+d.id+'\')" style="padding:3px 8px;font-size:11px;">退还</button>':'—')+'</td></tr>';
+  }).join('');
+  var tbody = document.getElementById('deposit-table-body');
+  if (tbody) tbody.innerHTML = rows || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">暂无数据</td></tr>';
+}
+function processDepositReturn(depId) {
+  var dep = _depositStore.find(function(d){ return d.id === depId; });
+  if (!dep) return;
+  var html = '<div class="modal-overlay" id="modal-deposit-return" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:400px;">' +
+    '<div class="modal-header"><div class="modal-title">💰 退还押金</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-deposit-return\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="padding:14px;background:var(--bg);border-radius:8px;margin-bottom:14px;">' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">房间 '+dep.room+' · 客人 '+dep.guest+'</div>' +
+    '<div style="font-size:22px;font-weight:700;color:var(--green);">¥'+dep.amount+'</div></div>' +
+    '<div class="form-group"><label class="form-label">退款方式</label>' +
+    '<select id="dep-return-method" class="form-select"><option value="微信">微信</option><option value="支付宝">支付宝</option><option value="现金">现金</option><option value="银行卡">银行卡</option></select></div>' +
+    '<div class="form-group"><label class="form-label">退款金额</label>' +
+    '<input type="number" id="dep-return-amount" class="form-input" value="'+dep.amount+'" min="0"></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<textarea id="dep-return-note" class="form-textarea" placeholder="可选备注" style="min-height:50px;"></textarea></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-deposit-return\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmDepositReturn(\''+depId+'\')">确认退还</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function confirmDepositReturn(depId) {
+  var dep = _depositStore.find(function(d){ return d.id === depId; });
+  if (dep) { dep.status = '已退还'; dep.returnTime = new Date().toLocaleString('zh-CN'); }
+  document.getElementById('modal-deposit-return').remove();
+  showToast('✅ 押金退还成功', 'success');
+  renderDepositTable && renderDepositTable();
+}
+function openDepositReceiveModal() {
+  var rooms = [];
+  for (var bi = 0; bi < bldStore.length; bi++) {
+    bldStore[bi].rooms.forEach(function(r) {
+      if ((r.status === 'checked-in' || r.status === 'occupied') && !_depositStore.find(function(d){ return d.room === r.num && d.status === '未退还'; })) {
+        rooms.push({num: r.num, name: r.guestName || '散客'});
+      }
+    });
+  }
+  var roomOptions = rooms.length > 0 ? rooms.map(function(r){ return '<option value="'+r.num+'|'+r.name+'">'+r.num+' · '+r.name+'</option>'; }).join('') : '<option value="">无待收押金房间</option>';
+  var html = '<div class="modal-overlay" id="modal-deposit-receive" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:400px;">' +
+    '<div class="modal-header"><div class="modal-title">💰 收取押金</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-deposit-receive\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group"><label class="form-label">房间/客人 <span style="color:var(--red);">*</span></label>' +
+    '<select id="dep-recv-room" class="form-select" onchange="var v=this.value.split(\'|\');if(v[1])document.getElementById(\'dep-recv-guest\').value=v[1];">' +
+    '<option value="">请选择房间</option>' + roomOptions + '</select></div>' +
+    '<div class="form-group"><label class="form-label">客人姓名</label>' +
+    '<input type="text" id="dep-recv-guest" class="form-input" placeholder="自动填充或手动输入"></div>' +
+    '<div class="form-group"><label class="form-label">押金金额 <span style="color:var(--red);">*</span></label>' +
+    '<input type="number" id="dep-recv-amount" class="form-input" placeholder="默认1000" value="1000" min="0"></div>' +
+    '<div class="form-group"><label class="form-label">支付方式</label>' +
+    '<select id="dep-recv-method" class="form-select"><option value="微信">微信</option><option value="支付宝">支付宝</option><option value="现金">现金</option><option value="银行卡">银行卡</option></select></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-deposit-receive\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitDepositReceive()">确认收取</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitDepositReceive() {
+  var roomInfo = document.getElementById('dep-recv-room').value;
+  if (!roomInfo) { showToast('请选择房间', 'error'); return; }
+  var amount = parseFloat(document.getElementById('dep-recv-amount').value) || 0;
+  if (amount <= 0) { showToast('请填写正确的金额', 'error'); return; }
+  var parts = roomInfo.split('|');
+  var newDep = {
+    id: 'DP' + Date.now().toString().slice(-6),
+    room: parts[0], guest: document.getElementById('dep-recv-guest').value || parts[1],
+    amount: amount, type: '押金',
+    payMethod: document.getElementById('dep-recv-method').value,
+    status: '未退还', time: new Date().toLocaleString('zh-CN'), operator: '赵飞'
+  };
+  _depositStore.unshift(newDep);
+  document.getElementById('modal-deposit-receive').remove();
+  showToast('✅ 押金收取成功 ¥' + amount, 'success');
+  renderDepositTable && renderDepositTable();
+}
+function exportDepositData() { showToast('📤 押金数据导出中...', 'info'); }
+
+// ========== 改进4：员工排班完整弹窗（openStaffScheduleModal） ==========
+var _scheduleStore = [
+  {name:'赵飞', shifts:{'mon':'morning', 'tue':'morning', 'wed':'afternoon', 'thu':'afternoon', 'fri':'night', 'sat':'off', 'sun':'off'}},
+  {name:'钱一', shifts:{'mon':'afternoon', 'tue':'afternoon', 'wed':'night', 'thu':'off', 'fri':'morning', 'sat':'morning', 'sun':'off'}},
+  {name:'孙二', shifts:{'mon':'off', 'tue':'morning', 'wed':'morning', 'thu':'afternoon', 'fri':'afternoon', 'sat':'night', 'sun':'night'}},
+  {name:'周敏', shifts:{'mon':'night', 'tue':'off', 'wed':'morning', 'thu':'morning', 'fri':'afternoon', 'sat':'afternoon', 'sun':'night'}}
+];
+function openStaffScheduleModal() {
+  var existing = document.getElementById('modal-staff-schedule');
+  if (existing) existing.remove();
+  var days = ['mon','tue','wed','thu','fri','sat','sun'];
+  var dayNames = {'mon':'周一','tue':'周二','wed':'周三','thu':'周四','fri':'周五','sat':'周六','sun':'周日'};
+  var shiftOptions = '<option value="morning">🌅 早班</option><option value="afternoon">☀️ 中班</option><option value="night">🌙 晚班</option><option value="off">🚫 休息</option>';
+  var staffRows = _scheduleStore.map(function(s, si) {
+    var cells = days.map(function(d) {
+      return '<td style="padding:4px;width:14%;text-align:center;">' +
+        '<select class="form-select" onchange="updateShift(\''+s.name+'\',\''+d+'\',this.value)" style="width:100%;padding:4px 2px;font-size:11px;text-align:center;border-radius:4px;">' +
+        shiftOptions.replace('value="'+s.shifts[d]+'"','value="'+s.shifts[d]+'" selected') + '</select></td>';
+    }).join('');
+    return '<tr style="border-bottom:1px solid var(--border);">' +
+      '<td style="padding:8px 10px;font-size:12px;font-weight:600;width:80px;">'+s.name+'</td>' + cells + '</tr>';
+  }).join('');
+  var today = new Date();
+  var weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay() + 1);
+  var weekStr = weekStart.toLocaleDateString('zh-CN') + ' 至 ' + new Date(weekStart.getTime() + 6*86400000).toLocaleDateString('zh-CN');
+  var html = '<div class="modal-overlay" id="modal-staff-schedule" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-staff-schedule\').remove()">' +
+    '<div class="modal" style="width:960px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">📅 员工排班管理</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-staff-schedule\').remove()">✕</button></div>' +
+    '<div class="modal-body" style="padding:16px 20px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">' +
+    '<div style="font-size:13px;"><span style="font-weight:600;">本周排班</span> · <span style="color:var(--text-muted);font-size:12px;">'+weekStr+'</span></div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<button class="action-btn small" onclick="copyLastWeekSchedule()" style="padding:4px 10px;font-size:12px;">📋 引用上周</button>' +
+    '<button class="action-btn small" onclick="openAddStaffScheduleModal()" style="padding:4px 10px;font-size:12px;background:var(--green);color:white;border:none;">➕ 添加员工</button></div></div>' +
+    '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:700px;">' +
+    '<tr style="background:var(--bg);font-size:12px;">' +
+    '<th style="padding:8px 10px;text-align:left;font-weight:600;width:80px;">员工</th>' +
+    days.map(function(d){ return '<th style="padding:8px 4px;text-align:center;font-weight:600;font-size:11px;">'+dayNames[d]+'</th>'; }).join('') + '</tr>' +
+    '<tbody id="schedule-tbody">' + staffRows + '</tbody></table></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;font-size:12px;">' +
+    '<div style="padding:8px;background:var(--blue-bg);border-radius:6px;text-align:center;"><span style="color:var(--blue);font-weight:600;">🌅 早班</span> 07:00-15:00</div>' +
+    '<div style="padding:8px;background:var(--orange-bg);border-radius:6px;text-align:center;"><span style="color:var(--orange);font-weight:600;">☀️ 中班</span> 15:00-23:00</div>' +
+    '<div style="padding:8px;background:var(--purple-bg);border-radius:6px;text-align:center;"><span style="color:var(--purple);font-weight:600;">🌙 晚班</span> 23:00-07:00</div>' +
+    '<div style="padding:8px;background:var(--bg);border-radius:6px;text-align:center;"><span style="color:var(--text-muted);font-weight:600;">🚫 休息</span> —</div></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-staff-schedule\').remove()">关闭</button>' +
+    '<button class="modal-btn secondary" onclick="exportSchedule()">📤 导出</button>' +
+    '<button class="modal-btn primary" onclick="saveAllSchedule()">✅ 保存排班</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function updateShift(name, day, value) {
+  var s = _scheduleStore.find(function(x){ return x.name === name; });
+  if (s) s.shifts[day] = value;
+}
+function copyLastWeekSchedule() {
+  showToast('📋 已引用上周排班（数据仅供演示）', 'success');
+}
+function openAddStaffScheduleModal() {
+  var html = '<div class="modal-overlay" id="modal-add-staff-sched" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:360px;">' +
+    '<div class="modal-header"><div class="modal-title">➕ 添加排班员工</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-add-staff-sched\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group"><label class="form-label">员工姓名</label>' +
+    '<select id="new-sched-staff" class="form-select"><option value="">请选择</option><option value="吴婷">吴婷</option><option value="郑强">郑强</option><option value="冯雪">冯雪</option></select></div>' +
+    '<div class="form-group"><label class="form-label">默认班次</label>' +
+    '<select id="new-sched-shift" class="form-select"><option value="morning">🌅 早班</option><option value="afternoon">☀️ 中班</option><option value="night">🌙 晚班</option><option value="off">🚫 休息</option></select></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-add-staff-sched\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="addStaffToSchedule()">确认添加</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function addStaffToSchedule() {
+  var name = document.getElementById('new-sched-staff').value;
+  if (!name) { showToast('请选择员工', 'error'); return; }
+  var defaultShift = document.getElementById('new-sched-shift').value;
+  var days = ['mon','tue','wed','thu','fri','sat','sun'];
+  var shifts = {};
+  days.forEach(function(d){ shifts[d] = defaultShift; });
+  _scheduleStore.push({name: name, shifts: shifts});
+  document.getElementById('modal-add-staff-sched').remove();
+  showToast('✅ ' + name + ' 已加入排班', 'success');
+  openStaffScheduleModal();
+}
+function exportSchedule() { showToast('📤 排班表导出中...', 'info'); }
+function saveAllSchedule() {
+  document.getElementById('modal-staff-schedule').remove();
+  showToast('✅ 排班已保存', 'success');
+}
+
+// ========== 改进5：服务评价完整弹窗（openSatisfactionCenterModal） ==========
+var _satisfactionStore = [
+  {id:'SAT001', room:'301', guest:'李明', score:5, tag:'热情周到', comment:'前台小姐姐服务非常好，很贴心！', time:'2026-03-28 14:30', response:'感谢您的认可，我们会继续努力！', status:'已回复'},
+  {id:'SAT002', room:'302', guest:'王芳', score:4, tag:'干净整洁', comment:'房间很干净，床也很舒服', time:'2026-03-28 15:20', response:'', status:'待回复'},
+  {id:'SAT003', room:'305', guest:'张伟', score:2, tag:'噪音问题', comment:'隔壁晚上太吵了，影响休息', time:'2026-03-28 16:00', response:'非常抱歉，已联系隔音处理', status:'已回复'},
+  {id:'SAT004', room:'401', guest:'陈静', score:5, tag:'设施完善', comment:'小度音箱很好玩，孩子很喜欢', time:'2026-03-28 17:10', response:'', status:'待回复'},
+  {id:'SAT005', room:'402', guest:'周杰', score:3, tag:'响应及时', comment:'报修后10分钟就修好了', time:'2026-03-28 18:00', response:'感谢反馈！', status:'已回复'}
+];
+function openSatisfactionCenterModal() {
+  var existing = document.getElementById('modal-satisfaction');
+  if (existing) existing.remove();
+  var avgScore = (_satisfactionStore.reduce(function(s,d){ return s + d.score; }, 0) / _satisfactionStore.length).toFixed(1);
+  var excellent = _satisfactionStore.filter(function(d){ return d.score >= 4; }).length;
+  var pending = _satisfactionStore.filter(function(d){ return d.status === '待回复'; }).length;
+  var scoreCounts = [0,0,0,0,0];
+  _satisfactionStore.forEach(function(d){ scoreCounts[d.score - 1]++; });
+  var stars = '';
+  for (var i = 1; i <= 5; i++) stars += i <= Math.round(avgScore) ? '⭐' : '☆';
+  var rows = _satisfactionStore.map(function(d) {
+    var starStr = '';
+    for (var i = 1; i <= 5; i++) starStr += i <= d.score ? '⭐' : '☆';
+    var tagColor = d.score >= 4 ? 'var(--green)' : d.score >= 3 ? 'var(--orange)' : 'var(--red)';
+    var respBtn = d.status === '待回复'
+      ? '<button class="action-btn small" onclick="openSatisfactionResponse(\''+d.id+'\')" style="padding:3px 8px;font-size:11px;">回复</button>'
+      : '<span style="font-size:11px;color:var(--green);">✓ 已回复</span>';
+    return '<div style="padding:14px 16px;border-bottom:1px solid var(--border);">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+      '<div><div style="font-size:13px;font-weight:600;margin-bottom:2px;">'+d.guest+' <span style="font-size:11px;color:var(--text-muted);">'+d.room+'</span></div>' +
+      '<div style="font-size:14px;margin-bottom:4px;">' + starStr + '</div>' +
+      '<span style="font-size:11px;padding:2px 6px;background:var(--bg);border-radius:4px;color:'+tagColor+';">'+d.tag+'</span></div>' +
+      '<div style="text-align:right;font-size:11px;color:var(--text-muted);">' + d.time + '<br>' + respBtn + '</div></div>' +
+      '<div style="font-size:13px;color:var(--text);margin-bottom:6px;">"'+d.comment+'"</div>' +
+      (d.response ? '<div style="font-size:12px;color:var(--green);padding:6px 10px;background:var(--green-bg);border-radius:6px;">👤 回复：'+d.response+'</div>' : '') +
+      '</div>';
+  }).join('');
+  var scoreBar = scoreCounts.map(function(c, i) {
+    var pct = Math.round((c / _satisfactionStore.length) * 100);
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:12px;">' +
+      '<span style="width:20px;text-align:right;">'+(5-i)+'星</span>' +
+      '<div style="flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="width:'+pct+'%;height:100%;background:'+(i<2?'var(--red)':i<3?'var(--orange)':'var(--green)')+';border-radius:4px;"></div></div>' +
+      '<span style="width:30px;color:var(--text-muted);">'+pct+'%</span></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-satisfaction" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-satisfaction\').remove()">' +
+    '<div class="modal" style="width:780px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">⭐ 服务评价中心</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-satisfaction\').remove()">✕</button></div>' +
+    '<div class="modal-body" style="padding:16px 20px;">' +
+    // 统计
+    '<div style="display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:16px;">' +
+    '<div style="padding:16px;background:var(--blue-bg);border-radius:10px;text-align:center;">' +
+    '<div style="font-size:36px;font-weight:700;color:var(--blue);">'+avgScore+'</div>' +
+    '<div style="font-size:14px;margin:4px 0;">'+stars+'</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);">综合评分 · '+_satisfactionStore.length+'条评价</div></div>' +
+    '<div style="padding:16px;background:var(--bg);border-radius:10px;">' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">' +
+    '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">'+Math.round(excellent/_satisfactionStore.length*100)+'%</div><div style="font-size:11px;color:var(--text-muted);">好评率</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">'+pending+'</div><div style="font-size:11px;color:var(--text-muted);">待回复</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);">'+_satisfactionStore.length+'</div><div style="font-size:11px;color:var(--text-muted);">总评价</div></div></div>' +
+    scoreBar + '</div></div></div>' +
+    // 筛选
+    '<div style="display:flex;gap:8px;margin-bottom:12px;">' +
+    '<button class="card-tab active" onclick="filterSatisfaction(this,\'all\')" style="padding:5px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;background:var(--blue);color:white;font-weight:600;">全部</button>' +
+    '<button class="card-tab" onclick="filterSatisfaction(this,\'待回复\')" style="padding:5px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;background:var(--bg);color:var(--text);">待回复</button>' +
+    '<button class="card-tab" onclick="filterSatisfaction(this,\'已回复\')" style="padding:5px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;background:var(--bg);color:var(--text);">已回复</button>' +
+    '<button class="card-tab" onclick="filterSatisfaction(this,\'5\')" style="padding:5px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;background:var(--bg);color:var(--text);">⭐5星</button>' +
+    '<button class="card-tab" onclick="filterSatisfaction(this,\'low\')" style="padding:5px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;background:var(--bg);color:var(--text);">低分 ⭐1-2</button></div>' +
+    '<div id="satisfaction-list" style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">' + rows + '</div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-satisfaction\').remove()">关闭</button>' +
+    '<button class="modal-btn secondary" onclick="exportSatisfactionReport()">📤 导出报告</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function filterSatisfaction(btn, filter) {
+  document.querySelectorAll('#modal-satisfaction .card-tab').forEach(function(b){ b.classList.remove('active'); b.style.background='var(--bg)'; b.style.color='var(--text)'; });
+  btn.classList.add('active'); btn.style.background='var(--blue)'; btn.style.color='white';
+  var filtered = _satisfactionStore;
+  if (filter === '待回复') filtered = _satisfactionStore.filter(function(d){ return d.status === '待回复'; });
+  else if (filter === '已回复') filtered = _satisfactionStore.filter(function(d){ return d.status === '已回复'; });
+  else if (filter === '5') filtered = _satisfactionStore.filter(function(d){ return d.score === 5; });
+  else if (filter === 'low') filtered = _satisfactionStore.filter(function(d){ return d.score <= 2; });
+  var rows = filtered.map(function(d) {
+    var starStr = ''; for (var i = 1; i <= 5; i++) starStr += i <= d.score ? '⭐' : '☆';
+    var tagColor = d.score >= 4 ? 'var(--green)' : d.score >= 3 ? 'var(--orange)' : 'var(--red)';
+    var respBtn = d.status === '待回复'
+      ? '<button class="action-btn small" onclick="openSatisfactionResponse(\''+d.id+'\')" style="padding:3px 8px;font-size:11px;">回复</button>'
+      : '<span style="font-size:11px;color:var(--green);">✓ 已回复</span>';
+    return '<div style="padding:14px 16px;border-bottom:1px solid var(--border);">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+      '<div><div style="font-size:13px;font-weight:600;margin-bottom:2px;">'+d.guest+' <span style="font-size:11px;color:var(--text-muted);">'+d.room+'</span></div>' +
+      '<div style="font-size:14px;margin-bottom:4px;">' + starStr + '</div>' +
+      '<span style="font-size:11px;padding:2px 6px;background:var(--bg);border-radius:4px;color:'+tagColor+';">'+d.tag+'</span></div>' +
+      '<div style="text-align:right;font-size:11px;color:var(--text-muted);">' + d.time + '<br>' + respBtn + '</div></div>' +
+      '<div style="font-size:13px;color:var(--text);margin-bottom:6px;">"'+d.comment+'"</div>' +
+      (d.response ? '<div style="font-size:12px;color:var(--green);padding:6px 10px;background:var(--green-bg);border-radius:6px;">👤 回复：'+d.response+'</div>' : '') +
+      '</div>';
+  }).join('');
+  var list = document.getElementById('satisfaction-list');
+  if (list) list.innerHTML = rows || '<div style="padding:30px;text-align:center;color:var(--text-muted);">暂无数据</div>';
+}
+function openSatisfactionResponse(satId) {
+  var sat = _satisfactionStore.find(function(d){ return d.id === satId; });
+  if (!sat) return;
+  var html = '<div class="modal-overlay" id="modal-sat-response" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:460px;">' +
+    '<div class="modal-header"><div class="modal-title">💬 回复评价</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-sat-response\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:14px;">' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">"'+sat.comment+'"</div>' +
+    '<div style="font-size:13px;font-weight:600;">— '+sat.guest+' · '+sat.room+'</div></div>' +
+    '<div class="form-group"><label class="form-label">回复内容</label>' +
+    '<textarea id="sat-reply-text" class="form-textarea" placeholder="请输入回复内容..." style="min-height:80px;"></textarea></div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="sat-pub-reply" style="accent-color:var(--blue);"> 公开回复</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="sat-sms-reply" style="accent-color:var(--blue);"> 短信通知客人</label></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-sat-response\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitSatisfactionResponse(\''+satId+'\')">发送回复</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitSatisfactionResponse(satId) {
+  var text = document.getElementById('sat-reply-text').value.trim();
+  if (!text) { showToast('请填写回复内容', 'error'); return; }
+  var sms = document.getElementById('sat-sms-reply') && document.getElementById('sat-sms-reply').checked;
+  var sat = _satisfactionStore.find(function(d){ return d.id === satId; });
+  if (sat) { sat.response = text; sat.status = '已回复'; }
+  document.getElementById('modal-sat-response').remove();
+  showToast('✅ 回复已发送' + (sms ? '（含短信通知）' : ''), 'success');
+  openSatisfactionCenterModal();
+}
+function exportSatisfactionReport() { showToast('📤 评价报告导出中...', 'info'); }
