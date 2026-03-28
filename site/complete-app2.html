@@ -18354,6 +18354,373 @@ function confirmDeviceRestart(uuid) {
 
 // ======= End of 5 Functional Improvements =======
 
+
+
+// 【物联后台 v3.5 改进1】数据恢复二次确认详细弹窗
+// 理由：restoreBackup只有简单confirm，缺乏详细的恢复确认。本次新增独立弹窗，显示备份详情、风险等级评估、可恢复内容清单、勾选确认框后才能执行恢复。
+function openRestoreConfirmModal() {
+  var existing = document.getElementById('modal-restore-confirm');
+  if (existing) existing.remove();
+  var restorePoint = document.getElementById('cfg-restore-point') ? document.getElementById('cfg-restore-point').value : '20260327';
+  var pointLabels = {
+    '20260327': '2026-03-27 03:00（推荐）',
+    '20260326': '2026-03-26 03:00',
+    '20260325': '2026-03-25 03:00',
+    '20260324': '2026-03-24 03:00'
+  };
+  var pointDates = {
+    '20260327': '2026-03-27',
+    '20260326': '2026-03-26',
+    '20260325': '2026-03-25',
+    '20260324': '2026-03-24'
+  };
+  var backupDetails = {
+    '20260327': {size: '24.5 MB', type: '自动备份', operator: '系统', rooms: 16, staff: 12, settings: 1, logs: 48},
+    '20260326': {size: '23.8 MB', type: '自动备份', operator: '系统', rooms: 16, staff: 12, settings: 1, logs: 46},
+    '20260325': {size: '23.2 MB', type: '自动备份', operator: '系统', rooms: 16, staff: 12, settings: 1, logs: 44},
+    '20260324': {size: '22.9 MB', type: '自动备份', operator: '系统', rooms: 16, staff: 11, settings: 1, logs: 42}
+  };
+  var detail = backupDetails[restorePoint] || backupDetails['20260327'];
+  var html = '<div class="modal-overlay" id="modal-restore-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-restore-confirm\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div class="modal-title">⚠️ 数据恢复确认</div>' +
+    '<span style="padding:3px 10px;background:var(--red-bg);border:1px solid var(--red);border-radius:12px;font-size:11px;font-weight:600;color:var(--red);">高风险操作</span>' +
+    '</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-restore-confirm\').remove()">✕</button></div>' +
+    '<div class="modal-body">';
+  html += '<div style="padding:16px;background:var(--bg);border-radius:10px;margin-bottom:16px;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text);">📦 备份详情</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+    '<div style="padding:10px;background:white;border-radius:6px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">备份时间</div><div style="font-size:13px;font-weight:600;">' + (pointLabels[restorePoint] || '2026-03-27 03:00') + '</div></div>' +
+    '<div style="padding:10px;background:white;border-radius:6px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">备份类型</div><div style="font-size:13px;font-weight:600;">' + detail.type + '</div></div>' +
+    '<div style="padding:10px;background:white;border-radius:6px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">备份大小</div><div style="font-size:13px;font-weight:600;color:var(--blue);">' + detail.size + '</div></div>' +
+    '<div style="padding:10px;background:white;border-radius:6px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">操作人</div><div style="font-size:13px;font-weight:600;">' + detail.operator + '</div></div>' +
+    '</div></div>';
+  html += '<div style="padding:14px;background:var(--red-bg);border:1px solid var(--red);border-radius:10px;margin-bottom:16px;">' +
+    '<div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:8px;">🚨 风险评估</div>' +
+    '<ul style="margin:0;padding-left:18px;font-size:12px;color:var(--text);line-height:1.9;">' +
+    '<li>恢复操作将覆盖当前所有数据，当前数据将被替换为备份版本</li>' +
+    '<li>恢复过程中系统将暂时不可用，预计需要 1-3 分钟</li>' +
+    '<li>恢复完成后需重新登录系统</li>' +
+    '<li style="color:var(--red);font-weight:600;">此操作不可逆，请确保已备份当前数据</li>' +
+    '</ul></div>';
+  html += '<div style="margin-bottom:16px;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text);">📋 可恢复内容</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">' +
+    '<div style="padding:10px 12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;display:flex;align-items:center;gap:8px;">' +
+    '<span style="font-size:18px;">🏠</span><div><div style="font-size:12px;font-weight:600;color:var(--green);">' + detail.rooms + ' 间</div><div style="font-size:10px;color:var(--text-muted);">房间基础数据</div></div></div>' +
+    '<div style="padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;display:flex;align-items:center;gap:8px;">' +
+    '<span style="font-size:18px;">👥</span><div><div style="font-size:12px;font-weight:600;color:var(--blue);">' + detail.staff + ' 人</div><div style="font-size:10px;color:var(--text-muted);">员工账户信息</div></div></div>' +
+    '<div style="padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;display:flex;align-items:center;gap:8px;">' +
+    '<span style="font-size:18px;">⚙️</span><div><div style="font-size:12px;font-weight:600;color:var(--orange);">' + detail.settings + ' 套</div><div style="font-size:10px;color:var(--text-muted);">系统配置数据</div></div></div>' +
+    '<div style="padding:10px 12px;background:var(--purple-bg);border:1px solid var(--purple);border-radius:8px;display:flex;align-items:center;gap:8px;">' +
+    '<span style="font-size:18px;">📝</span><div><div style="font-size:12px;font-weight:600;color:var(--purple);">' + detail.logs + ' 条</div><div style="font-size:10px;color:var(--text-muted);">操作日志记录</div></div></div>' +
+    '</div></div>';
+  html += '<div style="padding:12px;background:var(--white);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;">' +
+    '<label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;line-height:1.6;">' +
+    '<input type="checkbox" id="restore-confirm-check" style="accent-color:var(--red);width:16px;height:16px;margin-top:2px;flex-shrink:0;">' +
+    '<span style="color:var(--text);">我已充分了解恢复操作的风险，确认将当前数据恢复到 <strong style="color:var(--red);">' + (pointDates[restorePoint] || '2026-03-27') + '</strong> 的备份版本</span></label></div>';
+  html += '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-restore-confirm\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="executeRestore()" style="background:var(--red);color:white;border:none;">⚠️ 确认恢复</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function executeRestore() {
+  var checked = document.getElementById('restore-confirm-check');
+  if (checked && !checked.checked) {
+    showToast('请勾选确认框以继续', 'warning');
+    return;
+  }
+  document.getElementById('modal-restore-confirm').remove();
+  showToast('⚠️ 正在执行数据恢复，请稍候...', 'info');
+  var progress = 0;
+  var interval = setInterval(function() {
+    progress += Math.random() * 15;
+    if (progress >= 100) {
+      progress = 100;
+      clearInterval(interval);
+      showToast('✅ 数据恢复成功！即将刷新页面...', 'success');
+      setTimeout(function() { window.location.reload(); }, 2000);
+    }
+  }, 300);
+}
+
+// 【物联后台 v3.5 改进2】备份完整管理弹窗
+// 理由：备份管理页面有入口但无弹窗实现，需要展示所有备份记录、支持下载和删除操作
+function openBackupRestoreModal() {
+  var existing = document.getElementById('modal-backup-manage');
+  if (existing) existing.remove();
+  var backups = [
+    {date: '2026-03-27 03:00', type: '自动备份', size: '24.5 MB', status: 'success', operator: '系统'},
+    {date: '2026-03-26 14:32', type: '手动备份', size: '24.1 MB', status: 'success', operator: '赵飞'},
+    {date: '2026-03-26 03:00', type: '自动备份', size: '23.8 MB', status: 'success', operator: '系统'},
+    {date: '2026-03-25 03:00', type: '自动备份', size: '23.2 MB', status: 'success', operator: '系统'},
+    {date: '2026-03-24 03:00', type: '自动备份', size: '22.9 MB', status: 'success', operator: '系统'},
+    {date: '2026-03-23 03:00', type: '自动备份', size: '21.5 MB', status: 'failed', operator: '系统'}
+  ];
+  var rows = backups.map(function(b, i) {
+    var statusBadge = b.status === 'success'
+      ? '<span class="tbadge green">成功</span>'
+      : '<span class="tbadge red">失败</span>';
+    var typeBadge = b.type === '手动备份'
+      ? '<span class="tbadge green">' + b.type + '</span>'
+      : '<span class="tbadge blue">' + b.type + '</span>';
+    return '<tr>' +
+      '<td style="font-size:12px;">' + b.date + '</td>' +
+      '<td>' + typeBadge + '</td>' +
+      '<td style="font-size:12px;">' + b.size + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td style="font-size:12px;">' + b.operator + '</td>' +
+      '<td><div style="display:flex;gap:6px;">' +
+      '<button class="action-btn small" onclick="downloadBackup(' + i + ')" style="padding:3px 8px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📥 下载</button>' +
+      '<button class="action-btn small" onclick="deleteBackup(' + i + ')" style="padding:3px 8px;font-size:11px;background:var(--red-bg);color:var(--red);border-color:var(--red);">🗑️ 删除</button>' +
+      '</div></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-backup-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-backup-manage\').remove()">' +
+    '<div class="modal" style="width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div class="modal-header">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div class="modal-title">💾 备份完整管理</div>' +
+    '<span style="padding:3px 10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:12px;font-size:11px;color:var(--blue);font-weight:600;">共 ' + backups.length + ' 条记录</span>' +
+    '</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-backup-manage\').remove()">✕</button></div>' +
+    '<div style="display:flex;gap:10px;padding:12px 20px;border-bottom:1px solid var(--border);">' +
+    '<button class="action-btn primary" onclick="triggerManualBackup()" style="background:var(--blue);color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">💾 立即备份</button>' +
+    '<button class="action-btn" onclick="uploadExternalBackup()" style="padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导入备份</button>' +
+    '<span style="margin-left:auto;font-size:12px;color:var(--text-muted);display:flex;align-items:center;">自动备份：每日 03:00 · 保留 14 份</span>' +
+    '</div>' +
+    '<div style="flex:1;overflow-y:auto;padding:16px 20px;">' +
+    '<table class="table" style="font-size:12px;">' +
+    '<thead><tr><th>备份时间</th><th>类型</th><th>大小</th><th>状态</th><th>操作人</th><th>操作</th></tr></thead>' +
+    '<tbody id="backup-manage-body">' + rows + '</tbody></table></div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-backup-manage\').remove()">关闭</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function downloadBackup(idx) {
+  showToast('📥 正在下载备份文件 #' + (idx + 1) + '...', 'info');
+  setTimeout(function() { showToast('✅ 备份文件已下载至本地', 'success'); }, 1500);
+}
+function deleteBackup(idx) {
+  if (!confirm('确定要删除这条备份记录吗？删除后无法恢复。')) return;
+  showToast('🗑️ 备份记录已删除', 'success');
+  var tbody = document.getElementById('backup-manage-body');
+  if (tbody && tbody.rows[idx]) tbody.rows[idx].style.display = 'none';
+}
+function uploadExternalBackup() {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,.zip';
+  input.onchange = function() { handleExternalBackupFile(this); };
+  input.click();
+}
+
+// 【物联后台 v3.5 改进3】手动备份功能
+// 理由：手动备份按钮已渲染但函数未实现，需要完整的备份流程
+function triggerManualBackup() {
+  var existing = document.getElementById('modal-backup-progress');
+  if (existing) existing.remove();
+  window._backupComplete = false;
+  var html = '<div class="modal-overlay" id="modal-backup-progress" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:400px;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">💾 正在创建备份...</div>' +
+    '<button class="modal-close" onclick="if(_backupComplete)document.getElementById(\'modal-backup-progress\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="text-align:center;padding:20px 0;">' +
+    '<div style="font-size:48px;margin-bottom:12px;">💾</div>' +
+    '<div style="font-size:14px;font-weight:600;margin-bottom:4px;" id="backup-step-text">正在打包数据...</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">正在备份：房间数据、员工账户、系统配置、操作日志</div>' +
+    '<div id="backup-progress-bar" style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:8px;">' +
+    '<div id="backup-progress-fill" style="height:100%;background:var(--blue);border-radius:4px;transition:width 0.3s;width:0%;"></div></div>' +
+    '<div style="font-size:12px;color:var(--blue);" id="backup-progress-text">0%</div></div>' +
+    '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">' +
+    '💡 备份期间您可正常使用系统，备份将在后台完成</div>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  var progress = 0;
+  var steps = ['正在打包房间基础数据...', '正在备份员工账户...', '正在同步系统配置...', '正在归档操作日志...', '正在压缩备份文件...', '正在完成备份...'];
+  var stepIdx = 0;
+  var interval = setInterval(function() {
+    progress += Math.random() * 20 + 5;
+    if (progress >= 100) {
+      progress = 100;
+      clearInterval(interval);
+      window._backupComplete = true;
+      document.getElementById('backup-progress-fill').style.width = '100%';
+      document.getElementById('backup-progress-text').textContent = '100%';
+      setTimeout(function() {
+        var modal = document.getElementById('modal-backup-progress');
+        if (modal) {
+          modal.querySelector('.modal-body').innerHTML = '<div style="text-align:center;padding:30px 0;">' +
+            '<div style="font-size:56px;margin-bottom:12px;">✅</div>' +
+            '<div style="font-size:15px;font-weight:700;color:var(--green);margin-bottom:8px;">备份创建成功</div>' +
+            '<div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">备份时间：' + new Date().toLocaleString('zh-CN', {hour12:false}) + '<br>备份大小：24.3 MB</div>' +
+            '<div style="padding:10px 16px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;font-size:12px;color:var(--green);margin-bottom:16px;">📦 备份内容：16间房间 · 12名员工 · 系统配置 · 48条操作日志</div>' +
+            '<button class="modal-btn" onclick="document.getElementById(\'modal-backup-progress\').remove()" style="background:var(--blue);color:white;border:none;padding:10px 24px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">确定</button></div>';
+        }
+        showToast('✅ 手动备份成功！备份文件已保存（24.3 MB）', 'success');
+      }, 500);
+      return;
+    }
+    document.getElementById('backup-progress-fill').style.width = progress + '%';
+    document.getElementById('backup-progress-text').textContent = Math.round(progress) + '%';
+    if (stepIdx < steps.length - 1 && progress > (stepIdx + 1) * (100 / steps.length)) {
+      stepIdx++;
+      var modal = document.getElementById('modal-backup-progress');
+      if (modal) {
+        var descEl = document.getElementById('backup-step-text');
+        if (descEl) descEl.textContent = steps[stepIdx];
+      }
+    }
+  }, 200);
+}
+
+// 【物联后台 v3.5 改进4】外部备份文件导入处理
+// 理由：文件上传input已渲染但处理函数未实现
+function handleExternalBackupFile(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var ext = file.name.split('.').pop().toLowerCase();
+  if (ext !== 'json' && ext !== 'zip') {
+    showToast('仅支持 .json 或 .zip 格式文件', 'error');
+    return;
+  }
+  var sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+  showToast('正在解析文件：' + file.name + '（' + sizeMB + ' MB）...', 'info');
+  setTimeout(function() {
+    var existing = document.getElementById('modal-backup-verify');
+    if (existing) existing.remove();
+    var html = '<div class="modal-overlay" id="modal-backup-verify" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-backup-verify\').remove()">' +
+      '<div class="modal" style="width:500px;">' +
+      '<div class="modal-header">' +
+      '<div class="modal-title">🔍 备份文件校验</div>' +
+      '<button class="modal-close" onclick="document.getElementById(\'modal-backup-verify\').remove()">✕</button></div>' +
+      '<div class="modal-body">' +
+      '<div style="padding:16px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:10px;margin-bottom:16px;">' +
+      '<div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:8px;">📄 ' + file.name + '</div>' +
+      '<div style="font-size:12px;color:var(--text);display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
+      '<div>文件大小：<strong>' + sizeMB + ' MB</strong></div>' +
+      '<div>文件格式：<strong>.' + ext.toUpperCase() + '</strong></div>' +
+      '<div>校验状态：<strong style="color:var(--green);">✅ 格式正确</strong></div>' +
+      '<div>压缩包结构：<strong style="color:var(--green);">✅ 有效</strong></div></div></div>' +
+      '<div style="margin-bottom:14px;">' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">📋 备份内容预览</div>' +
+      '<div style="padding:12px;background:var(--bg);border-radius:8px;font-size:12px;">' +
+      '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">房间数据</span><span style="color:var(--green);font-weight:600;">✅ 16 间</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">员工数据</span><span style="color:var(--green);font-weight:600;">✅ 12 人</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">系统配置</span><span style="color:var(--green);font-weight:600;">✅ 完整</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:6px 0;"><span style="color:var(--text-muted);">操作日志</span><span style="color:var(--green);font-weight:600;">✅ 48 条</span></div></div></div>' +
+      '<div style="padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);margin-bottom:16px;">⚠️ 导入外部备份将覆盖当前所有数据，请确认后再操作</div>' +
+      '<div style="margin-bottom:16px;">' +
+      '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-light);">' +
+      '<input type="checkbox" id="import-confirm-check" style="accent-color:var(--blue);width:15px;height:15px;">' +
+      '<span>我确认导入该备份文件，并了解将覆盖当前所有数据</span></label></div>' +
+      '</div>' +
+      '<div class="modal-footer">' +
+      '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-backup-verify\').remove()">取消</button>' +
+      '<button class="modal-btn" onclick="confirmImportBackup()" style="background:var(--blue);color:white;border:none;">📥 确认导入</button>' +
+      '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+  }, 1200);
+}
+function confirmImportBackup() {
+  var checked = document.getElementById('import-confirm-check');
+  if (checked && !checked.checked) { showToast('请勾选确认框以继续', 'warning'); return; }
+  document.getElementById('modal-backup-verify').remove();
+  showToast('📥 正在导入备份文件，请稍候...', 'info');
+  setTimeout(function() {
+    showToast('✅ 备份文件导入成功！当前数据已更新', 'success');
+  }, 2500);
+}
+
+// 【物联后台 v3.5 改进5】备份日志导出功能
+// 理由：备份日志导出按钮已渲染但函数未实现
+function exportBackupLog() {
+  var tbody = document.getElementById('backup-log-body');
+  if (!tbody || tbody.rows.length === 0) {
+    showToast('暂无备份日志可导出', 'info');
+    return;
+  }
+  var csvContent = '\uFEFF时间,类型,备份大小,状态,操作人\n';
+  var rows = tbody.querySelectorAll('tr');
+  rows.forEach(function(row) {
+    var cells = row.querySelectorAll('td');
+    if (cells.length >= 5) {
+      var type = cells[1].textContent.trim().replace(/<[^>]+>/g, '');
+      var status = cells[3].textContent.trim().replace(/<[^>]+>/g, '');
+      csvContent += cells[0].textContent.trim() + ',' + type + ',' + cells[2].textContent.trim() + ',' + status + ',' + cells[4].textContent.trim() + '\n';
+    }
+  });
+  var blob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '备份日志_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('📤 备份日志已导出（CSV格式，共 ' + rows.length + ' 条记录）', 'success');
+}
+
+// 【物联后台 v3.5 改进6】节能规则配置弹窗（bonus）
+// 理由：节能风控页面有配置入口但函数未实现，需完整配置表单+保存预览
+function openEnergyRulesConfigModal() {
+  var existing = document.getElementById('modal-energy-rules');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-energy-rules" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-rules\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:88vh;overflow-y:auto;">' +
+    '<div class="modal-header">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div class="modal-title">⚙️ 节能规则配置</div>' +
+    '<span style="padding:3px 10px;background:var(--green-bg);border:1px solid var(--green);border-radius:12px;font-size:11px;color:var(--green);font-weight:600;">主动模式</span>' +
+    '</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-energy-rules\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="margin-bottom:16px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">⏰ 空调控制</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+    '<div class="form-group"><label class="form-label">无人自动关闭</label>' +
+    '<select id="er-ac-off" class="form-select" style="padding:8px 12px;">' +
+    '<option value="1">1小时后</option><option value="2" selected>2小时后</option>' +
+    '<option value="3">3小时后</option><option value="4">4小时后</option></select>' +
+    '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">客人离开后多久自动关闭空调</div></div>' +
+    '<div class="form-group"><label class="form-label">最低温度限制</label>' +
+    '<select id="er-min-temp" class="form-select" style="padding:8px 12px;">' +
+    '<option value="18">18°C</option><option value="20" selected>20°C</option>' +
+    '<option value="22">22°C</option><option value="24">24°C</option></select>' +
+    '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">空调制冷最低设定温度</div></div></div></div>' +
+    '<div style="margin-bottom:16px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">💡 能耗监控</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+    '<div class="form-group"><label class="form-label">单房日用电阈值(kWh)</label>' +
+    '<input type="number" id="er-power-th" class="form-input" value="5" style="padding:8px 12px;">' +
+    '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">超出后触发告警通知</div></div>' +
+    '<div class="form-group"><label class="form-label">待机功耗检测</label>' +
+    '<div style="padding:8px 0;"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;">' +
+    '<input type="checkbox" id="er-standby" checked style="accent-color:var(--blue);width:16px;height:16px;">' +
+    '<span>开启待机功耗检测</span></label></div></div></div></div>' +
+    '<div style="margin-bottom:16px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">💰 预算管理</div>' +
+    '<div class="form-group"><label class="form-label">日用电预算(元)</label>' +
+    '<input type="number" id="er-budget" class="form-input" value="500" style="padding:8px 12px;">' +
+    '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">超出预算后发送通知</div></div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--green);">' +
+    '💡 保存后将立即生效，变更会在下一个检测周期（5分钟）内自动应用</div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-energy-rules\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="saveEnergyRulesWithPreview()" style="background:var(--blue);color:white;border:none;">💾 保存配置</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
 </script>
 
 <!-- 【改进1】员工管理 - 新增/编辑员工弹窗 -->
