@@ -1956,6 +1956,12 @@ function showToast(msg, type) {
         renderHomeDeviceList();
         updateHomeDeviceCounts();
         renderHomeOpFeed();
+        // 【改进1-5】初始化CRUD表格数据
+        renderBldMgrTable();
+        renderStaffTable();
+        renderRecordsTable();
+        renderMemberTable();
+        renderWorkorderTable();
         // 【改进C】首页自动刷新：页面加载后自动启动每60秒刷新机制
         startHomeAutoRefresh();
         // 每30秒自动刷新设备状态
@@ -22798,6 +22804,510 @@ function switchFloorTab(floor, el) {
   el.parentElement.querySelectorAll('.card-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   showToast('已切换到 ' + floor + ' 层平面图', 'info');
+}
+
+// ======= 【改进1: 楼栋管理完整CRUD闭环】新增/编辑/删除/停用 ======================
+var buildingStore = [
+  {id:'bld-001', name:'主楼', code:'MAIN', floors:3, rooms:16, status:'enabled', remark:'主楼，正常运营', createTime:'2024-01-15'},
+  {id:'bld-002', name:'东配楼', code:'EAST', floors:2, rooms:8, status:'enabled', remark:'东配楼，部分房间', createTime:'2024-03-10'}
+];
+var currentEditingBldIdx = null;
+
+function openBldMgrAddModal() {
+  currentEditingBldIdx = null;
+  document.getElementById('bldf-id').value = '';
+  document.getElementById('bldf-title').textContent = '➕ 新增楼栋';
+  document.getElementById('bldf-name').value = '';
+  document.getElementById('bldf-code').value = '';
+  document.getElementById('bldf-floors').value = '3';
+  document.getElementById('bldf-rooms').value = '12';
+  document.getElementById('bldf-status').value = 'enabled';
+  document.getElementById('bldf-remark').value = '';
+  openModal('building-form-v2');
+}
+function openBldMgrEditModal(idx) {
+  currentEditingBldIdx = idx;
+  var b = buildingStore[idx];
+  document.getElementById('bldf-id').value = b.id;
+  document.getElementById('bldf-title').textContent = '✏️ 编辑楼栋 - ' + b.name;
+  document.getElementById('bldf-name').value = b.name;
+  document.getElementById('bldf-code').value = b.code;
+  document.getElementById('bldf-floors').value = b.floors;
+  document.getElementById('bldf-rooms').value = b.rooms;
+  document.getElementById('bldf-status').value = b.status;
+  document.getElementById('bldf-remark').value = b.remark || '';
+  openModal('building-form-v2');
+}
+function submitBldMgrForm() {
+  var name = document.getElementById('bldf-name').value.trim();
+  var code = document.getElementById('bldf-code').value.trim().toUpperCase();
+  var floors = parseInt(document.getElementById('bldf-floors').value) || 1;
+  var rooms = parseInt(document.getElementById('bldf-rooms').value) || 1;
+  var status = document.getElementById('bldf-status').value === 'active' ? 'enabled' : 'disabled';
+  var remark = document.getElementById('bldf-remark').value.trim();
+  if (!name || !code) { showToast('请填写楼栋名称和编号', 'error'); return; }
+  if (currentEditingBldIdx !== null) {
+    buildingStore[currentEditingBldIdx] = {id: document.getElementById('bldf-id').value, name, code, floors, rooms, status, remark, createTime: buildingStore[currentEditingBldIdx].createTime};
+    showToast('楼栋「' + name + '」信息已更新！', 'success');
+  } else {
+    var newId = 'bld-' + Date.now();
+    buildingStore.push({id: newId, name, code, floors, rooms, status, remark, createTime: new Date().toISOString().slice(0,10)});
+    showToast('新楼栋「' + name + '」添加成功！', 'success');
+  }
+  closeModal('building-form-v2');
+  renderBldMgrTable();
+}
+function submitBuildingForm() { submitBldMgrForm(); }
+function deleteBldMgrBuilding(idx) {
+  var b = buildingStore[idx];
+  if (!confirm('⚠️ 确定要删除楼栋「' + b.name + '」吗？\n\n此操作不可恢复，且楼层和房间数据将一并删除！')) return;
+  if (!confirm('请再次确认删除操作：删除后无法恢复！')) return;
+  buildingStore.splice(idx, 1);
+  showToast('楼栋「' + b.name + '」已删除', 'warning');
+  renderBldMgrTable();
+}
+function openBldMgrDisableModal(idx) {
+  var b = buildingStore[idx];
+  var newStatus = b.status === 'enabled' ? 'disabled' : 'enabled';
+  var action = newStatus === 'disabled' ? '停用' : '启用';
+  if (!confirm('确定要' + action + '楼栋「' + b.name + '」吗？')) return;
+  b.status = newStatus;
+  showToast('楼栋「' + b.name + '」已' + action, 'success');
+  renderBldMgrTable();
+}
+function renderBldMgrTable() {
+  var tbody = document.getElementById('bldm-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = buildingStore.map(function(b, idx) {
+    var statusBadge = b.status === 'enabled'
+      ? '<span class="tbadge green">启用</span>'
+      : '<span class="tbadge gray">停用</span>';
+    return '<tr data-bld-idx="' + idx + '" style="cursor:pointer;" onclick="openBuildingDetailModal(' + idx + ')">' +
+      '<td><span style="font-weight:600;">🏢 ' + b.name + '</span> <span style="font-size:10px;color:var(--blue);">🔍详情</span></td>' +
+      '<td><span class="tbadge blue">' + b.code + '</span></td>' +
+      '<td>' + b.floors + '层</td>' +
+      '<td>' + b.rooms + '间</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td onclick="event.stopPropagation()">' +
+      '<button class="action-btn small" onclick="openBldMgrEditModal(' + idx + ')">编辑</button>&nbsp;' +
+      '<button class="action-btn small orange" onclick="openBldMgrDisableModal(' + idx + ')">' + (b.status==='enabled'?'停用':'启用') + '</button>&nbsp;' +
+      '<button class="action-btn small red" onclick="deleteBldMgrBuilding(' + idx + ')">删除</button>' +
+      '</td></tr>';
+  }).join('');
+  // Update stats
+  var totalBld = buildingStore.length;
+  var totalFloors = buildingStore.reduce(function(s, b){ return s + b.floors; }, 0);
+  var totalRooms = buildingStore.reduce(function(s, b){ return s + b.rooms; }, 0);
+  var el = document.getElementById('bldm-stat-total'); if (el) el.textContent = totalBld;
+  var el2 = document.getElementById('bldm-stat-floors'); if (el2) el2.textContent = totalFloors;
+  var el3 = document.getElementById('bldm-stat-rooms'); if (el3) el3.textContent = totalRooms;
+}
+
+// ======= 【改进2: 员工管理完整CRUD闭环】新增/编辑/删除/禁用 ==================
+var staffStore = [
+  {id:'staff-001', name:'赵飞', gender:'男', dept:'前厅', position:'前厅经理', phone:'13800138001', status:'enabled', role:'admin'},
+  {id:'staff-002', name:'周敏', gender:'女', dept:'前厅', position:'前厅接待', phone:'13800138002', status:'enabled', role:'reception'},
+  {id:'staff-003', name:'王工', gender:'男', dept:'工程', position:'弱电工程师', phone:'13800138003', status:'enabled', role:'engineer'},
+  {id:'staff-004', name:'郑强', gender:'男', dept:'客房', position:'客房主管', phone:'13800138004', status:'enabled', role:'housekeeping'},
+  {id:'staff-005', name:'陈总', gender:'男', dept:'管理', position:'店长', phone:'13800138005', status:'enabled', role:'owner'}
+];
+var currentEditingStaffIdx = null;
+
+function openNewStaffForm() {
+  currentEditingStaffIdx = null;
+  document.getElementById('emp-modal-title').textContent = '👥 新增员工';
+  document.getElementById('emp-name').value = '';
+  document.getElementById('emp-gender').value = 'male';
+  document.getElementById('emp-dept').value = '前厅';
+  document.getElementById('emp-position').value = '';
+  document.getElementById('emp-phone').value = '';
+  document.getElementById('emp-idcard').value = '';
+  document.getElementById('emp-role').value = 'reception';
+  document.getElementById('emp-status').value = 'enabled';
+  openModal('add-employee');
+}
+function openEditStaffForm(idx) {
+  currentEditingStaffIdx = idx;
+  var s = staffStore[idx];
+  document.getElementById('emp-modal-title').textContent = '✏️ 编辑员工 - ' + s.name;
+  document.getElementById('emp-name').value = s.name;
+  document.getElementById('emp-gender').value = s.gender || 'male';
+  document.getElementById('emp-dept').value = s.dept;
+  document.getElementById('emp-position').value = s.position;
+  document.getElementById('emp-phone').value = s.phone;
+  document.getElementById('emp-idcard').value = '';
+  document.getElementById('emp-role').value = s.role || 'reception';
+  document.getElementById('emp-status').value = s.status;
+  openModal('add-employee');
+}
+function submitStaffForm() {
+  var name = document.getElementById('emp-name').value.trim();
+  var phone = document.getElementById('emp-phone').value.trim();
+  var dept = document.getElementById('emp-dept').value;
+  var position = document.getElementById('emp-position').value.trim();
+  var role = document.getElementById('emp-role').value;
+  var status = document.getElementById('emp-status').value;
+  var gender = document.getElementById('emp-gender').value;
+  if (!name || !phone) { showToast('请填写姓名和手机号（必填）', 'error'); return; }
+  if (!/^1\d{10}$/.test(phone)) { showToast('手机号格式不正确，应为11位数字', 'error'); return; }
+  if (currentEditingStaffIdx !== null) {
+    var s = staffStore[currentEditingStaffIdx];
+    s.name = name; s.phone = phone; s.dept = dept; s.position = position;
+    s.role = role; s.status = status; s.gender = gender;
+    showToast('员工「' + name + '」信息已更新！', 'success');
+  } else {
+    var newId = 'staff-' + Date.now();
+    staffStore.push({id: newId, name, gender, dept, position, phone, status, role});
+    showToast('新员工「' + name + '」入职登记成功！初始密码：123456', 'success');
+  }
+  closeModal('add-employee');
+  renderStaffTable();
+}
+function deleteStaff(idx) {
+  var s = staffStore[idx];
+  if (!confirm('⚠️ 确定要删除员工「' + s.name + '」吗？\n\n删除后该账号将无法登录！')) return;
+  staffStore.splice(idx, 1);
+  showToast('员工「' + s.name + '」已从系统中移除', 'warning');
+  renderStaffTable();
+}
+function disableStaff(idx) {
+  var s = staffStore[idx];
+  var newStatus = s.status === 'enabled' ? 'disabled' : 'enabled';
+  var action = newStatus === 'disabled' ? '停用' : '启用';
+  if (!confirm('确定要' + action + '员工「' + s.name + '」的账号吗？')) return;
+  s.status = newStatus;
+  showToast('员工「' + s.name + '」账号已' + action + '（' + (newStatus==='disabled'?'已锁定':'已恢复') + '）', 'success');
+  renderStaffTable();
+}
+function resetStaffPwd(idx) {
+  var s = staffStore[idx];
+  if (!confirm('确定要重置员工「' + s.name + '」的登录密码吗？')) return;
+  showToast('✅ 员工「' + s.name + '」密码已重置为：123456\n请提醒员工及时修改密码！', 'success');
+}
+function renderStaffTable() {
+  var tbody = document.getElementById('staff-table-body');
+  if (!tbody) return;
+  var depts = {前厅:'var(--blue-bg)', 客房:'var(--green-bg)', 工程:'var(--orange-bg)', 管理:'var(--purple-bg)'};
+  tbody.innerHTML = staffStore.map(function(s, idx) {
+    var statusBadge = s.status === 'enabled'
+      ? '<span class="tbadge green">✅ 启用</span>'
+      : '<span class="tbadge gray">❌ 禁用</span>';
+    var roleMap = {admin:'管理员', owner:'店长', receptionist:'前厅', engineer:'工程', housekeeping:'客房'};
+    return '<tr>' +
+      '<td><div style="display:flex;align-items:center;gap:8px;"><div style="width:32px;height:32px;background:' + (depts[s.dept]||'var(--bg)') + ';border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">' + (s.gender==='女'?'👩':'👨') + '</div><div><div style="font-weight:600;font-size:13px;">' + s.name + '</div><div style="font-size:10px;color:var(--text-muted);">' + roleMap[s.role] || s.dept + '</div></div></div></td>' +
+      '<td><span class="tbadge blue">' + s.dept + '</span></td>' +
+      '<td style="font-size:12px;">' + (s.position || '-') + '</td>' +
+      '<td style="font-size:12px;">' + s.phone + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td><button class="action-btn small" onclick="openEditStaffForm(' + idx + ')">编辑</button>&nbsp;<button class="action-btn small orange" onclick="resetStaffPwd(' + idx + ')">重置密码</button>&nbsp;<button class="action-btn small red" onclick="deleteStaff(' + idx + ')">删除</button></td>' +
+      '</tr>';
+  }).join('');
+  var total = staffStore.length;
+  var enabled = staffStore.filter(function(s){ return s.status==='enabled'; }).length;
+  var disabled = staffStore.filter(function(s){ return s.status==='disabled'; }).length;
+  var el = document.getElementById('staff-stat-total'); if (el) el.textContent = total;
+  var els = document.querySelectorAll('#page-staff .stats-row .stat-card .stat-num');
+  // Update stats row: total, enabled, disabled
+  if (els[1]) els[1].textContent = enabled;
+  if (els[2]) els[2].textContent = disabled;
+  var elFilter = document.getElementById('staff-filter-count'); if (elFilter) elFilter.textContent = '共 ' + total + ' 名员工';
+}
+
+// ======= 【改进3: 办理记录完整CRUD闭环】新增/编辑/删除记录 ===================
+var recordsStore = [
+  {id:'rec-001', type:'in', name:'张三', phone:'138****8888', room:'301', roomType:'亲子间', method:'手机开锁', time:'今天 10:32', status:'入住中', operator:'前台-赵飞'},
+  {id:'rec-002', type:'in', name:'李四', phone:'139****6666', room:'304', roomType:'亲子间', method:'客户卡', time:'今天 09:15', status:'入住中', operator:'前台-周敏'},
+  {id:'rec-003', type:'out', name:'王五', phone:'137****5555', room:'201', roomType:'大床房', method:'手机开锁', time:'今天 08:50', status:'已退房', operator:'前台-赵飞'},
+  {id:'rec-004', type:'in', name:'赵六', phone:'136****4444', room:'203', roomType:'标准间', method:'身份证', time:'今天 08:20', status:'入住中', operator:'前台-周敏'},
+  {id:'rec-005', type:'change', name:'钱七', phone:'135****3333', room:'302', roomType:'亲子间', method:'换房', time:'昨天 16:00', status:'已换房', operator:'前台-赵飞', fromRoom:'201', reason:'房间噪音大'},
+  {id:'rec-006', type:'out', name:'孙八', phone:'134****2222', room:'205', roomType:'大床房', method:'客户卡', time:'昨天 12:00', status:'已退房', operator:'前台-周敏'}
+];
+var currentEditingRecordIdx = null;
+
+function openAddRecordModal() {
+  currentEditingRecordIdx = null;
+  document.getElementById('arn-type').value = 'in';
+  document.getElementById('arn-name').value = '';
+  document.getElementById('arn-room').value = '';
+  document.getElementById('arn-roomtype').value = '亲子间';
+  document.getElementById('arn-phone').value = '';
+  document.getElementById('arn-operator').value = '前台-赵飞';
+  document.getElementById('arn-note').value = '';
+  onAddRecordTypeChange();
+  openModal('add-record');
+}
+function editRecord(idx) {
+  currentEditingRecordIdx = idx;
+  var r = recordsStore[idx];
+  document.getElementById('arn-type').value = r.type;
+  document.getElementById('arn-name').value = r.name;
+  document.getElementById('arn-room').value = r.room;
+  document.getElementById('arn-roomtype').value = r.roomType;
+  document.getElementById('arn-phone').value = r.phone;
+  document.getElementById('arn-operator').value = r.operator || '前台-赵飞';
+  document.getElementById('arn-note').value = r.note || '';
+  onAddRecordTypeChange();
+  document.querySelector('#modal-add-record .modal-title').textContent = '✏️ 编辑记录';
+  openModal('add-record');
+}
+function deleteRecord(idx) {
+  var r = recordsStore[idx];
+  if (!confirm('确定要删除该办理记录吗？\n\n客户：' + r.name + '\n房间：' + r.room)) return;
+  recordsStore.splice(idx, 1);
+  showToast('办理记录已删除', 'warning');
+  renderRecordsTable();
+}
+function submitAddRecord() {
+  var type = document.getElementById('arn-type').value;
+  var name = document.getElementById('arn-name').value.trim();
+  var room = document.getElementById('arn-room').value.trim();
+  var roomType = document.getElementById('arn-roomtype').value;
+  var phone = document.getElementById('arn-phone').value.trim();
+  var operator = document.getElementById('arn-operator').value;
+  var note = document.getElementById('arn-note').value.trim();
+  if (!name || !room) { showToast('请填写客户姓名和房间号（必填）', 'error'); return; }
+  var now = new Date();
+  var timeStr = (now.getMonth()+1) + '-' + now.getDate() + ' ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  var typeLabel = {in:'入住', out:'退房', change:'换房', cancel:'取消'}[type];
+  var statusMap = {in:'入住中', out:'已退房', change:'已换房', cancel:'已取消'};
+  var newRecord = {id:'rec-' + Date.now(), type, name, phone, room, roomType, method: '办理登记', time: timeStr, status: statusMap[type], operator, note};
+  if (currentEditingRecordIdx !== null) {
+    recordsStore[currentEditingRecordIdx] = Object.assign({}, recordsStore[currentEditingRecordIdx], newRecord);
+    showToast(typeLabel + '记录「' + name + '」已更新！', 'success');
+  } else {
+    recordsStore.unshift(newRecord);
+    showToast('新的' + typeLabel + '记录「' + name + '」已添加！', 'success');
+  }
+  closeModal('add-record');
+  renderRecordsTable();
+}
+function renderRecordsTable() {
+  var tbody = document.getElementById('records-table-body');
+  if (!tbody) return;
+  var typeMap = {in:{label:'🏨 入住', cls:'blue'}, out:{label:'🚪 退房', cls:'green'}, change:{label:'🔄 换房', cls:'orange'}, cancel:{label:'❌ 取消', cls:'gray'}};
+  tbody.innerHTML = recordsStore.map(function(r, idx) {
+    var t = typeMap[r.type] || typeMap.in;
+    return '<tr>' +
+      '<td><input type="checkbox" style="accent-color:var(--blue);"></td>' +
+      '<td><span class="tbadge ' + t.cls + '">' + t.label + '</span></td>' +
+      '<td style="font-weight:600;">' + r.name + '</td>' +
+      '<td style="font-weight:700;color:var(--blue);">' + r.room + '</td>' +
+      '<td style="font-size:12px;color:var(--text-muted);">' + r.roomType + '</td>' +
+      '<td style="font-size:12px;">' + (r.phone || '-') + '</td>' +
+      '<td style="font-size:12px;">' + r.time + '</td>' +
+      '<td><span class="tbadge ' + (r.status==='入住中'?'blue':r.status==='已退房'?'green':'orange') + '">' + r.status + '</span></td>' +
+      '<td><button class="action-btn small" onclick="editRecord(' + idx + ')">编辑</button>&nbsp;<button class="action-btn small red" onclick="deleteRecord(' + idx + ')">删除</button></td>' +
+      '</tr>';
+  }).join('');
+  var cnt = document.getElementById('record-filter-count'); if (cnt) cnt.textContent = '共 ' + recordsStore.length + ' 条记录';
+  var pgn = document.getElementById('records-pagination-info'); if (pgn) pgn.textContent = '第 1 / 1 页，共 ' + recordsStore.length + ' 条';
+}
+
+// ======= 【改进4: 会员管理完整详情弹窗】余额充值/扣款/消费记录闭环 =========
+var memberStore = [
+  {id:'mb-001', name:'张三', phone:'138****8888', level:'金卡', points:2800, balance:536.00, checkinCount:5, lastCheckin:'2026-03-28', status:'active'},
+  {id:'mb-002', name:'李四', phone:'139****6666', level:'银卡', points:1200, balance:128.00, checkinCount:3, lastCheckin:'2026-03-25', status:'active'},
+  {id:'mb-003', name:'王五', phone:'137****5555', level:'普通', points:300, balance:0, checkinCount:1, lastCheckin:'2026-03-20', status:'active'},
+  {id:'mb-004', name:'赵六', phone:'136****4444', level:'金卡', points:5600, balance:1024.00, checkinCount:8, lastCheckin:'2026-03-28', status:'active'}
+];
+var memberTxStore = {}; // memberId -> transactions[]
+memberTxStore['mb-001'] = [
+  {id:'tx-001', time:'2026-03-28 10:30', type:'checkin', desc:'301房间入住', amount:0, balance:536},
+  {id:'tx-002', time:'2026-03-20 14:00', type:'recharge', desc:'会员充值', amount:500, balance:536},
+  {id:'tx-003', time:'2026-03-15 10:00', type:'consume', desc:'房间消费', amount:-36, balance:36},
+  {id:'tx-004', time:'2026-03-10 09:00', type:'recharge', desc:'会员充值', amount:1000, balance:72}
+];
+memberTxStore['mb-002'] = [
+  {id:'tx-005', time:'2026-03-25 15:00', type:'checkin', desc:'304房间入住', amount:0, balance:128},
+  {id:'tx-006', time:'2026-03-01 10:00', type:'recharge', desc:'会员充值', amount:200, balance:128}
+];
+var currentMemberIdx = null;
+
+function openMemberDetailModal(idx) {
+  currentMemberIdx = idx;
+  var m = memberStore[idx];
+  var txList = memberTxStore[m.id] || [];
+  var txHtml = txList.length === 0
+    ? '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">暂无消费记录</div>'
+    : txList.map(function(tx) {
+      var icon = tx.type === 'recharge' ? '💰' : tx.type === 'consume' ? '💳' : '🏨';
+      var cls = tx.amount > 0 ? 'var(--green)' : tx.amount < 0 ? 'var(--red)' : 'var(--blue)';
+      var amtStr = tx.amount > 0 ? '+' + tx.amount.toFixed(2) : tx.amount.toFixed(2);
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);">' +
+        '<span style="font-size:16px;">' + icon + '</span>' +
+        '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + tx.desc + '</div><div style="font-size:10px;color:var(--text-muted);">' + tx.time + '</div></div>' +
+        '<div style="font-size:13px;font-weight:700;color:' + cls + ';">' + amtStr + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);">余额:' + tx.balance.toFixed(2) + '</div></div>';
+    }).join('');
+  var levelColor = {金卡:'var(--orange)', 银卡:'var(--blue)', 普通:'var(--text-muted)'}[m.level] || 'var(--text)';
+  document.getElementById('mbd-name').textContent = m.name;
+  document.getElementById('mbd-phone').textContent = m.phone;
+  document.getElementById('mbd-level').innerHTML = '<span style="font-weight:700;color:' + levelColor + ';">' + m.level + '</span>';
+  document.getElementById('mbd-points').textContent = m.points.toLocaleString();
+  document.getElementById('mbd-balance').textContent = '¥' + m.balance.toFixed(2);
+  document.getElementById('mbd-checkins').textContent = m.checkinCount + '次';
+  document.getElementById('mbd-lastcheckin').textContent = m.lastCheckin;
+  document.getElementById('mbd-tx-list').innerHTML = txHtml;
+  document.getElementById('mbd-recharge-btn').onclick = function() { openMemberRechargeV2(idx); };
+  document.getElementById('mbd-consume-btn').onclick = function() { openMemberConsumeV2(idx); };
+  openModal('member-detail');
+}
+function openMemberRechargeV2(idx) {
+  closeModal('member-detail');
+  var m = memberStore[idx];
+  var amt = parseFloat(prompt('为会员「' + m.name + '」充值\n\n当前余额：¥' + m.balance.toFixed(2) + '\n当前积分：' + m.points + '\n\n请输入充值金额（元）：', ''));
+  if (!amt || isNaN(amt) || amt <= 0) { showToast('充值已取消', 'info'); return; }
+  var pointsEarned = Math.floor(amt);
+  var newBalance = m.balance + amt;
+  m.balance = newBalance;
+  m.points += pointsEarned;
+  if (!memberTxStore[m.id]) memberTxStore[m.id] = [];
+  var now = new Date();
+  var timeStr = (now.getMonth()+1) + '-' + now.getDate() + ' ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  memberTxStore[m.id].unshift({id:'tx-' + Date.now(), time: timeStr, type:'recharge', desc:'会员充值 ¥' + amt.toFixed(2), amount: amt, balance: newBalance});
+  showToast('✅ 会员「' + m.name + '」充值成功！\n充值金额：¥' + amt.toFixed(2) + '\n获得积分：' + pointsEarned + '\n新余额：¥' + newBalance.toFixed(2), 'success');
+  renderMemberTable();
+}
+function openMemberConsumeV2(idx) {
+  closeModal('member-detail');
+  var m = memberStore[idx];
+  var input = prompt('为会员「' + m.name + '」消费扣款\n\n当前余额：¥' + m.balance.toFixed(2) + '\n\n请输入消费金额（元）：', '');
+  var amt = parseFloat(input);
+  if (!input || input.trim() === '') { showToast('消费扣款已取消', 'info'); return; }
+  if (isNaN(amt) || amt <= 0) { showToast('消费金额必须大于0', 'error'); return; }
+  if (amt > m.balance) { showToast('余额不足！当前余额：¥' + m.balance.toFixed(2), 'error'); return; }
+  var newBalance = m.balance - amt;
+  m.balance = newBalance;
+  var pointsUsed = Math.floor(amt / 2);
+  m.points = Math.max(0, m.points - pointsUsed);
+  if (!memberTxStore[m.id]) memberTxStore[m.id] = [];
+  var now = new Date();
+  var timeStr = (now.getMonth()+1) + '-' + now.getDate() + ' ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  memberTxStore[m.id].unshift({id:'tx-' + Date.now(), time: timeStr, type:'consume', desc:'消费扣款 ¥' + amt.toFixed(2), amount: -amt, balance: newBalance});
+  showToast('✅ 消费扣款成功！\n消费金额：¥' + amt.toFixed(2) + '\n抵扣积分：' + pointsUsed + '\n新余额：¥' + newBalance.toFixed(2), 'success');
+  renderMemberTable();
+}
+function renderMemberTable() {
+  var tbody = document.getElementById('member-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = memberStore.map(function(m, idx) {
+    var levelColor = {金卡:'var(--orange)', 银卡:'var(--blue)', 普通:'var(--text-muted)'}[m.level] || 'var(--text)';
+    return '<tr style="cursor:pointer;" onclick="openMemberDetailModal(' + idx + ')">' +
+      '<td><div style="display:flex;align-items:center;gap:8px;"><div style="width:32px;height:32px;background:var(--blue-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">👤</div><div><div style="font-weight:600;">' + m.name + '</div><div style="font-size:10px;color:var(--text-muted);">' + m.phone + '</div></div></div></td>' +
+      '<td><span style="font-weight:700;color:' + levelColor + ';">' + m.level + '</span></td>' +
+      '<td style="font-weight:700;color:var(--orange);font-size:13px;">¥' + m.balance.toFixed(2) + '</td>' +
+      '<td style="font-size:12px;color:var(--blue);">' + m.points + '</td>' +
+      '<td style="font-size:12px;">' + m.checkinCount + '次</td>' +
+      '<td style="font-size:12px;color:var(--text-muted);">' + m.lastCheckin + '</td>' +
+      '<td><span class="tbadge green">活跃</span></td></tr>';
+  }).join('');
+}
+function openMemberDetail(idx) { openMemberDetailModal(idx); }
+function openEditMemberModal(idx) { openMemberDetailModal(idx); }
+function deleteMember(idx) {
+  var m = memberStore[idx];
+  if (!confirm('⚠️ 确定要删除会员「' + m.name + '」吗？')) return;
+  memberStore.splice(idx, 1);
+  showToast('会员「' + m.name + '」已删除', 'warning');
+  renderMemberTable();
+}
+function openMemberConsumptionHistory(idx) { openMemberDetailModal(idx); }
+
+// ======= 【改进5: 工单接单+处理+完成完整状态闭环】=========================
+var workorderStore = [
+  {id:'WO-20260328-001', type:'complaint', typeLabel:'🔴 投诉', room:'305', priority:'urgent', priorityLabel:'🔴 紧急', status:'pending', statusLabel:'⏳ 待接受', assignee:'赵飞', dept:'前厅', title:'热水不稳定', desc:'305房间热水忽冷忽热，客人投诉', created:'今天 09:12', sla:'10:42', slaPassed:false},
+  {id:'WO-20260328-002', type:'repair', typeLabel:'🔧 报修', room:'302', priority:'high', priorityLabel:'🟠 高', status:'processing', statusLabel:'🔄 处理中', assignee:'王工', dept:'工程', title:'门锁反应慢', desc:'302房间门锁开门反应需要3秒以上', created:'今天 08:30', sla:'11:00', slaPassed:false},
+  {id:'WO-20260327-005', type:'invoice', typeLabel:'📄 发票', room:'201', priority:'normal', priorityLabel:'🟡 普通', status:'done', statusLabel:'✅ 已完成', assignee:'周敏', dept:'前厅', title:'发票开具', desc:'201房间客人需要开具增值税普通发票', created:'昨天 15:00', sla:'昨天 15:30', slaPassed:true},
+  {id:'WO-20260327-004', type:'supply', typeLabel:'📦 送物', room:'303', priority:'normal', priorityLabel:'🟡 普通', status:'pending', statusLabel:'⏳ 待接受', assignee:'郑强', dept:'客房', title:'加床服务', desc:'303房间需要加一张婴儿床', created:'昨天 14:20', sla:'昨天 16:20', slaPassed:true},
+  {id:'WO-20260326-003', type:'praise', typeLabel:'⭐ 表扬', room:'206', priority:'low', priorityLabel:'⚪ 低', status:'done', statusLabel:'✅ 已完成', assignee:'赵飞', dept:'前厅', title:'客户好评', desc:'206房间客人对小度语音服务非常满意', created:'03-26 11:00', sla:'03-26 12:00', slaPassed:true}
+];
+
+function acceptWorkorder(idx) {
+  var wo = workorderStore[idx];
+  if (wo.status !== 'pending') { showToast('该工单不是待接受状态', 'error'); return; }
+  wo.status = 'processing';
+  wo.statusLabel = '🔄 处理中';
+  showToast('✅ 工单 ' + wo.id + ' 已接单！\n当前处理人：' + wo.assignee + '\n请尽快处理！', 'success');
+  renderWorkorderTable();
+}
+function completeWorkorder(idx) {
+  var wo = workorderStore[idx];
+  if (wo.status === 'done') { showToast('该工单已完成，无需重复操作', 'info'); return; }
+  if (wo.status === 'pending') { showToast('该工单尚未接单，请先接单再完成', 'warning'); return; }
+  if (!confirm('确定要标记工单「' + wo.id + '」为已完成吗？\n\n工单：' + wo.title + '\n处理人：' + wo.assignee)) return;
+  wo.status = 'done';
+  wo.statusLabel = '✅ 已完成';
+  wo.slaPassed = true;
+  showToast('🎉 工单「' + wo.title + '」处理完成！\n工单编号：' + wo.id + '\nSLA状态：' + (wo.slaPassed ? '✅ 合规' : '⚠️ 超时'), 'success');
+  renderWorkorderTable();
+}
+function openWorkorderDetail(idx) {
+  var wo = workorderStore[idx];
+  var isPending = wo.status === 'pending';
+  var isDone = wo.status === 'done';
+  var statusColor = wo.status === 'done' ? 'var(--green)' : wo.status === 'processing' ? 'var(--orange)' : 'var(--blue)';
+  var detailHtml = '<div style="margin-bottom:16px;padding:14px;background:var(--bg);border-radius:8px;">' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
+    '<span class="tbadge" style="background:var(--red-bg);color:var(--red);font-size:13px;font-weight:700;">' + wo.id + '</span>' +
+    '<span style="font-size:13px;font-weight:700;">' + wo.title + '</span></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">' +
+    '<div><span style="color:var(--text-muted);">房间：</span><b>' + wo.room + '</b></div>' +
+    '<div><span style="color:var(--text-muted);">类型：</b>' + wo.typeLabel + '</b></div>' +
+    '<div><span style="color:var(--text-muted);">优先级：</b><b style="color:var(--red);">' + wo.priorityLabel + '</b></div>' +
+    '<div><span style="color:var(--text-muted);">SLA截止：</b><b style="color:' + (wo.slaPassed?'var(--red)':'var(--text)') + ';">' + wo.sla + '</b></div>' +
+    '<div><span style="color:var(--text-muted);">状态：</b><span style="color:' + statusColor + ';font-weight:700;">' + wo.statusLabel + '</span></div>' +
+    '<div><span style="color:var(--text-muted);">处理人：</b>' + wo.assignee + '</div></div></div>' +
+    '<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">📝 问题描述</div><div style="padding:10px;background:var(--bg);border-radius:6px;font-size:13px;line-height:1.6;">' + wo.desc + '</div></div>' +
+    '<div style="display:flex;gap:8px;margin-top:14px;">';
+  if (isPending) {
+    detailHtml += '<button class="action-btn" onclick="acceptWorkorder(' + idx + ');closeModal(\'wo-detail\')" style="flex:1;background:var(--blue);color:white;border:none;font-size:13px;padding:10px;border-radius:6px;">✅ 接受工单</button>';
+  } else if (!isDone) {
+    detailHtml += '<button class="action-btn green" onclick="completeWorkorder(' + idx + ');closeModal(\'wo-detail\')" style="flex:1;background:var(--green);color:white;border:none;font-size:13px;padding:10px;border-radius:6px;">✅ 完成工单</button>';
+  } else {
+    detailHtml += '<div style="flex:1;padding:10px;text-align:center;background:var(--green-bg);border-radius:6px;color:var(--green);font-weight:700;">✅ 已完成</div>';
+  }
+  detailHtml += '<button class="action-btn secondary" onclick="closeModal(\'wo-detail\')" style="padding:10px;border-radius:6px;">关闭</button></div>';
+  var existing = document.getElementById('modal-wo-detail');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-wo-detail" onclick="if(event.target===this)closeModal(\'wo-detail\')"><div class="modal" style="width:520px;">' +
+    '<div class="modal-header"><div class="modal-title">📋 工单详情</div><button class="modal-close" onclick="closeModal(\'wo-detail\')">✕</button></div>' +
+    '<div class="modal-body">' + detailHtml + '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function renderWorkorderTable() {
+  var tbody = document.getElementById('workorder-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = workorderStore.map(function(wo, idx) {
+    var priorityColor = {urgent:'red', high:'orange', normal:'blue', low:'gray'}[wo.priority] || 'blue';
+    var statusColor = wo.status === 'done' ? 'var(--green)' : wo.status === 'processing' ? 'var(--orange)' : 'var(--blue)';
+    var rowBg = wo.status === 'pending' && wo.priority === 'urgent' ? 'var(--red-bg)' : '';
+    var slaWarn = wo.slaPassed && wo.status !== 'done' ? '⚠️ ' : '';
+    return '<tr style="' + (rowBg ? 'background:' + rowBg + ';' : '') + 'cursor:pointer;" onclick="openWorkorderDetail(' + idx + ')">' +
+      '<td><b>' + wo.id + '</b></td>' +
+      '<td>' + wo.typeLabel + '</td>' +
+      '<td><b>' + wo.room + '</b></td>' +
+      '<td style="font-size:12px;">' + wo.title + '</td>' +
+      '<td><span class="tbadge" style="color:var(--' + priorityColor + ');background:var(--' + priorityColor + '-bg);">' + wo.priorityLabel + '</span></td>' +
+      '<td><span style="color:' + statusColor + ';font-weight:700;font-size:12px;">' + slaWarn + wo.statusLabel + '</span></td>' +
+      '<td style="font-size:12px;">' + wo.assignee + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + wo.created + '</td>' +
+      '<td onclick="event.stopPropagation()">' +
+      (wo.status === 'pending' ? '<button class="action-btn small" onclick="acceptWorkorder(' + idx + ')" style="padding:3px 8px;font-size:11px;background:var(--blue);color:white;border:none;border-radius:4px;">接单</button>&nbsp;' : '') +
+      (!wo.done ? '<button class="action-btn small green" onclick="completeWorkorder(' + idx + ')" style="padding:3px 8px;font-size:11px;background:var(--green);color:white;border:none;border-radius:4px;">完成</button>' : '<span style="font-size:11px;color:var(--green);">✅</span>') +
+      '</td></tr>';
+  }).join('');
+  // Update stat counts
+  var pending = workorderStore.filter(function(w){ return w.status==='pending'; }).length;
+  var processing = workorderStore.filter(function(w){ return w.status==='processing'; }).length;
+  var done = workorderStore.filter(function(w){ return w.status==='done'; }).length;
+  var overdue = workorderStore.filter(function(w){ return w.slaPassed && w.status!=='done'; }).length;
+  var els = document.querySelectorAll('#page-workorder .stats-row .stat-card');
+  if (els[1]) els[1].querySelector('.stat-num').textContent = pending;
+  if (els[2]) els[2].querySelector('.stat-num').textContent = processing;
+  if (els[3]) els[3].querySelector('.stat-num').textContent = done;
+  if (els[4]) els[4].querySelector('.stat-num').textContent = overdue;
+  var overdueEl = document.getElementById('wo-stat-overdue');
+  if (overdueEl) overdueEl.textContent = overdue;
 }
 
 // ======= 服务工单功能 =======
