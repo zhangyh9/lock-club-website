@@ -57709,6 +57709,475 @@ document.addEventListener('DOMContentLoaded', function() {
   }, 800);
 });
 
+// ============================================================
+// 【改进1】发票批量开具 - 支持一次选择多张发票信息批量创建
+// 理由：原系统发票管理只有单张开具，批量开具需要逐张操作，效率低
+// ============================================================
+function openInvoiceBatchCreateModal() {
+  var old = document.getElementById('modal-invoice-batch-create');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-invoice-batch-create" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:680px;max-height:85vh;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:18px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="font-size:15px;font-weight:700;">🧾 批量开具发票</div>' +
+    '<button onclick="document.getElementById(\'modal-invoice-batch-create\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:16px 24px;overflow-y:auto;flex:1;">' +
+    '<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">' +
+    '<div class="form-group" style="flex:1;min-width:200px;"><label class="form-label">发票类型</label>' +
+    '<select class="form-select" id="bc-inv-type" style="padding:7px 10px;font-size:13px;">' +
+    '<option value="VAT_SPECIAL">💰 增值税专用发票</option><option value="VAT_NORMAL">🧾 增值税普通发票</option>' +
+    '<option value="ELECTRONIC">📱 电子发票</option></select></div>' +
+    '<div class="form-group" style="flex:1;min-width:200px;"><label class="form-label">抬头类型</label>' +
+    '<select class="form-select" id="bc-inv-title-type" style="padding:7px 10px;font-size:13px;">' +
+    '<option value="PERSONAL">🏠 个人</option><option value="COMPANY">🏢 企业</option></select></div></div>' +
+    '<div class="form-group"><label class="form-label">发票抬头</label>' +
+    '<input type="text" class="form-input" id="bc-inv-title" placeholder="请输入发票抬头（企业名称或姓名）" style="padding:8px 12px;font-size:13px;"></div>' +
+    '<div class="form-group"><label class="form-label">税号/身份证号</label>' +
+    '<input type="text" class="form-input" id="bc-inv-taxno" placeholder="企业税号或身份证号码" style="padding:8px 12px;font-size:13px;"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div class="form-group"><label class="form-label">开户银行</label>' +
+    '<input type="text" class="form-input" id="bc-inv-bank" placeholder="开户银行名称" style="padding:8px 12px;font-size:13px;"></div>' +
+    '<div class="form-group"><label class="form-label">银行账号</label>' +
+    '<input type="text" class="form-input" id="bc-inv-account" placeholder="银行账号" style="padding:8px 12px;font-size:13px;"></div></div>' +
+    '<div class="form-group"><label class="form-label">发票明细 <span style="font-size:11px;color:var(--text-muted);">（可批量粘贴房费记录，每行格式：房间号|金额|日期）</span></label>' +
+    '<textarea class="form-textarea" id="bc-inv-items" placeholder="301|298|2026-03-25\n302|328|2026-03-25\n305|298|2026-03-26" style="min-height:120px;font-size:12px;font-family:monospace;"></textarea></div>' +
+    '<div style="display:flex;align-items:center;gap:16px;padding:10px 12px;background:var(--blue-bg);border-radius:8px;font-size:12px;margin-top:8px;">' +
+    '<span style="color:var(--blue);font-weight:600;">自动解析明细行数：</span><span id="bc-inv-line-count" style="font-weight:700;color:var(--blue);">0</span>' +
+    '<span style="color:var(--blue);font-weight:600;">合计金额：</span><span id="bc-inv-total-amount" style="font-weight:700;color:var(--blue);">¥0.00</span></div>' +
+    '<div style="margin-top:12px;padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);">' +
+    '💡 <strong>提示：</strong>批量开具将生成多条待确认发票，可在发票列表中逐条确认/修改后提交开票</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-batch-create\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitInvoiceBatchCreate()" style="background:var(--green);border-color:var(--green);">🧾 确认批量开具</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('bc-inv-items').addEventListener('input', function() {
+    var lines = this.value.trim().split('\n').filter(function(l) { return l.trim(); });
+    var total = 0;
+    lines.forEach(function(l) { var parts = l.split('|'); if (parts[1]) total += parseFloat(parts[1]) || 0; });
+    document.getElementById('bc-inv-line-count').textContent = lines.length;
+    document.getElementById('bc-inv-total-amount').textContent = '¥' + total.toFixed(2);
+  });
+}
+function submitInvoiceBatchCreate() {
+  var title = document.getElementById('bc-inv-title').value.trim();
+  var itemsText = document.getElementById('bc-inv-items').value.trim();
+  if (!title) { showToast('请填写发票抬头', 'warning'); return; }
+  var lines = itemsText.split('\n').filter(function(l) { return l.trim(); });
+  if (lines.length === 0) { showToast('请填写至少一条发票明细', 'warning'); return; }
+  var invType = document.getElementById('bc-inv-type').value;
+  var typeLabel = {VAT_SPECIAL:'增值税专用',VAT_NORMAL:'增值税普通',ELECTRONIC:'电子发票'}[invType] || '普通';
+  var count = lines.length;
+  var total = 0;
+  lines.forEach(function(l) { var p = l.split('|'); if (p[1]) total += parseFloat(p[1]) || 0; });
+  document.getElementById('modal-invoice-batch-create').remove();
+  showToast('🧾 已批量创建 ' + count + ' 条发票草稿，合计 ¥' + total.toFixed(2) + '，请在发票列表中确认', 'success');
+  addNotif('🧾', 'var(--blue)', 'finance', '批量开具发票：' + count + '张，合计¥' + total.toFixed(2));
+}
+
+// ============================================================
+// 【改进2】退房历史完整记录弹窗 - 支持按时间/房间/原因筛选历史退房
+// 理由：原系统退房历史分散，缺乏统一的退房记录查询中心
+// ============================================================
+var checkoutHistoryData = [
+  {id:'CO2026032701',room:'301',guest:'张三',time:'2026-03-27 11:05',type:'正常退房',status:'已完成',keys:2,deposit:'¥100',battery:'72%',remark:'无损坏'},
+  {id:'CO2026032702',room:'203',guest:'李四',time:'2026-03-27 10:30',type:'正常退房',status:'已完成',keys:2,deposit:'¥100',battery:'45%',remark:'无损坏'},
+  {id:'CO2026032601',room:'302',guest:'王五',time:'2026-03-26 14:20',type:'正常退房',status:'已完成',keys:2,deposit:'¥100',battery:'88%',remark:'无损坏'},
+  {id:'CO2026032602',room:'305',guest:'赵六',time:'2026-03-26 09:45',type:'提前退房',status:'已退款',keys:2,deposit:'¥100（已退）',battery:'30%',remark:'房间正常'},
+  {id:'CO2026032501',room:'201',guest:'孙七',time:'2026-03-25 12:10',type:'正常退房',status:'已完成',keys:2,deposit:'¥100',battery:'65%',remark:'无损坏'}
+];
+function openCheckoutHistoryModal() {
+  var old = document.getElementById('modal-checkout-history');
+  if (old) old.remove();
+  var rowsHtml = checkoutHistoryData.map(function(c) {
+    var typeColors = {'正常退房':'var(--green)','提前退房':'var(--orange)','超时退房':'var(--red)'};
+    var statusColors = {'已完成':'var(--green)','已退款':'var(--blue)','异常':'var(--red)'};
+    return '<tr style="border-bottom:1px solid var(--border);">' +
+      '<td style="padding:8px 10px;font-size:12px;">' + c.id + '</td>' +
+      '<td style="padding:8px 10px;font-size:12px;font-weight:600;">' + c.room + '</td>' +
+      '<td style="padding:8px 10px;font-size:12px;">' + c.guest + '</td>' +
+      '<td style="padding:8px 10px;font-size:12px;">' + c.time + '</td>' +
+      '<td style="padding:8px 10px;font-size:12px;"><span style="color:' + (typeColors[c.type]||'var(--text)') + ';font-weight:600;">' + c.type + '</span></td>' +
+      '<td style="padding:8px 10px;font-size:12px;"><span style="padding:2px 6px;background:' + (statusColors[c.status]||'var(--text)') + '20;color:' + (statusColors[c.status]||'var(--text)') + ';border-radius:4px;">' + c.status + '</span></td>' +
+      '<td style="padding:8px 10px;font-size:12px;">' + c.keys + '把</td>' +
+      '<td style="padding:8px 10px;font-size:12px;">' + c.deposit + '</td>' +
+      '<td style="padding:8px 10px;font-size:12px;">' + c.remark + '</td>' +
+      '<td style="padding:8px 10px;font-size:12px;"><button class="action-btn small" onclick="openCheckoutDetailV2(\'' + c.id + '\')">详情</button></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-checkout-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:860px;max-height:85vh;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:18px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="font-size:15px;font-weight:700;">📋 退房历史记录 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">（共 ' + checkoutHistoryData.length + ' 条）</span></div>' +
+    '<button onclick="document.getElementById(\'modal-checkout-history\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex-shrink:0;">' +
+    '<input type="date" class="form-input" id="coh-date-start" value="2026-03-25" style="padding:6px 10px;font-size:12px;width:140px;">' +
+    '<span style="font-size:11px;color:var(--text-muted);">至</span>' +
+    '<input type="date" class="form-input" id="coh-date-end" value="2026-03-27" style="padding:6px 10px;font-size:12px;width:140px;">' +
+    '<select class="form-select" id="coh-type-filter" style="padding:6px 10px;font-size:12px;width:120px;">' +
+    '<option value="all">全部类型</option><option value="正常退房">正常退房</option><option value="提前退房">提前退房</option></select>' +
+    '<input type="text" id="coh-room-search" placeholder="搜索房间号/姓名" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:150px;" oninput="filterCheckoutHistory()">' +
+    '<button class="action-btn small" onclick="filterCheckoutHistory()" style="padding:5px 10px;font-size:12px;">🔍 筛选</button>' +
+    '<button class="action-btn small" onclick="document.getElementById(\'coh-date-start\').value=\'\';document.getElementById(\'coh-date-end\').value=\'\';document.getElementById(\'coh-type-filter\').value=\'all\';document.getElementById(\'coh-room-search\').value=\'\';filterCheckoutHistory();" style="padding:5px 10px;font-size:12px;">重置</button>' +
+    '<button class="action-btn small" onclick="exportCheckoutHistory()" style="margin-left:auto;padding:5px 10px;font-size:12px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出</button></div>' +
+    '<div style="padding:0;overflow-y:auto;flex:1;">' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+    '<thead style="background:var(--bg);position:sticky;top:0;z-index:1;"><tr style="border-bottom:1px solid var(--border);">' +
+    '<th style="padding:8px 10px;text-align:left;font-weight:600;">编号</th><th style="padding:8px 10px;text-align:left;font-weight:600;">房间</th>' +
+    '<th style="padding:8px 10px;text-align:left;font-weight:600;">客人</th><th style="padding:8px 10px;text-align:left;font-weight:600;">时间</th>' +
+    '<th style="padding:8px 10px;text-align:left;font-weight:600;">类型</th><th style="padding:8px 10px;text-align:left;font-weight:600;">状态</th>' +
+    '<th style="padding:8px 10px;text-align:left;font-weight:600;">钥匙</th><th style="padding:8px 10px;text-align:left;font-weight:600;">押金</th>' +
+    '<th style="padding:8px 10px;text-align:left;font-weight:600;">备注</th><th style="padding:8px 10px;text-align:left;font-weight:600;">操作</th></tr></thead>' +
+    '<tbody id="coh-table-body">' + rowsHtml + '</tbody></table></div>' +
+    '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">' +
+    '<div style="font-size:12px;color:var(--text-muted);">显示 <span style="font-weight:600;color:var(--blue);" id="coh-show-count">' + checkoutHistoryData.length + '</span> 条记录</div>' +
+    '<div style="display:flex;gap:8px;font-size:12px;color:var(--text-muted);"><span>正常退房 <span style="color:var(--green);font-weight:600;">3</span></span> · <span>提前退房 <span style="color:var(--orange);font-weight:600;">1</span></span></div>' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-checkout-history\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function filterCheckoutHistory() {
+  var start = document.getElementById('coh-date-start').value;
+  var end = document.getElementById('coh-date-end').value;
+  var type = document.getElementById('coh-type-filter').value;
+  var search = document.getElementById('coh-room-search').value.trim().toLowerCase();
+  var filtered = checkoutHistoryData.filter(function(c) {
+    if (type !== 'all' && c.type !== type) return false;
+    if (search && c.room.indexOf(search) === -1 && c.guest.indexOf(search) === -1) return false;
+    return true;
+  });
+  var rowsHtml = filtered.map(function(c) {
+    var typeColors = {'正常退房':'var(--green)','提前退房':'var(--orange)','超时退房':'var(--red)'};
+    var statusColors = {'已完成':'var(--green)','已退款':'var(--blue)','异常':'var(--red)'};
+    return '<tr style="border-bottom:1px solid var(--border);">' +
+      '<td style="padding:8px 10px;font-size:12px;">' + c.id + '</td><td style="padding:8px 10px;font-size:12px;font-weight:600;">' + c.room + '</td>' +
+      '<td style="padding:8px 10px;font-size:12px;">' + c.guest + '</td><td style="padding:8px 10px;font-size:12px;">' + c.time + '</td>' +
+      '<td style="padding:8px 10px;font-size:12px;"><span style="color:' + (typeColors[c.type]||'var(--text)') + ';font-weight:600;">' + c.type + '</span></td>' +
+      '<td style="padding:8px 10px;font-size:12px;"><span style="padding:2px 6px;background:' + (statusColors[c.status]||'var(--text)') + '20;color:' + (statusColors[c.status]||'var(--text)') + ';border-radius:4px;">' + c.status + '</span></td>' +
+      '<td style="padding:8px 10px;font-size:12px;">' + c.keys + '把</td><td style="padding:8px 10px;font-size:12px;">' + c.deposit + '</td>' +
+      '<td style="padding:8px 10px;font-size:12px;">' + c.remark + '</td>' +
+      '<td style="padding:8px 10px;font-size:12px;"><button class="action-btn small" onclick="openCheckoutDetailV2(\'' + c.id + '\')">详情</button></td></tr>';
+  }).join('');
+  document.getElementById('coh-table-body').innerHTML = rowsHtml || '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text-muted);">暂无符合条件的记录</td></tr>';
+  document.getElementById('coh-show-count').textContent = filtered.length;
+}
+function openCheckoutDetailV2(id) {
+  var c = checkoutHistoryData.find(function(x) { return x.id === id; });
+  if (!c) return;
+  var old = document.getElementById('modal-co-detail');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-co-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
+    '<div style="padding:18px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">📋 退房详情 - ' + c.room + '房间</div>' +
+    '<button onclick="document.getElementById(\'modal-co-detail\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">退房编号</div><div style="font-size:13px;font-weight:700;color:var(--blue);">' + c.id + '</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">退房类型</div><div style="font-size:13px;font-weight:700;color:var(--green);">' + c.type + '</div></div>' +
+    '</div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:12px;">' +
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="font-size:12px;color:var(--text-muted);">住客姓名</span><span style="font-size:12px;font-weight:600;">' + c.guest + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="font-size:12px;color:var(--text-muted);">退房时间</span><span style="font-size:12px;font-weight:600;">' + c.time + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="font-size:12px;color:var(--text-muted);">钥匙归还</span><span style="font-size:12px;font-weight:600;">' + c.keys + ' 把</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="font-size:12px;color:var(--text-muted);">押金状态</span><span style="font-size:12px;font-weight:600;">' + c.deposit + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="font-size:12px;color:var(--text-muted);">设备电量</span><span style="font-size:12px;font-weight:600;">' + c.battery + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="font-size:12px;color:var(--text-muted);">备注</span><span style="font-size:12px;font-weight:600;">' + c.remark + '</span></div>' +
+    '</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-co-detail\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function exportCheckoutHistory() { showToast('📤 退房历史记录已导出（共 ' + checkoutHistoryData.length + ' 条）', 'success'); }
+
+// ============================================================
+// 【改进3】房务管理历史评分趋势分析 - 查看每个房间历史查房评分走势
+// 理由：原系统查房只有单次评分，缺乏历史趋势分析帮助提升清洁质量
+// ============================================================
+var inspectQualityHistory = {
+  '301': [{date:'2026-03-25',score:92,cleaner:'郑强'},{date:'2026-03-23',score:85,cleaner:'郑强'},{date:'2026-03-21',score:78,cleaner:'孙华'},{date:'2026-03-19',score:88,cleaner:'郑强'},{date:'2026-03-17',score:82,cleaner:'孙华'}],
+  '203': [{date:'2026-03-27',score:65,cleaner:'孙华'},{date:'2026-03-25',score:72,cleaner:'孙华'},{date:'2026-03-22',score:80,cleaner:'郑强'},{date:'2026-03-20',score:70,cleaner:'孙华'},{date:'2026-03-18',score:75,cleaner:'郑强'}],
+  '201': [{date:'2026-03-27',score:95,cleaner:'郑强'},{date:'2026-03-24',score:90,cleaner:'郑强'},{date:'2026-03-21',score:88,cleaner:'孙华'},{date:'2026-03-18',score:85,cleaner:'郑强'},{date:'2026-03-15',score:91,cleaner:'郑强'}],
+  '305': [{date:'2026-03-27',score:88,cleaner:'孙华'},{date:'2026-03-24',score:86,cleaner:'孙华'},{date:'2026-03-21',score:84,cleaner:'郑强'},{date:'2026-03-18',score:87,cleaner:'孙华'},{date:'2026-03-15',score:83,cleaner:'郑强'}],
+  '102': [{date:'2026-03-27',score:60,cleaner:'郑强'},{date:'2026-03-23',score:70,cleaner:'郑强'},{date:'2026-03-20',score:68,cleaner:'孙华'},{date:'2026-03-17',score:72,cleaner:'郑强'},{date:'2026-03-14',score:75,cleaner:'孙华'}]
+};
+function openInspectQualityModal(roomNum) {
+  var old = document.getElementById('modal-inspect-quality');
+  if (old) old.remove();
+  var hist = inspectQualityHistory[roomNum] || [];
+  var avgScore = hist.length > 0 ? Math.round(hist.reduce(function(s, h) { return s + h.score; }, 0) / hist.length) : 0;
+  var maxScore = hist.length > 0 ? Math.max.apply(null, hist.map(function(h) { return h.score; })) : 0;
+  var minScore = hist.length > 0 ? Math.min.apply(null, hist.map(function(h) { return h.score; })) : 0;
+  var trend = hist.length >= 2 ? hist[0].score - hist[hist.length - 1].score : 0;
+  var trendLabel = trend > 0 ? '↑+' + trend : (trend < 0 ? '↓' + trend : '→');
+  var trendColor = trend > 0 ? 'var(--green)' : (trend < 0 ? 'var(--red)' : 'var(--text-muted)');
+  var rowsHtml = hist.map(function(h) {
+    var scoreColor = h.score >= 90 ? 'var(--green)' : (h.score >= 75 ? 'var(--blue)' : (h.score >= 60 ? 'var(--orange)' : 'var(--red)'));
+    return '<div style="margin-bottom:12px;">' +
+      '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;">' +
+      '<span style="color:var(--text-muted);">' + h.date + '</span><span style="font-weight:600;">' + h.cleaner + '</span></div>' +
+      '<div style="display:flex;align-items:center;gap:8px;">' +
+      '<div style="flex:1;height:22px;background:var(--bg);border-radius:4px;overflow:hidden;">' +
+      '<div style="width:' + h.score + '%;height:100%;background:' + scoreColor + ';border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;">' +
+      '<span style="font-size:11px;color:white;font-weight:700;">' + h.score + '</span></div></div></div></div>';
+  }).join('');
+  var summaryHtml = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">平均分</div><div style="font-size:26px;font-weight:700;color:var(--blue);">' + avgScore + '</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">最高分</div><div style="font-size:26px;font-weight:700;color:var(--green);">' + maxScore + '</div></div>' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">最低分</div><div style="font-size:26px;font-weight:700;color:var(--red);">' + minScore + '</div></div></div>';
+  var improvementHtml = hist.length >= 2 ? '<div style="padding:10px 12px;background:' + (trend < 0 ? 'var(--red-bg)' : 'var(--green-bg)') + ';border-radius:8px;font-size:12px;color:' + (trend < 0 ? 'var(--red)' : 'var(--green)') + ';margin-bottom:12px;">' +
+    '📈 趋势判断：近' + hist.length + '次评分趋势 <span style="font-weight:700;font-size:16px;">' + trendLabel + '</span> ' +
+    (trend < 0 ? '⚠️ 质量下滑，建议加强该房间清洁标准' : (trend > 0 ? '✅ 质量提升，保持当前清洁标准' : '➡️ 质量稳定')) + '</div>' : '';
+  var html = '<div class="modal-overlay" id="modal-inspect-quality" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:500px;background:white;border-radius:12px;max-height:80vh;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="font-size:15px;font-weight:700;">📊 ' + roomNum + ' 房 · 清洁质量历史评分</div>' +
+    '<button onclick="document.getElementById(\'modal-inspect-quality\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:16px 24px;overflow-y:auto;flex:1;">' +
+    summaryHtml + improvementHtml +
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">📋 近' + hist.length + '次评分记录（由新到旧）</div>' +
+    rowsHtml +
+    '<div style="margin-top:16px;padding:12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-muted);">' +
+    '<div style="font-weight:600;margin-bottom:6px;color:var(--text);">💡 质量提升建议：</div>' +
+    '<div>· 302/203/102历史评分偏低，建议重点培训相关保洁员清洁标准</div>' +
+    '<div>· 301/201评分稳定优秀，可作为清洁标杆参考</div></div></div>' +
+    '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-inspect-quality\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// ============================================================
+// 【改进4】设备档案管理 - 每台设备独立档案页，记录生命全周期
+// 理由：原系统设备只有列表，缺少数生命周期档案管理（维修/更换/检测记录）
+// ============================================================
+var deviceArchiveData = {
+  'A84F1AF2': {room:'301',model:'LH-807',installDate:'2024-03-15',status:'在线',totalUnlock:3847,batteryHealth:92,lastRepair:'2026-01-20',repairCount:1,repairs:[{date:'2026-01-20',type:'电池更换',cost:'¥80',technician:'钱七',remark:'电池老化'}]},
+  'C73D4CG4': {room:'303',model:'LH-807',installDate:'2024-03-15',status:'离线',totalUnlock:2104,batteryHealth:15,lastRepair:'2026-02-10',repairCount:2,repairs:[{date:'2026-01-20',type:'电池更换',cost:'¥80',technician:'钱七',remark:'电池老化'},{date:'2026-02-10',type:'主板维修',cost:'¥350',technician:'孙九',remark:'无法联网'}]}
+};
+function openDeviceArchiveModal(deviceUuid) {
+  var old = document.getElementById('modal-device-archive');
+  if (old) old.remove();
+  var d = deviceArchiveData[deviceUuid] || {room:deviceUuid,model:'LH-807',status:'未知',totalUnlock:0,batteryHealth:0,installDate:'2024-01-01',repairs:[]};
+  var statusColor = d.status === '在线' ? 'var(--green)' : (d.status === '离线' ? 'var(--red)' : 'var(--orange)');
+  var batteryColor = d.batteryHealth > 50 ? 'var(--green)' : (d.batteryHealth > 20 ? 'var(--orange)' : 'var(--red)');
+  var repairRows = d.repairs.map(function(r) {
+    return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;">' +
+      '<span style="color:var(--text-muted);flex:1;">' + r.date + '</span><span style="flex:1;">' + r.type + '</span><span style="color:var(--blue);flex:1;">' + r.cost + '</span><span style="flex:1;">' + r.technician + '</span><span style="color:var(--text-muted);flex:1;">' + r.remark + '</span></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-device-archive" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:620px;max-height:85vh;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:18px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="font-size:15px;font-weight:700;">📋 设备档案 - ' + d.room + '房间</div>' +
+    '<button onclick="document.getElementById(\'modal-device-archive\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:16px 24px;overflow-y:auto;flex:1;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">设备型号</div><div style="font-size:13px;font-weight:700;color:var(--blue);">' + d.model + '</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">当前状态</div><div style="font-size:13px;font-weight:700;color:' + statusColor + ';">' + d.status + '</div></div>' +
+    '<div style="padding:12px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">累计开锁</div><div style="font-size:13px;font-weight:700;color:var(--purple);">' + d.totalUnlock + '</div></div>' +
+    '<div style="padding:12px;background:' + batteryColor + '15;border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">电池健康</div><div style="font-size:13px;font-weight:700;color:' + batteryColor + ';">' + d.batteryHealth + '%</div></div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">安装日期</div><div style="font-size:13px;font-weight:600;">' + d.installDate + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">最近维修</div><div style="font-size:13px;font-weight:600;">' + d.lastRepair + '</div></div></div>' +
+    '<div style="margin-bottom:16px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">🛠️ 维修记录（共' + d.repairCount + '次）</div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;background:var(--bg);border-radius:4px 4px 0 0;font-size:11px;font-weight:600;color:var(--text-muted);">' +
+    '<span style="flex:1;">日期</span><span style="flex:1;">类型</span><span style="flex:1;">费用</span><span style="flex:1;">技师</span><span style="flex:1;">备注</span></div>' +
+    (repairRows || '<div style="padding:12px;text-align:center;color:var(--text-muted);font-size:12px;">暂无维修记录</div>') + '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<button class="action-btn small" onclick="openDeviceRepairRecord(\'' + deviceUuid + '\')" style="padding:5px 12px;font-size:12px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">📝 登记维修</button>' +
+    '<button class="action-btn small" onclick="openDeviceBatteryReplace(\'' + deviceUuid + '\')" style="padding:5px 12px;font-size:12px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🔋 更换电池</button>' +
+    '<button class="action-btn small" onclick="openDeviceInspectRecord(\'' + deviceUuid + '\')" style="padding:5px 12px;font-size:12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔍 巡检记录</button></div></div>' +
+    '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-archive\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function openDeviceRepairRecord(deviceUuid) {
+  var old = document.getElementById('modal-device-repair');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-device-repair" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
+    '<div style="padding:18px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">📝 登记设备维修记录</div>' +
+    '<button onclick="document.getElementById(\'modal-device-repair\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">维修类型</label>' +
+    '<select class="form-select" id="dr-type" style="padding:7px 10px;font-size:13px;">' +
+    '<option value="电池更换">🔋 电池更换</option><option value="主板维修">🔧 主板维修</option>' +
+    '<option value="传感器维修">📡 传感器维修</option><option value="外壳更换">🛡️ 外壳更换</option>' +
+    '<option value="固件升级">💻 固件升级</option><option value="其他">📋 其他</option></select></div>' +
+    '<div class="form-group"><label class="form-label">维修日期</label>' +
+    '<input type="date" class="form-input" id="dr-date" value="' + new Date().toISOString().slice(0,10) + '" style="padding:7px 10px;font-size:13px;"></div>' +
+    '<div class="form-group"><label class="form-label">维修费用（元）</label>' +
+    '<input type="number" class="form-input" id="dr-cost" placeholder="输入维修费用" style="padding:7px 10px;font-size:13px;"></div>' +
+    '<div class="form-group"><label class="form-label">技师</label>' +
+    '<input type="text" class="form-input" id="dr-technician" placeholder="输入技师姓名" style="padding:7px 10px;font-size:13px;"></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<textarea class="form-textarea" id="dr-remark" placeholder="维修备注信息" style="min-height:60px;font-size:12px;"></textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-repair\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitDeviceRepair(\'' + deviceUuid + '\')" style="background:var(--green);border-color:var(--green);">💾 保存记录</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitDeviceRepair(deviceUuid) {
+  var type = document.getElementById('dr-type').value;
+  var date = document.getElementById('dr-date').value;
+  var cost = document.getElementById('dr-cost').value;
+  var tech = document.getElementById('dr-technician').value;
+  var remark = document.getElementById('dr-remark').value;
+  if (!tech) { showToast('请填写技师姓名', 'warning'); return; }
+  if (!deviceArchiveData[deviceUuid]) deviceArchiveData[deviceUuid] = {room:deviceUuid,repairs:[],repairCount:0};
+  deviceArchiveData[deviceUuid].repairs.unshift({date:date,type:type,cost:'¥' + cost,technician:tech,remark:remark});
+  deviceArchiveData[deviceUuid].repairCount++;
+  deviceArchiveData[deviceUuid].lastRepair = date;
+  document.getElementById('modal-device-repair').remove();
+  showToast('🛠️ 维修记录已保存：' + type + '（' + date + '）', 'success');
+  openDeviceArchiveModal(deviceUuid);
+}
+function openDeviceBatteryReplace(deviceUuid) {
+  var old = document.getElementById('modal-device-battery');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-device-battery" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
+    '<div style="padding:18px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🔋 电池更换记录</div>' +
+    '<button onclick="document.getElementById(\'modal-device-battery\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">新电池品牌</label>' +
+    '<select class="form-select" id="bbr-brand" style="padding:7px 10px;font-size:13px;">' +
+    '<option value="南孚">南孚</option><option value="金霸王">金霸王</option><option value="松下">松下</option><option value="小米">小米</option><option value="其他">其他</option></select></div>' +
+    '<div class="form-group"><label class="form-label">更换日期</label>' +
+    '<input type="date" class="form-input" id="bbr-date" value="' + new Date().toISOString().slice(0,10) + '" style="padding:7px 10px;font-size:13px;"></div>' +
+    '<div class="form-group"><label class="form-label">操作人</label>' +
+    '<input type="text" class="form-input" id="bbr-operator" placeholder="输入操作人姓名" style="padding:7px 10px;font-size:13px;"></div>' +
+    '<div style="padding:10px 12px;background:var(--blue-bg);border-radius:8px;font-size:12px;color:var(--blue);">' +
+    '💡 更换电池后将自动重置设备电池健康度为100%，并记录本次更换历史</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-battery\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitBatteryReplace(\'' + deviceUuid + '\')" style="background:var(--green);border-color:var(--green);">✅ 确认更换</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitBatteryReplace(deviceUuid) {
+  if (deviceArchiveData[deviceUuid]) { deviceArchiveData[deviceUuid].batteryHealth = 100; deviceArchiveData[deviceUuid].lastRepair = document.getElementById('bbr-date').value; }
+  document.getElementById('modal-device-battery').remove();
+  showToast('🔋 电池已更换，健康度重置为100%', 'success');
+  openDeviceArchiveModal(deviceUuid);
+}
+function openDeviceInspectRecord(deviceUuid) {
+  var old = document.getElementById('modal-device-inspect');
+  if (old) old.remove();
+  var inspectData = [
+    {date:'2026-03-20',result:'合格',inspector:'钱七',remark:'门锁开关顺畅'},
+    {date:'2026-03-10',result:'合格',inspector:'钱七',remark:'信号强度正常'},
+    {date:'2026-02-28',result:'合格',inspector:'孙九',remark:'电池电压正常'}
+  ];
+  var rows = inspectData.map(function(i) {
+    return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;">' +
+      '<span style="color:var(--text-muted);flex:1;">' + i.date + '</span><span style="flex:1;">' + i.inspector + '</span><span style="color:var(--green);flex:1;">' + i.result + '</span><span style="color:var(--text-muted);flex:1;">' + i.remark + '</span></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-device-inspect" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:440px;background:white;border-radius:12px;">' +
+    '<div style="padding:18px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🔍 设备巡检记录</div>' +
+    '<button onclick="document.getElementById(\'modal-device-inspect\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:16px 24px;">' +
+    '<div style="display:flex;justify-content:space-between;padding:8px 0;background:var(--bg);border-radius:4px;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">' +
+    '<span style="flex:1;">日期</span><span style="flex:1;">巡检员</span><span style="flex:1;">结果</span><span style="flex:1;">备注</span></div>' + rows +
+    '<button class="action-btn small" onclick="showToast(\'📝 巡检记录登记功能开发中\', \'info\');" style="margin-top:12px;padding:6px 12px;font-size:12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">+ 登记巡检</button></div>' +
+    '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-inspect\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// ============================================================
+// 【改进5】会员等级权益对比弹窗 - 清晰展示各等级权益差异促进升级
+// 理由：原系统会员等级权益不透明，客户不了解等级差异，无法促进会员升级
+// ============================================================
+var memberTiers = [
+  {name:'普通会员',icon:'👤',fee:'免费',discount:'无折扣',unlock:'基础开锁',welcome:'无',late:'无',priority:'无',gifts:[]},
+  {name:'银卡会员',icon:'🥈',fee:'¥199/年',discount:'9.5折',unlock:'手机+密码',welcome:'入住当天短信',late:'可延后1h退房',priority:'普通',gifts:['生日礼物']},
+  {name:'金卡会员',icon:'🥇',fee:'¥399/年',discount:'9折',unlock:'手机+卡+密码',welcome:'欢迎礼遇',late:'可延后2h退房',priority:'高',gifts:['生日礼物','免费minibar']},
+  {name:'黑金会员',icon:'👑',fee:'¥699/年',discount:'8.5折',unlock:'全部方式+人脸',welcome:'VIP迎宾',late:'可延后4h退房',priority:'最高',gifts:['生日礼物','minibar','免费洗衣']}
+];
+function openMemberTierCompareModal() {
+  var old = document.getElementById('modal-member-tier-compare');
+  if (old) old.remove();
+  var tierCols = memberTiers.map(function(t, i) {
+    var isRecommended = t.name === '金卡会员';
+    var headerStyle = isRecommended ? 'background:var(--green);color:white;' : 'background:var(--bg);';
+    return '<div style="flex:1;min-width:140px;' + (i === 0 ? 'opacity:0.7;' : '') + '">' +
+      '<div style="padding:14px 10px;text-align:center;' + headerStyle + 'border-radius:8px 8px 0 0;">' +
+      '<div style="font-size:20px;">' + t.icon + '</div>' +
+      '<div style="font-size:13px;font-weight:700;margin-top:4px;">' + t.name + '</div>' +
+      '<div style="font-size:12px;margin-top:2px;">' + t.fee + '</div>' +
+      (isRecommended ? '<div style="font-size:10px;background:white;color:var(--green);padding:2px 8px;border-radius:10px;margin-top:6px;">⭐ 推荐</div>' : '') + '</div>';
+  }).join('');
+  var benefitLabels = ['会费', '房费折扣', '开锁方式', '入住迎宾', '延迟退房', '优先级', '专属礼遇'];
+  var benefitRows = benefitLabels.map(function(label, li) {
+    var values = memberTiers.map(function(t) { return [t.fee, t.discount, t.unlock, t.welcome, t.late, t.priority, t.gifts.join('、')][li] || '-'; });
+    return '<div style="display:flex;border-bottom:1px solid var(--border);">' +
+      '<div style="width:80px;padding:10px 8px;font-size:11px;font-weight:600;color:var(--text-muted);flex-shrink:0;">' + label + '</div>' +
+      values.map(function(val, i) {
+        var valStyle = li === 0 ? 'font-weight:700;' : (li === 1 && val !== '无折扣' ? 'color:var(--green);font-weight:600;' : '');
+        return '<div style="flex:1;min-width:140px;padding:10px 8px;text-align:center;font-size:11px;border-bottom:1px solid var(--border);' + (i === 0 ? 'opacity:0.7;' : '') + '"><span style="' + valStyle + '">' + val + '</span></div>';
+      }).join('') + '</div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-member-tier-compare" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:720px;max-height:85vh;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:18px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="font-size:15px;font-weight:700;">👑 会员等级权益对比</div>' +
+    '<button onclick="document.getElementById(\'modal-member-tier-compare\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:16px 24px;overflow-y:auto;flex:1;">' +
+    '<div style="display:flex;margin-bottom:0;"><div style="width:80px;flex-shrink:0;"></div>' + tierCols + '</div>' +
+    benefitRows +
+    '<div style="margin-top:16px;padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">' +
+    '💡 <strong>升级建议：</strong>金卡会员（¥399/年）是最受欢迎的选择，平均可节省¥800+/年房费，适合常住客户。<br>' +
+    '黑金会员适合商务客户，除折扣外还享有优先响应、免费洗衣等尊贵服务。</div></div>' +
+    '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-tier-compare\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="document.getElementById(\'modal-member-tier-compare\').remove();showPage(\'member\');" style="background:var(--green);border-color:var(--green);">📋 办理会员</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// 将新函数暴露到window供外部调用
+window.openInvoiceBatchCreateModal = openInvoiceBatchCreateModal;
+window.openCheckoutHistoryModal = openCheckoutHistoryModal;
+window.filterCheckoutHistory = filterCheckoutHistory;
+window.openCheckoutDetailV2 = openCheckoutDetailV2;
+window.exportCheckoutHistory = exportCheckoutHistory;
+window.openInspectQualityModal = openInspectQualityModal;
+window.openDeviceArchiveModal = openDeviceArchiveModal;
+window.openDeviceRepairRecord = openDeviceRepairRecord;
+window.submitDeviceRepair = submitDeviceRepair;
+window.openDeviceBatteryReplace = openDeviceBatteryReplace;
+window.submitBatteryReplace = submitBatteryReplace;
+window.openDeviceInspectRecord = openDeviceInspectRecord;
+window.openMemberTierCompareModal = openMemberTierCompareModal;
+
+// 初始化：在指定页面注入入口按钮
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    // 改进1: 在发票页面添加入口按钮
+    var invPageHeader = document.querySelector('#page-invoice .page-header');
+    if (invPageHeader && !document.getElementById('btn-inv-batch-create')) {
+      var invBtn = document.createElement('button');
+      invBtn.id = 'btn-inv-batch-create';
+      invBtn.className = 'action-btn';
+      invBtn.style.cssText = 'padding:6px 14px;background:var(--green-bg);color:var(--green);border-color:var(--green);font-size:12px;margin-left:8px;';
+      invBtn.textContent = '🧾 批量开具';
+      invBtn.onclick = openInvoiceBatchCreateModal;
+      invPageHeader.appendChild(invBtn);
+    }
+    // 改进5: 在会员页面第一个统计卡片上添加权益对比入口
+    var memberPage = document.getElementById('page-member');
+    if (memberPage && !document.getElementById('btn-member-tier-compare')) {
+      var firstStat = memberPage.querySelector('.stats-row .stat-card');
+      if (firstStat) {
+        firstStat.style.cursor = 'pointer';
+        firstStat.onclick = openMemberTierCompareModal;
+        var badge = document.createElement('div');
+        badge.id = 'btn-member-tier-compare';
+        badge.style.cssText = 'position:absolute;top:8px;right:8px;font-size:10px;padding:2px 6px;background:var(--blue);color:white;border-radius:10px;';
+        badge.textContent = '权益对比';
+        firstStat.style.position = 'relative';
+        firstStat.appendChild(badge);
+      }
+    }
+  }, 1200);
+});
 
 </script>
 </body>
