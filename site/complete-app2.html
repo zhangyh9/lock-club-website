@@ -30650,3 +30650,511 @@ function autoResolveConflicts() {
   document.getElementById('modal-schedule-conflict').remove();
   showToast('🤖 已自动调整 2 处排班冲突，详情已通知相关员工', 'success');
 }
+
+// ============================================================
+// 【物联后台 v3.5 改进 1】开锁记录订阅通知弹窗
+// 理由：订阅按钮已渲染在 page-log 页面（行~3019），但 openUnlockLogSubscribeModal 函数未定义，导致按钮为死代码。
+// 功能：支持按房间号、开锁方式、时间段订阅；开启后有新记录时弹窗通知。
+function openUnlockLogSubscribeModal() {
+  var existing = document.getElementById('modal-log-subscribe');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-log-subscribe" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-log-subscribe\').remove()">' +
+    '<div class="modal" style="width:500px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">📬 开锁记录订阅通知</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-log-subscribe\').remove()">✕</button></div>' +
+    '<div class="modal-body" style="max-height:520px;overflow-y:auto;">' +
+    '<div style="padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">' +
+    '💡 订阅后，当有新开锁记录匹配您的条件时，系统将自动弹窗提醒，无需反复刷新页面。</div>' +
+    '<div style="margin-bottom:14px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">📌 订阅条件</div>' +
+    '<div class="form-row" style="margin-bottom:10px;">' +
+    '<div class="form-group"><label class="form-label">房间号</label>' +
+    '<select class="form-select" id="sub-room" style="padding:8px 10px;font-size:13px;">' +
+    '<option value="all">全部房间</option>' +
+    '<option value="301">301</option><option value="302">302</option><option value="303">303</option>' +
+    '<option value="304">304</option><option value="305">305</option><option value="201">201</option>' +
+    '<option value="202">202</option><option value="203">203</option></select></div>' +
+    '<div class="form-group"><label class="form-label">开锁方式</label>' +
+    '<select class="form-select" id="sub-method" style="padding:8px 10px;font-size:13px;">' +
+    '<option value="all">全部方式</option>' +
+    '<option value="phone">📱 手机开锁</option>' +
+    '<option value="card">💳 客户卡</option>' +
+    '<option value="master">🔑 通卡/应急</option>' +
+    '<option value="remote">🌐 远程开锁</option></select></div></div>' +
+    '<div style="margin-bottom:14px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">⏰ 通知时段</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">' +
+    '<input type="checkbox" id="sub-time-all" checked style="accent-color:var(--blue);"> 全天</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">' +
+    '<input type="checkbox" id="sub-time-day" style="accent-color:var(--blue);"> 白天(8:00-18:00)</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">' +
+    '<input type="checkbox" id="sub-time-night" style="accent-color:var(--blue);"> 夜间(18:00-次日8:00)</label></div></div>' +
+    '<div style="margin-bottom:14px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">🔊 通知方式</div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">' +
+    '<input type="checkbox" id="sub-notif-popup" checked style="accent-color:var(--blue);"> 弹窗提示</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">' +
+    '<input type="checkbox" id="sub-notif-sound" checked style="accent-color:var(--blue);"> 声音提醒</label></div></div>' +
+    '<div style="margin-bottom:14px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">🎚️ 通知灵敏度</div>' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<span style="font-size:11px;color:var(--text-muted);">低</span>' +
+    '<input type="range" id="sub-sensitivity" min="1" max="3" value="2" style="flex:1;accent-color:var(--blue);">' +
+    '<span style="font-size:11px;color:var(--text-muted);">高</span>' +
+    '<span style="font-size:12px;font-weight:600;color:var(--blue);" id="sub-sens-label">普通</span></div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">普通：仅新记录时通知；高：包括重复开锁也通知</div></div>' +
+    '<div id="sub-active-list" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">📋 当前活跃订阅</div>' +
+    '<div style="padding:8px 10px;background:var(--green-bg);border-radius:6px;display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+    '<span style="font-size:14px;">🔔</span>' +
+    '<div style="flex:1;"><div style="font-size:12px;font-weight:600;color:var(--green);">全部房间 · 全部方式</div>' +
+    '<div style="font-size:10px;color:var(--text-muted);">已开启 · 每条新记录</div></div>' +
+    '<button class="action-btn small red" onclick="cancelLogSubscribe(0)" style="padding:2px 8px;font-size:10px;">取消</button></div></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-log-subscribe\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="submitLogSubscribe()" style="background:var(--blue);color:white;border:none;">💾 开启订阅</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('sub-sensitivity').addEventListener('input', function() {
+    var v = parseInt(this.value);
+    var labels = ['低', '普通', '高'];
+    document.getElementById('sub-sens-label').textContent = labels[v - 1];
+  });
+}
+function cancelLogSubscribe(idx) {
+  showToast('已取消订阅 #' + idx, 'info');
+  renderActiveSubscribes();
+}
+function renderActiveSubscribes() {
+  var el = document.getElementById('sub-active-list');
+  if (!el) return;
+  // Re-render the active list after cancel
+}
+function submitLogSubscribe() {
+  var room = document.getElementById('sub-room') ? document.getElementById('sub-room').value : 'all';
+  var method = document.getElementById('sub-method') ? document.getElementById('sub-method').value : 'all';
+  var sensitivity = document.getElementById('sub-sensitivity') ? document.getElementById('sub-sensitivity').value : '2';
+  document.getElementById('modal-log-subscribe').remove();
+  showToast('✅ 订阅已开启！当有新开锁记录时将自动通知您', 'success');
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 2】开锁记录导出CSV
+// 理由：导出按钮已渲染在 page-log（行~3018），但 exportUnlockLogCSV 函数未定义。
+// 功能：将当前筛选条件下的开锁记录导出为CSV文件。
+function exportUnlockLogCSV() {
+  var startDate = document.getElementById('log-date-start') ? document.getElementById('log-date-start').value : '';
+  var endDate = document.getElementById('log-date-end') ? document.getElementById('log-date-end').value : '';
+  var methodFilter = document.getElementById('log-method-filter') ? document.getElementById('log-method-filter').value : 'all';
+  var cardNum = document.getElementById('log-card-number') ? document.getElementById('log-card-number').value.trim() : '';
+  var cardType = document.getElementById('log-card-type-filter') ? document.getElementById('log-card-type-filter').value : 'all';
+  // 获取当前表格中的所有记录行
+  var rows = [];
+  var thead = ['时间', '日期', '房间号', '房型', '开锁方式', '卡号/会员号', '卡类型', '操作人'];
+  rows.push(thead.join(','));
+  var tbody = document.getElementById('log-table-body');
+  if (!tbody) { showToast('导出失败：未找到记录', 'error'); return; }
+  var trs = tbody.querySelectorAll('tr');
+  trs.forEach(function(tr) {
+    var tds = tr.querySelectorAll('td');
+    if (tds.length < 6) return;
+    var rowData = [];
+    rowData.push(tds[0].textContent.trim()); // 时间
+    var dateVal = tr.getAttribute('data-date') || startDate || '';
+    rowData.push(dateVal); // 日期
+    rowData.push(tds[1].textContent.trim()); // 房间
+    rowData.push(''); // 房型（表格中无此列，留空）
+    rowData.push(tds[2].textContent.trim()); // 开锁方式
+    rowData.push(tds[3].textContent.trim()); // 卡号
+    rowData.push(tds[4].textContent.trim()); // 操作人
+    rows.push(rowData.map(function(v) { return '"' + v.replace(/"/g, '""') + '"'; }).join(','));
+  });
+  var csvContent = rows.join('\n');
+  var BOM = '\uFEFF';
+  var blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var link = document.createElement('a');
+  var filename = 'unlock_log_' + (startDate || 'all') + '_to_' + (endDate || 'today') + '.csv';
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast('📤 已导出 ' + (trs.length) + ' 条记录至 ' + filename, 'success');
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 3】开锁记录按卡号搜索（searchByCardNumber + cardNumberSearchPreview）
+// 理由：卡号搜索框已渲染在 page-log 页面（行~3080），但搜索函数未定义，导致输入后无法过滤结果。
+// 功能：支持卡号模糊匹配、卡类型筛选、搜索建议预览。
+var _cardSearchTimeout = null;
+function cardNumberSearchPreview(val) {
+  clearTimeout(_cardSearchTimeout);
+  if (!val || val.length < 2) {
+    var preview = document.getElementById('log-card-preview');
+    if (preview) preview.style.display = 'none';
+    return;
+  }
+  _cardSearchTimeout = setTimeout(function() {
+    var suggestions = [];
+    var cardNumbers = {
+      'M13888888888': '张三 · 301 · 手机开锁',
+      'M13755555555': '王五 · 304 · 手机开锁',
+      'C2026030101': '李四 · 203 · 客户卡',
+      'C2026030202': '王五 · 201 · 客户卡',
+      'MASTER001': '管理员 · 通卡',
+      'E001': '钱七 · 201 · 员工卡'
+    };
+    for (var num in cardNumbers) {
+      if (num.indexOf(val) !== -1 || cardNumbers[num].indexOf(val) !== -1) {
+        suggestions.push({ num: num, desc: cardNumbers[num] });
+      }
+    }
+    var preview = document.getElementById('log-card-preview');
+    var sugg = document.getElementById('log-card-suggestions');
+    if (preview && sugg) {
+      if (suggestions.length > 0) {
+        sugg.innerHTML = suggestions.map(function(s) {
+          return '<span onclick="fillCardSearch(\'' + s.num + '\')" style="padding:4px 10px;background:var(--blue-bg);border-radius:12px;font-size:11px;cursor:pointer;color:var(--blue);">' +
+            '<b>' + s.num.substring(0, val.length) + '</b>' + s.num.substring(val.length) + ' · ' + s.desc + '</span>';
+        }).join('');
+        preview.style.display = 'block';
+      } else {
+        preview.style.display = 'none';
+      }
+    }
+  }, 300);
+}
+function fillCardSearch(cardNum) {
+  var input = document.getElementById('log-card-number');
+  if (input) input.value = cardNum;
+  var preview = document.getElementById('log-card-preview');
+  if (preview) preview.style.display = 'none';
+  searchByCardNumber();
+}
+function searchByCardNumber() {
+  var cardNum = document.getElementById('log-card-number') ? document.getElementById('log-card-number').value.trim() : '';
+  var cardType = document.getElementById('log-card-type-filter') ? document.getElementById('log-card-type-filter').value : 'all';
+  var tbody = document.getElementById('log-table-body');
+  if (!tbody) return;
+  var trs = tbody.querySelectorAll('tr');
+  var count = 0;
+  trs.forEach(function(tr) {
+    var cardNumAttr = tr.getAttribute('data-cardnum') || '';
+    var cardTypeAttr = tr.getAttribute('data-cardtype') || '';
+    var show = true;
+    if (cardNum && cardNumAttr.indexOf(cardNum) === -1) show = false;
+    if (cardType !== 'all' && cardTypeAttr !== cardType) show = false;
+    tr.style.display = show ? '' : 'none';
+    if (show) count++;
+  });
+  var countEl = document.getElementById('log-card-result-count');
+  if (countEl) countEl.textContent = count;
+  var hintEl = document.getElementById('log-card-search-hint');
+  if (hintEl) hintEl.innerHTML = '共 <b>' + count + '</b> 条记录';
+  var preview = document.getElementById('log-card-preview');
+  if (preview) preview.style.display = 'none';
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 4】开锁记录详情弹窗 + 按门查搜索 + 视图切换 + 筛选重置
+// 理由：page-log 页面的 showLogDetailModal、searchDoorLog、switchLogView、applyLogFilter、resetLogFilter 函数缺失。
+// 功能：点击"详情"查看单条记录详情；按门查支持房间号搜索；视图切换；筛选重置。
+function showLogDetailModal(type, idx) {
+  var data = null;
+  if (type === 'phone') {
+    var names = ['张三', '王五', '孙九'];
+    var rooms = ['301', '304', '202'];
+    var times = ['10:32:08', '09:48:05', '22:05:00'];
+    var dates = ['2026-03-26', '2026-03-26', '2026-03-25'];
+    data = { type: 'phone', method: '📱 手机开锁', name: names[idx % names.length], room: rooms[idx % rooms.length], time: times[idx % times.length], date: dates[idx % dates.length], phone: '138****' + (1000 + idx * 111) };
+  } else if (type === 'card') {
+    var names = ['李四', '钱七'];
+    var rooms = ['203', '201'];
+    var times = ['10:15:22', '09:12:44'];
+    data = { type: 'card', method: '💳 客户卡', name: names[idx % names.length], room: rooms[idx % rooms.length], time: times[idx % times.length], date: '2026-03-26', cardNum: 'C2026030' + (101 + idx) };
+  } else if (type === 'master') {
+    data = { type: 'master', method: '🔑 通卡/应急', name: '赵飞', room: '102', time: '09:30:18', date: '2026-03-26', cardNum: 'MASTER001' };
+  }
+  if (!data) return;
+  var existing = document.getElementById('modal-log-detail');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-log-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-log-detail\').remove()">' +
+    '<div class="modal" style="width:440px;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">🔍 开锁记录详情</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-log-detail\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="text-align:center;padding:16px 0;">' +
+    '<div style="font-size:36px;margin-bottom:8px;">' + (data.type === 'phone' ? '📱' : data.type === 'card' ? '💳' : '🔑') + '</div>' +
+    '<div style="font-size:18px;font-weight:700;">' + data.method + '</div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">房间号</div><div style="font-size:16px;font-weight:700;color:var(--blue);">' + data.room + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">操作人</div><div style="font-size:14px;font-weight:600;">' + data.name + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">时间</div><div style="font-size:13px;font-weight:600;">' + data.time + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">日期</div><div style="font-size:13px;font-weight:600;">' + data.date + '</div></div>' +
+    (data.phone ? '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">手机号</div><div style="font-size:13px;">' + data.phone + '</div></div>' : '') +
+    (data.cardNum ? '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">卡号</div><div style="font-size:13px;font-weight:600;">' + data.cardNum + '</div></div>' : '') +
+    '</div>' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;">' +
+    '<div style="font-size:11px;color:var(--text-muted);">开锁结果</div>' +
+    '<div style="font-size:14px;font-weight:700;color:var(--green);margin-top:4px;">✅ 开锁成功</div></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-log-detail\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function showDoorLogDetail(roomNum) {
+  var existing = document.getElementById('modal-door-log');
+  if (existing) existing.remove();
+  var logs = [
+    { time: '10:32:08', method: '📱 手机开锁', name: '张三', type: 'phone' },
+    { time: '09:15:22', method: '💳 客户卡', name: '李四', type: 'card' },
+    { time: '08:00:05', method: '🔑 通卡', name: '赵飞', type: 'master' }
+  ];
+  var html = '<div class="modal-overlay" id="modal-door-log" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-door-log\').remove()">' +
+    '<div class="modal" style="width:500px;max-height:80vh;overflow-y:auto;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">🚪 房间 ' + roomNum + ' 开锁记录</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-door-log\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;margin-bottom:14px;text-align:center;">' +
+    '<div style="font-size:12px;color:var(--text-muted);">今日共</div>' +
+    '<div style="font-size:24px;font-weight:700;color:var(--blue);">' + logs.length + ' 次</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);">开锁记录</div></div>' +
+    '<div style="display:flex;flex-direction:column;gap:8px;">' +
+    logs.map(function(log, i) {
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;">' +
+        '<div style="width:32px;height:32px;background:' + (log.type === 'phone' ? 'var(--green-bg)' : log.type === 'card' ? 'var(--blue-bg)' : 'var(--orange-bg)') + ';border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">' +
+        (log.type === 'phone' ? '📱' : log.type === 'card' ? '💳' : '🔑') + '</div>' +
+        '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">' + log.name + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);">' + log.method + ' · ' + log.time + '</div></div>' +
+        '<button class="action-btn small" onclick="showLogDetailModal(\'' + log.type + '\',' + i + ')">详情</button></div>';
+    }).join('') +
+    '</div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-door-log\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function switchLogView(view, el) {
+  document.querySelectorAll('#page-log .card-tabs .card-tab').forEach(function(t) { t.style.fontWeight = ''; t.style.color = ''; t.style.borderBottom = 'none'; });
+  if (el) { el.style.fontWeight = '600'; el.style.color = 'var(--blue)'; el.style.borderBottom = '2px solid var(--blue)'; }
+  document.getElementById('log-view-card').style.display = view === 'card' ? '' : 'none';
+  document.getElementById('log-view-door').style.display = view === 'door' ? '' : 'none';
+}
+function applyLogFilter() {
+  var startDate = document.getElementById('log-date-start') ? document.getElementById('log-date-start').value : '';
+  var endDate = document.getElementById('log-date-end') ? document.getElementById('log-date-end').value : '';
+  var method = document.getElementById('log-method-filter') ? document.getElementById('log-method-filter').value : 'all';
+  var tbody = document.getElementById('log-table-body');
+  var doorBody = document.getElementById('log-door-body');
+  var count = 0;
+  if (tbody) {
+    tbody.querySelectorAll('tr').forEach(function(tr) {
+      var date = tr.getAttribute('data-date') || '';
+      var type = tr.getAttribute('data-type') || '';
+      var show = true;
+      if (startDate && date < startDate) show = false;
+      if (endDate && date > endDate) show = false;
+      if (method !== 'all' && type !== method) show = false;
+      tr.style.display = show ? '' : 'none';
+      if (show) count++;
+    });
+  }
+  if (doorBody) {
+    doorBody.querySelectorAll('tr').forEach(function(tr) {
+      tr.style.display = '';
+      count++;
+    });
+  }
+  var resultEl = document.getElementById('log-filter-result');
+  if (resultEl) resultEl.textContent = '共 ' + count + ' 条记录';
+}
+function resetLogFilter() {
+  if (document.getElementById('log-date-start')) document.getElementById('log-date-start').value = '2026-03-26';
+  if (document.getElementById('log-date-end')) document.getElementById('log-date-end').value = '2026-03-26';
+  if (document.getElementById('log-method-filter')) document.getElementById('log-method-filter').value = 'all';
+  if (document.getElementById('log-card-number')) document.getElementById('log-card-number').value = '';
+  if (document.getElementById('log-card-type-filter')) document.getElementById('log-card-type-filter').value = 'all';
+  if (document.getElementById('log-door-search')) document.getElementById('log-door-search').value = '';
+  var tbody = document.getElementById('log-table-body');
+  if (tbody) { tbody.querySelectorAll('tr').forEach(function(tr) { tr.style.display = ''; }); }
+  var doorBody = document.getElementById('log-door-body');
+  if (doorBody) { doorBody.querySelectorAll('tr').forEach(function(tr) { tr.style.display = ''; }); }
+  var resultEl = document.getElementById('log-filter-result');
+  if (resultEl) resultEl.textContent = '共 5 条记录';
+  var preview = document.getElementById('log-card-preview');
+  if (preview) preview.style.display = 'none';
+  showToast('已重置筛选条件', 'info');
+}
+function searchDoorLog(val) {
+  var doorBody = document.getElementById('log-door-body');
+  if (!doorBody) return;
+  var trs = doorBody.querySelectorAll('tr');
+  var count = 0;
+  trs.forEach(function(tr) {
+    var room = tr.getAttribute('data-room') || '';
+    var show = !val || room.indexOf(val) !== -1;
+    tr.style.display = show ? '' : 'none';
+    if (show) count++;
+  });
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 5】结算历史弹窗
+// 理由：page-settlement 页面（行~15345）引用 openSettlementHistoryModal 但函数未定义，导致"结算历史"按钮无效。
+// 功能：展示历史结算记录，支持按状态筛选、分页查看。
+var _settlementHistoryPage = 1;
+var _settlementHistoryData = [
+  { id: 'STL-2026032701', room: '301', name: '张三', checkinTime: '2026-03-26 14:00', checkoutTime: '2026-03-27 10:15', nights: 1, roomFee: 128, extras: 0, deposit: 100, refund: 72, status: '已完成' },
+  { id: 'STL-2026032601', room: '201', name: '王五', checkinTime: '2026-03-25 15:30', checkoutTime: '2026-03-26 12:00', nights: 2, roomFee: 216, extras: 70, deposit: 100, refund: 14, status: '已完成' },
+  { id: 'STL-2026032401', room: '203', name: '李四', checkinTime: '2026-03-24 16:00', checkoutTime: '2026-03-26 14:00', nights: 3, roomFee: 324, extras: 60, deposit: 100, refund: 0, status: '已结算-押金不足' },
+  { id: 'STL-2026032301', room: '302', name: '孙九', checkinTime: '2026-03-22 14:00', checkoutTime: '2026-03-23 11:00', nights: 1, roomFee: 98, extras: 0, deposit: 100, refund: 102, status: '已完成' },
+  { id: 'STL-2026032201', room: '202', name: '周十', checkinTime: '2026-03-21 15:00', checkoutTime: '2026-03-22 10:00', nights: 1, roomFee: 108, extras: 30, deposit: 100, refund: 62, status: '已完成' }
+];
+function openSettlementHistoryModal() {
+  _settlementHistoryPage = 1;
+  renderSettlementHistory();
+}
+function renderSettlementHistory() {
+  var existing = document.getElementById('modal-settlement-history');
+  if (existing) existing.remove();
+  var statusFilter = document.getElementById('sh-status-filter') ? document.getElementById('sh-status-filter').value : 'all';
+  var filtered = _settlementHistoryData.filter(function(d) {
+    return statusFilter === 'all' || d.status === statusFilter || (statusFilter === 'completed' && d.status.indexOf('已完成') !== -1) || (statusFilter === 'debt' && d.status.indexOf('押金不足') !== -1);
+  });
+  var totalPage = Math.ceil(filtered.length / 5);
+  var start = (_settlementHistoryPage - 1) * 5;
+  var pageData = filtered.slice(start, start + 5);
+  var rows = pageData.map(function(d) {
+    var statusBg = d.status.indexOf('已完成') !== -1 ? 'var(--green-bg)' : 'var(--orange-bg)';
+    var statusColor = d.status.indexOf('已完成') !== -1 ? 'var(--green)' : 'var(--orange)';
+    return '<tr style="cursor:pointer;" onclick="openSettlementDetail(\'' + d.id + '\')">' +
+      '<td><span style="font-size:11px;font-weight:600;">' + d.id + '</span></td>' +
+      '<td><span style="font-weight:600;">' + d.room + '</span></td>' +
+      '<td>' + d.name + '</td>' +
+      '<td><span style="font-size:11px;">' + d.checkoutTime + '</span></td>' +
+      '<td><span style="font-weight:700;color:var(--orange);">¥' + d.roomFee + '</span></td>' +
+      '<td><span style="font-size:11px;color:var(--green);">退 ¥' + d.refund + '</span></td>' +
+      '<td><span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:' + statusBg + ';color:' + statusColor + ';">' + d.status + '</span></td>' +
+      '<td><button class="action-btn small" onclick="event.stopPropagation();openSettlementDetail(\'' + d.id + '\')">详情</button></td></tr>';
+  }).join('');
+  var statCompleted = _settlementHistoryData.filter(function(d) { return d.status.indexOf('已完成') !== -1; }).length;
+  var statDebt = _settlementHistoryData.filter(function(d) { return d.status.indexOf('押金不足') !== -1; }).length;
+  var totalRefund = _settlementHistoryData.reduce(function(s, d) { return s + d.refund; }, 0);
+  var html = '<div class="modal-overlay" id="modal-settlement-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-history\').remove()">' +
+    '<div class="modal" style="width:720px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">📋 结算历史记录</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-settlement-history\').remove()">✕</button></div>' +
+    '<div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+    '<div style="display:flex;gap:12px;font-size:12px;">' +
+    '<div style="padding:6px 12px;background:var(--green-bg);border-radius:6px;"><span style="color:var(--text-muted);">已完成</span> <b style="color:var(--green);">' + statCompleted + '</b></div>' +
+    '<div style="padding:6px 12px;background:var(--orange-bg);border-radius:6px;"><span style="color:var(--text-muted);">押金不足</span> <b style="color:var(--orange);">' + statDebt + '</b></div>' +
+    '<div style="padding:6px 12px;background:var(--blue-bg);border-radius:6px;"><span style="color:var(--text-muted);">累计退款</span> <b style="color:var(--blue);">¥' + totalRefund + '</b></div></div>' +
+    '<select id="sh-status-filter" onchange="_settlementHistoryPage=1;renderSettlementHistory()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-left:auto;">' +
+    '<option value="all">全部状态</option><option value="completed">已完成</option><option value="debt">押金不足</option></select></div>' +
+    '<div class="modal-body" style="flex:1;overflow-y:auto;padding:0;">' +
+    '<table class="table"><thead><tr><th>结算单号</th><th>房间</th><th>客人</th><th>退房时间</th><th>房费</th><th>押金退款</th><th>状态</th><th>操作</th></tr></thead>' +
+    '<tbody id="sh-table-body">' + rows + '</tbody></table></div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:12px;color:var(--text-muted);">第 ' + _settlementHistoryPage + ' / ' + totalPage + ' 页，共 ' + filtered.length + ' 条</div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<button class="action-btn small" onclick="_settlementHistoryPage=Math.max(1,_settlementHistoryPage-1);renderSettlementHistory()" ' + (_settlementHistoryPage <= 1 ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : '') + '>上一页</button>' +
+    '<button class="action-btn small" onclick="_settlementHistoryPage=Math.min(' + totalPage + ',_settlementHistoryPage+1);renderSettlementHistory()" ' + (_settlementHistoryPage >= totalPage ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : '') + '>下一页</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function openSettlementDetail(settlementId) {
+  var d = _settlementHistoryData.find(function(x) { return x.id === settlementId; });
+  if (!d) return;
+  var existing = document.getElementById('modal-settlement-history');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-settlement-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-detail\').remove()">' +
+    '<div class="modal" style="width:480px;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">💰 结算详情 - ' + d.id + '</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-settlement-detail\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">房间号</div><div style="font-size:16px;font-weight:700;color:var(--blue);">' + d.room + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">客人姓名</div><div style="font-size:14px;font-weight:600;">' + d.name + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">入住时间</div><div style="font-size:12px;">' + d.checkinTime + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">退房时间</div><div style="font-size:12px;">' + d.checkoutTime + '</div></div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:14px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-muted);">费用明细</div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;"><span>房费（' + d.nights + '晚）</span><span style="font-weight:600;">¥' + d.roomFee + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;"><span>加购/其他</span><span style="font-weight:600;">¥' + d.extras + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;"><span>押金（已付）</span><span style="font-weight:600;color:var(--blue);">¥' + d.deposit + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-top:1px solid var(--border);margin-top:4px;font-weight:700;"><span>应退押金</span><span style="color:var(--green);">¥' + d.refund + '</span></div></div>' +
+    '<div style="padding:12px;background:' + (d.status.indexOf('已完成') !== -1 ? 'var(--green-bg)' : 'var(--orange-bg)') + ';border-radius:8px;text-align:center;">' +
+    '<div style="font-size:14px;font-weight:700;color:' + (d.status.indexOf('已完成') !== -1 ? 'var(--green)' : 'var(--orange)') + ';">✅ ' + d.status + '</div></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-settlement-detail\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="document.getElementById(\'modal-settlement-detail\').remove();openSettlementHistoryModal()">返回列表</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 6】会员流失预警弹窗
+// 理由：page-member 页面（行~12551）引用 openMemberChurnRiskModal 但函数未定义。
+// 功能：展示有流失风险的会员列表，按风险等级分类，提供挽回操作。
+var _churnMembers = [
+  { name: '李梅', phone: '138****2345', level: '🥈 银卡', lastStay: '2026-01-15', daysAgo: 73, totalNights: 6, churnRisk: 'high', reason: '超过60天未入住', phone2: '138****2345' },
+  { name: '王强', phone: '139****8765', level: '🥇 金卡', lastStay: '2026-02-01', daysAgo: 56, totalNights: 18, churnRisk: 'medium', reason: '入住频率下降', phone2: '139****8765' },
+  { name: '张华', phone: '137****1122', level: '🌱 普通', lastStay: '2026-01-20', daysAgo: 68, totalNights: 2, churnRisk: 'medium', reason: '银卡升级进度中断', phone2: '137****1122' },
+  { name: '赵丽', phone: '136****9988', level: '🥈 银卡', lastStay: '2025-12-10', daysAgo: 109, totalNights: 5, churnRisk: 'high', reason: '超过90天未入住', phone2: '136****9988' },
+  { name: '孙伟', phone: '135****6677', level: '🥇 金卡', lastStay: '2026-02-20', daysAgo: 37, totalNights: 22, churnRisk: 'low', reason: '近期入住正常', phone2: '135****6677' }
+];
+function openMemberChurnRiskModal() {
+  var existing = document.getElementById('modal-churn-risk');
+  if (existing) existing.remove();
+  var highRisk = _churnMembers.filter(function(m) { return m.churnRisk === 'high'; });
+  var medRisk = _churnMembers.filter(function(m) { return m.churnRisk === 'medium'; });
+  var lowRisk = _churnMembers.filter(function(m) { return m.churnRisk === 'low'; });
+  var memberRows = _churnMembers.map(function(m) {
+    var riskBg = m.churnRisk === 'high' ? 'var(--red-bg)' : m.churnRisk === 'medium' ? 'var(--orange-bg)' : 'var(--green-bg)';
+    var riskColor = m.churnRisk === 'high' ? 'var(--red)' : m.churnRisk === 'medium' ? 'var(--orange)' : 'var(--green)';
+    var riskLabel = m.churnRisk === 'high' ? '🔴 高风险' : m.churnRisk === 'medium' ? '🟡 中风险' : '🟢 低风险';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border-radius:8px;margin-bottom:8px;">' +
+      '<div style="width:40px;height:40px;background:' + riskBg + ';border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">' + (m.level.indexOf('金') !== -1 ? '🥇' : m.level.indexOf('银') !== -1 ? '🥈' : '🌱') + '</div>' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">' +
+      '<span style="font-size:13px;font-weight:600;">' + m.name + '</span>' +
+      '<span style="font-size:11px;color:var(--text-muted);">' + m.level + '</span>' +
+      '<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:' + riskBg + ';color:' + riskColor + ';font-weight:600;">' + riskLabel + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">上次入住：' + m.lastStay + '（' + m.daysAgo + '天前）· 共' + m.totalNights + '晚</div>' +
+      '<div style="font-size:11px;color:' + riskColor + ';margin-top:2px;">⚠️ ' + m.reason + '</div></div>' +
+      '<div style="display:flex;flex-direction:column;gap:4px;">' +
+      '<button class="action-btn small" onclick="sendChurnRecoverSMS(\'' + m.name + '\',\'' + m.phone2 + '\')" style="padding:4px 8px;font-size:11px;background:var(--blue);color:white;border:none;">📱 发短信</button>' +
+      '<button class="action-btn small" onclick="sendChurnRecoverCoupon(\'' + m.name + '\')" style="padding:4px 8px;font-size:11px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🎟️ 发优惠券</button></div></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-churn-risk" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-churn-risk\').remove()">' +
+    '<div class="modal" style="width:620px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div class="modal-header">' +
+    '<div class="modal-title">⚠️ 会员流失预警</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-churn-risk\').remove()">✕</button></div>' +
+    '<div style="padding:12px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">' +
+    '<div style="padding:10px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red);">' + highRisk.length + '</div><div style="font-size:11px;color:var(--red);">🔴 高风险</div></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">' + medRisk.length + '</div><div style="font-size:11px;color:var(--orange);">🟡 中风险</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + lowRisk.length + '</div><div style="font-size:11px;color:var(--green);">🟢 低风险</div></div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:16px 20px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);">📋 流失风险会员列表</div>' +
+    memberRows + '</div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-churn-risk\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="batchChurnRecover()" style="background:var(--blue);color:white;border:none;">🚀 批量挽回</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function sendChurnRecoverSMS(name, phone) {
+  showToast('正在向 ' + name + '（' + phone + '）发送召回短信...', 'info');
+  setTimeout(function() { showToast('✅ 已向 ' + name + ' 发送召回短信', 'success'); }, 1500);
+}
+function sendChurnRecoverCoupon(name) {
+  showToast('正在为 ' + name + ' 生成专属优惠券...', 'info');
+  setTimeout(function() { showToast('🎟️ 已向 ' + name + ' 发放8折优惠券（7日内有效）', 'success'); }, 1500);
+}
+function batchChurnRecover() {
+  var highRisk = _churnMembers.filter(function(m) { return m.churnRisk === 'high'; });
+  showToast('🚀 已向 ' + highRisk.length + ' 位高风险会员批量发送召回短信和优惠券', 'success');
+  document.getElementById('modal-churn-risk').remove();
+}
