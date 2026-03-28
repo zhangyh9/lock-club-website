@@ -10418,6 +10418,8 @@ function openEditMemberLevelModalV2(idx) {
         <button class="action-btn" onclick="openEnergyAnalysisModal('')" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📊 详细数据分析</button>
         <button class="action-btn" onclick="openEnergyForecastModal()" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">📈 能耗预测</button>
         <button class="action-btn" onclick="exportEnergyData()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出能耗报表</button>
+        <!-- 【改进3】节能风控-设备批量通断电控制入口 -->
+        <button class="action-btn" onclick="openBatchEnergyControlModal()" style="background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⚡ 批量通断电</button>
         <!-- 【改进5】分时电价配置入口 -->
         <button class="action-btn small" onclick="openEnergyTouConfigModal()" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⏰ 分时电价</button>
         <!-- 【改进5】能耗预算配置入口 -->
@@ -13865,8 +13867,8 @@ function openEditMemberLevelModalV2(idx) {
             <input type="text" class="form-input" id="oplog-target" placeholder="操作对象（如301）" style="width:110px;padding:6px 10px;font-size:12px;" onkeydown="if(event.key==='Enter')applyOplogFilter()">
             <!-- 【改进5】新增IP地址过滤器 -->
             <input type="text" class="form-input" id="oplog-ip" placeholder="IP地址" style="width:110px;padding:6px 10px;font-size:12px;" onkeydown="if(event.key==='Enter')applyOplogFilter()">
-            <button class="action-btn small" onclick="applyOplogFilter()" style="padding:6px 12px;">🔍 搜索</button>
-            <button class="action-btn small" onclick="resetOplogFilter()" style="padding:6px 12px;">重置</button>
+            <button class="action-btn small" onclick="applyOplogFilterV2()" style="padding:6px 12px;">🔍 搜索</button>
+            <button class="action-btn small" onclick="resetOplogFilterV2()" style="padding:6px 12px;">重置</button>
             <!-- 【改进5】保存/加载筛选方案 -->
             <div style="display:flex;gap:6px;margin-left:auto;">
               <button class="action-btn small" onclick="saveOplogFilterScheme()" style="padding:5px 10px;font-size:11px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">💾 保存方案</button>
@@ -23941,3 +23943,543 @@ function switchRoomDetailTab(tab, el) {
     setTimeout(function() { renderRoomRecordsList(); }, 50);
   }
 }
+
+// ============================================================
+// 【改进1】交接班报表完整页面 (page-handover)
+// 原系统有完整的交接班记录功能，Demo缺失此页面的完整交互
+// ============================================================
+var handoverStore = [
+  {id:'HB001', shift:'早班', date:'2026-03-28', operator:'赵飞', startTime:'08:00', endTime:'16:00', roomIn:12, roomOut:8, woPending:3, alerts:2, cash:'¥3,280', notes:'早班平稳交接，305房间退房待清洁', status:'已交接'},
+  {id:'HB002', shift:'中班', date:'2026-03-27', operator:'周敏', startTime:'16:00', endTime:'00:00', roomIn:8, roomOut:12, woPending:5, alerts:1, cash:'¥4,560', notes:'205房间门锁离线，已登记报修', status:'已交接'},
+  {id:'HB003', shift:'夜班', date:'2026-03-26', operator:'王工', startTime:'00:00', endTime:'08:00', roomIn:3, roomOut:2, woPending:2, alerts:0, cash:'¥860', notes:'夜班运营正常，无特殊情况', status:'已交接'}
+];
+
+function renderHandoverTable(filterShift) {
+  var tbody = document.getElementById('handover-table-body');
+  if (!tbody) return;
+  var data = filterShift && filterShift !== 'all' ? handoverStore.filter(function(h){ return h.shift === filterShift; }) : handoverStore;
+  var html = '';
+  data.forEach(function(h) {
+    var shiftColor = h.shift === '早班' ? 'var(--blue-bg)' : h.shift === '中班' ? 'var(--orange-bg)' : 'var(--purple-bg)';
+    var shiftTextColor = h.shift === '早班' ? 'var(--blue)' : h.shift === '中班' ? 'var(--orange)' : 'var(--purple)';
+    html += '<tr>' +
+      '<td>' + h.id + '</td>' +
+      '<td><span style="padding:2px 8px;border-radius:10px;font-size:11px;background:' + shiftColor + ';color:' + shiftTextColor + ';">' + h.shift + '</span></td>' +
+      '<td>' + h.date + '</td>' +
+      '<td><strong>' + h.operator + '</strong></td>' +
+      '<td>' + h.startTime + ' ~ ' + h.endTime + '</td>' +
+      '<td><span style="color:var(--blue);">+' + h.roomIn + '</span> / <span style="color:var(--green);">-' + h.roomOut + '</span></td>' +
+      '<td><span style="color:var(--orange);">' + h.woPending + '条</span></td>' +
+      '<td><span style="color:' + (h.alerts > 0 ? 'var(--red)' : 'var(--green)') + ';">' + h.alerts + '条</span></td>' +
+      '<td><strong>' + h.cash + '</strong></td>' +
+      '<td><span style="padding:2px 8px;border-radius:10px;font-size:11px;background:var(--green-bg);color:var(--green);">' + h.status + '</span></td>' +
+      '<td><button class="action-btn small" onclick="viewHandoverDetail(\'' + h.id + '\')">查看</button> ' +
+      '<button class="action-btn small" onclick="printHandoverReport(\'' + h.id + '\')">打印</button></td></tr>';
+  });
+  tbody.innerHTML = html || '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--text-muted);">暂无交接班记录</td></tr>';
+}
+
+function filterHandoverShift(shift, el) {
+  document.querySelectorAll('#handover-shift-tabs .card-tab').forEach(function(t){ t.classList.remove('active'); });
+  el.classList.add('active');
+  renderHandoverTable(shift);
+}
+
+function viewHandoverDetail(id) {
+  var h = handoverStore.find(function(x){ return x.id === id; });
+  if (!h) return;
+  var html = '<div style="padding:16px 20px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);">班次</div><div style="font-size:14px;font-weight:700;">' + h.shift + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);">日期</div><div style="font-size:14px;font-weight:700;">' + h.date + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);">交班人</div><div style="font-size:14px;font-weight:700;">' + h.operator + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);">交接时间</div><div style="font-size:14px;font-weight:700;">' + h.startTime + ' ~ ' + h.endTime + '</div></div></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);">+' + h.roomIn + '</div><div style="font-size:11px;color:var(--text-muted);">入住</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">-' + h.roomOut + '</div><div style="font-size:11px;color:var(--text-muted);">退房</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">' + h.woPending + '</div><div style="font-size:11px;color:var(--text-muted);">待办工单</div></div>' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red);">' + h.alerts + '</div><div style="font-size:11px;color:var(--text-muted);">告警数</div></div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:12px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">💰 当班收款</div><div style="font-size:24px;font-weight:700;color:var(--green);">' + h.cash + '</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📋 交班备注</div><div style="font-size:13px;">' + h.notes + '</div></div>' +
+    '</div>';
+  var existing = document.getElementById('modal-handover-detail');
+  if (existing) existing.remove();
+  var modal = '<div class="modal-overlay" id="modal-handover-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:560px;max-height:85vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">📊 交接班详情 — ' + h.shift + ' ' + h.date + '</div>' +
+    '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">✕</button></div>' +
+    html +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="printHandoverReport(\'' + h.id + '\')" style="background:var(--blue);color:white;border-color:var(--blue);">🖨️ 打印报表</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+function printHandoverReport(id) {
+  showToast('🖨️ 正在生成交接班报表...', 'info');
+  setTimeout(function(){ showToast('✅ 报表已发送至打印机', 'success'); }, 1500);
+}
+
+function openNewHandoverModal() {
+  var now = new Date();
+  var dateStr = now.toISOString().split('T')[0];
+  var html = '<div class="modal-overlay" id="modal-new-handover" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:480px;max-height:85vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">📝 新建交接班记录</div>' +
+    '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">班次</label><select class="form-select" id="hb-shift"><option value="早班">早班 (08:00-16:00)</option><option value="中班">中班 (16:00-00:00)</option><option value="夜班">夜班 (00:00-08:00)</option></select></div>' +
+    '<div class="form-group"><label class="form-label">交班日期</label><input type="date" class="form-input" id="hb-date" value="' + dateStr + '"></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">交班人</label><input type="text" class="form-input" id="hb-operator" placeholder="请输入姓名"></div>' +
+    '<div class="form-group"><label class="form-label">接班人</label><input type="text" class="form-input" id="hb-successor" placeholder="请输入姓名"></div></div>' +
+    '<div class="form-group"><label class="form-label">入住房数</label><input type="number" class="form-input" id="hb-in" placeholder="0" value="0"></div></div>' +
+    '<div class="form-group"><label class="form-label">退房间数</label><input type="number" class="form-input" id="hb-out" placeholder="0" value="0"></div></div>' +
+    '<div class="form-group"><label class="form-label">当班收款（元）</label><input type="number" class="form-input" id="hb-cash" placeholder="0" value="0"></div></div>' +
+    '<div class="form-group"><label class="form-label">待办工单数</label><input type="number" class="form-input" id="hb-wo" placeholder="0" value="0"></div></div>' +
+    '<div class="form-group"><label class="form-label">告警数</label><input type="number" class="form-input" id="hb-alerts" placeholder="0" value="0"></div></div>' +
+    '<div class="form-group"><label class="form-label">交班备注</label><textarea class="form-textarea" id="hb-notes" placeholder="请输入交班备注"></textarea></div></div>' +
+    '</div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitNewHandover()">确认交接</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitNewHandover() {
+  var shift = document.getElementById('hb-shift').value;
+  var date = document.getElementById('hb-date').value;
+  var operator = document.getElementById('hb-operator').value.trim();
+  var notes = document.getElementById('hb-notes').value.trim();
+  if (!operator) { showToast('请输入交班人姓名', 'error'); return; }
+  var newRec = {
+    id: 'HB' + String(Date.now()).slice(-3),
+    shift: shift,
+    date: date,
+    operator: operator,
+    startTime: shift === '早班' ? '08:00' : shift === '中班' ? '16:00' : '00:00',
+    endTime: shift === '早班' ? '16:00' : shift === '中班' ? '00:00' : '08:00',
+    roomIn: parseInt(document.getElementById('hb-in').value) || 0,
+    roomOut: parseInt(document.getElementById('hb-out').value) || 0,
+    woPending: parseInt(document.getElementById('hb-wo').value) || 0,
+    alerts: parseInt(document.getElementById('hb-alerts').value) || 0,
+    cash: '¥' + (parseInt(document.getElementById('hb-cash').value) || 0),
+    notes: notes || '无',
+    status: '已交接'
+  };
+  handoverStore.unshift(newRec);
+  document.getElementById('modal-new-handover').remove();
+  renderHandoverTable();
+  showToast('✅ 交接班记录已创建', 'success');
+}
+
+// ============================================================
+// 【改进2】密码管理完整CRUD (page-keypad 完整交互)
+// 原系统密码管理支持增删改查，Demo仅有静态展示
+// ============================================================
+var keypadStore = [
+  {id:'KP001', room:'301', type:'一次性', pwd:'834721', validFrom:'2026-03-28', validTo:'2026-03-29 23:59', status:'可用', creator:'赵飞'},
+  {id:'KP002', room:'301', type:'期间限定', pwd:'102938', validFrom:'2026-03-20', validTo:'2026-03-30 23:59', status:'可用', creator:'赵飞'},
+  {id:'KP003', room:'302', type:'永久', pwd:'556677', validFrom:'2026-03-15', validTo:'永久', status:'可用', creator:'周敏'},
+  {id:'KP004', room:'303', type:'期间限定', pwd:'112233', validFrom:'2026-03-10', validTo:'2026-03-28 23:59', status:'已失效', creator:'王工'},
+  {id:'KP005', room:'201', type:'一次性', pwd:'998877', validFrom:'2026-03-28', validTo:'2026-03-29 23:59', status:'可用', creator:'赵飞'}
+];
+
+function renderKeypadTable(filterRoom, filterType, filterStatus) {
+  var tbody = document.getElementById('keypad-table-body');
+  if (!tbody) return;
+  var data = keypadStore.filter(function(k){
+    if (filterRoom && filterRoom !== 'all' && k.room !== filterRoom) return false;
+    if (filterType && filterType !== 'all' && k.type !== filterType) return false;
+    if (filterStatus && filterStatus !== 'all' && k.status !== filterStatus) return false;
+    return true;
+  });
+  var html = '';
+  data.forEach(function(k) {
+    var statusBg = k.status === '可用' ? 'var(--green-bg)' : 'var(--red-bg)';
+    var statusColor = k.status === '可用' ? 'var(--green)' : 'var(--red)';
+    var typeColor = k.type === '一次性' ? 'var(--blue)' : k.type === '永久' ? 'var(--purple)' : 'var(--orange)';
+    html += '<tr>' +
+      '<td><strong>' + k.room + '</strong></td>' +
+      '<td><span style="color:' + typeColor + ';font-weight:600;">' + k.type + '</span></td>' +
+      '<td><code style="background:var(--bg);padding:2px 8px;border-radius:4px;font-size:13px;letter-spacing:2px;">' + k.pwd + '</code></td>' +
+      '<td>' + k.validFrom + '</td>' +
+      '<td>' + k.validTo + '</td>' +
+      '<td><span style="padding:2px 8px;border-radius:10px;font-size:11px;background:' + statusBg + ';color:' + statusColor + ';">' + k.status + '</span></td>' +
+      '<td>' + k.creator + '</td>' +
+      '<td><button class="action-btn small" onclick="copyKeypadPwd(\'' + k.pwd + '\')">📋 复制</button> ' +
+      '<button class="action-btn small orange" onclick="invalidateKeypad(\'' + k.id + '\')">作废</button> ' +
+      '<button class="action-btn small red" onclick="deleteKeypad(\'' + k.id + '\')">删除</button></td></tr>';
+  });
+  tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted);">暂无密码记录</td></tr>';
+}
+
+function applyKeypadFilter() {
+  var room = document.getElementById('keypad-room-filter') ? document.getElementById('keypad-room-filter').value : 'all';
+  var type = document.getElementById('keypad-type-filter') ? document.getElementById('keypad-type-filter').value : 'all';
+  var status = document.getElementById('keypad-status-filter') ? document.getElementById('keypad-status-filter').value : 'all';
+  renderKeypadTable(room, type, status);
+}
+
+function copyKeypadPwd(pwd) {
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = pwd;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('🔑 密码 ' + pwd + ' 已复制到剪贴板', 'success');
+  } catch(e) {
+    showToast('复制失败，请手动复制：' + pwd, 'info');
+  }
+}
+
+function invalidateKeypad(id) {
+  var k = keypadStore.find(function(x){ return x.id === id; });
+  if (!k) return;
+  if (!confirm('确认作废此密码 ' + k.pwd + '？')) return;
+  k.status = '已失效';
+  renderKeypadTable();
+  showToast('⚠️ 密码 ' + k.pwd + ' 已作废', 'warning');
+}
+
+function deleteKeypad(id) {
+  var k = keypadStore.find(function(x){ return x.id === id; });
+  if (!k) return;
+  if (!confirm('确认删除此密码记录？')) return;
+  keypadStore = keypadStore.filter(function(x){ return x.id !== id; });
+  renderKeypadTable();
+  showToast('🗑️ 密码记录已删除', 'success');
+}
+
+function openNewKeypadModal() {
+  var html = '<div class="modal-overlay" id="modal-new-keypad" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:460px;max-height:85vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">🔑 创建房间密码</div>' +
+    '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">房间号 <span class="required">*</span></label><input type="text" class="form-input" id="kp-room" placeholder="如 301"></div>' +
+    '<div class="form-group"><label class="form-label">密码类型</label><select class="form-select" id="kp-type"><option value="一次性">一次性密码</option><option value="期间限定">期间限定密码</option><option value="永久">永久密码</option></select></div></div>' +
+    '<div class="form-group"><label class="form-label">密码 <span class="required">*</span></label><div style="display:flex;gap:8px;"><input type="text" class="form-input" id="kp-pwd" placeholder="6位数字密码" maxlength="6" style="flex:1;">' +
+    '<button type="button" onclick="document.getElementById(\'kp-pwd\').value=String(Math.floor(100000+Math.random()*900000))" style="padding:8px 12px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap;">🎲 自动生成</button></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">生效时间</label><input type="datetime-local" class="form-input" id="kp-from"></div>' +
+    '<div class="form-group"><label class="form-label">失效时间</label><input type="datetime-local" class="form-input" id="kp-to"></div></div>' +
+    '<div class="form-group"><label class="form-label">备注</label><input type="text" class="form-input" id="kp-note" placeholder="如：客户张先生"></div></div>' +
+    '</div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitNewKeypad()">确认创建</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitNewKeypad() {
+  var room = document.getElementById('kp-room').value.trim();
+  var pwd = document.getElementById('kp-pwd').value.trim();
+  var type = document.getElementById('kp-type').value;
+  if (!room || !pwd) { showToast('请填写房间号和密码', 'error'); return; }
+  if (!/^\d{4,6}$/.test(pwd)) { showToast('密码必须为4-6位数字', 'error'); return; }
+  var newRec = {
+    id: 'KP' + String(Date.now()).slice(-3),
+    room: room,
+    type: type,
+    pwd: pwd,
+    validFrom: document.getElementById('kp-from').value ? document.getElementById('kp-from').value.replace('T', ' ') : new Date().toISOString().split('T')[0],
+    validTo: document.getElementById('kp-to').value ? document.getElementById('kp-to').value.replace('T', ' ') : '永久',
+    status: '可用',
+    creator: '当前用户'
+  };
+  keypadStore.unshift(newRec);
+  document.getElementById('modal-new-keypad').remove();
+  renderKeypadTable();
+  showToast('✅ 密码 ' + pwd + ' 已创建并可立即使用', 'success');
+}
+
+function generateRandomPwd() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+// ============================================================
+// 【改进3】节能风控-设备批量通断电控制 (Energy batch control)
+// 原系统支持对设备进行远程通断电控制，Demo缺失此功能
+// ============================================================
+var energyDeviceStore = [
+  {room:'301', name:'亲子间', status:'on', todayKwh:12.5, avgKwh:10.2, threshold:15},
+  {room:'302', name:'亲子间', status:'off', todayKwh:0, avgKwh:8.5, threshold:15},
+  {room:'303', name:'亲子间', status:'on', todayKwh:18.2, avgKwh:9.8, threshold:15},
+  {room:'304', name:'亲子间', status:'on', todayKwh:8.3, avgKwh:11.0, threshold:15},
+  {room:'305', name:'亲子间', status:'on', todayKwh:14.1, avgKwh:10.5, threshold:15},
+  {room:'201', name:'大床房', status:'on', todayKwh:9.7, avgKwh:8.0, threshold:12},
+  {room:'202', name:'大床房', status:'off', todayKwh:0, avgKwh:7.5, threshold:12},
+  {room:'203', name:'大床房', status:'on', todayKwh:22.0, avgKwh:9.0, threshold:12},
+  {room:'204', name:'大床房', status:'on', todayKwh:7.2, avgKwh:8.8, threshold:12},
+  {room:'205', name:'大床房', status:'on', todayKwh:11.3, avgKwh:8.5, threshold:12}
+];
+
+function renderEnergyDeviceTable() {
+  var tbody = document.getElementById('energy-device-body');
+  if (!tbody) return;
+  var html = '';
+  energyDeviceStore.forEach(function(d) {
+    var isHigh = d.todayKwh > d.threshold;
+    var barWidth = Math.min((d.todayKwh / d.threshold) * 100, 100);
+    var barColor = isHigh ? 'var(--red)' : d.todayKwh > d.avgKwh * 1.2 ? 'var(--orange)' : 'var(--green)';
+    html += '<tr>' +
+      '<td><strong>' + d.room + '</strong><div style="font-size:10px;color:var(--text-muted);">' + d.name + '</div></td>' +
+      '<td><span style="padding:2px 8px;border-radius:10px;font-size:11px;background:' + (d.status === 'on' ? 'var(--green-bg)' : 'var(--bg)') + ';color:' + (d.status === 'on' ? 'var(--green)' : 'var(--text-muted)') + ';">' + (d.status === 'on' ? '🟢 通电' : '⚪ 断电') + '</span></td>' +
+      '<td><div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="height:100%;width:' + barWidth + '%;background:' + barColor + ';border-radius:3px;"></div></div><span style="font-size:12px;font-weight:600;min-width:40px;text-align:right;">' + d.todayKwh.toFixed(1) + 'kWh</span></div><div style="font-size:10px;color:var(--text-muted);">日均 ' + d.avgKwh.toFixed(1) + 'kWh</div></td>' +
+      '<td><span style="color:' + (isHigh ? 'var(--red)' : 'var(--text)') + ';">' + d.threshold + 'kWh</span></td>' +
+      '<td><span style="color:' + (isHigh ? 'var(--red)' : 'var(--green)') + ';font-weight:600;">' + (isHigh ? '⚠️ 超标' : '✅ 正常') + '</span></td>' +
+      '<td><button class="action-btn small ' + (d.status === 'on' ? 'orange' : 'green') + '" onclick="toggleEnergyDevice(\'' + d.room + '\')">' + (d.status === 'on' ? '⏻ 断电' : '▶ 通电') + '</button></td></tr>';
+  });
+  tbody.innerHTML = html || '<tr><td colspan="6" style="text-align:center;padding:20px;">暂无数据</td></tr>';
+}
+
+function toggleEnergyDevice(room) {
+  var d = energyDeviceStore.find(function(x){ return x.room === room; });
+  if (!d) return;
+  var action = d.status === 'on' ? '断电' : '通电';
+  if (!confirm('确认对 ' + room + ' (' + d.name + ') 执行' + action + '操作？')) return;
+  d.status = d.status === 'on' ? 'off' : 'on';
+  if (d.status === 'off') d.todayKwh = 0;
+  renderEnergyDeviceTable();
+  showToast((d.status === 'on' ? '✅' : '⏻') + ' ' + room + ' 已' + action, d.status === 'on' ? 'success' : 'warning');
+}
+
+function openBatchEnergyControlModal() {
+  var onDevices = energyDeviceStore.filter(function(d){ return d.status === 'on'; });
+  var offDevices = energyDeviceStore.filter(function(d){ return d.status === 'off'; });
+  var html = '<div class="modal-overlay" id="modal-batch-energy" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:520px;max-height:85vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">⚡ 批量通断电控制</div>' +
+    '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + onDevices.length + '</div><div style="font-size:11px;color:var(--text-muted);">当前通电</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--text-muted);">' + offDevices.length + '</div><div style="font-size:11px;color:var(--text-muted);">当前断电</div></div></div>' +
+    '<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text);">选择通电中的房间（点击可取消）</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;" id="batch-on-rooms">';
+  onDevices.forEach(function(d) {
+    html += '<div onclick="this.style.opacity=this.style.opacity===\'0.4\'?\'1\':\'0.4\'" style="padding:6px 12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:20px;font-size:12px;cursor:pointer;font-weight:600;">' + d.room + ' ' + d.name + '</div>';
+  });
+  html += '</div></div>' +
+    '<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text);">选择断电中的房间（点击可选中）</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;" id="batch-off-rooms">';
+  offDevices.forEach(function(d) {
+    html += '<div onclick="this.style.background=this.style.background===\'var(--blue-bg)\'?\'var(--bg)\':\'var(--blue-bg)\';this.style.color=this.style.color===\'var(--blue)\'?\'var(--text-muted)\':\'var(--blue)\'" style="padding:6px 12px;background:var(--bg);color:var(--text-muted);border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;">' + d.room + ' ' + d.name + '</div>';
+  });
+  html += '</div></div>' +
+    '<div class="form-group"><label class="form-label">批量操作</label>' +
+    '<div style="display:flex;gap:8px;"><button class="action-btn green" onclick="batchEnergyOn()" style="flex:1;padding:10px;">▶ 批量通电</button>' +
+    '<button class="action-btn orange" onclick="batchEnergyOff()" style="flex:1;padding:10px;">⏻ 批量断电</button></div></div>' +
+    '<div class="form-group"><label class="form-label">说明</label><div style="font-size:12px;color:var(--text-muted);padding:8px;background:var(--bg);border-radius:6px;">通电操作将立即为所选房间恢复供电；断电操作将立即切断所选房间电源（不影响门锁）</div></div>' +
+    '</div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function batchEnergyOn() {
+  showToast('✅ 已批量通电，正在执行...', 'success');
+  setTimeout(function() {
+    energyDeviceStore.forEach(function(d){ d.status = 'on'; });
+    renderEnergyDeviceTable();
+    document.getElementById('modal-batch-energy') && document.getElementById('modal-batch-energy').remove();
+    showToast('✅ 全部 ' + energyDeviceStore.length + ' 个房间已通电', 'success');
+  }, 1000);
+}
+
+function batchEnergyOff() {
+  showToast('⏻ 已批量断电，正在执行...', 'warning');
+  setTimeout(function() {
+    energyDeviceStore.forEach(function(d){ d.status = 'off'; d.todayKwh = 0; });
+    renderEnergyDeviceTable();
+    document.getElementById('modal-batch-energy') && document.getElementById('modal-batch-energy').remove();
+    showToast('⏻ 全部 ' + energyDeviceStore.length + ' 个房间已断电', 'warning');
+  }, 1000);
+}
+
+// ============================================================
+// 【改进4】工单SLA超时升级规则配置弹窗 (Workorder SLA escalation)
+// 原系统工单有SLA升级规则，Demo缺失此配置界面
+// ============================================================
+var slaRules = [
+  {priority:'urgent', label:'🔴 紧急', slaMinutes:30, escalationTo:'王总', escalationAction:'电话+短信'},
+  {priority:'high', label:'🟠 高', slaMinutes:60, escalationTo:'客房主管', escalationAction:'系统通知'},
+  {priority:'normal', label:'🟡 普通', slaMinutes:120, escalationTo:'前厅经理', escalationAction:'系统通知'},
+  {priority:'low', label:'⚪ 低', slaMinutes:240, escalationTo:'-', escalationAction:'无'}
+];
+
+function openEscalationRulesModal() {
+  var html = '<div class="modal-overlay" id="modal-sla-escalation" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:600px;max-height:85vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">⏱️ 工单SLA超时升级规则配置</div>' +
+    '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">✕</button></div>' +
+    '<div class="modal-body">';
+  slaRules.forEach(function(rule, idx) {
+    html += '<div style="padding:14px;background:var(--bg);border-radius:8px;margin-bottom:10px;border-left:4px solid ' + (rule.priority === 'urgent' ? 'var(--red)' : rule.priority === 'high' ? 'var(--orange)' : rule.priority === 'normal' ? 'var(--blue)' : 'var(--text-muted)') + ';">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><div style="font-size:14px;font-weight:700;">' + rule.label + '</div>' +
+      '<div style="display:flex;gap:6px;"><button class="action-btn small" onclick="editSLARule(' + idx + ')">✏️ 编辑</button></div></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:12px;">' +
+      '<div><div style="color:var(--text-muted);font-size:10px;margin-bottom:2px;">SLA时限</div><div style="font-weight:600;">' + rule.slaMinutes + ' 分钟</div></div>' +
+      '<div><div style="color:var(--text-muted);font-size:10px;margin-bottom:2px;">升级至</div><div style="font-weight:600;">' + rule.escalationTo + '</div></div>' +
+      '<div><div style="color:var(--text-muted);font-size:10px;margin-bottom:2px;">升级方式</div><div style="font-weight:600;">' + rule.escalationAction + '</div></div></div></div>';
+  });
+  html += '<div style="margin-top:16px;padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">' +
+    '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:6px;">💡 规则说明</div>' +
+    '<div style="font-size:11px;color:var(--text);line-height:1.8;">当工单超过 SLA 时限未处理时，系统将自动按配置的升级方式通知指定人员。紧急工单超时后将同时触发短信和电话通知。</div></div>' +
+    '</div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="saveSLARules()">💾 保存配置</button></div></div></div>';
+  var old = document.getElementById('modal-sla-escalation');
+  if (old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function editSLARule(idx) {
+  var rule = slaRules[idx];
+  var modal = '<div class="modal-overlay" id="modal-edit-sla" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:400px;">' +
+    '<div class="modal-header"><div class="modal-title">✏️ 编辑SLA规则 — ' + rule.label + '</div>' +
+    '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group"><label class="form-label">SLA时限（分钟）</label><input type="number" class="form-input" id="sla-minutes" value="' + rule.slaMinutes + '" min="5"></div></div>' +
+    '<div class="form-group"><label class="form-label">超时升级至</label><input type="text" class="form-input" id="sla-escalate" value="' + rule.escalationTo + '" placeholder="输入负责人姓名"></div></div>' +
+    '<div class="form-group"><label class="form-label">升级方式</label><select class="form-select" id="sla-action"><option value="系统通知">系统通知</option><option value="短信">短信</option><option value="电话+短信">电话+短信</option><option value="无">无</option></select></div>' +
+    '</div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="this.closest(\'.modal-overlay\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="saveSLARuleEdit(' + idx + ')">保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+function saveSLARuleEdit(idx) {
+  slaRules[idx].slaMinutes = parseInt(document.getElementById('sla-minutes').value) || 30;
+  slaRules[idx].escalationTo = document.getElementById('sla-escalate').value;
+  slaRules[idx].escalationAction = document.getElementById('sla-action').value;
+  document.getElementById('modal-edit-sla').remove();
+  openEscalationRulesModal();
+  showToast('✅ SLA规则已更新', 'success');
+}
+
+function saveSLARules() {
+  document.getElementById('modal-sla-escalation').remove();
+  showToast('💾 SLA超时升级规则配置已保存', 'success');
+}
+
+// ============================================================
+// 【改进5】操作日志完整查询页面 (page-oplog 完整查询功能)
+// 原系统操作日志支持多条件筛选查询，Demo缺失查询交互
+// ============================================================
+var oplogStore = [
+  {id:'LOG001', time:'2026-03-28 16:30:22', operator:'赵飞', action:'远程开锁', target:'301房间门锁', result:'成功', method:'管理员后台'},
+  {id:'LOG002', time:'2026-03-28 16:28:10', operator:'周敏', action:'入住办理', target:'301房间·张三', result:'成功', method:'前台登记'},
+  {id:'LOG003', time:'2026-03-28 16:25:00', operator:'系统', action:'设备告警', target:'303房间门锁离线', result:'已发送通知', method:'自动监控'},
+  {id:'LOG004', time:'2026-03-28 16:20:15', operator:'王工', action:'密码创建', target:'201房间一次性密码', result:'成功', method:'密码管理'},
+  {id:'LOG005', time:'2026-03-28 16:15:40', operator:'赵飞', action:'退房办理', target:'302房间·李四', result:'成功', method:'前台登记'},
+  {id:'LOG006', time:'2026-03-28 16:10:05', operator:'吴倩', action:'房务任务', target:'302房间清洁任务', result:'已完成', method:'房务管理'},
+  {id:'LOG007', time:'2026-03-28 16:05:30', operator:'系统', action:'工单创建', target:'WO-2026032801 投诉工单', result:'待接受', method:'客户发起'},
+  {id:'LOG008', time:'2026-03-28 15:58:12', operator:'陈总', action:'系统配置', target:'修改退房时间为14:00', result:'成功', method:'系统设置'},
+  {id:'LOG009', time:'2026-03-28 15:45:00', operator:'赵飞', action:'密码作废', target:'303房间期间限定密码', result:'成功', method:'密码管理'},
+  {id:'LOG010', time:'2026-03-28 15:30:20', operator:'王工', action:'设备重启', target:'305房间门锁', result:'成功', method:'设备管理'}
+];
+
+function applyOplogFilterV2() {
+  // Use the actual IDs present in page-oplog HTML
+  var search = document.getElementById('oplog-keyword') ? document.getElementById('oplog-keyword').value.toLowerCase() : '';
+  var module = document.getElementById('oplog-module-filter') ? document.getElementById('oplog-module-filter').value : 'all';
+  var user = document.getElementById('oplog-user-filter') ? document.getElementById('oplog-user-filter').value : 'all';
+  var dateStart = document.getElementById('oplog-date-start') ? document.getElementById('oplog-date-start').value : '';
+  var dateEnd = document.getElementById('oplog-date-end') ? document.getElementById('oplog-date-end').value : '';
+  var target = document.getElementById('oplog-target') ? document.getElementById('oplog-target').value.toLowerCase() : '';
+
+  var filtered = oplogStore.filter(function(log) {
+    if (search && log.target.toLowerCase().indexOf(search) === -1 && log.operator.toLowerCase().indexOf(search) === -1 && log.action.toLowerCase().indexOf(search) === -1) return false;
+    if (target && log.target.toLowerCase().indexOf(target) === -1) return false;
+    if (dateStart && log.time.split(' ')[0] < dateStart) return false;
+    if (dateEnd && log.time.split(' ')[0] > dateEnd) return false;
+    return true;
+  });
+  renderOplogTableV2(filtered);
+  // Update count display
+  var countEl = document.getElementById('oplog-filter-count');
+  if (countEl) countEl.innerHTML = '共 <strong>' + filtered.length + '</strong> 条记录';
+  // Also update oplog-count if exists
+  var countEl2 = document.getElementById('oplog-count');
+  if (countEl2) countEl2.innerHTML = '共 <strong>' + filtered.length + '</strong> 条记录';
+}
+
+function renderOplogTableV2(data) {
+  var tbody = document.getElementById('oplog-table-body');
+  if (!tbody) return;
+  var actionColors = {
+    '远程开锁': 'var(--blue)', '入住办理': 'var(--green)', '退房办理': 'var(--orange)',
+    '设备告警': 'var(--red)', '密码创建': 'var(--purple)', '密码作废': 'var(--red)',
+    '工单创建': 'var(--orange)', '系统配置': 'var(--text)', '设备重启': 'var(--blue)',
+    '房务任务': 'var(--green)'
+  };
+  var html = '';
+  data.forEach(function(log) {
+    var resultBg = log.result === '成功' || log.result === '已完成' ? 'var(--green-bg)' : log.result === '已发送通知' || log.result === '待接受' ? 'var(--orange-bg)' : 'var(--red-bg)';
+    var resultColor = log.result === '成功' || log.result === '已完成' ? 'var(--green)' : log.result === '已发送通知' || log.result === '待接受' ? 'var(--orange)' : 'var(--red)';
+    html += '<tr>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + log.time + '</td>' +
+      '<td><strong>' + log.operator + '</strong></td>' +
+      '<td><span style="color:' + (actionColors[log.action] || 'var(--text)') + ';font-weight:600;">' + log.action + '</span></td>' +
+      '<td style="font-size:12px;">' + log.target + '</td>' +
+      '<td>' + log.method + '</td>' +
+      '<td><span style="padding:2px 8px;border-radius:10px;font-size:11px;background:' + resultBg + ';color:' + resultColor + ';">' + log.result + '</span></td>' +
+      '<td><button class="action-btn small" onclick="viewOplogDetailV2(\'' + log.id + '\')">详情</button></td></tr>';
+  });
+  tbody.innerHTML = html || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">未找到符合条件的记录</td></tr>';
+}
+
+function viewOplogDetailV2(id) {
+  var log = oplogStore.find(function(x){ return x.id === id; });
+  if (!log) return;
+  showToast('📋 操作详情：' + log.action + ' | ' + log.target + ' | 操作者：' + log.operator + ' | 结果：' + log.result, 'info');
+}
+
+function resetOplogFilterV2() {
+  var ids = ['oplog-keyword', 'oplog-module-filter', 'oplog-user-filter', 'oplog-type-filter', 'oplog-status-filter', 'oplog-target', 'oplog-ip', 'oplog-date-start', 'oplog-date-end'];
+  ids.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { if (el.tagName === 'INPUT') el.value = ''; else el.value = 'all'; }
+  });
+  renderOplogTableV2(oplogStore);
+  var countEl = document.getElementById('oplog-filter-count');
+  if (countEl) countEl.innerHTML = '共 <strong>' + oplogStore.length + '</strong> 条记录';
+  var countEl2 = document.getElementById('oplog-count');
+  if (countEl2) countEl2.innerHTML = '共 <strong>' + oplogStore.length + '</strong> 条记录';
+}
+
+function exportOplogCSV() {
+  var csv = '\ufeff时间,操作人,操作类型,操作对象,操作方式,结果\n';
+  oplogStore.forEach(function(log) {
+    csv += log.time + ',' + log.operator + ',' + log.action + ',' + log.target + ',' + log.method + ',' + log.result + '\n';
+  });
+  var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '操作日志_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📤 操作日志已导出为CSV', 'success');
+}
+
+// Initialize all new tables on page load
+document.addEventListener('DOMContentLoaded', function() {
+  // Init handover table
+  var handoverTab = document.getElementById('handover-table-body');
+  if (handoverTab) renderHandoverTable();
+  // Init keypad table
+  var keypadTab = document.getElementById('keypad-table-body');
+  if (keypadTab) renderKeypadTable();
+  // Init energy device table
+  var energyTab = document.getElementById('energy-device-body');
+  if (energyTab) renderEnergyDeviceTable();
+  // Init oplog table
+  var oplogTab = document.getElementById('oplog-table-body');
+  if (oplogTab) {
+    renderOplogTable(oplogStore);
+    var countEl = document.getElementById('oplog-filter-count');
+    if (countEl) countEl.textContent = '共 ' + oplogStore.length + ' 条记录';
+  }
+});
