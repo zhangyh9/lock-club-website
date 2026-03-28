@@ -28538,6 +28538,421 @@ function updateHomepageStats() {
   if (offlineEl) offlineEl.textContent = offlineCount + '台';
 }
 
+// ========== 改进1：员工考勤打卡完整弹窗（原系统无，Demo未实现） ==========
+var _clockInRecords = [
+  {id:'c1', name:'赵飞', dept:'前厅部', date:'2026-03-29', clockIn:'08:57', clockOut:'18:05', status:'正常'},
+  {id:'c2', name:'周敏', dept:'前厅部', date:'2026-03-29', clockIn:'09:02', clockOut:'--', status:'上班'},
+  {id:'c3', name:'吴倩', dept:'客房部', date:'2026-03-29', clockIn:'08:45', clockOut:'17:30', status:'早退'},
+  {id:'c4', name:'郑强', dept:'客房部', date:'2026-03-28', clockIn:'08:55', clockOut:'18:00', status:'正常'},
+  {id:'c5', name:'王工', dept:'工程部', date:'2026-03-29', clockIn:'08:30', clockOut:'--', status:'上班'}
+];
+function openAttendanceModal() {
+  var old = document.getElementById('modal-attendance');
+  if (old) old.remove();
+  var today = new Date().toISOString().slice(0,10);
+  var todayRecords = _clockInRecords.filter(function(r){ return r.date === today; });
+  var html = '<div class="modal-overlay" id="modal-attendance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:680px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">📋 员工考勤打卡</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;">' +
+    '<span style="font-size:12px;color:var(--text-muted);">' + today + '</span>' +
+    '<select id="att-dept-filter" onchange="renderAttendanceTable()" style="padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;">' +
+    '<option value="all">全部部门</option><option>前厅部</option><option>客房部</option><option>工程部</option></select>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-attendance\').remove()">✕</button></div></div>' +
+    '<div class="modal-body">' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:800;color:var(--blue);">' + todayRecords.length + '</div><div style="font-size:11px;color:var(--text-muted);">今日已打卡</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:800;color:var(--green);">' + todayRecords.filter(function(r){return r.status===\'正常\';}).length + '</div><div style="font-size:11px;color:var(--text-muted);">正常</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:800;color:var(--orange);">' + todayRecords.filter(function(r){return r.status===\'早退\'||r.status===\'迟到\';}).length + '</div><div style="font-size:11px;color:var(--text-muted);">异常</div></div>' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:800;color:var(--red);">' + (_clockInRecords.length - todayRecords.length) + '</div><div style="font-size:11px;color:var(--text-muted);">未打卡</div></div>' +
+    '</div>' +
+    '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;">' +
+    '<input type="date" id="att-date-from" value="' + today + '" style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;" onchange="renderAttendanceTable()">' +
+    '<span style="color:var(--text-muted);font-size:12px;">至</span>' +
+    '<input type="date" id="att-date-to" value="' + today + '" style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;" onchange="renderAttendanceTable()">' +
+    '<input type="text" id="att-search" placeholder="搜索员工姓名..." style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;width:150px;" oninput="renderAttendanceTable()">' +
+    '<span style="margin-left:auto;font-size:12px;color:var(--text-muted);" id="att-count-label"></span>' +
+    '</div>' +
+    '<div id="att-table-wrap"><table class="table" style="font-size:12px;">' +
+    '<thead><tr><th>姓名</th><th>部门</th><th>日期</th><th>上班打卡</th><th>下班打卡</th><th>状态</th><th>操作</th></tr></thead>' +
+    '<tbody id="att-tbody"></tbody></table></div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-attendance\').remove()">关闭</button>' +
+    '<button class="modal-btn" style="background:var(--green);color:white;border:none;" onclick="doClockIn()">✅ 打卡上班</button>' +
+    '<button class="modal-btn" style="background:var(--orange);color:white;border:none;" onclick="doClockOut()">🚪 打卡下班</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  renderAttendanceTable();
+}
+function renderAttendanceTable() {
+  var dept = document.getElementById('att-dept-filter') ? document.getElementById('att-dept-filter').value : 'all';
+  var dateFrom = document.getElementById('att-date-from') ? document.getElementById('att-date-from').value : '';
+  var dateTo = document.getElementById('att-date-to') ? document.getElementById('att-date-to').value : '';
+  var search = document.getElementById('att-search') ? document.getElementById('att-search').value.trim().toLowerCase() : '';
+  var filtered = _clockInRecords.filter(function(r) {
+    if (dept !== 'all' && r.dept !== dept) return false;
+    if (dateFrom && r.date < dateFrom) return false;
+    if (dateTo && r.date > dateTo) return false;
+    if (search && r.name.toLowerCase().indexOf(search) === -1) return false;
+    return true;
+  });
+  var tbody = document.getElementById('att-tbody');
+  if (!tbody) return;
+  var statusClass = {正常:'green', 上班:'blue', 早退:'orange', 迟到:'red', 未打卡:'gray'};
+  tbody.innerHTML = filtered.map(function(r) {
+    return '<tr>' +
+      '<td><span style="font-weight:600;">' + r.name + '</span></td>' +
+      '<td>' + r.dept + '</td>' +
+      '<td>' + r.date + '</td>' +
+      '<td>' + r.clockIn + '</td>' +
+      '<td>' + r.clockOut + '</td>' +
+      '<td><span class="tbadge ' + (statusClass[r.status]||'gray') + '">' + r.status + '</span></td>' +
+      '<td><button class="action-btn small" onclick="openAttDetail(\'' + r.id + '\')">详情</button></td>' +
+      '</tr>';
+  }).join('');
+  var lbl = document.getElementById('att-count-label');
+  if (lbl) lbl.textContent = '共 ' + filtered.length + ' 条记录';
+}
+function doClockIn() {
+  showToast('✅ 打卡上班成功，时间：' + new Date().toLocaleTimeString('zh-CN', {hour12:false}).slice(0,5), 'success');
+}
+function doClockOut() {
+  showToast('🚪 打卡下班成功，时间：' + new Date().toLocaleTimeString('zh-CN', {hour12:false}).slice(0,5), 'success');
+}
+function openAttDetail(id) {
+  var r = _clockInRecords.find(function(x){ return x.id === id; });
+  if (!r) return;
+  showToast('查看 ' + r.name + ' ' + r.date + ' 打卡详情', 'info');
+}
+
+// ========== 改进2：员工批量导入弹窗（原系统无，Demo未实现） ==========
+function openStaffBatchImportModal() {
+  var old = document.getElementById('modal-staff-import');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-staff-import" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:520px;">' +
+    '<div class="modal-header"><div class="modal-title">📥 批量导入员工</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-staff-import\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="padding:16px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;text-align:center;">' +
+    '<div style="font-size:36px;margin-bottom:8px;">📁</div>' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">点击选择文件或拖拽文件到此处</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);">支持 .xlsx .csv 格式，每次最多导入100人</div>' +
+    '<input type="file" accept=".xlsx,.csv" id="staff-import-file" style="display:block;margin:10px auto 0;cursor:pointer;" onchange="handleStaffImportFile(this)">' +
+    '</div>' +
+    '<div style="margin-bottom:16px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📋 导入模板下载</div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<button class="action-btn small" onclick="downloadStaffImportTemplate()">📥 下载标准模板</button>' +
+    '<span style="font-size:11px;color:var(--text-muted);align-self:center;">包含姓名、手机号、部门、角色必填字段</span>' +
+    '</div>' +
+    '</div>' +
+    '<div style="margin-bottom:12px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📝 最近导入记录</div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">' +
+    '<table class="table" style="font-size:11px;">' +
+    '<thead><tr><th>文件名</th><th>导入时间</th><th>成功/总数</th><th>状态</th></tr></thead>' +
+    '<tbody>' +
+    '<tr><td>前厅部员工导入_20260325.xlsx</td><td>2026-03-25 14:30</td><td>5/5</td><td><span class="tbadge green">成功</span></td></tr>' +
+    '<tr><td>客房部新员工_20260320.csv</td><td>2026-03-20 10:15</td><td>3/3</td><td><span class="tbadge green">成功</span></td></tr>' +
+    '<tr><td>临时工_20260310.xlsx</td><td>2026-03-10 09:00</td><td>2/2</td><td><span class="tbadge green">成功</span></td></tr>' +
+    '</tbody></table></div></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:6px;font-size:12px;color:var(--orange);">' +
+    '⚠️ 导入将跳过已存在的手机号，员工角色默认为"前厅接待"，导入后请前往员工列表完善权限。' +
+    '</div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-staff-import\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="submitStaffImport()" style="background:var(--blue);color:white;border:none;">开始导入</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function handleStaffImportFile(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var lbl = input.closest('div').querySelector('div[style*="font-weight:600"]');
+  if (lbl) lbl.textContent = '已选：' + file.name + '（点击更改）';
+}
+function downloadStaffImportTemplate() {
+  showToast('📥 员工导入模板已下载', 'success');
+}
+function submitStaffImport() {
+  var fileInput = document.getElementById('staff-import-file');
+  if (!fileInput || !fileInput.files.length) {
+    showToast('请先选择要导入的文件', 'error'); return;
+  }
+  showToast('📤 正在导入员工数据...', 'info');
+  setTimeout(function() {
+    showToast('✅ 成功导入 5 名员工', 'success');
+    document.getElementById('modal-staff-import').remove();
+  }, 1200);
+}
+
+// ========== 改进3：角色权限删除二次确认 + 状态切换完整功能 ==========
+function deleteRole(idx) {
+  var roleNames = ['运维人员','客房人员','前台只读'];
+  var roleName = roleNames[idx-1] || '该角色';
+  var old = document.getElementById('modal-role-delete-confirm');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-role-delete-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:400px;">' +
+    '<div class="modal-header"><div class="modal-title">⚠️ 删除角色确认</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-role-delete-confirm\').remove()">✕</button></div>' +
+    '<div class="modal-body" style="text-align:center;">' +
+    '<div style="font-size:48px;margin-bottom:12px;">🗑️</div>' +
+    '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">确定要删除角色 <span style="color:var(--red);">' + roleName + '</span> 吗？</div>' +
+    '<div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">删除后，该角色下的员工将失去对应权限，请提前为其分配其他角色</div>' +
+    '<div style="padding:10px;background:var(--red-bg);border:1px solid var(--red);border-radius:6px;font-size:12px;color:var(--red);">' +
+    '⚠️ 此操作不可恢复，请确认无误后点击确认删除' +
+    '</div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-role-delete-confirm\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="confirmDeleteRole(' + idx + ')" style="background:var(--red);color:white;border:none;">确认删除</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function confirmDeleteRole(idx) {
+  showToast('✅ 角色已删除', 'success');
+  document.getElementById('modal-role-delete-confirm').remove();
+  var rows = document.querySelectorAll('#role-table-body tr');
+  if (rows[idx]) rows[idx].remove();
+}
+function openEditRoleModal(idx) {
+  var roleNames = ['管理员','运维人员','客房人员','前台只读'];
+  var roleName = roleNames[idx] || '新角色';
+  var old = document.getElementById('modal-edit-role');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-edit-role" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:480px;">' +
+    '<div class="modal-header"><div class="modal-title">✏️ 编辑角色：' + roleName + '</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-edit-role\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group"><label class="form-label">角色名称</label>' +
+    '<input type="text" class="form-input" id="role-edit-name" value="' + roleName + '" placeholder="请输入角色名称"></div>' +
+    '<div class="form-group"><label class="form-label">角色描述</label>' +
+    '<input type="text" class="form-input" id="role-edit-desc" value="" placeholder="请输入角色描述"></div>' +
+    '<div class="form-group"><label class="form-label">状态</label>' +
+    '<select class="form-select" id="role-edit-status"><option value="active">启用</option><option value="inactive">禁用</option></select></div>' +
+    '<div class="form-group"><label class="form-label" style="margin-bottom:8px;">权限配置</label>' +
+    '<div style="padding:8px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--text-muted);">点击"可视化权限编辑器"可图形化配置详细权限</div></div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-edit-role\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="saveRoleEdit(' + idx + ')" style="background:var(--blue);color:white;border:none;">保存修改</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function saveRoleEdit(idx) {
+  var name = document.getElementById('role-edit-name').value.trim();
+  if (!name) { showToast('请填写角色名称', 'error'); return; }
+  showToast('✅ 角色 ' + name + ' 已保存', 'success');
+  document.getElementById('modal-edit-role').remove();
+}
+function openRoleAuditLogModal() {
+  var old = document.getElementById('modal-role-audit-log');
+  if (old) old.remove();
+  var auditData = [
+    {time:'2026-03-28 14:32', user:'系统管理员', action:'修改', target:'客房人员角色', detail:'新增"清洁管理"权限'},
+    {time:'2026-03-27 10:15', user:'系统管理员', action:'删除', target:'临时工角色', detail:'角色删除，关联2名员工已重新分配'},
+    {time:'2026-03-25 09:00', user:'赵飞', action:'编辑', target:'管理员角色', detail:'修改描述信息'},
+    {time:'2026-03-20 16:40', user:'系统管理员', action:'新增', target:'前台只读角色', detail:'创建新角色，权限：只读前台数据'}
+  ];
+  var html = '<div class="modal-overlay" id="modal-role-audit-log" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:600px;max-height:80vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">📜 角色权限变更日志</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-role-audit-log\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<table class="table" style="font-size:12px;">' +
+    '<thead><tr><th>时间</th><th>操作人</th><th>操作类型</th><th>对象</th><th>变更详情</th></tr></thead>' +
+    '<tbody>' + auditData.map(function(a) {
+      var actionClass = {新增:'green', 编辑:'blue', 删除:'red', 修改:'orange'}[a.action] || 'gray';
+      return '<tr><td>' + a.time + '</td><td>' + a.user + '</td><td><span class="tbadge ' + actionClass + '">' + a.action + '</span></td><td>' + a.target + '</td><td>' + a.detail + '</td></tr>';
+    }).join('') + '</tbody></table>' +
+    '</div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-role-audit-log\').remove()">关闭</button></div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function toggleRoleStatus(idx) {
+  var roleNames = ['运维人员','客房人员','前台只读'];
+  var roleName = roleNames[idx-1] || '该角色';
+  var row = document.querySelectorAll('#role-table-body tr')[idx];
+  if (!row) return;
+  var badge = row.querySelector('.tbadge');
+  if (badge.classList.contains('gray')) {
+    badge.className = 'tbadge green';
+    badge.textContent = '启用';
+    showToast('✅ 角色 ' + roleName + ' 已启用', 'success');
+  } else {
+    badge.className = 'tbadge gray';
+    badge.textContent = '已禁用';
+    showToast('🔒 角色 ' + roleName + ' 已禁用', 'info');
+  }
+}
+
+// ========== 改进4：系统健康诊断弹窗（原系统无，Demo缺失） ==========
+function openSystemHealthModal() {
+  var old = document.getElementById('modal-system-health');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-system-health" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:580px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">🩺 系统健康诊断</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;">' +
+    '<span id="health-score" style="font-size:18px;font-weight:800;color:var(--green);">98</span><span style="font-size:12px;color:var(--text-muted);">分</span>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-system-health\').remove()">✕</button></div></div>' +
+    '<div class="modal-body">' +
+    '<div style="margin-bottom:16px;"><div class="diag-section-title">🏥 系统状态</div>' +
+    '<div class="diag-card">' +
+    '<div class="diag-item"><div class="diag-label">🧠 AI模型服务</div><div class="diag-value ok">● 正常</div></div>' +
+    '<div class="diag-item"><div class="diag-label">🔗 飞书插件连接</div><div class="diag-value ok">● 正常</div></div>' +
+    '<div class="diag-item"><div class="diag-label">📡 设备MQTT链路</div><div class="diag-value ok">● 正常 (11/16 在线)</div></div>' +
+    '<div class="diag-item"><div class="diag-label">🗄️ 数据库连接</div><div class="diag-value ok">● 正常</div></div>' +
+    '<div class="diag-item"><div class="diag-label">📬 消息队列</div><div class="diag-value warn">● 轻微延迟</div></div>' +
+    '</div></div>' +
+    '<div style="margin-bottom:16px;"><div class="diag-section-title">⚠️ 风险预警 (2项)</div>' +
+    '<div class="diag-card">' +
+    '<div class="diag-item"><div class="diag-label"><span style="color:var(--orange);">🔋</span> 设备305电量低于20%</div><div class="diag-value warn">低电量</div></div>' +
+    '<div class="diag-item"><div class="diag-label"><span style="color:var(--red);">⚠️</span> 设备303离线超过10小时</div><div class="diag-value error">离线</div></div>' +
+    '</div></div>' +
+    '<div style="margin-bottom:16px;"><div class="diag-section-title">📊 性能指标</div>' +
+    '<div class="diag-card">' +
+    '<div class="diag-item"><div class="diag-label">CPU 使用率</div><div class="diag-value ok">23%</div></div>' +
+    '<div class="diag-progress"><div class="diag-progress-bar" style="width:23%;background:var(--green);"></div></div>' +
+    '<div class="diag-item"><div class="diag-label">内存占用</div><div class="diag-value ok">41%</div></div>' +
+    '<div class="diag-progress"><div class="diag-progress-bar" style="width:41%;background:var(--green);"></div></div>' +
+    '<div class="diag-item"><div class="diag-label">磁盘使用</div><div class="diag-value ok">18%</div></div>' +
+    '<div class="diag-progress"><div class="diag-progress-bar" style="width:18%;background:var(--green);"></div></div>' +
+    '</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border:1px solid var(--green);border-radius:6px;font-size:12px;color:var(--green);">' +
+    '✅ 系统健康度评分 98/100，建议保持当前运行状态' +
+    '</div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-system-health\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="runDeepHealthCheck()" style="background:var(--blue);color:white;border:none;">🔍 深度检测</button>' +
+    '<button class="modal-btn" onclick="fixAllHealthIssues()" style="background:var(--orange);color:white;border:none;">🔧 修复问题</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function runDeepHealthCheck() {
+  showToast('🔍 正在进行深度健康检测...', 'info');
+  setTimeout(function() {
+    showToast('✅ 深度检测完成，未发现新的问题', 'success');
+  }, 1500);
+}
+function fixAllHealthIssues() {
+  showToast('🔧 正在修复健康问题...', 'info');
+  setTimeout(function() {
+    showToast('⚠️ 设备离线问题需要现场处理，已生成维护工单', 'warn');
+  }, 1200);
+}
+
+// ========== 改进5：系统公告发布完整弹窗（原系统无，Demo缺失） ==========
+var _announcements = [
+  {id:'a1', title:'关于清明节假期房务安排通知', content:'清明节期间（4月4-6日）客房入住率预计达95%，请各部门提前做好准备工作...', time:'2026-03-28 10:00', author:'系统管理员', status:'已发布', views:128},
+  {id:'a2', title:'设备维护通知：3楼层走廊灯更换', content:'3楼层走廊灯将于3月30日凌晨2:00-4:00进行更换，届时该区域照明可能短暂中断...', time:'2026-03-27 15:30', author:'工程部', status:'已发布', views:86},
+  {id:'a3', title:'前台服务优化意见征集', content:'为提升前台服务质量，现向全体员工征集服务优化建议，请于4月1日前提交...', time:'2026-03-26 09:00', author:'运营部', status:'草稿', views:12}
+];
+function openAnnouncementPublishModal() {
+  var old = document.getElementById('modal-announcement');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-announcement" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:760px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">📢 系统公告管理</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-announcement\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="margin-bottom:16px;display:flex;gap:8px;align-items:center;">' +
+    '<input type="text" id="ann-title-input" placeholder="公告标题（必填）" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;">' +
+    '<select id="ann-priority-select" style="padding:8px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;">' +
+    '<option value="normal">📢 普通</option><option value="important">🔥 重要</option><option value="urgent">🚨 紧急</option></select>' +
+    '</div>' +
+    '<div style="margin-bottom:12px;">' +
+    '<textarea id="ann-content-input" placeholder="请输入公告内容（必填）..." style="width:100%;height:120px;padding:10px;border:1px solid var(--border);border-radius:6px;font-size:13px;resize:vertical;font-family:inherit;"></textarea>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:16px;">' +
+    '<select id="ann-target-select" style="padding:8px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;">' +
+    '<option value="all">📢 全体员工</option><option value="front">👩‍💼 前厅部</option><option value="housekeeping">🧹 客房部</option><option value="engineering">🔧 工程部</option></select>' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-light);cursor:pointer;">' +
+    '<input type="checkbox" id="ann-pin-checkbox"> 置顶公告</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-light);cursor:pointer;">' +
+    '<input type="checkbox" id="ann-sms-checkbox"> 同时短信通知</label>' +
+    '</div>' +
+    '<div style="margin-bottom:16px;padding:10px;background:var(--bg);border-radius:8px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📋 最近公告</div>' +
+    '<div style="display:flex;flex-direction:column;gap:8px;">' +
+    _announcements.map(function(a) {
+      return '<div style="padding:10px;background:var(--white);border:1px solid var(--border);border-radius:6px;cursor:pointer;" onclick="openAnnDetail(\'' + a.id + '\')">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+        '<span style="font-size:13px;font-weight:600;">' + a.title + '</span>' +
+        '<span class="tbadge ' + (a.status===\'已发布\'?\'green\':\'gray\') + '">' + a.status + '</span></div>' +
+        '<div style="font-size:11px;color:var(--text-muted);">' + a.author + ' · ' + a.time + ' · 阅读 ' + a.views + '次</div></div>';
+    }).join('') + '</div></div>' +
+    '<div style="padding:10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:6px;font-size:12px;color:var(--blue);">' +
+    '💡 公告发布后将推送给对应范围的所有员工，可在通知中心查看阅读情况' +
+    '</div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-announcement\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="saveAnnouncementDraft()" style="background:var(--bg);color:var(--text);border:1px solid var(--border);">💾 保存草稿</button>' +
+    '<button class="modal-btn" onclick="publishAnnouncement()" style="background:var(--blue);color:white;border:none;">📢 立即发布</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function saveAnnouncementDraft() {
+  var title = document.getElementById('ann-title-input').value.trim();
+  var content = document.getElementById('ann-content-input').value.trim();
+  if (!title || !content) { showToast('请填写标题和内容', 'error'); return; }
+  showToast('💾 公告已保存为草稿', 'success');
+}
+function publishAnnouncement() {
+  var title = document.getElementById('ann-title-input').value.trim();
+  var content = document.getElementById('ann-content-input').value.trim();
+  if (!title || !content) { showToast('请填写标题和内容', 'error'); return; }
+  showToast('📢 公告已发布，通知已推送', 'success');
+  document.getElementById('modal-announcement').remove();
+}
+function openAnnDetail(id) {
+  var a = _announcements.find(function(x){ return x.id === id; });
+  if (a) showToast('查看公告：' + a.title, 'info');
+}
+
+// ========== 发票作废功能（原系统核心操作，Demo按钮存在但函数缺失） ==========
+function cancelInvoice(invId) {
+  var old = document.getElementById('modal-invoice-void-confirm');
+  if (old) old.remove();
+  var html = '<div class="modal-overlay" id="modal-invoice-void-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:420px;">' +
+    '<div class="modal-header"><div class="modal-title">⚠️ 发票作废确认</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-invoice-void-confirm\').remove()">✕</button></div>' +
+    '<div class="modal-body" style="text-align:center;">' +
+    '<div style="font-size:48px;margin-bottom:12px;">🧾</div>' +
+    '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">确定要作废发票 <span style="color:var(--red);font-family:monospace;">' + invId + '</span> 吗？</div>' +
+    '<div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">作废后发票状态变更为"已作废"，如需重新开具请使用重开功能</div>' +
+    '<div style="margin-bottom:12px;"><label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:6px;text-align:left;">作废原因</label>' +
+    '<select id="void-reason" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;">' +
+    '<option value="wrong">发票信息填写错误</option><option value="duplicate">重复开具</option>' +
+    '<option value="refund">客人退款冲红</option><option value="other">其他原因</option></select></div>' +
+    '<div style="padding:10px;background:var(--red-bg);border:1px solid var(--red);border-radius:6px;font-size:12px;color:var(--red);">' +
+    '⚠️ 发票作废是永久操作，无法撤回，请仔细核对' +
+    '</div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-void-confirm\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="confirmInvoiceVoid(\'' + invId + '\')" style="background:var(--red);color:white;border:none;">确认作废</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function confirmInvoiceVoid(invId) {
+  var rows = document.querySelectorAll('#invoice-table-body tr');
+  rows.forEach(function(row) {
+    if (row.querySelector('span[style*="INV-"]') && row.querySelector('span[style*="INV-"]').textContent.indexOf(invId) !== -1) {
+      var badge = row.querySelector('.tbadge');
+      if (badge) { badge.className = 'tbadge red'; badge.textContent = '❌ 已作废'; }
+      var actionBtns = row.querySelectorAll('.action-btn.small.red');
+      actionBtns.forEach(function(btn){ btn.style.display = 'none'; });
+    }
+  });
+  document.getElementById('modal-invoice-void-confirm').remove();
+  showToast('🧾 发票 ' + invId + ' 已作废', 'success');
+}
+
 // 初始化：页面加载后渲染统计面板
 document.addEventListener('DOMContentLoaded', function() {
   // 延迟初始化确保DOM已就绪
