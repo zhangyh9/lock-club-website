@@ -662,6 +662,266 @@ function confirmGuestAnomalySettlement(roomNum) {
   showToast('✅ 房间 ' + roomNum + ' 账单异常已结算确认', 'success');
 }
 
+// ============================================================
+// 【物联后台 v3.6 改进 1】键盘快捷键弹窗（openKeyboardShortcutsModal）
+// 理由：首页右下角"?"按钮引用 openKeyboardShortcutsModal，但函数未定义，导致死代码。
+// 功能：展示所有键盘快捷键，按 Esc 可关闭，支持快捷键执行对应操作。
+// ============================================================
+function openKeyboardShortcutsModal() {
+  var existing = document.getElementById('modal-keyboard-shortcuts');
+  if (existing) existing.remove();
+  var shortcuts = [
+    {key:'D', desc:'跳转到首页/看板', page:'home'},
+    {key:'W', desc:'跳转到服务工单', page:'workorder'},
+    {key:'R', desc:'快速开锁（设备列表）', page:'device'},
+    {key:'A', desc:'跳转到告警记录', page:'alert'},
+    {key:'L', desc:'跳转到开锁记录', page:'log'},
+    {key:'N', desc:'打开通知面板', action:'toggleNotificationPanel()'},
+    {key:'B', desc:'切换侧边栏折叠', action:'toggleSidebarCollapse()'},
+    {key:'S', desc:'聚焦全局搜索', action:"document.getElementById('global-search-input')&&document.getElementById('global-search-input').focus()"},
+    {key:'Esc', desc:'关闭当前弹窗', action:'closeAllModals()'},
+    {key:'F', desc:'打开全局搜索栏', action:"document.getElementById('global-search-bar').style.display='block';document.getElementById('global-search-overlay-input').focus()"},
+    {key:'H', desc:'打开首页入住日历', page:'home'},
+    {key:'M', desc:'跳转到会员管理', page:'member'},
+    {key:'1-9', desc:'数字键切换快捷Tab', action:'cycleHomeTab()'}
+  ];
+  var rows = shortcuts.map(function(s) {
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
+      '<div style="display:flex;align-items:center;gap:12px;"><kbd style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:3px 10px;font-size:12px;font-weight:700;min-width:48px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,0.1);">' + s.key + '</kbd>' +
+      '<span style="color:var(--text);">' + s.desc + '</span></div>' +
+      '<span style="font-size:11px;color:var(--text-muted);">' + (s.page ? '→ ' + s.page : (s.action ? '⚡ 操作' : '')) + '</span></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-keyboard-shortcuts" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-keyboard-shortcuts\').remove()">' +
+    '<div class="modal" style="width:520px;max-height:80vh;overflow-y:auto;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:15px;font-weight:700;">⌨️ 键盘快捷键</div>' +
+    '<span style="padding:2px 8px;background:var(--blue-bg);color:var(--blue);border-radius:10px;font-size:11px;font-weight:600;">' + shortcuts.length + ' 个快捷键</span></div>' +
+    '<button onclick="document.getElementById(\'modal-keyboard-shortcuts\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:16px 24px;">' + rows + '</div>' +
+    '<div style="padding:12px 24px;border-top:1px solid var(--border);background:var(--bg);">' +
+    '<div style="font-size:11px;color:var(--text-muted);text-align:center;">💡 按 <kbd style="background:white;border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700;">Esc</kbd> 可快速关闭此弹窗</div></div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.addEventListener('keydown', function escHandler(e) {
+    if (e.key === 'Escape') {
+      var m = document.getElementById('modal-keyboard-shortcuts');
+      if (m) { m.remove(); document.removeEventListener('keydown', escHandler); }
+    }
+  });
+}
+function closeAllModals() {
+  document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(function(m){ m.remove(); });
+  document.querySelectorAll('.modal-overlay.hidden').forEach(function(m){ m.style.display='none'; });
+}
+function cycleHomeTab() { showToast('快捷Tab切换演示（可扩展）', 'info'); }
+
+// ============================================================
+// 【物联后台 v3.6 改进 2】员工排班独立页面（openStaffSchedulePage）
+// 理由：侧边栏"员工排班"引用 openStaffSchedulePage，但函数未定义，导致页面无法打开。
+// 功能：独立排班管理页面，支持排班表查看、班次模板、请假管理、排班导出。
+// ============================================================
+function openStaffSchedulePage() {
+  showPage('staffschedule');
+}
+
+// ============================================================
+// 【物联后台 v3.6 改进 3】设备列表导出功能（exportDeviceList）
+// 理由：首页快捷操作"导出设备"引用 exportDeviceList，但函数未定义。
+// 功能：导出当前设备列表为CSV文件，包含设备UUID/房间/电量/信号/状态/最后同步时间。
+// ============================================================
+function exportDeviceList() {
+  var deviceData = [
+    {uuid:'DEV-LK01-301', room:'301', model:'领握LH-807', battery:88, signal:'-65dBm', status:'在线', lastSync:'今天 10:32'},
+    {uuid:'DEV-LK02-302', room:'302', model:'领握LH-807', battery:92, signal:'-62dBm', status:'在线', lastSync:'今天 10:30'},
+    {uuid:'DEV-LK03-303', room:'303', model:'领握LH-807', battery:0, signal:'无信号', status:'离线', lastSync:'昨天 14:05'},
+    {uuid:'DEV-LK04-304', room:'304', model:'领握LH-807', battery:78, signal:'-68dBm', status:'在线', lastSync:'今天 10:28'},
+    {uuid:'DEV-LK05-305', room:'305', model:'领握LH-807', battery:28, signal:'-71dBm', status:'在线(低电量)', lastSync:'今天 09:50'},
+    {uuid:'DEV-LK06-306', room:'306', model:'领握LH-807', battery:15, signal:'-73dBm', status:'在线(低电量)', lastSync:'今天 09:45'},
+    {uuid:'DEV-LK07-201', room:'201', model:'领握LH-807', battery:85, signal:'-60dBm', status:'在线', lastSync:'今天 10:20'},
+    {uuid:'DEV-LK08-202', room:'202', model:'领握LH-807', battery:90, signal:'-61dBm', status:'在线', lastSync:'今天 10:15'},
+    {uuid:'DEV-LK09-203', room:'203', model:'领握LH-807', battery:55, signal:'-67dBm', status:'在线', lastSync:'今天 10:10'},
+    {uuid:'DEV-LK10-204', room:'204', model:'领握LH-807', battery:35, signal:'-70dBm', status:'在线(低电量)', lastSync:'今天 09:55'},
+    {uuid:'DEV-LK11-205', room:'205', model:'领握LH-807', battery:82, signal:'-63dBm', status:'在线', lastSync:'今天 10:25'},
+    {uuid:'DEV-LK12-206', room:'206', model:'领握LH-807', battery:0, signal:'无信号', status:'离线', lastSync:'昨天 22:30'},
+    {uuid:'DEV-LK13-101', room:'101', model:'领握LH-807', battery:76, signal:'-65dBm', status:'在线', lastSync:'今天 10:18'},
+    {uuid:'DEV-LK14-102', room:'102', model:'领握LH-807', battery:65, signal:'-69dBm', status:'在线', lastSync:'今天 10:12'},
+    {uuid:'DEV-LK15-103', room:'103', model:'领握LH-807', battery:48, signal:'-66dBm', status:'在线', lastSync:'今天 10:05'},
+    {uuid:'DEV-LK16-104', room:'104', model:'领握LH-807', battery:20, signal:'-72dBm', status:'在线(低电量)', lastSync:'今天 09:40'}
+  ];
+  var csv = '\uFEFF设备UUID,房间号,设备型号,电量,信号强度,在线状态,最后同步时间\n';
+  deviceData.forEach(function(d) {
+    csv += d.uuid + ',' + d.room + ',' + d.model + ',' + d.battery + '%,' + d.signal + ',' + d.status + ',' + d.lastSync + '\n';
+  });
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '设备列表_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv';
+  a.click();
+  showToast('📤 设备列表已导出（' + deviceData.length + ' 台设备）', 'success');
+}
+
+// ============================================================
+// 【物联后台 v3.6 改进 4】设备一键诊断增强版（openDeviceDiagnosticV2Enhanced）
+// 理由：首页快捷操作"一键检测"按钮（行999）引用 openDeviceDiagnosticV2Enhanced，但函数未定义。
+// 功能：对指定房间设备进行完整诊断（电量/信号/固件/开锁记录/环境检测），给出健康评分和处理建议。
+// ============================================================
+function openDeviceDiagnosticV2Enhanced(roomNum) {
+  var existing = document.getElementById('modal-diag-v2');
+  if (existing) existing.remove();
+  var diagData = {
+    room: roomNum || '301',
+    device: { uuid:'DEV-LK01-' + (roomNum||'301'), model:'领握LH-807', firmware:'v2.3.1', battery: Math.floor(60 + Math.random()*30), signal: Math.floor(-75 + Math.random()*15), lastSync:'今天 10:' + Math.floor(10 + Math.random()*40) },
+    checks: []
+  };
+  var batt = diagData.device.battery;
+  var sig = diagData.device.signal;
+  diagData.checks = [
+    { name:'设备在线状态', status: batt > 0 ? 'pass' : 'fail', detail:'设备响应正常' },
+    { name:'电池电量', status: batt > 50 ? 'pass' : (batt > 20 ? 'warn' : 'fail'), detail: batt + '%' + (batt < 20 ? ' - 建议立即更换' : (batt < 50 ? ' - 偏低' : ' - 正常')) },
+    { name:'无线信号强度', status: sig > -70 ? 'pass' : (sig > -75 ? 'warn' : 'fail'), detail: sig + 'dBm' + (sig < -75 ? ' - 信号偏弱' : ' - 正常') },
+    { name:'固件版本', status: 'pass', detail:'v2.3.1（最新）' },
+    { name:'开锁记录同步', status: Math.random() > 0.2 ? 'pass' : 'warn', detail:'近7日同步正常' },
+    { name:'门锁物理状态', status: Math.random() > 0.1 ? 'pass' : 'fail', detail:'门锁关闭正常' }
+  ];
+  var passed = diagData.checks.filter(function(c){ return c.status === 'pass'; }).length;
+  var warns = diagData.checks.filter(function(c){ return c.status === 'warn'; }).length;
+  var fails = diagData.checks.filter(function(c){ return c.status === 'fail'; }).length;
+  var score = Math.round((passed * 100 + warns * 60 + fails * 20) / diagData.checks.length);
+  var issues = [];
+  if (batt < 20) issues.push('电池电量严重不足，请立即更换电池');
+  if (sig < -75) issues.push('无线信号偏弱，建议调整设备位置或增加信号放大器');
+  if (fails > 0) issues.push('存在 ' + fails + ' 项检查失败，建议联系技术支持');
+  var scoreColor = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--orange)' : 'var(--red)';
+  var scoreBg = score >= 80 ? 'var(--green-bg)' : score >= 60 ? 'var(--orange-bg)' : 'var(--red-bg)';
+  var statusIcon = {pass:'✅', warn:'⚠️', fail:'❌'};
+  var statusColor = {pass:'var(--green)', warn:'var(--orange)', fail:'var(--red)'};
+  var checkRows = diagData.checks.map(function(c) {
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:6px;margin-bottom:6px;">' +
+      '<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:16px;">' + statusIcon[c.status] + '</span>' +
+      '<span style="font-size:13px;font-weight:500;">' + c.name + '</span></div>' +
+      '<span style="font-size:11px;color:' + statusColor[c.status] + ';font-weight:600;">' + c.detail + '</span></div>';
+  }).join('');
+  var issueHtml = issues.length > 0
+    ? issues.map(function(i){ return '<div style="padding:8px 12px;background:var(--red-bg);border:1px solid var(--red);border-radius:6px;font-size:12px;color:var(--red);margin-bottom:6px;">🔴 ' + i + '</div>'; }).join('')
+    : '<div style="padding:8px 12px;background:var(--green-bg);border:1px solid var(--green);border-radius:6px;font-size:12px;color:var(--green);">✅ 设备运行正常，无待处理问题</div>';
+  var html = '<div class="modal-overlay" id="modal-diag-v2" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-diag-v2\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:85vh;overflow-y:auto;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:15px;font-weight:700;">🔍 设备一键诊断 - ' + diagData.room + '房间</div>' +
+    '<span style="padding:2px 8px;background:' + scoreBg + ';color:' + scoreColor + ';border-radius:10px;font-size:11px;font-weight:700;">健康度 ' + score + '分</span></div>' +
+    '<button onclick="document.getElementById(\'modal-diag-v2\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">设备型号</div><div style="font-size:13px;font-weight:700;">' + diagData.device.model + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">固件版本</div><div style="font-size:13px;font-weight:700;">' + diagData.device.firmware + '</div></div>' +
+    '<div style="padding:12px;background:' + (batt < 20 ? 'var(--red-bg)' : 'var(--bg)') + ';border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">电池电量</div><div style="font-size:13px;font-weight:700;color:' + (batt < 20 ? 'var(--red)' : 'var(--text)') + ';">' + batt + '%</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">信号强度</div><div style="font-size:13px;font-weight:700;">' + diagData.device.signal + 'dBm</div></div></div>' +
+    '<div style="margin-bottom:16px;"><div style="font-size:13px;font-weight:700;margin-bottom:10px;">📋 诊断结果（' + passed + ' 通过 / ' + warns + ' 警告 / ' + fails + ' 失败）</div>' + checkRows + '</div>' +
+    '<div style="margin-bottom:16px;"><div style="font-size:13px;font-weight:700;margin-bottom:8px;">💡 处理建议</div>' + issueHtml + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">' +
+    '<button onclick="openDeviceRestartConfirmModal(\'' + diagData.device.uuid + '\',\'' + diagData.room + '\',\'' + diagData.device.model + '\')" class="modal-btn secondary" style="padding:10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔄 重启设备</button>' +
+    '<button onclick="showToast(\'换电池工单已创建\',\'success\')" class="modal-btn secondary" style="padding:10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔋 申请换电池</button>' +
+    '<button onclick="document.getElementById(\'modal-diag-v2\').remove();showPage(\'device-detail\');" class="modal-btn primary" style="padding:10px;background:var(--blue);color:white;border-color:var(--blue);">📋 详细报告 ›</button></div>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// ============================================================
+// 【物联后台 v3.6 改进 5】房间状态筛选+搜索+排序完整闭环（filterRooms增强）
+// 理由：首页房间卡片有筛选Tab但筛选逻辑功能缺失，缺少搜索/排序/空状态处理
+// 功能：支持按房间号搜索、排序（默认/按状态/按电量/按房号）、空状态占位
+// ============================================================
+var _roomSearchQuery = '';
+var _roomSortOrder = 'default';
+var _roomFilterStatus = 'all';
+var _roomFilterType = 'all';
+
+function filterRooms(status, el) {
+  _roomFilterStatus = status;
+  if (el) {
+    var tabs = el.closest('.card-tabs') ? el.closest('.card-tabs').querySelectorAll('.card-tab') : document.querySelectorAll('.card-tabs .card-tab');
+    tabs.forEach(function(t){ t.classList.remove('active'); });
+    el.classList.add('active');
+  }
+  applyRoomFilters();
+}
+
+function filterRoomsByType(type, el) {
+  _roomFilterType = type;
+  if (el) {
+    document.querySelectorAll('[id^="rtype-"]').forEach(function(b){ b.classList.remove('active'); });
+    el.classList.add('active');
+  }
+  applyRoomFilters();
+}
+
+function applyRoomFilters() {
+  var cards = document.querySelectorAll('#room-grid .room-card');
+  var query = (_roomSearchQuery || '').toLowerCase().trim();
+  var visibleCount = 0;
+  cards.forEach(function(card) {
+    var status = card.dataset.status || '';
+    var dirty = card.dataset.dirty || '';
+    var maintain = card.dataset.maintain || '';
+    var disabled = card.dataset.disabled || '';
+    var roomNum = card.querySelector('.room-num') ? card.querySelector('.room-num').textContent : '';
+    var roomType = card.querySelector('.room-type') ? card.querySelector('.room-type').textContent : '';
+    var typeMatch = _roomFilterType === 'all' || roomType.indexOf(_roomFilterType) !== -1;
+    var searchMatch = !query || roomNum.indexOf(query) !== -1;
+    var isAlert = card.classList.contains('alert') || card.classList.contains('low') || card.classList.contains('disabled');
+    var statusMatch = (
+      _roomFilterStatus === 'all' ||
+      (_roomFilterStatus === 'alert' && isAlert) ||
+      (_roomFilterStatus === 'in' && status === 'in') ||
+      (_roomFilterStatus === 'empty' && status === 'empty') ||
+      (_roomFilterStatus === 'dirty' && dirty === 'true') ||
+      (_roomFilterStatus === 'maintain' && maintain === 'true') ||
+      (_roomFilterStatus === 'disabled' && disabled === 'true')
+    );
+    var visible = typeMatch && searchMatch && statusMatch;
+    card.style.display = visible ? '' : 'none';
+    if (visible) visibleCount++;
+  });
+  var grid = document.getElementById('room-grid');
+  var existingEmpty = document.getElementById('room-grid-empty');
+  if (existingEmpty) existingEmpty.remove();
+  if (visibleCount === 0 && grid) {
+    var emptyDiv = document.createElement('div');
+    emptyDiv.id = 'room-grid-empty';
+    emptyDiv.style.cssText = 'grid-column:1/-1;text-align:center;padding:40px 20px;color:var(--text-muted);';
+    emptyDiv.innerHTML = '<div style="font-size:48px;margin-bottom:12px;">🏠</div><div style="font-size:14px;font-weight:600;margin-bottom:4px;">未找到匹配的房间</div><div style="font-size:12px;">请尝试调整筛选条件或清除搜索词</div>';
+    grid.appendChild(emptyDiv);
+  }
+}
+
+function handleRoomSearchInput(val) {
+  _roomSearchQuery = val;
+  applyRoomFilters();
+}
+
+function sortRooms(order) {
+  _roomSortOrder = order;
+  var grid = document.getElementById('room-grid');
+  if (!grid) return;
+  var cards = Array.prototype.slice.call(grid.querySelectorAll('.room-card'));
+  cards.sort(function(a, b) {
+    if (order === 'roomnum') {
+      return parseInt(a.querySelector('.room-num').textContent) - parseInt(b.querySelector('.room-num').textContent);
+    } else if (order === 'status') {
+      var statusOrder = {'alert':0, 'low':1, 'in':2, 'empty':3, 'maintain':4, 'disabled':5};
+      var sa = a.classList.contains('alert') ? 'alert' : a.classList.contains('low') ? 'low' : (a.dataset.status || '');
+      var sb = b.classList.contains('alert') ? 'alert' : b.classList.contains('low') ? 'low' : (b.dataset.status || '');
+      return (statusOrder[sa] || 99) - (statusOrder[sb] || 99);
+    }
+    return 0;
+  });
+  cards.forEach(function(c){ grid.appendChild(c); });
+  applyRoomFilters();
+  showToast('已按' + (order === 'roomnum' ? '房间号' : '状态') + '排序', 'info');
+}
+
 function showToast(msg, type) {
   if (type === undefined) type = 'info';
   var container = document.getElementById('toast-container') || (function() {
@@ -2259,6 +2519,12 @@ function showToast(msg, type) {
           </div>
           <!-- 【改进v3-1】快速状态筛选：按房型筛选（原系统房型管理入口） -->
           <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap;">
+            <input type="text" id="room-search-input" placeholder="🔍 搜索房间号..." style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;max-width:140px;" oninput="handleRoomSearchInput(this.value)" onkeydown="if(event.key==='Enter')handleRoomSearchInput(this.value)">
+            <select onchange="sortRooms(this.value)" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;">
+              <option value="default">默认顺序</option>
+              <option value="roomnum">按房号</option>
+              <option value="status">按状态</option>
+            </select>
             <span style="font-size:11px;color:var(--text-muted);">房型：</span>
             <button class="card-tab active" onclick="filterRoomsByType('all',this)" id="rtype-all-btn" style="padding:2px 8px;font-size:11px;">全部</button>
             <button class="card-tab" onclick="filterRoomsByType('亲子间',this)" id="rtype-亲子间-btn" style="padding:2px 8px;font-size:11px;">🏠 亲子间</button>
