@@ -17973,6 +17973,385 @@ function revokeAnnouncement(id) {
   showToast('公告 ' + id + ' 已撤回', 'info');
   openAnnouncementPublishModal();
 }
+
+// ======= 【物联后台v3.5 改进】5项功能性改进 =======
+
+// ======= 改进1：员工KPI绩效完整模态框 =======
+function openStaffKPIPerformanceModal() {
+  var old = document.getElementById('modal-staff-performance');
+  if (old) old.remove();
+  var kpiData = [
+    {name:'赵飞', dept:'前厅部', month:'2026-03', checkinRate:96, woResolveRate:94, attendRate:100, score:95, rank:1},
+    {name:'周敏', dept:'前厅部', month:'2026-03', checkinRate:92, woResolveRate:88, attendRate:97, score:89, rank:2},
+    {name:'吴倩', dept:'客房部', month:'2026-03', checkinRate:0, woResolveRate:97, attendRate:100, score:93, rank:1},
+    {name:'郑强', dept:'客房部', month:'2026-03', checkinRate:0, woResolveRate:91, attendRate:95, score:88, rank:2},
+    {name:'王工', dept:'工程部', month:'2026-03', checkinRate:0, woResolveRate:99, attendRate:98, score:97, rank:1},
+    {name:'陈莉', dept:'前厅部', month:'2026-03', checkinRate:88, woResolveRate:85, attendRate:92, score:84, rank:3}
+  ];
+  var html2 = '<div class="modal-overlay" id="modal-staff-performance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:820px;max-height:90vh;overflow-y:auto;">' +
+    '<div class="modal-header"><div class="modal-title">📊 员工KPI绩效考核</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;">' +
+    '<select id="kpi-month-select" onchange="renderKPITable()" style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;">' +
+    '<option value="2026-03">2026年3月</option><option value="2026-02">2026年2月</option><option value="2026-01">2026年1月</option></select>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-staff-performance\').remove()">✕</button></div></div>' +
+    '<div class="modal-body" style="padding:20px;">' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">' +
+    '<div style="padding:14px;background:var(--blue-bg);border-radius:10px;text-align:center;"><div style="font-size:24px;font-weight:800;color:var(--blue);">6</div><div style="font-size:11px;color:var(--text-muted);">考核员工</div></div>' +
+    '<div style="padding:14px;background:var(--green-bg);border-radius:10px;text-align:center;"><div style="font-size:24px;font-weight:800;color:var(--green);">92.3</div><div style="font-size:11px;color:var(--text-muted);">平均得分</div></div>' +
+    '<div style="padding:14px;background:var(--purple-bg);border-radius:10px;text-align:center;"><div style="font-size:24px;font-weight:800;color:var(--purple);">97.2%</div><div style="font-size:11px;color:var(--text-muted);">出勤率均值</div></div>' +
+    '<div style="padding:14px;background:var(--orange-bg);border-radius:10px;text-align:center;"><div style="font-size:24px;font-weight:800;color:var(--orange);">93.8%</div><div style="font-size:11px;color:var(--text-muted);">工单解决率均值</div></div></div>' +
+    '<div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;">' +
+    '<input type="text" id="kpi-search" placeholder="搜索员工姓名..." style="padding:7px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:180px;" oninput="renderKPITable()">' +
+    '<select id="kpi-dept-filter" onchange="renderKPITable()" style="padding:7px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;"><option value="all">全部部门</option><option>前厅部</option><option>客房部</option><option>工程部</option></select>' +
+    '<span style="margin-left:auto;font-size:12px;color:var(--text-muted);" id="kpi-count"></span></div>' +
+    '<table class="table" style="font-size:12px;">' +
+    '<thead><tr><th>排名</th><th>姓名</th><th>部门</th><th>入住办理率%</th><th>工单解决率%</th><th>出勤率%</th><th>综合得分</th><th>评级</th><th>操作</th></tr></thead>' +
+    '<tbody id="kpi-tbody"></tbody></table>' +
+    '<div style="margin-top:16px;padding:12px;background:var(--blue-bg);border-radius:8px;font-size:12px;color:var(--blue);">' +
+    '💡 评级规则：≥95分=A级，≥85分=B级，≥75分=C级，<75分=D级。考核结果每月5日自动生成，可导出Excel存档。</div>' +
+    '</div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-staff-performance\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="exportKPIData()" style="background:var(--green);color:white;border:none;">📤 导出考核表</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html2);
+  renderKPITable();
+}
+
+function renderKPITable() {
+  var tbody = document.getElementById('kpi-tbody');
+  if (!tbody) return;
+  var kpiData = [
+    {name:'赵飞', dept:'前厅部', month:'2026-03', checkinRate:96, woResolveRate:94, attendRate:100, score:95, rank:1},
+    {name:'周敏', dept:'前厅部', month:'2026-03', checkinRate:92, woResolveRate:88, attendRate:97, score:89, rank:2},
+    {name:'吴倩', dept:'客房部', month:'2026-03', checkinRate:0, woResolveRate:97, attendRate:100, score:93, rank:1},
+    {name:'郑强', dept:'客房部', month:'2026-03', checkinRate:0, woResolveRate:91, attendRate:95, score:88, rank:2},
+    {name:'王工', dept:'工程部', month:'2026-03', checkinRate:0, woResolveRate:99, attendRate:98, score:97, rank:1},
+    {name:'陈莉', dept:'前厅部', month:'2026-03', checkinRate:88, woResolveRate:85, attendRate:92, score:84, rank:3}
+  ];
+  var search = document.getElementById('kpi-search') ? document.getElementById('kpi-search').value.toLowerCase() : '';
+  var dept = document.getElementById('kpi-dept-filter') ? document.getElementById('kpi-dept-filter').value : 'all';
+  var filtered = kpiData.filter(function(d) {
+    if (search && d.name.toLowerCase().indexOf(search) === -1) return false;
+    if (dept !== 'all' && d.dept !== dept) return false;
+    return true;
+  });
+  filtered.sort(function(a, b){ return b.score - a.score; });
+  filtered.forEach(function(d, i){ d.rank = i + 1; });
+  var rows = '';
+  filtered.forEach(function(d) {
+    var grade = d.score >= 95 ? {label:'A', color:'var(--green)', bg:'var(--green-bg)'} : d.score >= 85 ? {label:'B', color:'var(--blue)', bg:'var(--blue-bg)'} : d.score >= 75 ? {label:'C', color:'var(--orange)', bg:'var(--orange-bg)'} : {label:'D', color:'var(--red)', bg:'var(--red-bg)'};
+    rows += '<tr>' +
+      '<td><span style="font-weight:800;color:' + (d.rank === 1 ? 'var(--orange)' : 'var(--text)') + ';">' + d.rank + '</span></td>' +
+      '<td><span style="font-weight:600;">' + d.name + '</span></td>' +
+      '<td><span class="tbadge blue" style="font-size:10px;">' + d.dept + '</span></td>' +
+      '<td>' + (d.checkinRate > 0 ? '<span style="color:' + (d.checkinRate >= 90 ? 'var(--green)' : 'var(--orange)') + ';font-weight:600;">' + d.checkinRate + '%</span>' : '<span style="color:var(--text-muted);">--</span>') + '</td>' +
+      '<td><span style="color:' + (d.woResolveRate >= 90 ? 'var(--green)' : 'var(--orange)') + ';font-weight:600;">' + d.woResolveRate + '%</span></td>' +
+      '<td><span style="color:' + (d.attendRate >= 95 ? 'var(--green)' : 'var(--orange)') + ';font-weight:600;">' + d.attendRate + '%</span></td>' +
+      '<td><span style="font-weight:800;font-size:15px;color:var(--blue);">' + d.score + '</span></td>' +
+      '<td><span style="padding:3px 10px;background:' + grade.bg + ';color:' + grade.color + ';border-radius:12px;font-size:11px;font-weight:700;">' + grade.label + '</span></td>' +
+      '<td><button class="action-btn small" onclick="openStaffKPIDetail(\'' + d.name + '\')">详情</button></td>' +
+      '</tr>';
+  });
+  tbody.innerHTML = rows || '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">无匹配数据</td></tr>';
+  var countEl = document.getElementById('kpi-count');
+  if (countEl) countEl.textContent = '共 ' + filtered.length + ' 名员工';
+}
+
+function openStaffKPIDetail(name) { showToast('查看 ' + name + ' 的详细KPI记录', 'info'); }
+function exportKPIData() { showToast('📤 KPI考核报表已导出（模拟）', 'success'); }
+
+// ======= 改进2：新增角色模态框 =======
+function openAddRoleModal() {
+  var old = document.getElementById('modal-add-role');
+  if (old) old.remove();
+  var html2 = '<div class="modal-overlay" id="modal-add-role" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:480px;">' +
+    '<div class="modal-header"><div class="modal-title">➕ 新增角色</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-add-role\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group"><label class="form-label">角色名称 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="role-name-input" placeholder="如：前厅经理、客房主管" maxlength="20"></div>' +
+    '<div class="form-group"><label class="form-label">角色标识 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="role-key-input" placeholder="如：front_manager（英文）" maxlength="30"></div>' +
+    '<div class="form-group"><label class="form-label">角色描述</label>' +
+    '<input type="text" class="form-input" id="role-desc-input" placeholder="简要描述此角色的职责范围" maxlength="100"></div>' +
+    '<div class="form-group"><label class="form-label">角色类型</label>' +
+    '<select class="form-select" id="role-type-input"><option value="custom">🔧 自定义角色</option><option value="system">⚙️ 系统角色</option></select></div>' +
+    '<div class="form-group"><label class="form-label">状态</label>' +
+    '<select class="form-select" id="role-status-input"><option value="enabled">✅ 启用</option><option value="disabled">🚫 禁用</option></select></div>' +
+    '<div style="margin-top:16px;padding:12px;background:var(--blue-bg);border-radius:8px;font-size:12px;color:var(--blue);">' +
+    '💡 提示：创建角色后，请进入"可视化权限编辑器"为角色分配具体权限。</div>' +
+    '</div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-add-role\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitAddRole()">💾 创建角色</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html2);
+}
+
+function submitAddRole() {
+  var name = document.getElementById('role-name-input').value.trim();
+  var key = document.getElementById('role-key-input').value.trim();
+  if (!name || !key) { showToast('请填写角色名称和标识', 'error'); return; }
+  if (!/^[a-z_]+$/.test(key)) { showToast('角色标识只能使用小写英文和下划线', 'error'); return; }
+  document.getElementById('modal-add-role').remove();
+  showToast('✅ 角色"' + name + '"创建成功，请分配权限', 'success');
+}
+
+// ======= 改进3：可视化权限编辑器 =======
+var _currentEditingRole = 0;
+var allPermissions = [
+  {id:'room_view', label:'🏠 房态查看', category:'房务'},
+  {id:'room_checkin', label:'🏨 入住办理', category:'房务'},
+  {id:'room_checkout', label:'🚪 退房办理', category:'房务'},
+  {id:'room_clean', label:'🧹 房务任务', category:'房务'},
+  {id:'device_view', label:'📱 设备查看', category:'设备'},
+  {id:'device_unlock', label:'🔓 远程开锁', category:'设备'},
+  {id:'device_restart', label:'🔁 设备重启', category:'设备'},
+  {id:'device_upgrade', label:'📦 固件升级', category:'设备'},
+  {id:'wo_view', label:'📋 工单查看', category:'工单'},
+  {id:'wo_create', label:'📝 工单创建', category:'工单'},
+  {id:'wo_process', label:'✅ 工单处理', category:'工单'},
+  {id:'energy_view', label:'⚡ 能耗查看', category:'能耗'},
+  {id:'energy_control', label:'⚡ 能耗控制', category:'能耗'},
+  {id:'config_view', label:'⚙️ 配置查看', category:'系统'},
+  {id:'config_edit', label:'✏️ 配置修改', category:'系统'},
+  {id:'staff_view', label:'👥 员工查看', category:'员工'},
+  {id:'staff_manage', label:'👤 员工管理', category:'员工'}
+];
+var rolePermissionMap = {
+  0: ['room_view','room_checkin','room_checkout','room_clean','device_view','device_unlock','device_restart','device_upgrade','wo_view','wo_create','wo_process','energy_view','energy_control','config_view','config_edit','staff_view','staff_manage'],
+  1: ['room_view','device_view','device_unlock','device_restart','wo_view'],
+  2: ['room_view','room_clean','device_view','wo_view','wo_create'],
+  3: ['room_view']
+};
+
+function openRolePermissionEditorModal(roleIdx) {
+  _currentEditingRole = roleIdx;
+  var roleNames = ['管理员', '运维人员', '客房人员', '前台只读'];
+  var roleName = roleNames[roleIdx] || '管理员';
+  var currentPerms = rolePermissionMap[roleIdx] || [];
+  var categories = ['房务', '设备', '工单', '能耗', '系统', '员工'];
+  var html2 = '<div class="modal-overlay" id="modal-role-editor" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:720px;max-height:90vh;display:flex;flex-direction:column;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div><div style="font-size:16px;font-weight:700;">🛡️ 可视化权限编辑器</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px;">正在编辑：<strong>' + roleName + '</strong> · 勾选授予权限</div></div>' +
+    '<div style="display:flex;gap:8px;align-items:center;">' +
+    '<button onclick="selectAllPermissions()" style="padding:6px 12px;font-size:12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:white;">全选</button>' +
+    '<button onclick="clearAllPermissions()" style="padding:6px 12px;font-size:12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:white;">全清</button>' +
+    '<button onclick="document.getElementById(\'modal-role-editor\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div></div>';
+  categories.forEach(function(cat) {
+    var catPerms = allPermissions.filter(function(p){ return p.category === cat; });
+    html2 += '<div style="padding:14px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">' +
+      '<div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text);">' + cat + '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+    catPerms.forEach(function(p) {
+      var checked = currentPerms.indexOf(p.id) >= 0;
+      html2 += '<label style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:' + (checked ? 'var(--blue-bg)' : 'var(--bg)') + ';border:1px solid ' + (checked ? 'var(--blue)' : 'var(--border)') + ';border-radius:20px;cursor:pointer;font-size:12px;color:' + (checked ? 'var(--blue)' : 'var(--text)') + ';transition:all 0.2s;">' +
+        '<input type="checkbox" value="' + p.id + '" ' + (checked ? 'checked' : '') + ' onchange="togglePermission('' + p.id + '')" style="accent-color:var(--blue);width:15px;height:15px;">' + p.label + '</label>';
+    });
+    html2 += '</div></div>';
+  });
+  html2 += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">' +
+    '<div style="font-size:12px;color:var(--text-muted);">已选 <strong id="perm-count">' + currentPerms.length + '</strong> 项权限</div>' +
+    '<div style="display:flex;gap:10px;"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-role-editor\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="saveRolePermissions()">💾 保存权限配置</button></div></div></div></div>';
+  var old = document.getElementById('modal-role-editor');
+  if (old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', html2);
+}
+
+function togglePermission(permId) {
+  var arr = rolePermissionMap[_currentEditingRole];
+  if (!arr) arr = [];
+  var pos = arr.indexOf(permId);
+  if (pos >= 0) { arr.splice(pos, 1); } else { arr.push(permId); }
+  rolePermissionMap[_currentEditingRole] = arr;
+  var countEl = document.getElementById('perm-count');
+  if (countEl) countEl.textContent = arr.length;
+  var checkbox = document.querySelector('#modal-role-editor input[value="' + permId + '"]');
+  if (checkbox) {
+    var label = checkbox.closest('label');
+    if (label) {
+      if (arr.indexOf(permId) >= 0) {
+        label.style.background = 'var(--blue-bg)'; label.style.borderColor = 'var(--blue)'; label.style.color = 'var(--blue)';
+      } else {
+        label.style.background = 'var(--bg)'; label.style.borderColor = 'var(--border)'; label.style.color = 'var(--text)';
+      }
+    }
+  }
+}
+
+function selectAllPermissions() {
+  allPermissions.forEach(function(p){ if (rolePermissionMap[_currentEditingRole].indexOf(p.id) < 0) rolePermissionMap[_currentEditingRole].push(p.id); });
+  document.querySelectorAll('#modal-role-editor input[type="checkbox"]').forEach(function(cb){ cb.checked = true; });
+  var countEl = document.getElementById('perm-count');
+  if (countEl) countEl.textContent = rolePermissionMap[_currentEditingRole].length;
+}
+
+function clearAllPermissions() {
+  rolePermissionMap[_currentEditingRole] = [];
+  document.querySelectorAll('#modal-role-editor input[type="checkbox"]').forEach(function(cb){ cb.checked = false; });
+  var countEl = document.getElementById('perm-count');
+  if (countEl) countEl.textContent = '0';
+}
+
+function saveRolePermissions() {
+  var roleNames = ['管理员', '运维人员', '客房人员', '前台只读'];
+  var count = rolePermissionMap[_currentEditingRole].length;
+  document.getElementById('modal-role-editor').remove();
+  showToast('✅ ' + roleNames[_currentEditingRole] + ' 权限已保存（' + count + ' 项）', 'success');
+}
+
+// ======= 改进4：角色权限分配模态框 =======
+var _currentAssignRole = 0;
+var staffForRoleAssign = [
+  {name:'赵飞', role:'管理员', checked:true},
+  {name:'周敏', role:'客房人员', checked:false},
+  {name:'吴倩', role:'客房人员', checked:false},
+  {name:'郑强', role:'客房人员', checked:false},
+  {name:'王工', role:'运维人员', checked:true},
+  {name:'陈莉', role:'前厅经理', checked:false}
+];
+
+function openRoleAssignmentModal(roleIdx) {
+  _currentAssignRole = roleIdx;
+  var roleNames = ['管理员', '运维人员', '客房人员', '前台只读'];
+  var roleName = roleNames[roleIdx] || '管理员';
+  var html2 = '<div class="modal-overlay" id="modal-role-assign" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:500px;">' +
+    '<div class="modal-header"><div class="modal-title">👤 分配员工角色 — ' + roleName + '</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-role-assign\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="margin-bottom:14px;display:flex;align-items:center;gap:8px;">' +
+    '<input type="text" id="ras-search" placeholder="搜索员工姓名..." style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;" oninput="renderRoleAssignList()">' +
+    '<select id="ras-role-filter" onchange="renderRoleAssignList()" style="padding:7px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;">' +
+    '<option value="all">全部角色</option><option>管理员</option><option>运维人员</option><option>客房人员</option><option>前厅经理</option></select></div>' +
+    '<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;font-size:12px;">' +
+    '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="ras-select-all" onchange="toggleAllRoleAssign(this.checked)" style="accent-color:var(--blue);">全选</label>' +
+    '<span style="margin-left:auto;color:var(--text-muted);" id="ras-count">已选 0 人</span></div>' +
+    '<div id="ras-staff-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px;"></div>' +
+    '<div style="margin-top:14px;padding:10px 12px;background:var(--blue-bg);border-radius:8px;font-size:12px;color:var(--blue);">' +
+    '💡 勾选员工后将立即分配该角色，取消勾选将移除角色。</div>' +
+    '</div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-role-assign\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="confirmRoleAssignment()">💾 确认分配</button></div></div></div>';
+  var old = document.getElementById('modal-role-assign');
+  if (old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', html2);
+  renderRoleAssignList();
+}
+
+function renderRoleAssignList() {
+  var list = document.getElementById('ras-staff-list');
+  if (!list) return;
+  var search = document.getElementById('ras-search') ? document.getElementById('ras-search').value.toLowerCase() : '';
+  var roleFilter = document.getElementById('ras-role-filter') ? document.getElementById('ras-role-filter').value : 'all';
+  var staff = staffForRoleAssign.filter(function(s) {
+    if (search && s.name.toLowerCase().indexOf(search) === -1) return false;
+    if (roleFilter !== 'all' && s.role !== roleFilter) return false;
+    return true;
+  });
+  var html3 = '';
+  var checkedCount = 0;
+  staffForRoleAssign.forEach(function(s, globalIdx) {
+    var match = true;
+    if (search && s.name.toLowerCase().indexOf(search) === -1) match = false;
+    if (roleFilter !== 'all' && s.role !== roleFilter) match = false;
+    if (!match) return;
+    if (s.checked) checkedCount++;
+    html3 += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:' + (s.checked ? 'var(--blue-bg)' : 'white') + ';border:1px solid ' + (s.checked ? 'var(--blue)' : 'var(--border)') + ';border-radius:8px;cursor:pointer;" onclick="toggleRoleAssignItem(this, ' + globalIdx + ')">' +
+      '<input type="checkbox" ' + (s.checked ? 'checked' : '') + ' style="accent-color:var(--blue);width:16px;height:16px;" onclick="event.stopPropagation();">' +
+      '<div style="flex:1;"><div style="font-weight:600;font-size:13px;">' + s.name + '</div><div style="font-size:11px;color:var(--text-muted);">' + s.role + '</div></div>' +
+      '<span class="tbadge ' + (s.checked ? 'blue' : 'gray') + '" style="font-size:10px;">' + (s.checked ? '已分配' : '未分配') + '</span></div>';
+  });
+  list.innerHTML = html3 || '<div style="text-align:center;padding:30px;color:var(--text-muted);">无匹配员工</div>';
+  var countEl = document.getElementById('ras-count');
+  if (countEl) countEl.textContent = '已选 ' + checkedCount + ' 人';
+}
+
+function toggleRoleAssignItem(el, idx) {
+  staffForRoleAssign[idx].checked = !staffForRoleAssign[idx].checked;
+  var cb = el.querySelector('input[type="checkbox"]');
+  if (cb) cb.checked = staffForRoleAssign[idx].checked;
+  if (staffForRoleAssign[idx].checked) {
+    el.style.background = 'var(--blue-bg)'; el.style.borderColor = 'var(--blue)';
+  } else {
+    el.style.background = 'white'; el.style.borderColor = 'var(--border)';
+  }
+  var countEl = document.getElementById('ras-count');
+  if (countEl) countEl.textContent = '已选 ' + staffForRoleAssign.filter(function(s){ return s.checked; }).length + ' 人';
+}
+
+function toggleAllRoleAssign(checked) {
+  var search = document.getElementById('ras-search') ? document.getElementById('ras-search').value.toLowerCase() : '';
+  var roleFilter = document.getElementById('ras-role-filter') ? document.getElementById('ras-role-filter').value : 'all';
+  staffForRoleAssign.forEach(function(s, i) {
+    var match = true;
+    if (search && s.name.toLowerCase().indexOf(search) === -1) match = false;
+    if (roleFilter !== 'all' && s.role !== roleFilter) match = false;
+    if (match) s.checked = checked;
+  });
+  renderRoleAssignList();
+}
+
+function confirmRoleAssignment() {
+  var roleNames = ['管理员', '运维人员', '客房人员', '前台只读'];
+  var count = staffForRoleAssign.filter(function(s){ return s.checked; }).length;
+  document.getElementById('modal-role-assign').remove();
+  showToast('✅ ' + roleNames[_currentAssignRole] + ' 已分配给 ' + count + ' 名员工', 'success');
+}
+
+// ======= 改进5：设备重启二次确认模态框(UUID版) =======
+function openDeviceRestartConfirmModal(uuid, roomNum, model) {
+  var deviceNames = {'DEV-LK05':'301房间·亲子间', 'DEV-LK07':'305房间·标准间'};
+  var devLabel = uuid || 'DEV-LK05';
+  var devRoom = roomNum || deviceNames[devLabel] || '未知设备';
+  var devModel = model || '领握LH-807智能锁';
+  var old = document.getElementById('modal-dev-restart-confirm');
+  if (old) old.remove();
+  var html2 = '<div class="modal-overlay" id="modal-dev-restart-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:420px;">' +
+    '<div class="modal-header"><div class="modal-title">⚠️ 确认重启设备</div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-dev-restart-confirm\').remove()">✕</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="text-align:center;margin-bottom:16px;">' +
+    '<div style="font-size:48px;margin-bottom:12px;">🔁</div>' +
+    '<div style="font-size:15px;font-weight:700;margin-bottom:8px;">确定要重启此设备吗？</div>' +
+    '<div style="font-size:13px;color:var(--text-muted);">设备重启期间门锁将临时离线（约10秒），无法进行开锁操作</div></div>' +
+    '<div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:16px;border:1px solid var(--border);">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;">' +
+    '<div><div style="color:var(--text-muted);font-size:10px;margin-bottom:2px;">设备UUID</div><div style="font-weight:600;font-family:monospace;font-size:11px;">' + devLabel + '</div></div>' +
+    '<div><div style="color:var(--text-muted);font-size:10px;margin-bottom:2px;">设备型号</div><div style="font-weight:600;">' + devModel + '</div></div>' +
+    '<div><div style="color:var(--text-muted);font-size:10px;margin-bottom:2px;">所属房间</div><div style="font-weight:600;">' + devRoom + '</div></div>' +
+    '<div><div style="color:var(--text-muted);font-size:10px;margin-bottom:2px;">重启后</div><div style="color:var(--green);font-weight:600;">自动恢复在线</div></div></div></div>' +
+    '<div style="padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);">' +
+    '⚠️ 重启过程中请勿断电，重启完成后设备将自动重新连接网络并恢复在线状态。</div>' +
+    '<div style="margin-top:12px;display:flex;align-items:center;gap:8px;">' +
+    '<input type="checkbox" id="restart-confirm-check" style="accent-color:var(--blue);width:16px;height:16px;">' +
+    '<label for="restart-confirm-check" style="font-size:12px;cursor:pointer;color:var(--text);">我已知晓重启风险，确认执行此操作</label></div>' +
+    '</div>' +
+    '<div class="modal-footer"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-dev-restart-confirm\').remove()">取消</button>' +
+    '<button class="modal-btn" id="restart-confirm-btn" onclick="confirmDeviceRestart(\'' + devLabel + '\')" style="background:var(--orange);color:white;border:none;" disabled>🔁 确认重启</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html2);
+  var checkEl = document.getElementById('restart-confirm-check');
+  var btnEl = document.getElementById('restart-confirm-btn');
+  if (checkEl && btnEl) {
+    checkEl.addEventListener('change', function() {
+      btnEl.disabled = !checkEl.checked;
+      btnEl.style.opacity = checkEl.checked ? '1' : '0.5';
+    });
+  }
+}
+
+function confirmDeviceRestart(uuid) {
+  document.getElementById('modal-dev-restart-confirm').remove();
+  showToast('🔁 正在重启设备 ' + uuid + ' ...', 'info');
+  setTimeout(function() {
+    showToast('✅ 设备 ' + uuid + ' 重启成功，已恢复在线', 'success');
+  }, 3500);
+}
+
+// ======= End of 5 Functional Improvements =======
+
 </script>
 
 <!-- 【改进1】员工管理 - 新增/编辑员工弹窗 -->
