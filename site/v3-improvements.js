@@ -116,7 +116,7 @@ function openCheckoutCouponPanelModal(checkinName, checkinPhone, totalAmount) {
   html += '<div class="modal" style="width:520px;max-height:90vh;overflow-y:auto;">';
   html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
   html += '<div style="font-size:16px;font-weight:700;">🎫 优惠券抵扣计算</div>';
-  html += '<button onclick="closeCheckoutCouponModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="closeCheckoutCouponModal()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
   html += '<div style="padding:20px 24px;">';
   // 摘要
   html += '<div style="display:flex;gap:12px;margin-bottom:16px;">';
@@ -176,7 +176,7 @@ function openRoomPollutionReportModal(roomNum) {
   html += '<div class="modal" style="width:540px;">';
   html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
   html += '<div style="font-size:16px;font-weight:700;">🏠 房间环境质量评估报告 - '+roomNum+'</div>';
-  html += '<button onclick="closePollutionReportModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="closePollutionReportModal()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
   html += '<div style="padding:20px 24px;">';
   // 总体评分
   html += '<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;">';
@@ -344,7 +344,7 @@ function openDevicePingAnimModal(deviceId, deviceName) {
   html += '<div class="modal" style="width:560px;">';
   html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
   html += '<div style="font-size:16px;font-weight:700;">🌐 设备网络诊断 - '+deviceName+'</div>';
-  html += '<button onclick="stopDevicePingAnim()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="stopDevicePingAnim()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
   html += '<div style="padding:20px 24px;">';
   // 实时状态
   html += '<div style="display:flex;gap:12px;margin-bottom:16px;">';
@@ -515,7 +515,7 @@ function openWorkorderSatisfactionSurveyModal(woId, woTitle) {
   html += '<div class="modal" style="width:460px;">';
   html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
   html += '<div style="font-size:16px;font-weight:700;">⭐ 服务满意度调查</div>';
-  html += '<button onclick="closeWoSatisfactionModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="closeWoSatisfactionModal()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
   html += '<div style="padding:20px 24px;">';
   html += '<div style="text-align:center;margin-bottom:16px;">';
   html += '<div style="font-size:13px;color:var(--text-muted);">尊敬的客户，您对以下服务进行评价：</div>';
@@ -657,7 +657,7 @@ function openBuildingDeleteConfirmModal(idx) {
     '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:15px;font-weight:700;color:var(--red);">⚠️ 删除楼栋确认</div>' +
-    '<button onclick="document.getElementById(\'modal-bld-delete-confirm\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<button onclick="document.getElementById(\'modal-bld-delete-confirm\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>' +
     '<div style="padding:20px 24px;">' +
     '<div style="padding:12px 14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;font-size:13px;color:var(--red);margin-bottom:16px;">🚨 删除操作不可逆！该楼栋下所有房间数据将一并清除</div>' +
     '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;">' +
@@ -930,7 +930,7 @@ function openRoomTypePricePlanModal(roomTypeName) {
     '<div class="modal" style="width:520px;background:white;border-radius:12px;">' +
     '<div style="padding:18px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:15px;font-weight:700;">💰 ' + roomTypeName + ' - 多期间价格配置</div>' +
-    '<button onclick="document.getElementById(\'modal-roomtype-price-plan\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<button onclick="document.getElementById(\'modal-roomtype-price-plan\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>' +
     '<div style="padding:20px 24px;">' +
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">' +
     '<div style="padding:14px;background:var(--green-bg);border-radius:8px;text-align:center;">' +
@@ -1017,7 +1017,7 @@ function openShiftTemplateLoadModal() {
     '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
     '<div style="padding:18px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:15px;font-weight:700;">📋 班次模板库</div>' +
-    '<button onclick="document.getElementById(\'modal-shift-template-load\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<button onclick="document.getElementById(\'modal-shift-template-load\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>' +
     '<div style="padding:16px 24px;max-height:400px;overflow-y:auto;">' +
     '<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">选择一个模板应用到本周排班（将覆盖现有排班）</div>' +
     listHtml +
@@ -1066,7 +1066,7 @@ function openLeaveApprovalModal() {
     '<div class="modal" style="width:480px;background:white;border-radius:12px;max-height:80vh;display:flex;flex-direction:column;">' +
     '<div style="padding:18px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
     '<div style="font-size:15px;font-weight:700;">📋 请假申请审批 <span style="font-size:12px;color:var(--orange);">（' + pendingList.length + ' 条待审批）</span></div>' +
-    '<button onclick="document.getElementById(\'modal-leave-approval\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<button onclick="document.getElementById(\'modal-leave-approval\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>' +
     '<div style="padding:16px 24px;overflow-y:auto;flex:1;">' + listHtml + '</div>' +
     '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;flex-shrink:0;">' +
     '<button onclick="openLeaveHistoryModal()" class="action-btn small" style="color:var(--text-muted);">📜 审批历史</button>' +
@@ -1101,7 +1101,7 @@ function openLeaveHistoryModal() {
     '<div class="modal" style="width:440px;background:white;border-radius:12px;">' +
     '<div style="padding:18px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:15px;font-weight:700;">📜 请假审批历史</div>' +
-    '<button onclick="document.getElementById(\'modal-leave-history\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<button onclick="document.getElementById(\'modal-leave-history\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>' +
     '<div style="padding:12px 20px;max-height:350px;overflow-y:auto;">' + listHtml + '</div>' +
     '<div style="padding:12px 24px;border-top:1px solid var(--border);text-align:right;">' +
     '<button onclick="document.getElementById(\'modal-leave-history\').remove()" class="modal-btn secondary">关闭</button></div></div></div>';
@@ -1211,7 +1211,7 @@ function openNightAuditModal() {
   html += '<div style="display:flex;align-items:center;gap:12px;">';
   html += '<div style="width:40px;height:40px;background:var(--purple-bg);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">🌙</div>';
   html += '<div><div style="font-size:16px;font-weight:700;">夜审结账处理</div><div style="font-size:11px;color:var(--text-muted);">日期：' + na.date + ' · 运营日结账统计</div></div></div>';
-  html += '<button onclick="closeNightAuditModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="closeNightAuditModal()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
   html += '<div style="padding:20px 24px;">';
   // 夜审统计卡片
   html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">';
@@ -1280,7 +1280,7 @@ function nightAuditQuickCheckout(room, guest, amount) {
   html += '<div class="modal" style="width:420px;">';
   html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
   html += '<div style="font-size:15px;font-weight:700;">🚪 夜审快速结账 - '+room+'</div>';
-  html += '<button onclick="document.getElementById(\'modal-na-quick-checkout\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="document.getElementById(\'modal-na-quick-checkout\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
   html += '<div style="padding:20px 24px;">';
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">';
   html += '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);">房间</div><div style="font-size:14px;font-weight:600;">'+room+'</div></div>';
@@ -1364,7 +1364,7 @@ function openBatchDeviceUpgradeModal() {
   html += '<div style="display:flex;align-items:center;gap:12px;">';
   html += '<div style="width:40px;height:40px;background:var(--purple-bg);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">📦</div>';
   html += '<div><div style="font-size:16px;font-weight:700;">批量固件升级</div><div style="font-size:11px;color:var(--text-muted);">已选 '+selectedDevices.length+' 台设备 · 当前版本 v2.1.3 → 最新 v2.2.0</div></div></div>';
-  html += '<button onclick="closeBatchUpgradeModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="closeBatchUpgradeModal()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
   html += '<div style="padding:16px 24px;overflow-y:auto;flex:1;">';
   // 升级信息
   html += '<div style="display:flex;gap:10px;margin-bottom:14px;padding:12px;background:var(--blue-bg);border-radius:8px;">';
@@ -1471,7 +1471,7 @@ function openSatisfactionSurveyModal(woId, woTitle, handler) {
   html += '<div style="display:flex;align-items:center;gap:10px;">';
   html += '<div style="width:36px;height:36px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;">⭐</div>';
   html += '<div><div style="font-size:15px;font-weight:700;">服务满意度调查</div><div style="font-size:11px;color:var(--text-muted);">工单 #'+woId+' · 感谢您的反馈</div></div></div>';
-  html += '<button onclick="closeSatisfactionSurveyModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="closeSatisfactionSurveyModal()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
   html += '<div style="padding:20px 24px;">';
   html += '<div style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">请对本次服务进行评价（处理人：'+handler+'）</div>';
   // 满意度评分
@@ -1630,7 +1630,7 @@ function openHousekeepingScheduleModal() {
   html += '<div style="display:flex;align-items:center;gap:12px;">';
   html += '<div style="width:40px;height:40px;background:var(--green-bg);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">🧹</div>';
   html += '<div><div style="font-size:16px;font-weight:700;">保洁排班派工</div><div style="font-size:11px;color:var(--text-muted);">2026-03-28 当日排班 · 3名保洁员</div></div></div>';
-  html += '<button onclick="closeHousekeepingScheduleModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="closeHousekeepingScheduleModal()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
   html += '<div style="padding:16px 24px;overflow-y:auto;flex:1;">';
   // 快速派工工具栏
   html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">';
@@ -1725,7 +1725,7 @@ function openMemberRechargeModal() {
   html += '<div style="display:flex;align-items:center;gap:12px;">';
   html += '<div style="width:40px;height:40px;background:var(--orange-bg);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">💳</div>';
   html += '<div><div style="font-size:16px;font-weight:700;">会员储值卡充值</div><div style="font-size:11px;color:var(--text-muted);">储值余额 · 积分累积 · 自动升级</div></div></div>';
-  html += '<button onclick="closeMemberRechargeModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="closeMemberRechargeModal()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
   html += '<div style="padding:20px 24px;overflow-y:auto;flex:1;">';
   // 会员选择
   html += '<div style="margin-bottom:14px;">';
@@ -2640,7 +2640,7 @@ function openOverdueCheckoutModal() {
   html += '<div class="modal" style="width:520px;">';
   html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
   html += '<div><div style="font-size:16px;font-weight:700;">逾期未退房处理</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">系统检测到以下房间已超过退房时间，请及时处理</div></div>';
-  html += '<button onclick="document.getElementById(\'modal-overdue-checkout\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="document.getElementById(\'modal-overdue-checkout\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
   html += '<div style="padding:20px 24px;">';
   html += '<div style="padding:14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">';
   html += '<div style="font-size:28px;">⏰</div>';
@@ -2719,7 +2719,7 @@ function openDeviceDiagnosticModal(uuid) {
   html += '<div class="modal" style="width:500px;">';
   html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
   html += '<div><div style="font-size:16px;font-weight:700;">🔧 设备实时诊断</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">设备：' + (uuid || 'A84F1AF2-xxxx') + ' · ' + timeStr + '</div></div>';
-  html += '<button onclick="document.getElementById(\'modal-device-diagnostic\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="document.getElementById(\'modal-device-diagnostic\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
   html += '<div style="padding:20px 24px;">';
   html += '<div style="margin-bottom:16px;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">🔄 正在检测，请稍候...</div>';
   html += '<div class="diag-progress"><div class="diag-progress-bar" id="diag-progress-bar" style="width:0%;transition:width 0.3s;"></div></div></div>';
@@ -2828,7 +2828,7 @@ function openNewMemberModal() {
   html += '<div class="modal" style="width:560px;max-height:88vh;overflow-y:auto;">';
   html += '<div style="padding:20px 24px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
   html += '<div><div style="font-size:16px;font-weight:700;">👤 新增会员</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">填写会员信息并选择会员等级</div></div>';
-  html += '<button onclick="document.getElementById(\'modal-new-member\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="document.getElementById(\'modal-new-member\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
   html += '<div style="padding:20px 24px;">';
   html += '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">基本信息</div>';
   html += '<div class="form-row" style="margin-bottom:12px;">';
@@ -2926,7 +2926,7 @@ window.submitNewMember = submitNewMember;
           '</div>' +
           '<div style="display:flex;gap:6px;align-items:center;">' +
             '<span id="frd-status-badge" class="tbadge green">入住</span>' +
-            '<button onclick="closeFpRoomDetail()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button>' +
+            '<button onclick="closeFpRoomDetail()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button>' +
           '</div>' +
         '</div>' +
         '<div style="padding:16px 20px;flex:1;overflow-y:auto;">' +
@@ -3398,7 +3398,7 @@ window.submitNewMember = submitNewMember;
             '<div style="font-size:11px;color:var(--text-muted);" id="wfp-subtitle">WO-2026032701 · 2026-03-27 14:32</div>' +
           '</div>' +
           '<span id="wfp-status-badge" class="tbadge orange">处理中</span>' +
-          '<button onclick="closeModal(\'wo-full-process\')" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button>' +
+          '<button onclick="closeModal(\'wo-full-process\')" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button>' +
         '</div>' +
         // 状态流转步骤条
         '<div style="padding:12px 20px;background:var(--bg);border-bottom:1px solid var(--border);">' +
@@ -3583,7 +3583,7 @@ window.submitNewMember = submitNewMember;
             '<div style="font-size:15px;font-weight:700;">会员充值</div>' +
             '<div style="font-size:11px;color:var(--text-muted);" id="mrf-member-info">张三（138****8888）· 金卡会员</div>' +
           '</div>' +
-          '<button onclick="closeModal(\'member-recharge-full\')" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button>' +
+          '<button onclick="closeModal(\'member-recharge-full\')" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button>' +
         '</div>' +
         // 会员余额信息
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px 20px;background:var(--blue-bg);border-bottom:1px solid var(--border);">' +

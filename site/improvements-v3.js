@@ -59,7 +59,7 @@ function renderOvertimeStep1(item) {
     '<div style="display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:22px;">⏰</div>' +
     '<div><div style="font-size:15px;font-weight:700;">退房超时费用确认</div><div style="font-size:11px;color:var(--text-muted);">第1步 / 共3步</div></div></div>' +
-    '<button onclick="document.getElementById(\'modal-checkout-overtime\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<button onclick="document.getElementById(\'modal-checkout-overtime\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>' +
 
     '<div style="padding:16px 20px;">' +
     // 告警横幅
@@ -107,7 +107,7 @@ function renderOvertimeStep2(item) {
     '<div style="display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:22px;">📋</div>' +
     '<div><div style="font-size:15px;font-weight:700;">选择处理方式</div><div style="font-size:11px;color:var(--text-muted);">第2步 / 共3步</div></div></div>' +
-    '<button onclick="document.getElementById(\'modal-checkout-overtime\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<button onclick="document.getElementById(\'modal-checkout-overtime\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>' +
 
     '<div style="padding:16px 20px;">' +
     '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">请选择对房间 ' + item.room + ' (' + item.guest + ') 的处理方式</div>' +
@@ -160,7 +160,7 @@ function renderOvertimeStep3(item) {
     '<div style="display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:22px;">✅</div>' +
     '<div><div style="font-size:15px;font-weight:700;">确认提交</div><div style="font-size:11px;color:var(--text-muted);">第3步 / 共3步</div></div></div>' +
-    '<button onclick="document.getElementById(\'modal-checkout-overtime\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<button onclick="document.getElementById(\'modal-checkout-overtime\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>' +
 
     '<div style="padding:16px 20px;">' +
 
@@ -288,7 +288,7 @@ function getDepositRefundStep1() {
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">💳</div>' +
     '<div><div style="font-size:15px;font-weight:700;">押金退款</div><div style="font-size:11px;color:var(--text-muted);">第1步：选择退款方式</div></div></div>' +
-    '<button onclick="document.getElementById(\'modal-deposit-refund-wizard\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<button onclick="document.getElementById(\'modal-deposit-refund-wizard\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>' +
 
     '<div style="padding:16px 20px;">' +
     '<div style="padding:14px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;text-align:center;">' +
@@ -335,7 +335,7 @@ function getDepositRefundStep2() {
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">🔐</div>' +
     '<div><div style="font-size:15px;font-weight:700;">押金退款</div><div style="font-size:11px;color:var(--text-muted);">第2步：确认账户信息</div></div></div>' +
-    '<button onclick="document.getElementById(\'modal-deposit-refund-wizard\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<button onclick="document.getElementById(\'modal-deposit-refund-wizard\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>' +
 
     '<div style="padding:16px 20px;">' +
     '<div style="padding:14px;background:var(--green-bg);border-radius:8px;margin-bottom:16px;text-align:center;">' +
@@ -475,7 +475,7 @@ function getHandoverWizardStep1() {
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">📊</div>' +
     '<div><div style="font-size:15px;font-weight:700;">交接班报表</div><div style="font-size:11px;color:var(--text-muted);">第1步：选择班次</div></div></div>' +
-    '<button onclick="document.getElementById(\'modal-handover-wizard\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<button onclick="document.getElementById(\'modal-handover-wizard\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>' +
 
     '<div style="padding:16px 20px;">' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
@@ -519,7 +519,7 @@ function getHandoverWizardStep2() {
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">📋</div>' +
     '<div><div style="font-size:15px;font-weight:700;">报表预览</div><div style="font-size:11px;color:var(--text-muted);">第2步：确认内容</div></div></div>' +
-    '<button onclick="document.getElementById(\'modal-handover-wizard\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<button onclick="document.getElementById(\'modal-handover-wizard\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>' +
 
     '<div style="padding:16px 20px;max-height:60vh;overflow-y:auto;">' +
 
@@ -621,7 +621,7 @@ function openMemberBalanceAlertConfigV3() {
   html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
   html += '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">🔔</div>';
   html += '<div><div style="font-size:15px;font-weight:700;">会员余额预警配置 V3</div><div style="font-size:11px;color:var(--text-muted);">实时预览 · 测试通知 · 预警历史</div></div></div>';
-  html += '<button onclick="document.getElementById(\'modal-mb-config-v3\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="document.getElementById(\'modal-mb-config-v3\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
 
   html += '<div style="padding:16px 20px;">';
 
@@ -753,7 +753,7 @@ function openBatchRoomAllocationModal() {
   html += '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
   html += '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">🏢</div>';
   html += '<div><div style="font-size:15px;font-weight:700;">楼栋房间批量分配</div><div style="font-size:11px;color:var(--text-muted);">按楼层均分房间 · 支持自定义调整</div></div></div>';
-  html += '<button onclick="document.getElementById(\'modal-batch-room-alloc\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<button onclick="document.getElementById(\'modal-batch-room-alloc\').remove()" style="background:rgba(0,0,0,0.08);border:none;font-size:15px;cursor:pointer;color:#555;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">✕</button></div>';
 
   html += '<div style="padding:16px 20px;">';
 
