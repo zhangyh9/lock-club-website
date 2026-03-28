@@ -17633,6 +17633,358 @@ function saveSlaRules() {
   showToast('✅ SLA规则配置已保存（' + _slaRules.length + ' 条规则）', 'success');
 }
 
+// ============================================================
+// 改进4: 工单满意度评价统计弹窗（page-workorder 页面引用的功能）
+// 理由：page-workorder 页面（行~9800）有「满意度统计」按钮，但 openWorkorderSatisfactionStatsModal 函数未定义
+// 功能：展示工单满意度评分分布、评价趋势、评价关键词统计
+// ============================================================
+function openWorkorderSatisfactionStatsModal() {
+  var existing = document.getElementById('modal-wo-satisfaction');
+  if (existing) existing.remove();
+  var scoreDist = [
+    {score:5, label:'⭐⭐⭐⭐⭐', count:48, pct:68},
+    {score:4, label:'⭐⭐⭐⭐', count:15, pct:21},
+    {score:3, label:'⭐⭐⭐', count:5, pct:7},
+    {score:2, label:'⭐⭐', count:1, pct:2},
+    {score:1, label:'⭐', count:1, pct:2}
+  ];
+  var distRows = scoreDist.map(function(d) {
+    var barW = d.pct + '%';
+    var barColor = d.score >= 4 ? 'var(--green)' : d.score === 3 ? 'var(--orange)' : 'var(--red)';
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+      '<span style="font-size:12px;width:70px;color:var(--text-muted);">' + d.label + '</span>' +
+      '<div style="flex:1;height:20px;background:var(--bg);border-radius:4px;overflow:hidden;">' +
+      '<div style="height:100%;width:' + barW + ';background:' + barColor + ';border-radius:4px;"></div></div>' +
+      '<span style="font-size:12px;font-weight:700;width:50px;text-align:right;">' + d.count + '条</span>' +
+      '<span style="font-size:11px;color:var(--text-muted);width:36px;">' + d.pct + '%</span></div>';
+  }).join('');
+
+  var recentComments = [
+    {id:'WO-001', room:'301', guest:'张三', score:5, comment:'服务很好，前台小妹很热情，下次还来！', time:'03-28 14:20'},
+    {id:'WO-002', room:'205', guest:'李四', score:4, comment:'房间干净整洁，就是空调声音有点大', time:'03-28 10:15'},
+    {id:'WO-003', room:'102', guest:'王五', score:5, comment:'入住体验非常棒，推荐！', time:'03-27 22:30'},
+    {id:'WO-004', room:'308', guest:'赵六', score:3, comment:'等了20分钟才拿到房卡，有点慢', time:'03-27 16:45'},
+    {id:'WO-005', room:'201', guest:'孙七', score:5, comment:'免费升房，太惊喜了！', time:'03-27 11:00'}
+  ];
+  var commentRows = recentComments.map(function(c) {
+    var stars = '⭐'.repeat(c.score) + '☆'.repeat(5 - c.score);
+    var scoreColor = c.score >= 4 ? 'var(--green)' : c.score === 3 ? 'var(--orange)' : 'var(--red)';
+    return '<div style="padding:12px;border-bottom:1px solid var(--border);">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+      '<span style="font-size:12px;font-weight:600;">' + c.room + ' · ' + c.guest + '</span>' +
+      '<span style="font-size:12px;color:' + scoreColor + ';">' + stars + '</span>' +
+      '<span style="margin-left:auto;font-size:11px;color:var(--text-muted);">' + c.time + '</span></div>' +
+      '<div style="font-size:12px;color:var(--text);">' + c.comment + '</div></div>';
+  }).join('');
+
+  var html = '<div class="modal-overlay" id="modal-wo-satisfaction" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-satisfaction\').remove()">' +
+    '<div class="modal" style="width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div class="modal-header">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div class="modal-title">⭐ 工单满意度评价统计</div>' +
+    '<span style="padding:3px 10px;background:var(--green-bg);border:1px solid var(--green);border-radius:12px;font-size:11px;color:var(--green);font-weight:600;">平均 4.7分</span></div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-wo-satisfaction\').remove()">✕</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:16px 20px;">' +
+    // 顶部统计卡片
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:14px;background:var(--blue-bg);border-radius:10px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);">4.7</div><div style="font-size:11px;color:var(--text-muted);">综合评分</div></div>' +
+    '<div style="padding:14px;background:var(--green-bg);border-radius:10px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">70</div><div style="font-size:11px;color:var(--text-muted);">评价总数</div></div>' +
+    '<div style="padding:14px;background:var(--purple-bg);border-radius:10px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--purple);">89%</div><div style="font-size:11px;color:var(--text-muted);">满意率(4-5星)</div></div>' +
+    '<div style="padding:14px;background:var(--orange-bg);border-radius:10px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">98%</div><div style="font-size:11px;color:var(--text-muted);">回复率</div></div></div>' +
+    // 评分分布
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">' +
+    '<div style="padding:14px;background:white;border:1px solid var(--border);border-radius:10px;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📊 评分分布</div>' + distRows + '</div>' +
+    '<div style="padding:14px;background:white;border:1px solid var(--border);border-radius:10px;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📝 最新评价（5条）</div>' +
+    '<div style="max-height:200px;overflow-y:auto;">' + commentRows + '</div></div></div>' +
+    // 评价关键词
+    '<div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">🔍 评价关键词云</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:8px;">' +
+    '<span style="padding:4px 10px;background:var(--green-bg);border:1px solid var(--green);border-radius:20px;font-size:12px;color:var(--green);">服务热情 23</span>' +
+    '<span style="padding:4px 10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:20px;font-size:12px;color:var(--blue);">房间干净 18</span>' +
+    '<span style="padding:4px 10px;background:var(--purple-bg);border:1px solid var(--purple);border-radius:20px;font-size:12px;color:var(--purple);">位置方便 12</span>' +
+    '<span style="padding:4px 10px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:20px;font-size:12px;color:var(--orange);">隔音一般 8</span>' +
+    '<span style="padding:4px 10px;background:var(--red-bg);border:1px solid var(--red);border-radius:20px;font-size:12px;color:var(--red);">办理太慢 5</span>' +
+    '<span style="padding:4px 10px;background:var(--green-bg);border:1px solid var(--green);border-radius:20px;font-size:12px;color:var(--green);">早餐不错 9</span>' +
+    '<span style="padding:4px 10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:20px;font-size:12px;color:var(--blue);">免费升房 7</span>' +
+    '<span style="padding:4px 10px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:20px;font-size:12px;color:var(--orange);">空调噪音 4</span></div></div></div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-satisfaction\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="exportSatisfactionReport()" style="background:var(--green);color:white;border:none;">📥 导出评价报告</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function exportSatisfactionReport() {
+  showToast('📥 正在生成满意度评价报告...', 'info');
+  setTimeout(function(){ showToast('✅ 报告已导出（Excel格式）', 'success'); }, 1500);
+}
+
+// ============================================================
+// 改进1: 会员行为分析面板（page-member 页面引用）
+// 理由：page-member 页面（行~12685）有「行为分析」按钮，但 openMemberBehaviorPanel 函数未定义
+// 功能：展示单个会员的消费记录、入住习惯、入会时长、偏好房型等行为画像
+// ============================================================
+function openMemberBehaviorPanel(guestName) {
+  guestName = guestName || '张三';
+  var existing = document.getElementById('modal-member-behavior');
+  if (existing) existing.remove();
+  var stayHistory = [
+    {date:'2026-03-15', room:'301', nights:2, amount:328, type:'大床房'},
+    {date:'2026-02-10', room:'205', nights:1, amount:168, type:'大床房'},
+    {date:'2026-01-20', room:'102', nights:3, amount:498, type:'标准间'},
+    {date:'2025-12-05', room:'301', nights:2, amount:328, type:'大床房'},
+    {date:'2025-11-11', room:'205', nights:1, amount:168, type:'大床房'}
+  ];
+  var historyRows = stayHistory.map(function(s) {
+    return '<tr><td>' + s.date + '</td><td>' + s.room + '</td><td>' + s.type + '</td><td>' + s.nights + '晚</td><td style="color:var(--green);font-weight:700;">¥' + s.amount + '</td></tr>';
+  }).join('');
+
+  var html = '<div class="modal-overlay" id="modal-member-behavior" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-behavior\').remove()">' +
+    '<div class="modal" style="width:680px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div class="modal-header">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div class="modal-title">🔍 会员行为分析 - ' + guestName + '</div>' +
+    '<span style="padding:3px 10px;background:var(--purple-bg);border:1px solid var(--purple);border-radius:12px;font-size:11px;color:var(--purple);font-weight:600;">🥇 金卡会员</span></div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-member-behavior\').remove()">✕</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:16px 20px;">' +
+    // 行为画像卡片
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--blue);">9晚</div><div style="font-size:11px;color:var(--text-muted);">累计入住</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--green);">¥1,490</div><div style="font-size:11px;color:var(--text-muted);">累计消费</div></div>' +
+    '<div style="padding:12px;background:var(--purple-bg);border-radius:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--purple);">165天</div><div style="font-size:11px;color:var(--text-muted);">会员时长</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--orange);">大床房</div><div style="font-size:11px;color:var(--text-muted);">偏好房型</div></div></div>' +
+    // 消费习惯
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">' +
+    '<div style="padding:14px;background:white;border:1px solid var(--border);border-radius:10px;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">💰 消费习惯</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">平均消费：<b style="color:var(--green);">¥165/晚</b></div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">偏好房型：<b style="color:var(--blue);">大床房（80%入住）</b></div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">平均住宿：<b style="color:var(--purple);">1.8晚/次</b></div>' +
+    '<div style="font-size:12px;color:var(--text-muted);">入住时段：<b style="color:var(--orange);">周末为主（71%）</b></div></div>' +
+    '<div style="padding:14px;background:white;border:1px solid var(--border);border-radius:10px;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">🎯 会员价值评估</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">客户价值：<b style="color:var(--green);">高价值（¥1,490/年）</b></div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">升级潜力：<b style="color:var(--blue);">距离VIP还差21晚</b></div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">流失风险：<b style="color:var(--green);">低（最近30天有入住）</b></div>' +
+    '<div style="font-size:12px;color:var(--text-muted);">推荐服务：<b style="color:var(--orange);">储值卡、积分兑换</b></div></div></div>' +
+    // 入住历史
+    '<div style="padding:14px;background:white;border:1px solid var(--border);border-radius:10px;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📋 入住历史（最近5次）</div>' +
+    '<table class="table" style="font-size:12px;"><thead><tr><th>日期</th><th>房号</th><th>房型</th><th>住宿</th><th>消费</th></tr></thead>' +
+    '<tbody>' + historyRows + '</tbody></table></div></div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-behavior\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="sendMemberTargetedOffer(\'' + guestName + '\')" style="background:var(--orange);color:white;border:none;">🎯 发送定向优惠</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function sendMemberTargetedOffer(name) {
+  showToast('正在为 ' + name + ' 生成定向优惠...', 'info');
+  setTimeout(function(){ showToast('🎯 已向 ' + name + ' 发送专属优惠券', 'success'); }, 1500);
+}
+
+// ============================================================
+// 改进2: 楼栋表单完整保存功能（modal-building-form-v2 引用）
+// 理由：modal-building-form-v2（行~22052）的「保存楼栋」按钮引用 submitBuildingForm，但函数不存在
+// 功能：验证表单、提交楼栋数据到 store、刷新楼栋列表
+// ============================================================
+var buildingStore = [
+  {id:'main', name:'主楼', code:'MAIN', floors:3, rooms:16, status:'active', address:'北京市朝阳区某街道1号'},
+  {id:'east', name:'东配楼', code:'EAST', floors:2, rooms:8, status:'active', address:'北京市朝阳区某街道2号'}
+];
+function submitBuildingForm() {
+  var name = document.getElementById('bldf-name').value.trim();
+  var code = document.getElementById('bldf-code').value.trim().toUpperCase();
+  var floors = parseInt(document.getElementById('bldf-floors').value) || 3;
+  var rooms = parseInt(document.getElementById('bldf-rooms').value) || 16;
+  var status = document.getElementById('bldf-status').value;
+  var address = document.getElementById('bldf-address').value.trim();
+  if (!name || !code) {
+    showToast('请填写楼栋名称和编号', 'error');
+    return;
+  }
+  var id = document.getElementById('bldf-id').value;
+  if (id) {
+    // 编辑模式
+    var idx = buildingStore.findIndex(function(b) { return b.id === id; });
+    if (idx !== -1) {
+      buildingStore[idx] = {id:id, name:name, code:code, floors:floors, rooms:rooms, status:status, address:address};
+      showToast('✅ 楼栋「' + name + '」已更新', 'success');
+    }
+  } else {
+    // 新增模式
+    var newId = 'bld_' + Date.now();
+    buildingStore.push({id:newId, name:name, code:code, floors:floors, rooms:rooms, status:status, address:address});
+    showToast('✅ 新楼栋「' + name + '」已创建（共' + buildingStore.length + '栋）', 'success');
+  }
+  closeModal('building-form-v2');
+  renderBuildingList();
+}
+function renderBuildingList() {
+  var el = document.getElementById('building-list-container');
+  if (!el) return;
+  var html = buildingStore.map(function(b) {
+    var statusBadge = b.status === 'active' ? '<span style="padding:2px 8px;background:var(--green-bg);color:var(--green);border-radius:10px;font-size:11px;">✅ 启用</span>' : '<span style="padding:2px 8px;background:var(--red-bg);color:var(--red);border-radius:10px;font-size:11px;">❌ 停用</span>';
+    return '<div style="padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;">' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+      '<div style="font-size:18px;">🏢</div>' +
+      '<div style="flex:1;">' +
+      '<div style="font-size:14px;font-weight:700;">' + b.name + ' <span style="font-size:11px;color:var(--text-muted);">(' + b.code + ')</span></div>' +
+      '<div style="font-size:12px;color:var(--text-muted);">' + b.floors + '层 · ' + b.rooms + '间 · ' + b.address + '</div></div>' +
+      statusBadge +
+      '<button class="action-btn small" onclick="openBuildingFormModal(\'edit\',\'' + b.id + '\')" style="padding:4px 8px;">编辑</button></div></div>';
+  }).join('');
+  el.innerHTML = html;
+}
+function openBuildingFormModal(mode, id) {
+  document.getElementById('bldf-id').value = id || '';
+  document.getElementById('bldf-name').value = '';
+  document.getElementById('bldf-code').value = '';
+  document.getElementById('bldf-floors').value = '3';
+  document.getElementById('bldf-rooms').value = '16';
+  document.getElementById('bldf-status').value = 'active';
+  document.getElementById('bldf-address').value = '';
+  document.getElementById('bldf-title').textContent = mode === 'edit' ? '✏️ 编辑楼栋' : '➕ 新增楼栋';
+  if (mode === 'edit' && id) {
+    var b = buildingStore.find(function(b) { return b.id === id; });
+    if (b) {
+      document.getElementById('bldf-name').value = b.name;
+      document.getElementById('bldf-code').value = b.code;
+      document.getElementById('bldf-floors').value = b.floors;
+      document.getElementById('bldf-rooms').value = b.rooms;
+      document.getElementById('bldf-status').value = b.status;
+      document.getElementById('bldf-address').value = b.address;
+    }
+  }
+  openModal('building-form-v2');
+}
+
+// ============================================================
+// 改进3: 楼层新增表单完整保存功能（modal-add-floor 引用）
+// 理由：modal-add-floor（行~22771）的「确认创建」按钮引用 submitAddFloor，但函数不存在
+// 功能：验证楼层数据、生成房间号、写入 store
+// ============================================================
+var floorStore = [
+  {floor:1, rooms:8, usage:'guest'},
+  {floor:2, rooms:8, usage:'guest'},
+  {floor:3, rooms:8, usage:'guest'}
+];
+function submitAddFloor() {
+  var floorNum = parseInt(document.getElementById('floor-num').value);
+  var floorRooms = parseInt(document.getElementById('floor-rooms').value) || 8;
+  var floorUsage = document.getElementById('floor-usage').value;
+  if (!floorNum || floorNum < 1 || floorNum > 30) {
+    showToast('请输入有效的楼层号（1-30）', 'error');
+    return;
+  }
+  var existing = floorStore.find(function(f) { return f.floor === floorNum; });
+  if (existing) {
+    showToast('⚠️ 楼层 ' + floorNum + ' 已存在，将更新房间数', 'warning');
+    existing.rooms = floorRooms;
+    existing.usage = floorUsage;
+  } else {
+    floorStore.push({floor:floorNum, rooms:floorRooms, usage:floorUsage});
+    floorStore.sort(function(a, b) { return a.floor - b.floor; });
+    showToast('✅ 楼层 ' + floorNum + ' 创建成功（' + floorRooms + '间）', 'success');
+  }
+  closeModal('add-floor');
+  renderFloorList();
+}
+function renderFloorList() {
+  var el = document.getElementById('floor-list-container');
+  if (!el) return;
+  var html = floorStore.map(function(f) {
+    var usageMap = {guest:'客房楼层', mixed:'混合用途', service:'服务楼层'};
+    var usageColor = {guest:'var(--blue)', mixed:'var(--orange)', service:'var(--purple)'}[f.usage];
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">' +
+      '<span style="font-size:16px;font-weight:700;color:var(--blue);width:40px;">' + f.floor + '层</span>' +
+      '<span style="flex:1;font-size:12px;color:var(--text-muted);">' + f.rooms + '间 · <span style="color:' + usageColor + ';">' + (usageMap[f.usage] || f.usage) + '</span></span>' +
+      '<button class="action-btn small" onclick="deleteFloor(' + f.floor + ')" style="padding:3px 8px;font-size:11px;">删除</button></div>';
+  }).join('');
+  el.innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">暂无楼层数据</div>';
+}
+function deleteFloor(floorNum) {
+  if (!confirm('确定删除 ' + floorNum + ' 层？')) return;
+  floorStore = floorStore.filter(function(f) { return f.floor !== floorNum; });
+  showToast('楼层 ' + floorNum + ' 已删除', 'info');
+  renderFloorList();
+}
+function openAddFloorModal() {
+  document.getElementById('floor-num').value = '';
+  document.getElementById('floor-rooms').value = '8';
+  document.getElementById('floor-usage').value = 'guest';
+  openModal('add-floor');
+}
+
+// ============================================================
+// 改进5: 首页工作台待办聚合面板（首页引用）
+// 理由：首页（行~1710）有「本班待办事项」面板和「处理所有」按钮，但 openHomepageTodoModal 未定义
+// 功能：聚合告警、工单、待查房任务，一站式处理
+// ============================================================
+var homeTodoStore = [
+  {type:'alert', title:'301室门锁离线', desc:'设备已离线超过1小时', level:'high', time:'14:20', actionLabel:'处理告警'},
+  {type:'alert', title:'305室门锁低电量', desc:'电量低于20%，请尽快更换', level:'medium', time:'13:45', actionLabel:'处理告警'},
+  {type:'workorder', title:'WO-20260329-01 退房未查房', desc:'301房间张三已退房，待保洁查房', level:'medium', time:'12:30', actionLabel:'处理工单'},
+  {type:'workorder', title:'WO-20260329-02 空调报修', desc:'205房间空调不制冷', level:'high', time:'11:15', actionLabel:'处理工单'},
+  {type:'workorder', title:'WO-20260329-03 退房未查房', desc:'102房间王五已退房，待保洁查房', level:'low', time:'10:00', actionLabel:'处理工单'},
+  {type:'housekeeping', title:'301室 待查房', desc:'退房清洁已完成，请核查', level:'low', time:'11:00', actionLabel:'确认查房'},
+  {type:'housekeeping', title:'205室 待查房', desc:'退房清洁已完成，请核查', level:'low', time:'10:30', actionLabel:'确认查房'},
+  {type:'housekeeping', title:'102室 待查房', desc:'退房清洁已完成，请核查', level:'low', time:'09:45', actionLabel:'确认查房'},
+  {type:'housekeeping', title:'308室 待查房', desc:'退房清洁已完成，请核查', level:'low', time:'09:30', actionLabel:'确认查房'}
+];
+function openHomepageTodoModal() {
+  var existing = document.getElementById('modal-home-todo');
+  if (existing) existing.remove();
+  var highItems = homeTodoStore.filter(function(i) { return i.level === 'high'; });
+  var medItems = homeTodoStore.filter(function(i) { return i.level === 'medium'; });
+  var lowItems = homeTodoStore.filter(function(i) { return i.level === 'low'; });
+  var typeIcon = {alert:'🔔', workorder:'📋', housekeeping:'🧹'};
+  var typeLabel = {alert:'告警', workorder:'工单', housekeeping:'待查房'};
+  var levelColor = {high:'var(--red)', medium:'var(--orange)', low:'var(--green)'};
+  var levelBg = {high:'var(--red-bg)', medium:'var(--orange-bg)', low:'var(--green-bg)'};
+
+  var allRows = homeTodoStore.map(function(item) {
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:8px;margin-bottom:6px;border-left:3px solid ' + levelColor[item.level] + ';">' +
+      '<span style="font-size:16px;">' + (typeIcon[item.type] || '📌') + '</span>' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="font-size:13px;font-weight:600;margin-bottom:2px;">' + item.title + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + item.desc + ' · ' + item.time + '</div></div>' +
+      '<span style="padding:2px 8px;background:' + levelBg[item.level] + ';color:' + levelColor[item.level] + ';border-radius:10px;font-size:11px;font-weight:600;">' + (levelColor[item.level] === levelColor.high ? '🔴 高' : levelColor[item.level] === levelColor.medium ? '🟡 中' : '🟢 低') + '</span>' +
+      '<button class="action-btn small" onclick="handleTodoItem(\'' + item.type + '\',\'' + item.title + '\')" style="padding:4px 10px;font-size:11px;">' + item.actionLabel + '</button></div>';
+  }).join('');
+
+  var html = '<div class="modal-overlay" id="modal-home-todo" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-home-todo\').remove()">' +
+    '<div class="modal" style="width:640px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div class="modal-header">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div class="modal-title">📋 本班待办事项</div>' +
+    '<span style="padding:3px 10px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:12px;font-size:11px;color:var(--orange);font-weight:600;">共 ' + homeTodoStore.length + ' 项待处理</span></div>' +
+    '<button class="modal-close" onclick="document.getElementById(\'modal-home-todo\').remove()">✕</button></div>' +
+    '<div style="padding:12px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">' +
+    '<div style="padding:10px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--red);">' + highItems.length + '</div><div style="font-size:11px;color:var(--red);">🔴 高优先级</div></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);">' + medItems.length + '</div><div style="font-size:11px;color:var(--orange);">🟡 中优先级</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);">' + lowItems.length + '</div><div style="font-size:11px;color:var(--green);">🟢 低优先级</div></div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:16px 20px;">' + allRows + '</div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-home-todo\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="batchCompleteAllTodos()" style="background:var(--green);color:white;border:none;">✅ 全部标记完成</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function handleTodoItem(type, title) {
+  showToast('正在处理：' + title, 'info');
+  setTimeout(function() {
+    homeTodoStore = homeTodoStore.filter(function(i) { return i.title !== title; });
+    showToast('✅ 已处理：' + title, 'success');
+    openHomepageTodoModal();
+  }, 1200);
+}
+function batchCompleteAllTodos() {
+  var count = homeTodoStore.length;
+  homeTodoStore = [];
+  showToast('✅ 已标记全部 ' + count + ' 项为完成', 'success');
+  document.getElementById('modal-home-todo').remove();
+}
+
 function showSlaBreachList() {
   var existing = document.getElementById('modal-sla-breach');
   if (existing) existing.remove();
