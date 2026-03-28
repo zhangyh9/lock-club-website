@@ -16,6 +16,36 @@
   --orange: #fa8c16; --orange-bg: #fff7e6;
   --purple: #722ed1; --purple-bg: #f9f0ff;
 }
+/* 【改进4】深色模式变量覆盖 */
+body.dark-mode {
+  --bg: #141414;
+  --white: #1a1a1a;
+  --border: #2d2d2d;
+  --text: #e0e0e0;
+  --text-light: #a0a0a0;
+  --text-muted: #707070;
+}
+body.dark-mode .card,
+body.dark-mode .modal,
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+  background-color: var(--white) !important;
+  color: var(--text) !important;
+}
+body.dark-mode .room-card,
+body.dark-mode .stat-card {
+  background: var(--bg) !important;
+  border-color: var(--border) !important;
+}
+body.dark-mode .room-card:hover {
+  border-color: var(--blue) !important;
+}
+body.dark-mode .app,
+body.dark-mode .sidebar,
+body.dark-mode .main {
+  background: var(--bg) !important;
+}
 body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
 /* Layout */
@@ -478,8 +508,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 
 <div class="app">
   <!-- Sidebar -->
-  <div class="sidebar" id="sidebar">
-    <div class="sidebar-logo"><span class="icon">🔐</span><span>领锁物联</span></div>
+  <!-- 【改进1】侧边栏折叠按钮 -->
+  <!-- 【改进2】键盘快捷键提示按钮 -->
+  <div style="position:fixed;bottom:20px;right:20px;z-index:9999;">
+    <button onclick="openKeyboardShortcutsModal()" id="kbd-hint-btn" style="width:44px;height:44px;border-radius:50%;background:var(--blue);color:white;border:none;font-size:18px;cursor:pointer;box-shadow:0 4px 12px rgba(24,144,255,0.4);transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" title="键盘快捷键 (?)">?</button>
+  </div>
+
+  <div class="sidebar" id="sidebar" style="transition:width 0.3s ease;overflow:hidden;">
+    <div class="sidebar-logo" style="display:flex;align-items:center;gap:10px;">
+      <button id="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 6px;color:var(--text-muted);flex-shrink:0;" title="折叠侧边栏">☰</button>
+      <span class="icon">🔐</span>
+      <span id="sidebar-brand-text">领锁物联</span>
+    </div>
+    <!-- 【改进4】深色模式切换按钮 -->
+    <div style="padding:8px 16px;margin:0 8px 8px;">
+      <button id="dark-mode-btn" onclick="toggleDarkMode()" style="width:100%;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px;color:var(--text);" title="切换深色模式">
+        <span id="dark-mode-icon">🌙</span>
+        <span id="dark-mode-label">深色模式</span>
+      </button>
+    </div>
     <!-- 【改进6】侧边栏实时运营数据条 -->
     <div style="padding:10px 16px;margin:0 8px 8px;border-radius:8px;background:var(--blue-bg);display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;">
       <div onclick="showPage('home')" style="cursor:pointer;" title="当前入住率">
@@ -496,7 +543,51 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
       </div>
     </div>
     <script>
+    // 【改进4】深色模式切换功能
+    var _darkMode = false;
+    function toggleDarkMode() {
+      var body = document.body;
+      var btn = document.getElementById('dark-mode-btn');
+      var icon = document.getElementById('dark-mode-icon');
+      var label = document.getElementById('dark-mode-label');
+      _darkMode = !_darkMode;
+      if (_darkMode) {
+        body.classList.add('dark-mode');
+        if (icon) icon.textContent = '☀️';
+        if (label) label.textContent = '浅色模式';
+        if (btn) btn.style.background = 'var(--blue-bg)';
+      } else {
+        body.classList.remove('dark-mode');
+        if (icon) icon.textContent = '🌙';
+        if (label) label.textContent = '深色模式';
+        if (btn) btn.style.background = '';
+      }
+    }
     // 每10秒更新侧边栏实时数据
+    var _sidebarCollapsed = false;
+    function toggleSidebarCollapse() {
+      var sidebar = document.getElementById('sidebar');
+      var main = document.querySelector('.main');
+      var btn = document.getElementById('sidebar-collapse-btn');
+      if (!_sidebarCollapsed) {
+        sidebar.style.width = '56px';
+        sidebar.querySelectorAll('.menu-item span').forEach(function(el) { el.style.display = 'none'; });
+        sidebar.querySelectorAll('.menu-group-title').forEach(function(el) { el.style.display = 'none'; });
+        sidebar.querySelectorAll('[onclick*="showPage"]').forEach(function(el) { el.style.justifyContent = 'center'; });
+        sidebar.querySelector('.sidebar-logo').style.padding = '0 8px 16px';
+        if (main) main.style.marginLeft = '56px';
+        if (btn) btn.textContent = '▶';
+        _sidebarCollapsed = true;
+      } else {
+        sidebar.style.width = '';
+        sidebar.querySelectorAll('.menu-item span').forEach(function(el) { el.style.display = ''; });
+        sidebar.querySelectorAll('.menu-group-title').forEach(function(el) { el.style.display = ''; });
+        sidebar.querySelector('.sidebar-logo').style.padding = '';
+        if (main) main.style.marginLeft = '';
+        if (btn) btn.textContent = '☰';
+        _sidebarCollapsed = false;
+      }
+    }
     function updateSidebarStats() {
       var occ = Math.floor(65 + Math.random() * 30); // 65-95%
       var online = Math.floor(12 + Math.random() * 4); // 12-16
@@ -583,6 +674,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     </div>
   </div>
   <!-- /.sidebar -->
+
+  <!-- 【改进3】全局智能搜索栏（悬浮式，键盘F唤起） -->
+  <div style="position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--white);border-bottom:1px solid var(--border);padding:10px 20px;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);" id="global-search-bar">
+    <div style="max-width:640px;margin:0 auto;display:flex;gap:8px;align-items:center;">
+      <div style="position:relative;flex:1;">
+        <input type="text" id="global-search-overlay-input" placeholder="🔍 全局搜索：房间号 / 设备UUID / 客户姓名 / 工单号 / 手机号 / 会员手机" style="width:100%;padding:8px 12px 8px 36px;border:2px solid var(--blue);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" oninput="performGlobalSearch(this.value)" onkeydown="if(event.key==='Escape')closeGlobalSearch()">
+        <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;">🔍</span>
+      </div>
+      <button onclick="closeGlobalSearch()" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--text-muted);padding:4px 8px;">✕ 关闭</button>
+    </div>
+    <div id="global-search-results" style="max-width:640px;margin:8px auto 0;background:white;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);max-height:400px;overflow-y:auto;display:none;"></div>
+  </div>
 
   <!-- Main -->
   <div class="main">
@@ -58702,6 +58805,136 @@ function sendChurnRecovery(name) {
 
 function sendChurnRecoveryBatch() {
   showToast('📤 已向8位高风险会员批量发送挽回优惠短信', 'success');
+}
+
+// 【改进2】键盘快捷键功能
+var _kbdShortcuts = [
+  {key:'H', desc:'快速跳转到首页'},
+  {key:'D', desc:'快速跳转到设备管理'},
+  {key:'W', desc:'快速跳转到工单页面'},
+  {key:'A', desc:'快速跳转到告警页面'},
+  {key:'L', desc:'快速跳转到开锁记录'},
+  {key:'R', desc:'快速跳转到办理记录'},
+  {key:'M', desc:'快速跳转到会员管理'},
+  {key:'E', desc:'快速跳转到系统配置'},
+  {key:'F', desc:'全局聚焦搜索框'},
+  {key:'?', desc:'打开快捷键帮助'},
+  {key:'Esc', desc:'关闭弹窗/取消'},
+  {key:'Enter', desc:'确认/提交当前表单'},
+  {key:'Tab', desc:'下一个输入框'},
+];
+function openKeyboardShortcutsModal() {
+  var existing = document.getElementById('modal-keyboard-shortcuts');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-keyboard-shortcuts" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-keyboard-shortcuts\').remove()">';
+  html += '<div style="background:white;border-radius:12px;width:520px;max-height:80vh;overflow-y:auto;">';
+  html += '<div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div style="font-size:16px;font-weight:700;">⌨️ 键盘快捷键</div>';
+  html += '<button onclick="document.getElementById(\'modal-keyboard-shortcuts\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button></div>';
+  html += '<div style="padding:16px 22px;">';
+  html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">💡 按下对应键即可触发操作，无需点击菜单</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
+  _kbdShortcuts.forEach(function(s) {
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;">';
+    html += '<div style="min-width:48px;height:32px;background:var(--blue);color:white;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;">' + s.key + '</div>';
+    html += '<div style="font-size:12px;color:var(--text-light);">' + s.desc + '</div></div>';
+  });
+  html += '</div></div>';
+  html += '<div style="padding:14px 22px;border-top:1px solid var(--border);text-align:center;font-size:11px;color:var(--text-muted);">提示：部分快捷键可能在输入框获得焦点时失效</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === '?' && !document.activeElement.matches('input,textarea,select')) {
+    openKeyboardShortcutsModal();
+  }
+  if (e.key === 'Escape') {
+    var m = document.querySelector('.modal-overlay:not(.hidden)');
+    if (m) { m.classList.add('hidden'); m.remove(); }
+  }
+  if (document.activeElement.matches('input,textarea,select')) return;
+  var pageMap = {h:'home',d:'device',w:'workorder',a:'alert',l:'log',r:'records',m:'member',e:'config'};
+  if (pageMap[e.key.toLowerCase()]) { showPage(pageMap[e.key.toLowerCase()]); }
+  if (e.key === 'f' || e.key === 'F') {
+    openGlobalSearch();
+    setTimeout(function() { var inp = document.getElementById('global-search-overlay-input'); if (inp) inp.focus(); }, 50);
+  }
+});
+
+// 【改进3】全局智能搜索功能
+function openGlobalSearch() {
+  var bar = document.getElementById('global-search-bar');
+  if (bar) {
+    bar.style.display = 'block';
+    setTimeout(function() { var inp = document.getElementById('global-search-input'); if (inp) inp.focus(); }, 100);
+  }
+}
+function closeGlobalSearch() {
+  var bar = document.getElementById('global-search-bar');
+  var results = document.getElementById('global-search-results');
+  if (bar) bar.style.display = 'none';
+  if (results) { results.style.display = 'none'; results.innerHTML = ''; }
+}
+function performGlobalSearch(query) {
+  var resultsEl = document.getElementById('global-search-results');
+  if (!query || query.length < 1) { resultsEl.style.display = 'none'; return; }
+  query = query.toLowerCase().trim();
+  var results = [];
+  // Search rooms
+  var roomData = typeof roomPlanData !== 'undefined' ? roomPlanData : [];
+  roomData.forEach(function(r) {
+    if ((r.room && r.room.toLowerCase().includes(query)) || (r.type && r.type.toLowerCase().includes(query)) || (r.guest && r.guest.toLowerCase().includes(query))) {
+      results.push({type: 'room', title: '房间 ' + r.room, subtitle: (r.type || '') + (r.guest ? ' · ' + r.guest : ''), action: "showPage('room-detail');openBldRoomPanel('" + r.room + "');"});
+    }
+  });
+  // Search devices (mock data for demo)
+  var deviceSearchData = [
+    {uuid:'A84F1AF2-C73D4CG4-D64E5DH5-E75F6EI6', room:'301', model:'领握LH-807', status:'在线'},
+    {uuid:'B95G2BG3-D84E5EI6-E96F7FJ7-F08G8GK8', room:'302', model:'领握LH-807', status:'在线'},
+    {uuid:'C73D4CG4-E95F6DH7-F07G7EK9-G19H8HL9', room:'303', model:'领握LH-807', status:'离线'},
+    {uuid:'D64E5DH5-F07G7EI8-G18H8FL0-H20I9IM0', room:'305', model:'领握LH-807', status:'低电量28%'}
+  ];
+  deviceSearchData.forEach(function(d) {
+    if ((d.uuid && d.uuid.toLowerCase().includes(query)) || (d.room && d.room.toLowerCase().includes(query))) {
+      results.push({type: 'device', title: '📱 设备 ' + d.room, subtitle: d.model + ' · ' + d.status, action: "showPage('device');showToast('定位设备" + d.room + "','info');"});
+    }
+  });
+  // Search workorders
+  var woSearchData = [
+    {id:'WO-2026032801', type:'客户投诉', room:'303', customer:'张三', status:'待处理'},
+    {id:'WO-2026032802', type:'送物服务', room:'305', customer:'李四', status:'处理中'},
+    {id:'WO-2026032803', type:'设备报修', room:'201', customer:'王五', status:'已完成'}
+  ];
+  woSearchData.forEach(function(w) {
+    if ((w.id && w.id.toLowerCase().includes(query)) || (w.customer && w.customer.toLowerCase().includes(query)) || (w.room && w.room.toLowerCase().includes(query))) {
+      results.push({type: 'workorder', title: '📋 工单 ' + w.id, subtitle: w.type + ' · ' + w.room + ' · ' + w.customer, action: "showPage('workorder');showToast('找到工单" + w.id + "','info');"});
+    }
+  });
+  // Search members
+  var memberSearchData = [
+    {name:'张三', phone:'13800138001', level:'金卡', balance:'¥1,280'},
+    {name:'李四', phone:'13800138002', level:'银卡', balance:'¥680'},
+    {name:'王五', phone:'13800138003', level:'金卡', balance:'¥2,100'}
+  ];
+  memberSearchData.forEach(function(m) {
+    if ((m.name && m.name.toLowerCase().includes(query)) || (m.phone && m.phone.includes(query))) {
+      results.push({type: 'member', title: '👤 会员 ' + m.name, subtitle: m.level + ' · ' + m.phone + ' · 余额' + m.balance, action: "showPage('member');showToast('找到会员" + m.name + "','info');"});
+    }
+  });
+  // Render results
+  if (results.length === 0) {
+    resultsEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-muted);font-size:13px;">未找到匹配「' + query + '」的结果</div>';
+  } else {
+    var html = '';
+    results.slice(0, 8).forEach(function(r) {
+      var typeColors = {room: 'var(--blue)', device: 'var(--green)', workorder: 'var(--orange)', member: 'var(--purple)'};
+      html += '<div onclick="' + r.action + ';closeGlobalSearch();" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">';
+      html += '<div style="width:8px;height:8px;border-radius:50%;background:' + (typeColors[r.type] || 'var(--text-muted)') + ';flex-shrink:0;"></div>';
+      html += '<div style="flex:1;"><div style="font-weight:600;">' + r.title + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + r.subtitle + '</div></div>';
+      html += '</div>';
+    });
+    resultsEl.innerHTML = html;
+  }
+  resultsEl.style.display = 'block';
 }
 
 // 初始化工单SLA计时器
