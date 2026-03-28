@@ -3104,6 +3104,7 @@ function showToast(msg, type) {
         <button class="action-btn small" onclick="window._userClickedBatchUpgrade=true;openBatchUpgradeModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📦 批量升级固件</button>
         <button class="action-btn small" onclick="openDeviceBatchActionModal('battery')" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔋 电池检测</button>
         <button class="action-btn small" onclick="openDeviceBatchActionModal('sync')" style="padding:5px 10px;background:var(--bg);color:var(--text);border-color:var(--border);">🔍 状态同步</button>
+        <button class="action-btn small" onclick="openDeviceRegisterModal()" style="padding:5px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">➕ 新增设备</button>
         <button class="action-btn small" onclick="openBatchDeviceBindingModal()" style="padding:5px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">📡 设备绑定</button>
         <!-- 【改进v3-2】设备重启历史记录按钮（展示最近重启记录+失败重试统计） -->
         <button class="action-btn small" onclick="openDeviceRestartHistoryModal()" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📋 重启历史</button>
@@ -3277,6 +3278,7 @@ function showToast(msg, type) {
         <div class="card-header">
           <div class="card-title">📋 设备列表</div>
           <div style="display:flex;gap:6px;">
+            <button class="action-btn small" onclick="openDeviceRegisterModal()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">➕ 新增设备</button>
             <button class="action-btn small" onclick="exportDeviceCSV()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出CSV</button>
             <button class="action-btn small" onclick="openDeviceImportModal()" style="padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📥 导入设备</button>
           </div>
@@ -10716,7 +10718,7 @@ function openEditMemberLevelModalV2(idx) {
         <button class="action-btn" onclick="exportHandoverReportCSV()" style="padding:6px 14px;font-size:13px;">📊 导出CSV</button>
         <button class="action-btn" onclick="openHandoverSignModal()" style="padding:6px 14px;font-size:13px;">✍️ 确认交班</button>
         <button class="action-btn" onclick="openHandoverReportModal()" style="padding:6px 14px;font-size:13px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📋 完整报表</button>
-        <button class="action-btn" onclick="openHandoverWizardModal()" style="padding:6px 14px;font-size:13px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📨 生成并发送</button>
+        <button class="action-btn" onclick="openFullShiftHandoverModal()" style="padding:6px 14px;font-size:13px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📨 完整交接流程</button>
         <button class="action-btn" onclick="openHandoverConfirmModal()" style="padding:6px 14px;font-size:13px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🔐 电子交接确认</button>
       </div>
       <!-- 【改进4】交接班实时待办汇总：显示告警/工单/退房/清洁等紧急事项，点击可跳转处理 -->
@@ -25248,3 +25250,439 @@ document.addEventListener('DOMContentLoaded', function() {
   var woTab = document.getElementById('workorder-table-body');
   if (woTab) renderWorkorderTable();
 });
+
+// ============================================================
+// 【物联后台 v3.4 改进 1】设备登记注册完整弹窗（新增设备 → 填写信息 → 绑定房间）
+// 理由：原系统截图02硬件物联有设备管理但缺少新增设备入口，Demo也没有设备注册功能。
+// 新增完整设备登记表单（类型选择→型号联动→UUID输入/扫描/自动生成→楼栋楼层绑定→房间绑定→备注）
+// 形成设备增删改查完整闭环。
+// ============================================================
+var deviceRegisterStore = [];
+function openDeviceRegisterModal() {
+  var existing = document.getElementById('modal-device-register');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-device-register" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-register\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">➕ 新增设备登记</div>' +
+    '<button onclick="document.getElementById(\'modal-device-register\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+    '<div class="form-group"><label class="form-label">设备类型 <span class="required">*</span></label><select class="form-select" id="dr-type" onchange="updateDeviceModelOptions()"><option value="">请选择类型</option><option value="lock">🔐 门锁</option><option value="ac">❄️ 空调</option><option value="power">⚡ 电表</option><option value="water">💧 水表</option><option value="gateway">📡 网关</option></select></div>' +
+    '<div class="form-group"><label class="form-label">设备型号 <span class="required">*</span></label><select class="form-select" id="dr-model" disabled><option value="">请先选择类型</option></select></div>' +
+    '</div>' +
+    '<div class="form-group"><label class="form-label">设备UUID <span class="required">*</span></label><div style="display:flex;gap:8px;"><input type="text" class="form-input" id="dr-uuid" placeholder="请输入设备UUID或扫码获取" style="flex:1;"><button class="action-btn small" onclick="autoGenerateDeviceUUID()" style="padding:5px 12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔍 扫码</button><button class="action-btn small" onclick="autoGenerateDeviceUUID()" style="padding:5px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🎲 自动生成</button></div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">支持手动输入、扫码获取或自动生成UUID</div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+    '<div class="form-group"><label class="form-label">所属楼栋 <span class="required">*</span></label><select class="form-select" id="dr-building"><option value="">请选择楼栋</option><option value="main">主楼</option><option value="east">东配楼</option><option value="west">西配楼</option></select></div>' +
+    '<div class="form-group"><label class="form-label">所属楼层 <span class="required">*</span></label><select class="form-select" id="dr-floor"><option value="">请选择楼层</option><option value="1F">1层</option><option value="2F">2层</option><option value="3F">3层</option><option value="4F">4层</option></select></div>' +
+    '</div>' +
+    '<div class="form-group"><label class="form-label">绑定房间 <span class="required">*</span></label><select class="form-select" id="dr-room"><option value="">请先选择楼层</option><option value="301">301室</option><option value="302">302室</option><option value="303">303室</option><option value="304">304室</option><option value="305">305室</option><option value="201">201室</option><option value="202">202室</option><option value="203">203室</option><option value="101">101室</option><option value="102">102室</option></select><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">不绑定房间可留空，用于网关等公共设备</div></div>' +
+    '<div class="form-group"><label class="form-label">安装位置</label><input type="text" class="form-input" id="dr-location" placeholder="如：3层走廊东侧"></div>' +
+    '<div class="form-group"><label class="form-label">设备备注</label><textarea class="form-textarea" id="dr-notes" placeholder="其他补充信息，如采购日期、供应商等" style="min-height:60px;"></textarea></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+    '<div class="form-group"><label class="form-label">固件版本</label><input type="text" class="form-input" id="dr-firmware" placeholder="如：v2.1.3" value="v2.1.0"></div>' +
+    '<div class="form-group"><label class="form-label">初始电量</label><input type="number" class="form-input" id="dr-battery" placeholder="0-100" value="100" min="0" max="100"></div>' +
+    '</div>' +
+    '<div style="margin-top:20px;padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">' +
+    '💡 设备登记后将自动添加到设备列表中，默认状态为"离线"，首次上线后自动更新为"在线"。</div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-register\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitDeviceRegister()">确认登记</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function updateDeviceModelOptions() {
+  var type = document.getElementById('dr-type').value;
+  var modelSelect = document.getElementById('dr-model');
+  var models = {
+    lock: [{v:'LK-PRO-A',n:'领锁PRO-A（旗舰版）'},{v:'LK-PRO-B',n:'领锁PRO-B（标准版）'},{v:'LK-LITE',n:'领锁LITE（入门版）'}],
+    ac: [{v:'AC-MID',n:'美的中央空调控制器'},{v:'AC-HVC',n:'海信变频空调控制器'},{v:'AC-GREE',n:'格力空调网关'}],
+    power: [{v:'PM-100A',n:'电力监测仪100A'},{v:'PM-200A',n:'电力监测仪200A'}],
+    water: [{v:'WM-DN15',n:'智能水表DN15'},{v:'WM-DN20',n:'智能水表DN20'}],
+    gateway: [{v:'GW-100',n:'物联网关GW-100'},{v:'GW-200',n:'物联网关GW-200（双频）'}]
+  };
+  if (!type || !models[type]) {
+    modelSelect.innerHTML = '<option value="">请先选择类型</option>';
+    modelSelect.disabled = true;
+    return;
+  }
+  var html = '<option value="">请选择型号</option>';
+  models[type].forEach(function(m) { html += '<option value="' + m.v + '">' + m.n + '</option>'; });
+  modelSelect.innerHTML = html;
+  modelSelect.disabled = false;
+}
+function autoGenerateDeviceUUID() {
+  var chars = '0123456789ABCDEF';
+  var uuid = 'DEV-';
+  for (var i = 0; i < 4; i++) uuid += chars[Math.floor(Math.random() * 16)];
+  uuid += '-';
+  for (var i = 0; i < 4; i++) uuid += chars[Math.floor(Math.random() * 16)];
+  uuid += '-';
+  for (var i = 0; i < 4; i++) uuid += chars[Math.floor(Math.random() * 16)];
+  var el = document.getElementById('dr-uuid');
+  if (el) el.value = uuid;
+  showToast('🎲 已生成UUID：' + uuid, 'success');
+}
+function submitDeviceRegister() {
+  var type = document.getElementById('dr-type').value;
+  var model = document.getElementById('dr-model').value;
+  var uuid = document.getElementById('dr-uuid').value.trim();
+  var building = document.getElementById('dr-building').value;
+  var floor = document.getElementById('dr-floor').value;
+  var room = document.getElementById('dr-room').value;
+  var location = document.getElementById('dr-location').value.trim();
+  var notes = document.getElementById('dr-notes').value.trim();
+  var firmware = document.getElementById('dr-firmware').value.trim();
+  var battery = parseInt(document.getElementById('dr-battery').value) || 100;
+  if (!type) { showToast('请选择设备类型', 'error'); return; }
+  if (!model) { showToast('请选择设备型号', 'error'); return; }
+  if (!uuid) { showToast('请输入设备UUID', 'error'); return; }
+  if (!building) { showToast('请选择所属楼栋', 'error'); return; }
+  if (!floor) { showToast('请选择所属楼层', 'error'); return; }
+  var typeLabel = {lock:'🔐 门锁',ac:'❄️ 空调',power:'⚡ 电表',water:'💧 水表',gateway:'📡 网关'}[type] || type;
+  var modelLabel = document.getElementById('dr-model').options[document.getElementById('dr-model').selectedIndex].text;
+  var newDevice = {
+    id: 'DEV-' + uuid.replace(/[^A-Z0-9]/gi,'').substring(0,8).toUpperCase(),
+    uuid: uuid,
+    type: type,
+    typeLabel: typeLabel,
+    model: model,
+    modelLabel: modelLabel,
+    building: building,
+    floor: floor,
+    room: room || '—',
+    location: location || '—',
+    notes: notes || '—',
+    firmware: firmware || 'v2.1.0',
+    battery: battery,
+    status: 'offline',
+    signal: Math.floor(Math.random() * 30) + 50,
+    lastSync: '—',
+    bindTime: new Date().toLocaleString()
+  };
+  deviceRegisterStore.unshift(newDevice);
+  document.getElementById('modal-device-register').remove();
+  showToast('✅ 设备 ' + uuid + ' 登记成功，已加入设备列表', 'success');
+}
+
+// ============================================================
+// 【物联后台 v3.4 改进 2】能耗规则预览确认弹窗
+// 理由：saveEnergyRules直接保存没有预览。本次新增预览弹窗，显示变更配置项的原值→新值对比，确认后才执行保存，防止误配置。
+// ============================================================
+var _energyRulesBackup = null;
+function saveEnergyRulesWithPreview() {
+  var rules = gatherEnergyRules();
+  if (!_energyRulesBackup) { saveEnergyRules(); showToast('✅ 节能规则已保存', 'success'); return; }
+  var changes = [];
+  for (var k in rules) {
+    if (rules[k] !== _energyRulesBackup[k]) {
+      changes.push({key: k, old: _energyRulesBackup[k], new: rules[k]});
+    }
+  }
+  if (changes.length === 0) { showToast('ℹ️ 配置无变更，无需保存', 'info'); return; }
+  openEnergyRulesPreviewModal(changes, rules);
+}
+function gatherEnergyRules() {
+  return {
+    acAutoOff: parseInt(document.getElementById('er-ac-off') ? document.getElementById('er-ac-off').value : 2),
+    powerThreshold: parseInt(document.getElementById('er-power-th') ? document.getElementById('er-power-th').value : 5),
+    standbyDetect: document.getElementById('er-standby') ? document.getElementById('er-standby').checked : false,
+    budgetDaily: parseInt(document.getElementById('er-budget') ? document.getElementById('er-budget').value : 500)
+  };
+}
+function openEnergyRulesPreviewModal(changes, rules) {
+  var existing = document.getElementById('modal-energy-rules-preview');
+  if (existing) existing.remove();
+  var labels = {
+    acAutoOff: '空调无人自动关闭时间',
+    powerThreshold: '单房日用电阈值(kWh)',
+    standbyDetect: '待机功耗检测',
+    budgetDaily: '日用电预算(元)'
+  };
+  var html = '<div class="modal-overlay" id="modal-energy-rules-preview" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:520px;max-height:80vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">⚠️ 节能规则变更预览</div>' +
+    '<button onclick="document.getElementById(\'modal-energy-rules-preview\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:16px 24px;">' +
+    '<div style="margin-bottom:16px;padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:13px;color:var(--orange);">⚠️ 检测到 <strong>' + changes.length + '</strong> 项配置变更，请确认后再保存</div>' +
+    '<div style="margin-bottom:12px;font-size:13px;font-weight:600;color:var(--text);">变更详情：</div>' +
+    '<div style="max-height:300px;overflow-y:auto;">';
+  changes.forEach(function(c) {
+    html += '<div style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;">' +
+      '<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">' + (labels[c.key] || c.key) + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;font-size:12px;">' +
+      '<div style="padding:6px 10px;background:var(--red-bg);border-radius:6px;text-align:center;"><div style="font-size:10px;color:var(--red);margin-bottom:2px;">原值</div><div style="font-weight:600;color:var(--red);">' + c.old + '</div></div>' +
+      '<div style="font-size:16px;color:var(--blue);">→</div>' +
+      '<div style="padding:6px 10px;background:var(--green-bg);border-radius:6px;text-align:center;"><div style="font-size:10px;color:var(--green);margin-bottom:2px;">新值</div><div style="font-weight:600;color:var(--green);">' + c.new + '</div></div></div></div>';
+  });
+  html += '</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;align-items:center;">' +
+    '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-light);"><input type="checkbox" id="er-confirm-changes" style="accent-color:var(--blue);width:15px;height:15px;"><span>我已确认以上变更</span></label>' +
+    '<div style="display:flex;gap:10px;"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-energy-rules-preview\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmEnergyRulesChange()">确认保存</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  _energyRulesBackup = null;
+}
+function confirmEnergyRulesChange() {
+  var confirmed = document.getElementById('er-confirm-changes');
+  if (confirmed && !confirmed.checked) { showToast('请勾选"我已确认以上变更"', 'warning'); return; }
+  saveEnergyRules();
+  document.getElementById('modal-energy-rules-preview').remove();
+  showToast('✅ 节能规则已保存，' + new Date().toLocaleString(), 'success');
+}
+
+// ============================================================
+// 【物联后台 v3.4 改进 3】交接班完整三步骤向导弹窗
+// 理由：现有交接班只有简单确认弹窗，缺少数据核对和签字确认完整流程。
+// 新增三步骤向导（交接人确认→数据核对→签字确认），包含营收统计、房态变化、待办事项移交、双方签字、打印功能。
+// ============================================================
+var _shiftStep = 1;
+var _shiftData = {};
+function openFullShiftHandoverModal() {
+  _shiftStep = 1;
+  _shiftData = {
+    shift: document.getElementById('handover-shift-select') ? document.getElementById('handover-shift-select').value : 'morning',
+    date: document.getElementById('handover-date') ? document.getElementById('handover-date').value : new Date().toISOString().split('T')[0],
+    revenue: 1420, checkin: 5, checkout: 3, wo: 2, alerts: 3, cash: 420, wechat: 380, alipay: 220
+  };
+  renderShiftWizard();
+}
+function renderShiftWizard() {
+  var existing = document.getElementById('modal-shift-wizard');
+  if (existing) existing.remove();
+  var steps = ['① 交接人确认', '② 数据核对', '③ 签字确认'];
+  var html = '<div class="modal-overlay" id="modal-shift-wizard" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:600px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">📊 交接班完整流程</div>' +
+    '<button onclick="document.getElementById(\'modal-shift-wizard\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>';
+  // Step indicators
+  html += '<div style="display:flex;padding:16px 24px;gap:8px;border-bottom:1px solid var(--border);">';
+  steps.forEach(function(s, i) {
+    var active = i + 1 === _shiftStep;
+    var done = i + 1 < _shiftStep;
+    html += '<div style="flex:1;padding:8px 12px;border-radius:8px;text-align:center;font-size:12px;font-weight:600;' +
+      (done ? 'background:var(--green-bg);color:var(--green);' : active ? 'background:var(--blue);color:white;' : 'background:var(--bg);color:var(--text-muted);') + '">' +
+      (done ? '✓ ' : '') + s + '</div>';
+  });
+  html += '</div><div style="padding:20px 24px;min-height:200px;">';
+  if (_shiftStep === 1) {
+    html += '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">请选择交接班次</div>' +
+      '<div class="form-group"><label class="form-label">交接班次</label><select class="form-select" id="hw-shift"><option value="morning">🌅 早班 07:00-15:00</option><option value="afternoon">☀️ 中班 15:00-23:00</option><option value="night">🌙 晚班 23:00-07:00</option></select></div>' +
+      '<div class="form-group"><label class="form-label">交班人</label><input type="text" class="form-input" id="hw-operator" placeholder="请输入交班人姓名" value="赵飞"></div>' +
+      '<div class="form-group"><label class="form-label">接班人</label><select class="form-select" id="hw-receiver"><option value="">请选择接班人</option><option value="钱一">钱一</option><option value="孙二">孙二</option><option value="周敏">周敏</option></select></div>' +
+      '<div class="form-group"><label class="form-label">交接备注</label><textarea class="form-textarea" id="hw-notes" placeholder="如有特殊情况请在此说明" style="min-height:60px;"></textarea></div>';
+  } else if (_shiftStep === 2) {
+    html += '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">📋 数据核对清单</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
+      '<div style="padding:12px;background:var(--green-bg);border-radius:8px;"><div style="font-size:11px;color:var(--green);margin-bottom:4px;">💰 本班营收</div><div style="font-size:22px;font-weight:700;color:var(--green);">¥' + _shiftData.revenue + '</div></div>' +
+      '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:11px;color:var(--blue);margin-bottom:4px;">🏨 入住/退</div><div style="font-size:22px;font-weight:700;color:var(--blue);">' + _shiftData.checkin + '/' + _shiftData.checkout + '</div></div>' +
+      '<div style="padding:12px;background:var(--red-bg);border-radius:8px;"><div style="font-size:11px;color:var(--red);margin-bottom:4px;">🚨 告警</div><div style="font-size:22px;font-weight:700;color:var(--red);">' + _shiftData.alerts + '</div></div>' +
+      '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:11px;color:var(--orange);margin-bottom:4px;">🛠️ 待办工单</div><div style="font-size:22px;font-weight:700;color:var(--orange);">' + _shiftData.wo + '</div></div>' +
+      '</div>' +
+      '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">💳 收款明细</div>' +
+      '<div style="display:flex;gap:8px;font-size:12px;margin-bottom:14px;">' +
+      '<div style="flex:1;padding:8px;background:var(--bg);border-radius:6px;text-align:center;"><div style="color:var(--text-muted);">现金</div><div style="font-weight:700;">¥' + _shiftData.cash + '</div></div>' +
+      '<div style="flex:1;padding:8px;background:var(--green-bg);border-radius:6px;text-align:center;"><div style="color:var(--green);">微信</div><div style="font-weight:700;color:var(--green);">¥' + _shiftData.wechat + '</div></div>' +
+      '<div style="flex:1;padding:8px;background:var(--blue-bg);border-radius:6px;text-align:center;"><div style="color:var(--blue);">支付宝</div><div style="font-weight:700;color:var(--blue);">¥' + _shiftData.alipay + '</div></div>' +
+      '</div>' +
+      '<div class="form-group" style="margin-bottom:0;"><label class="form-label"><input type="checkbox" id="hw-data-confirmed" style="accent-color:var(--blue);width:15px;height:15px;margin-right:6px;">我已核对以上数据，确认无误</label></div>';
+  } else if (_shiftStep === 3) {
+    html += '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">✍️ 双方签字确认</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">' +
+      '<div style="padding:14px;border:2px solid var(--blue);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--blue);margin-bottom:8px;">交班人签字</div><div style="height:50px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--blue);">' + (document.getElementById('hw-operator') ? document.getElementById('hw-operator').value : '赵飞') + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">时间：' + new Date().toLocaleTimeString() + '</div></div>' +
+      '<div style="padding:14px;border:2px dashed var(--border);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">接班人签字</div><div style="height:50px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--text-muted);">待签字</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">—</div></div>' +
+      '</div>' +
+      '<div style="padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;margin-bottom:12px;">' +
+      '<div style="font-size:12px;color:var(--green);font-weight:600;margin-bottom:6px;">✅ 交接完成条件</div>' +
+      '<div style="font-size:12px;color:var(--green);">• 所有告警已记录 ✓</div>' +
+      '<div style="font-size:12px;color:var(--green);">• 营收数据已核对 ✓</div>' +
+      '<div style="font-size:12px;color:var(--green);">• 接班人签字确认 ✓</div>' +
+      '</div>' +
+      '<div style="text-align:center;"><button class="action-btn" onclick="printShiftReport()" style="padding:8px 20px;font-size:13px;">🖨️ 打印交接班报表</button></div>';
+  }
+  html += '</div>';
+  html += '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:' + (_shiftStep > 1 ? 'space-between' : 'flex-end') + ';align-items:center;">';
+  if (_shiftStep > 1) html += '<button class="modal-btn secondary" onclick="_shiftStep--;renderShiftWizard();">← 上一步</button>';
+  html += '<div style="display:flex;gap:10px;">';
+  html += '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-shift-wizard\').remove()">取消</button>';
+  if (_shiftStep < 3) html += '<button class="modal-btn primary" onclick="nextShiftStep()">下一步 →</button>';
+  else html += '<button class="modal-btn primary" onclick="completeShiftHandover()">✅ 完成交接</button>';
+  html += '</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function nextShiftStep() {
+  if (_shiftStep === 1) {
+    var operator = document.getElementById('hw-operator').value.trim();
+    var receiver = document.getElementById('hw-receiver').value;
+    if (!operator) { showToast('请输入交班人姓名', 'error'); return; }
+    if (!receiver) { showToast('请选择接班人', 'error'); return; }
+    _shiftData.operator = operator;
+    _shiftData.receiver = receiver;
+  }
+  if (_shiftStep === 2) {
+    var confirmed = document.getElementById('hw-data-confirmed');
+    if (!confirmed || !confirmed.checked) { showToast('请勾选"我已核对以上数据，确认无误"', 'warning'); return; }
+    _shiftData.dataConfirmed = true;
+  }
+  _shiftStep++;
+  renderShiftWizard();
+}
+function completeShiftHandover() {
+  document.getElementById('modal-shift-wizard').remove();
+  showToast('✅ 交接班完成！数据已归档', 'success');
+}
+function printShiftReport() {
+  showToast('🖨️ 正在生成打印报表...', 'info');
+  setTimeout(function() { showToast('🖨️ 打印功能需要浏览器打印支持，请使用 Ctrl+P', 'info'); }, 800);
+}
+
+// ============================================================
+// 【物联后台 v3.4 改进 4】备份恢复二次确认详细弹窗
+// 理由：restoreBackup只有简单confirm，缺乏详细的恢复确认。
+// 新增独立弹窗，显示备份详情（时间/类型/大小/内容）、风险等级评估、可恢复内容清单、注意事项，勾选确认框后才能执行恢复。
+// ============================================================
+var backupStore = [
+  {id:'BK001',time:'2026-03-28 10:30:00',type:'手动备份',size:'2.4MB',content:'系统配置+设备列表+房态数据',risk:'低',items:48,status:'已完成'},
+  {id:'BK002',time:'2026-03-27 22:00:00',type:'自动备份',size:'2.1MB',content:'系统配置+设备列表',risk:'低',items:42,status:'已完成'},
+  {id:'BK003',time:'2026-03-27 10:30:00',type:'手动备份',size:'2.3MB',content:'全量数据（含历史记录）',risk:'高',items:312,status:'已完成'},
+  {id:'BK004',time:'2026-03-26 22:00:00',type:'自动备份',size:'1.9MB',content:'系统配置',risk:'低',items:15,status:'已完成'}
+];
+function openBackupRestoreConfirmModal(backupId) {
+  var backup = backupStore.find(function(b){ return b.id === backupId; });
+  if (!backup) return;
+  var riskColor = {低:'var(--green)',中:'var(--orange)',高:'var(--red)'}[backup.risk] || 'var(--text)';
+  var existing = document.getElementById('modal-backup-restore');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-backup-restore" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:520px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">⚠️ 备份恢复确认</div>' +
+    '<button onclick="document.getElementById(\'modal-backup-restore\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:14px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:16px;">' +
+    '<div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:4px;">⚠️ 重要提醒</div>' +
+    '<div style="font-size:12px;color:var(--text);">恢复操作将覆盖当前所有数据，且无法撤销。请仔细确认备份内容后再操作。</div></div>' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">📦 备份详情</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">备份ID</div><div style="font-size:13px;font-weight:600;">' + backup.id + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">备份类型</div><div style="font-size:13px;font-weight:600;">' + backup.type + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">备份时间</div><div style="font-size:13px;font-weight:600;">' + backup.time + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">文件大小</div><div style="font-size:13px;font-weight:600;">' + backup.size + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">包含数据项</div><div style="font-size:13px;font-weight:600;">约 ' + backup.items + ' 条记录</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">风险等级</div><div style="font-size:13px;font-weight:700;color:' + riskColor + ';">' + backup.risk + '风险</div></div>' +
+    '</div>' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">📋 可恢复内容清单</div>' +
+    '<div style="padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:14px;font-size:12px;">' +
+    '<div style="margin-bottom:6px;">• 系统配置参数（通知/阈值/策略）</div>' +
+    '<div style="margin-bottom:6px;">• 设备列表（' + (backup.content.indexOf('设备') !== -1 ? '✓' : '✕') + ' 设备绑定关系）</div>' +
+    '<div style="margin-bottom:6px;">• 房态数据（' + (backup.content.indexOf('房态') !== -1 ? '✓' : '✕') + ' 房间状态）</div>' +
+    '<div style="' + (backup.content.indexOf('历史') !== -1 ? 'color:var(--red);' : 'color:var(--text-muted);') + '">• 历史记录（' + (backup.content.indexOf('历史') !== -1 ? '✓ 包含' : '✕ 不包含') + '）</div>' +
+    '</div>' +
+    '<div style="margin-bottom:14px;padding:10px 14px;border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);">' +
+    '⚠️ 此备份为 ' + backup.time + ' 创建，距今已超过 24 小时，期间数据变化将丢失。' +
+    '</div>' +
+    '<div class="form-group" style="margin-bottom:0;">' +
+    '<label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;line-height:1.5;">' +
+    '<input type="checkbox" id="br-confirm" style="accent-color:var(--red);width:15px;height:15px;margin-top:2px;flex-shrink:0;">' +
+    '<span>我已充分了解恢复风险，确认要将系统恢复到 <strong>' + backup.time + '</strong> 的备份状态。恢复后当前所有配置和记录将被覆盖，无法撤销。</span></label>' +
+    '</div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-backup-restore\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmBackupRestore(\'' + backupId + '\')" style="background:var(--red);border-color:var(--red);">⚠️ 确认恢复</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function confirmBackupRestore(backupId) {
+  var confirmed = document.getElementById('br-confirm');
+  if (!confirmed || !confirmed.checked) { showToast('请勾选确认框以继续', 'warning'); return; }
+  var backup = backupStore.find(function(b){ return b.id === backupId; });
+  document.getElementById('modal-backup-restore').remove();
+  showToast('🔄 正在恢复备份 ' + (backup ? backup.id : backupId) + '，请稍候...', 'info');
+  setTimeout(function() { showToast('✅ 备份恢复成功！数据已还原至 ' + (backup ? backup.time : '选中状态'), 'success'); }, 1500);
+}
+
+// ============================================================
+// 【物联后台 v3.4 改进 5】房间维护状态完整设置弹窗
+// 理由：现有批量维护只是简单设置状态，缺少维护原因和预计恢复时间的管理逻辑。
+// 新增完整表单（维护原因下拉→预计恢复时间→指派工程师→通知客人选项→自动屏蔽预订→备注），
+// 形成维护状态管理闭环。
+// ============================================================
+var maintenanceStore = [];
+function openRoomMaintenanceSetModal(roomNum) {
+  var existing = document.getElementById('modal-room-maintenance');
+  if (existing) existing.remove();
+  roomNum = roomNum || '301';
+  var html = '<div class="modal-overlay" id="modal-room-maintenance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-room-maintenance\').remove()">' +
+    '<div class="modal" style="width:520px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🔧 房间维护状态设置</div>' +
+    '<button onclick="document.getElementById(\'modal-room-maintenance\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">' +
+    '<div style="font-size:28px;">🚧</div>' +
+    '<div><div style="font-size:13px;font-weight:600;color:var(--orange);">设置房间 <strong>' + roomNum + '</strong> 为维护状态</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">维护期间房间将自动从可用房源中移除，无法接受新预订</div></div></div>' +
+    '<div class="form-group"><label class="form-label">维护原因 <span class="required">*</span></label>' +
+    '<select class="form-select" id="maint-reason"><option value="">请选择维护原因</option><option value="repair">🔧 设备维修（门锁/空调/水电等）</option><option value="clean">🧹 深度清洁/装修</option><option value="inspect">🔍 例行检查</option><option value="upgrade">⬆️ 设施升级</option><option value="damage">⚠️ 损坏修复</option><option value="other">📋 其他原因</option></select></div>' +
+    '<div class="form-group"><label class="form-label">预计恢复时间 <span class="required">*</span></label>' +
+    '<input type="datetime-local" class="form-input" id="maint-recover-time"></div>' +
+    '<div class="form-group"><label class="form-label">指派工程师</label>' +
+    '<select class="form-select" id="maint-engineer"><option value="">不指定</option><option value="王工">王工（机电维修）</option><option value="李工">李工（空调维修）</option><option value="赵工">赵工（综合维修）</option></select></div>' +
+    '<div class="form-group"><label class="form-label">维护备注</label>' +
+    '<textarea class="form-textarea" id="maint-notes" placeholder="详细说明维护内容和注意事项" style="min-height:70px;"></textarea></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+    '<div class="form-group" style="margin-bottom:0;">' +
+    '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:10px;background:var(--bg);border-radius:8px;">' +
+    '<input type="checkbox" id="maint-block-booking" checked style="accent-color:var(--blue);width:15px;height:15px;">' +
+    '<span>自动屏蔽预订（维护期间不接受新订单）</span></label></div>' +
+    '<div class="form-group" style="margin-bottom:0;">' +
+    '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:10px;background:var(--bg);border-radius:8px;">' +
+    '<input type="checkbox" id="maint-notify-guest" style="accent-color:var(--blue);width:15px;height:15px;">' +
+    '<span>通知在住客人（发送短信/微信提醒）</span></label></div>' +
+    '</div>' +
+    '<div style="margin-top:14px;padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">' +
+    '💡 维护完成后请记得返回此处点击"结束维护"，房间将自动恢复为可用状态。' +
+    '</div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-room-maintenance\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitRoomMaintenance(\'' + roomNum + '\')" style="background:var(--orange);border-color:var(--orange);">🚧 开始维护</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitRoomMaintenance(roomNum) {
+  var reason = document.getElementById('maint-reason').value;
+  var recoverTime = document.getElementById('maint-recover-time').value;
+  var engineer = document.getElementById('maint-engineer').value;
+  var notes = document.getElementById('maint-notes').value.trim();
+  var blockBooking = document.getElementById('maint-block-booking').checked;
+  var notifyGuest = document.getElementById('maint-notify-guest').checked;
+  if (!reason) { showToast('请选择维护原因', 'error'); return; }
+  if (!recoverTime) { showToast('请选择预计恢复时间', 'error'); return; }
+  var reasonLabel = {repair:'🔧 设备维修',clean:'🧹 深度清洁',inspect:'🔍 例行检查',upgrade:'⬆️ 设施升级',damage:'⚠️ 损坏修复',other:'📋 其他'}[reason] || reason;
+  var newRecord = {
+    id: 'MNT' + Date.now().toString().slice(-4),
+    room: roomNum,
+    reason: reasonLabel,
+    recoverTime: recoverTime,
+    engineer: engineer || '未指派',
+    notes: notes || '—',
+    blockBooking: blockBooking,
+    notifyGuest: notifyGuest,
+    startTime: new Date().toLocaleString(),
+    status: '维护中'
+  };
+  maintenanceStore.unshift(newRecord);
+  document.getElementById('modal-room-maintenance').remove();
+  showToast('🚧 房间 ' + roomNum + ' 已设为维护状态，预计 ' + recoverTime + ' 恢复', 'success');
+  // Update room card appearance if on floor page
+  var roomCards = document.querySelectorAll('[data-room]');
+  roomCards.forEach(function(card) {
+    if (card.getAttribute('data-room') === roomNum) {
+      card.style.borderColor = 'var(--orange)';
+      card.style.opacity = '0.75';
+    }
+  });
+}
+
