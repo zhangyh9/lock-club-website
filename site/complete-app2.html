@@ -696,6 +696,7 @@ function showToast(msg, type) {
     <div class="menu-group-title" onclick="toggleGroup(this)">📞 服务管理 <span class="group-arrow">▼</span></div>
     <div class="menu-group">
       <div class="menu-item" onclick="showPage('workorder')"><span class="icon">🛠️</span><span>服务工单</span></div>
+      <div class="menu-item" onclick="showPage('housekeeping')" style="color:var(--orange);"><span class="icon">🧹</span><span>清洁管理</span></div>
       <div class="menu-item" onclick="showPage('history')"><span class="icon">📜</span><span>历史记录</span></div>
     </div>
     <div class="menu-item" onclick="showPage('settlement')"><span class="icon">💰</span><span>结算中心</span></div>
@@ -3100,6 +3101,8 @@ function showToast(msg, type) {
         <div style="margin-left:auto;display:flex;gap:6px;">
           <button class="action-btn small" id="dev-view-list-btn" onclick="switchDeviceView('list')" style="padding:5px 12px;background:var(--blue);color:white;border:none;">📋 列表</button>
           <button class="action-btn small" id="dev-view-floor-btn" onclick="switchDeviceView('floor')" style="padding:5px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);">🗺️ 平面图</button>
+          <!-- 【物联后台v3.5 改进3】设备批量远程控制入口 -->
+          <button class="action-btn" onclick="openBatchDeviceControlModal()" style="padding:5px 12px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">⚡ 批量控制</button>
         </div>
       </div>
       <!-- 【改进B】设备快捷操作工具栏：开锁/重启/固件升级/电池检测批量操作 -->
@@ -3915,7 +3918,7 @@ function showToast(msg, type) {
           <div style="font-size:13px;font-weight:600;">立即同步</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">拉取最新设备状态</div>
         </div>
-        <div class="detail-card" style="text-align:center;cursor:pointer;transition:all 0.2s;" onclick="openDevActionPanel('firmware')" onmouseover="this.style.borderColor='var(--purple)';this.style.boxShadow='0 4px 16px rgba(114,46,209,0.2)'" onmouseout="this.style.borderColor='';this.style.boxShadow=''">
+        <div class="detail-card" style="text-align:center;cursor:pointer;transition:all 0.2s;" onclick="openFirmwareUpgradeModal()" onmouseover="this.style.borderColor='var(--purple)';this.style.boxShadow='0 4px 16px rgba(114,46,209,0.2)'" onmouseout="this.style.borderColor='';this.style.boxShadow=''">
           <div style="font-size:32px;margin-bottom:8px;">📦</div>
           <div style="font-size:13px;font-weight:600;">固件升级</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">v2.3.1已是最新</div>
@@ -10107,6 +10110,170 @@ function openEditMemberLevelModalV2(idx) {
     </div>
 
     <!-- Page: History -->
+
+    <!-- 【物联后台v3.5 改进4】客房清洁管理页面：独立Tab管理客房清洁状态（待清洁/清洁中/已清洁/维修中） -->
+    <div id="page-housekeeping" class="page">
+      <div class="page-header">
+        <div class="page-title">🧹 客房清洁管理</div>
+        <div class="page-sub">客房清洁状态追踪 · 保洁排班 · 任务分配</div>
+        <button class="action-btn" onclick="openHousekeepingTaskModal()" style="margin-left:auto;background:var(--blue);color:white;border:none;">+ 分配清洁任务</button>
+      </div>
+      <!-- 清洁状态统计 -->
+      <div class="stats-row" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px;">
+        <div class="stat-card" style="cursor:pointer;border:2px solid var(--orange);" onclick="filterHousekeepingTab('dirty', this)">
+          <div class="stat-icon" style="background:var(--orange-bg);">🧹</div>
+          <div><div class="stat-num" style="color:var(--orange);" id="hk-dirty-count">3</div><div class="stat-label" style="color:var(--orange);">待清洁</div></div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="filterHousekeepingTab('cleaning', this)">
+          <div class="stat-icon" style="background:var(--blue-bg);">🧽</div>
+          <div><div class="stat-num" style="color:var(--blue);" id="hk-cleaning-count">1</div><div class="stat-label">清洁中</div></div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="filterHousekeepingTab('clean', this)">
+          <div class="stat-icon" style="background:var(--green-bg);">✅</div>
+          <div><div class="stat-num" style="color:var(--green);" id="hk-clean-count">12</div><div class="stat-label">已清洁</div></div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="filterHousekeepingTab('maintain', this)">
+          <div class="stat-icon" style="background:var(--red-bg);">🔧</div>
+          <div><div class="stat-num" style="color:var(--red);" id="hk-maintain-count">2</div><div class="stat-label">维修中</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--purple-bg);">👥</div>
+          <div><div class="stat-num" id="hk-staff-count">4</div><div class="stat-label">可用保洁</div></div>
+        </div>
+      </div>
+      <!-- 筛选工具栏 -->
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+        <select class="form-select" id="hk-floor-filter" onchange="applyHousekeepingFilter()" style="padding:6px 10px;font-size:12px;width:120px;">
+          <option value="all">全部楼层</option>
+          <option value="3">3层</option>
+          <option value="2">2层</option>
+          <option value="1">1层</option>
+        </select>
+        <select class="form-select" id="hk-staff-filter" onchange="applyHousekeepingFilter()" style="padding:6px 10px;font-size:12px;width:140px;">
+          <option value="all">全部保洁员</option>
+          <option value="李丽">李丽</option>
+          <option value="王芳">王芳</option>
+          <option value="张梅">张梅</option>
+          <option value="刘婷">刘婷</option>
+        </select>
+        <select class="form-select" id="hk-priority-filter" onchange="applyHousekeepingFilter()" style="padding:6px 10px;font-size:12px;width:130px;">
+          <option value="all">全部优先级</option>
+          <option value="urgent">🚨 紧急</option>
+          <option value="normal">⚡ 普通</option>
+          <option value="low">🔽 低</option>
+        </select>
+        <button class="action-btn small" onclick="resetHousekeepingFilter()" style="padding:4px 10px;font-size:11px;">重置</button>
+        <button class="action-btn small" onclick="exportHousekeepingReport()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);font-size:11px;">📤 导出</button>
+      </div>
+      <!-- 清洁任务列表 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🧹 清洁任务列表</div>
+          <button class="action-btn small" onclick="openBulkAssignModal()" style="padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);font-size:11px;">🔄 批量分配</button>
+        </div>
+        <div class="card-body">
+          <table class="table">
+            <thead><tr><th>房间号</th><th>房型</th><th>清洁状态</th><th>优先级</th><th>负责人</th><th>预计时长</th><th>超时预警</th><th>操作</th></tr></thead>
+            <tbody id="hk-task-body">
+              <tr>
+                <td><strong>301</strong></td>
+                <td>亲子间</td>
+                <td><span class="tbadge" style="background:var(--orange-bg);color:var(--orange);">🧹 待清洁</span></td>
+                <td><span class="tbadge" style="background:var(--red-bg);color:var(--red);">🚨 紧急</span></td>
+                <td><select class="form-select" style="padding:4px 6px;font-size:12px;width:100px;"><option value="">未分配</option><option value="李丽" selected>李丽</option></select></td>
+                <td>约45分钟</td>
+                <td><span style="font-size:12px;color:var(--orange);font-weight:600;">⏰ 已等候32分钟</span></td>
+                <td>
+                  <button class="action-btn small" onclick="markRoomCleaning('301')" style="background:var(--blue);color:white;border:none;font-size:11px;padding:3px 8px;">开始清洁</button>
+                  <button class="action-btn small" onclick="showRoomHKDetail('301')" style="font-size:11px;padding:3px 8px;">详情</button>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>302</strong></td>
+                <td>亲子间</td>
+                <td><span class="tbadge" style="background:var(--orange-bg);color:var(--orange);">🧹 待清洁</span></td>
+                <td><span class="tbadge" style="background:var(--orange-bg);color:var(--orange);">⚡ 普通</span></td>
+                <td><select class="form-select" style="padding:4px 6px;font-size:12px;width:100px;"><option value="">未分配</option><option value="王芳">王芳</option></select></td>
+                <td>约35分钟</td>
+                <td><span style="font-size:12px;color:var(--text-muted);">--</span></td>
+                <td>
+                  <button class="action-btn small" onclick="markRoomCleaning('302')" style="background:var(--blue);color:white;border:none;font-size:11px;padding:3px 8px;">开始清洁</button>
+                  <button class="action-btn small" onclick="showRoomHKDetail('302')" style="font-size:11px;padding:3px 8px;">详情</button>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>201</strong></td>
+                <td>大床房</td>
+                <td><span class="tbadge" style="background:var(--blue-bg);color:var(--blue);">🧽 清洁中</span></td>
+                <td><span class="tbadge" style="background:var(--orange-bg);color:var(--orange);">⚡ 普通</span></td>
+                <td><span style="font-size:12px;color:var(--blue);font-weight:600;">张梅</span></td>
+                <td>已进行22分钟</td>
+                <td><span style="font-size:12px;color:var(--green);">⏱️ 预计剩余13分钟</span></td>
+                <td>
+                  <button class="action-btn small" onclick="markRoomCleaned('201')" style="background:var(--green);color:white;border:none;font-size:11px;padding:3px 8px;">完成清洁</button>
+                  <button class="action-btn small" onclick="showRoomHKDetail('201')" style="font-size:11px;padding:3px 8px;">详情</button>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>203</strong></td>
+                <td>大床房</td>
+                <td><span class="tbadge" style="background:var(--red-bg);color:var(--red);">🔧 维修中</span></td>
+                <td><span class="tbadge" style="background:var(--red-bg);color:var(--red);">🚨 紧急</span></td>
+                <td><span style="font-size:12px;color:var(--red);font-weight:600;">王工</span></td>
+                <td>预计2小时</td>
+                <td><span style="font-size:12px;color:var(--red);font-weight:600;">⚠️ 空调故障</span></td>
+                <td>
+                  <button class="action-btn small" onclick="markRoomRepaired('203')" style="background:var(--green);color:white;border:none;font-size:11px;padding:3px 8px;">维修完成</button>
+                  <button class="action-btn small" onclick="showRoomHKDetail('203')" style="font-size:11px;padding:3px 8px;">详情</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    // 客房清洁管理功能
+    var currentHKFilter = 'all';
+    function filterHousekeepingTab(tab, el) {
+      currentHKFilter = tab;
+      document.querySelectorAll('#page-housekeeping .stat-card').forEach(function(c){ c.style.borderColor = 'var(--border)'; });
+      if (el) el.style.borderColor = 'var(--blue)';
+      applyHousekeepingFilter();
+    }
+    function applyHousekeepingFilter() {
+      showToast('🔍 已按筛选条件刷新清洁任务列表', 'info');
+    }
+    function resetHousekeepingFilter() {
+      document.getElementById('hk-floor-filter').value = 'all';
+      document.getElementById('hk-staff-filter').value = 'all';
+      document.getElementById('hk-priority-filter').value = 'all';
+      showToast('🔄 筛选条件已重置', 'info');
+    }
+    function markRoomCleaning(room) {
+      showToast('🧽 房间 ' + room + ' 已开始清洁，保洁员正在处理中...', 'success');
+    }
+    function markRoomCleaned(room) {
+      showToast('✅ 房间 ' + room + ' 清洁完成，已标记为可入住状态', 'success');
+    }
+    function markRoomRepaired(room) {
+      showToast('✅ 房间 ' + room + ' 维修完成，已恢复空房状态', 'success');
+    }
+    function showRoomHKDetail(room) {
+      showToast('📋 房间 ' + room + ' 清洁详情：退房时间14:05，清洁开始时间14:32，当前状态清洁中...', 'info');
+    }
+    function openHousekeepingTaskModal() {
+      showToast('+ 打开清洁任务分配表单...', 'info');
+    }
+    function openBulkAssignModal() {
+      showToast('🔄 批量分配清洁任务...', 'info');
+    }
+    function exportHousekeepingReport() {
+      showToast('📤 正在导出清洁报告...', 'info');
+    }
+    </script>
+
     <div id="page-history" class="page">
       <div class="page-header">
         <div class="page-title">📜 历史记录 - 303房间门锁</div>
@@ -14016,6 +14183,8 @@ function openEditMemberLevelModalV2(idx) {
           <button class="action-btn small" onclick="openSystemHealthModal()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🩺 系统健康</button>
           <!-- 【改进4-系统设置编辑入口】 -->
           <button class="action-btn small" onclick="openConfigEditModal()" style="padding:4px 10px;background:var(--blue);color:white;border:none;">⚙️ 系统设置</button>
+          <!-- 【物联后台v3.5 改进2】PMS对接状态监控入口 -->
+          <button class="action-btn small" onclick="openPmsStatusModal()" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🔗 PMS状态</button>
         </div>
       </div>
       <!-- 【改进5：系统设置独立Tab页面（非Modal），支持多模块配置切换】 -->
@@ -15802,6 +15971,568 @@ function openEditMemberLevelModalV2(idx) {
 
 <!-- ======= 模态框们 ======= -->
 
+<!-- 【物联后台v3.5 改进1】账单消费明细弹窗：退房时展示房费/押金/加购项目完整消费明细 -->
+<div class="modal-overlay hidden" id="modal-billing-detail">
+  <div class="modal" style="width:620px;">
+    <div class="modal-header">
+      <div class="modal-title">💳 账单消费明细 - <span id="bd-room" style="color:var(--blue);">--</span></div>
+      <button class="modal-close" onclick="closeModal('billing-detail')">✕</button>
+    </div>
+    <div class="modal-body" id="bd-body" style="max-height:70vh;overflow-y:auto;"></div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('billing-detail')">关闭</button>
+      <button class="modal-btn" onclick="printBillingDetail()" style="background:var(--blue);color:white;border:none;">🖨️ 打印账单</button>
+      <button class="modal-btn" onclick="sendBillingToEmail()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">📧 发送至邮箱</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 【改进1】账单消费明细弹窗 - 退房时展示完整消费明细（房费+押金+加购项目+汇总）
+var billingData = {};
+function openBillingDetailModal(roomNum, guestName, checkinTime, checkinDays) {
+  billingData = {room: roomNum, guest: guestName, checkin: checkinTime, days: checkinDays || 2};
+  document.getElementById('bd-room').textContent = roomNum + ' · ' + guestName;
+  var roomFee = 0, roomType = '亲子间';
+  if (roomNum >= 301 && roomNum <= 306) { roomType = '亲子间'; roomFee = 298 * billingData.days; }
+  else if (roomNum >= 201 && roomNum <= 205) { roomType = '大床房'; roomFee = 238 * billingData.days; }
+  else { roomType = '标准间'; roomFee = 168 * billingData.days; }
+  var deposit = 100;
+  var extras = [
+    {item:'早餐 ×2', qty:2, price:28, total:56},
+    {item:'迷你吧 - 啤酒', qty:2, price:12, total:24},
+    {item:'加床服务', qty:1, price:80, total:80}
+  ];
+  var extrasTotal = extras.reduce(function(s,e){return s+e.total;},0);
+  var total = roomFee + extrasTotal;
+  var refund = deposit;
+  var finalPay = Math.max(0, total - deposit);
+
+  var extrasRows = extras.map(function(e,i){
+    return '<tr style="font-size:12px;"><td style="padding:6px 8px;">'+(i+1)+'</td><td style="padding:6px 8px;">'+e.item+'</td><td style="padding:6px 8px;text-align:center;">'+e.qty+'</td><td style="padding:6px 8px;text-align:right;">¥'+e.price+'</td><td style="padding:6px 8px;text-align:right;font-weight:600;">¥'+e.total+'</td></tr>';
+  }).join('');
+
+  var body = document.getElementById('bd-body');
+  body.innerHTML = '\
+    <div style="margin-bottom:16px;">\
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;">\
+        <div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;">\
+          <div style="font-size:10px;color:var(--blue);margin-bottom:3px;">房间号</div>\
+          <div style="font-size:15px;font-weight:700;color:var(--blue);">'+roomNum+'</div>\
+        </div>\
+        <div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;">\
+          <div style="font-size:10px;color:var(--green);margin-bottom:3px;">入住人</div>\
+          <div style="font-size:15px;font-weight:700;">'+guestName+'</div>\
+        </div>\
+        <div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;">\
+          <div style="font-size:10px;color:var(--orange);margin-bottom:3px;">入住天数</div>\
+          <div style="font-size:15px;font-weight:700;">'+billingData.days+'晚</div>\
+        </div>\
+        <div style="padding:10px;background:var(--purple-bg);border-radius:8px;text-align:center;">\
+          <div style="font-size:10px;color:var(--purple);margin-bottom:3px;">房型</div>\
+          <div style="font-size:15px;font-weight:700;">'+roomType+'</div>\
+        </div>\
+      </div>\
+    </div>\
+    <div style="margin-bottom:16px;">\
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px;">📋 费用清单</div>\
+      <table style="width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:8px;overflow:hidden;">\
+        <thead><tr style="background:var(--bg);font-size:11px;color:var(--text-muted);"><th style="padding:8px;text-align:left;">序号</th><th style="padding:8px;text-align:left;">项目</th><th style="padding:8px;text-align:center;">数量</th><th style="padding:8px;text-align:right;">单价</th><th style="padding:8px;text-align:right;">小计</th></tr></thead>\
+        <tbody>\
+          <tr style="font-size:12px;border-top:1px solid var(--border);"><td style="padding:6px 8px;">1</td><td style="padding:6px 8px;">房费（'+roomType+' × '+billingData.days+'晚）</td><td style="padding:6px 8px;text-align:center;">'+billingData.days+'晚</td><td style="padding:6px 8px;text-align:right;">¥'+(roomFee/billingData.days)+'</td><td style="padding:6px 8px;text-align:right;font-weight:600;">¥'+roomFee+'</td></tr>\
+          <tr style="font-size:12px;border-top:1px solid var(--border);"><td style="padding:6px 8px;">2</td><td style="padding:6px 8px;">押金</td><td style="padding:6px 8px;text-align:center;">1</td><td style="padding:6px 8px;text-align:right;">¥'+deposit+'</td><td style="padding:6px 8px;text-align:right;font-weight:600;">¥'+deposit+'</td></tr>'+
+          extrasRows +
+        '</tbody>\
+      </table>\
+    </div>\
+    <div style="padding:14px;background:var(--blue-bg);border-radius:10px;border:1px solid var(--blue);">\
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span style="color:var(--text-light);">房费合计</span><span style="font-weight:600;">¥'+roomFee+'</span></div>\
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span style="color:var(--text-light);">押金（已付）</span><span style="font-weight:600;color:var(--green);">¥'+deposit+' ✓</span></div>\
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span style="color:var(--text-light);">加购消费</span><span style="font-weight:600;">¥'+extrasTotal+'</span></div>\
+      <div style="display:flex;justify-content:space-between;padding:6px 0 4px;font-size:15px;border-top:1px solid var(--blue);margin-top:6px;"><span style="font-weight:700;">应付总额</span><span style="font-weight:700;color:var(--blue);">¥'+total+'</span></div>\
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span style="color:var(--text-light);">已付押金</span><span style="font-weight:600;color:var(--green);">-¥'+deposit+'</span></div>\
+      <div style="display:flex;justify-content:space-between;padding:6px 0 4px;font-size:16px;border-top:1px dashed var(--blue);margin-top:4px;"><span style="font-weight:700;color:var(--text);">应退/应补金额</span><span style="font-weight:700;color:'+(finalPay>0?'var(--red)':'var(--green)')+';">¥'+(finalPay>0?finalPay:Math.abs(deposit-total))+'</span></div>\
+    </div>';
+  openModal('billing-detail');
+}
+
+function openBillingDetailFromCheckout() {
+  var guestSel = document.getElementById('checkout-guest-select');
+  var val = guestSel ? guestSel.value : '';
+  var roomNum = '301', guestName = '张三';
+  if (val) {
+    var parts = val.split(':');
+    if (parts.length >= 2) { roomNum = parts[0]; guestName = parts[1]; }
+  }
+  openBillingDetailModal(roomNum, guestName, '2026-03-26 14:00', 2);
+}
+function printBillingDetail() {
+  showToast('🖨️ 正在准备打印账单...', 'info');
+  window.print();
+}
+function sendBillingToEmail() {
+  showToast('📧 账单已发送至客人邮箱 ' + (billingData.guest || '') + '***@example.com', 'success');
+}
+</script>
+
+<!-- 【物联后台v3.5 改进2】PMS对接状态监控面板：系统配置页面新增PMS系统集成状态实时监控Tab -->
+<!-- PMS状态监控内容（插入到基本配置Tab中，通过按钮触发显示） -->
+<script>
+// PMS对接状态监控数据
+var pmsStatusData = {
+  connected: true,
+  lastSync: '2026-03-28 17:10:22',
+  syncInterval: 30,
+  pendingBookings: 3,
+  failedSyncs: 0,
+  modules: [
+    {name:'PMS订单同步', status:'online', lastSync:'2026-03-28 17:10', count:128},
+    {name:'门锁权限下发', status:'online', lastSync:'2026-03-28 17:09', count:45},
+    {name:'退房同步通知', status:'degraded', lastSync:'2026-03-28 16:55', count:12},
+    {name:'换房权限更新', status:'online', lastSync:'2026-03-28 17:08', count:8},
+    {name:'能耗数据上报', status:'offline', lastSync:'2026-03-28 14:30', count:3}
+  ],
+  logs: [
+    {time:'17:10:22', type:'sync', msg:'成功同步订单 #ORD2026032805（入住301）', status:'success'},
+    {time:'17:09:45', type:'sync', msg:'成功下发门锁权限至设备 A84F1AF2', status:'success'},
+    {time:'17:08:12', type:'error', msg:'退房同步失败，重试中（3/5）', status:'warning'},
+    {time:'17:05:00', type:'sync', msg:'成功同步订单 #ORD2026032804（退房203）', status:'success'},
+    {time:'16:55:33', type:'error', msg:'能耗数据上报失败：设备 305 无响应', status:'error'}
+  ]
+};
+
+function openPmsStatusModal() {
+  var existing = document.getElementById('modal-pms-status');
+  if (existing) existing.remove();
+  var statusColor = pmsStatusData.connected ? 'var(--green)' : 'var(--red)';
+  var statusBg = pmsStatusData.connected ? 'var(--green-bg)' : 'var(--red-bg)';
+  var statusText = pmsStatusData.connected ? '🟢 已连接' : '🔴 已断开';
+
+  var modulesHtml = pmsStatusData.modules.map(function(m){
+    var mColor = m.status === 'online' ? 'var(--green)' : m.status === 'degraded' ? 'var(--orange)' : 'var(--red)';
+    var mBg = m.status === 'online' ? 'var(--green-bg)' : m.status === 'degraded' ? 'var(--orange-bg)' : 'var(--red-bg)';
+    var statusLabel = m.status === 'online' ? '正常' : m.status === 'degraded' ? '降级' : '离线';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">' +
+      '<span style="width:8px;height:8px;border-radius:50%;background:'+mColor+';flex-shrink:0;"></span>' +
+      '<span style="flex:1;font-size:13px;font-weight:500;">'+m.name+'</span>' +
+      '<span style="padding:2px 8px;border-radius:10px;font-size:11px;background:'+mBg+';color:'+mColor+';">'+statusLabel+'</span>' +
+      '<span style="font-size:11px;color:var(--text-muted);width:120px;text-align:right;">'+m.lastSync+' · '+m.count+'次</span></div>';
+  }).join('');
+
+  var logsHtml = pmsStatusData.logs.map(function(l){
+    var lColor = l.status === 'success' ? 'var(--green)' : l.status === 'warning' ? 'var(--orange)' : 'var(--red)';
+    var lIcon = l.status === 'success' ? '✅' : l.status === 'warning' ? '⚠️' : '❌';
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;">' +
+      '<span style="color:'+lColor+';flex-shrink:0;width:16px;">'+lIcon+'</span>' +
+      '<span style="color:var(--text-muted);flex-shrink:0;width:60px;">'+l.time+'</span>' +
+      '<span style="flex:1;color:var(--text);">'+l.msg+'</span></div>';
+  }).join('');
+
+  var html = '<div class="modal-overlay" id="modal-pms-status" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-pms-status\').remove()">' +
+    '<div class="modal" style="width:680px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:12px;">' +
+    '<div style="font-size:18px;font-weight:700;">🔗 PMS对接状态监控</div>' +
+    '<span style="padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;background:'+statusBg+';color:'+statusColor+';">'+statusText+'</span></div>' +
+    '<button onclick="document.getElementById(\'modal-pms-status\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);">'+pmsStatusData.pendingBookings+'</div><div style="font-size:11px;color:var(--text-muted);">待同步订单</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);">'+pmsStatusData.modules.filter(function(m){return m.status===\'online\';}).length+'</div><div style="font-size:11px;color:var(--text-muted);">正常模块</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);">1</div><div style="font-size:11px;color:var(--text-muted);">降级模块</div></div>' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--red);">1</div><div style="font-size:11px;color:var(--text-muted);">离线模块</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">最后同步</div><div style="font-size:12px;font-weight:600;margin-top:2px;">'+pmsStatusData.lastSync+'</div></div></div>' +
+    '<div style="margin-bottom:16px;"><div style="font-size:13px;font-weight:700;margin-bottom:10px;">📡 各模块状态</div><div style="border:1px solid var(--border);border-radius:8px;padding:4px 12px;background:white;">'+modulesHtml+'</div></div>' +
+    '<div><div style="font-size:13px;font-weight:700;margin-bottom:10px;">📋 最近同步日志</div><div style="border:1px solid var(--border);border-radius:8px;padding:4px 12px;background:white;max-height:200px;overflow-y:auto;">'+logsHtml+'</div></div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-pms-status\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="syncPmsNow()" style="background:var(--blue);color:white;border:none;">🔄 立即同步</button>' +
+    '<button class="modal-btn" onclick="openPmsConfigModal()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">⚙️ PMS配置</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function syncPmsNow() {
+  showToast('🔄 正在触发PMS全量同步...', 'info');
+  setTimeout(function(){
+    showToast('✅ PMS同步完成，新增 2 条订单，更新 5 条状态', 'success');
+    document.getElementById('modal-pms-status').remove();
+  }, 2000);
+}
+
+function openPmsConfigModal() {
+  showToast('⚙️ 打开PMS系统配置面板...', 'info');
+}
+</script>
+
+<!-- 【物联后台v3.5 改进3】设备批量远程控制面板：支持勾选多个设备后执行批量开锁/同步/重启等操作 -->
+<div class="modal-overlay hidden" id="modal-batch-device-control">
+  <div class="modal" style="width:680px;">
+    <div class="modal-header">
+      <div class="modal-title">⚡ 设备批量远程控制</div>
+      <button class="modal-close" onclick="closeModal('batch-device-control')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- 已选设备列表 -->
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:13px;font-weight:700;">📋 已选设备（<span id="bdc-selected-count">0</span> 台）</div>
+          <div style="display:flex;gap:8px;">
+            <button class="action-btn small" onclick="selectAllDevicesForBatch()" style="padding:3px 10px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">全选</button>
+            <button class="action-btn small" onclick="clearBatchSelection()" style="padding:3px 10px;font-size:11px;">清空</button>
+          </div>
+        </div>
+        <div id="bdc-device-list" style="display:flex;flex-wrap:wrap;gap:8px;max-height:140px;overflow-y:auto;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
+          <div style="padding:6px 10px;background:white;border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text-muted);">请从下方勾选设备</div>
+        </div>
+      </div>
+      <!-- 批量操作选择 -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;">⚡ 选择批量操作</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+          <div class="bdc-op-card" data-op="unlock" onclick="selectBatchOp(this,'unlock')" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
+            <div style="font-size:24px;margin-bottom:6px;">🔓</div>
+            <div style="font-size:13px;font-weight:600;">批量开锁</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">同时开多个房间</div>
+          </div>
+          <div class="bdc-op-card" data-op="sync" onclick="selectBatchOp(this,'sync')" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
+            <div style="font-size:24px;margin-bottom:6px;">🔄</div>
+            <div style="font-size:13px;font-weight:600;">批量同步</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">拉取最新状态</div>
+          </div>
+          <div class="bdc-op-card" data-op="power" onclick="selectBatchOp(this,'power')" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
+            <div style="font-size:24px;margin-bottom:6px;">⚡</div>
+            <div style="font-size:13px;font-weight:600;">通断电控制</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">远程控制通断电</div>
+          </div>
+          <div class="bdc-op-card" data-op="restart" onclick="selectBatchOp(this,'restart')" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
+            <div style="font-size:24px;margin-bottom:6px;">🔁</div>
+            <div style="font-size:13px;font-weight:600;">批量重启</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">重启设备使失效</div>
+          </div>
+          <div class="bdc-op-card" data-op="battery" onclick="selectBatchOp(this,'battery')" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
+            <div style="font-size:24px;margin-bottom:6px;">🔋</div>
+            <div style="font-size:13px;font-weight:600;">换电池提醒</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">发送换电池通知</div>
+          </div>
+          <div class="bdc-op-card" data-op="freeze" onclick="selectBatchOp(this,'freeze')" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
+            <div style="font-size:24px;margin-bottom:6px;">🚫</div>
+            <div style="font-size:13px;font-weight:600;">冻结权限</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">禁用所有门卡权限</div>
+          </div>
+        </div>
+      </div>
+      <!-- 执行确认区 -->
+      <div id="bdc-confirm-area" style="display:none;padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">
+        <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px;">⚠️ 执行确认</div>
+        <div style="font-size:12px;color:var(--text);margin-bottom:10px;" id="bdc-confirm-text">确认对 <b id="bdc-confirm-count">0</b> 台设备执行 <b id="bdc-confirm-op">--</b> 操作？</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" id="bdc-confirm-check" onchange="toggleBatchConfirm()" style="accent-color:var(--blue);width:16px;height:16px;">
+          <label for="bdc-confirm-check" style="font-size:12px;color:var(--text);cursor:pointer;">我已知悉批量操作的风险，确认执行</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('batch-device-control')">取消</button>
+      <button class="modal-btn" id="bdc-execute-btn" onclick="executeBatchControl()" disabled style="opacity:0.5;cursor:not-allowed;">⚡ 执行批量操作</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 设备批量控制相关JS
+var batchSelectedDevices = [];
+var batchSelectedOp = null;
+
+var allDevicesForBatch = [
+  {room:'301', uuid:'A84F1AF2', type:'领握LH-807', status:'online', battery:88},
+  {room:'303', uuid:'C73D4CG4', type:'领握LH-807', status:'offline', battery:0},
+  {room:'305', uuid:'D64E5DH5', type:'领握LH-807', status:'low', battery:28},
+  {room:'201', uuid:'E75F6EI6', type:'领握LH-807', status:'online', battery:92},
+  {room:'202', uuid:'F86G7FJ7', type:'领握LH-807', status:'online', battery:65},
+  {room:'203', uuid:'G97H8GK8', type:'领握LH-807', status:'online', battery:45}
+];
+
+function openBatchDeviceControlModal() {
+  batchSelectedDevices = [];
+  batchSelectedOp = null;
+  document.getElementById('bdc-device-list').innerHTML = '<div style="padding:6px 10px;background:white;border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text-muted);">请从下方勾选设备</div>';
+  document.getElementById('bdc-selected-count').textContent = '0';
+  document.getElementById('bdc-confirm-area').style.display = 'none';
+  document.getElementById('bdc-execute-btn').disabled = true;
+  document.getElementById('bdc-execute-btn').style.opacity = '0.5';
+  document.getElementById('bdc-execute-btn').style.cursor = 'not-allowed';
+  // Reset op card selection
+  document.querySelectorAll('.bdc-op-card').forEach(function(c){ c.style.borderColor = 'var(--border)'; c.style.background = 'white'; });
+  openModal('batch-device-control');
+}
+
+function selectAllDevicesForBatch() {
+  batchSelectedDevices = allDevicesForBatch.filter(function(d){ return d.status !== 'offline'; }).map(function(d){ return d.uuid; });
+  renderBatchDeviceList();
+}
+
+function clearBatchSelection() {
+  batchSelectedDevices = [];
+  renderBatchDeviceList();
+}
+
+function renderBatchDeviceList() {
+  var list = document.getElementById('bdc-device-list');
+  if (batchSelectedDevices.length === 0) {
+    list.innerHTML = '<div style="padding:6px 10px;background:white;border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text-muted);">请从下方勾选设备</div>';
+  } else {
+    var html = allDevicesForBatch.map(function(d){
+      var selected = batchSelectedDevices.indexOf(d.uuid) >= 0;
+      var statusColor = d.status === 'online' ? 'var(--green)' : d.status === 'low' ? 'var(--orange)' : 'var(--red)';
+      var bg = selected ? 'var(--blue-bg)' : 'white';
+      var border = selected ? '2px solid var(--blue)' : '1px solid var(--border)';
+      return '<div onclick="toggleBatchDevice(\''+d.uuid+'\')" style="padding:6px 10px;background:'+bg+';border:'+border+';border-radius:6px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;">' +
+        '<input type="checkbox" '+(selected?'checked':'')+' onclick="event.stopPropagation();toggleBatchDevice(\''+d.uuid+'\')" style="accent-color:var(--blue);">' +
+        '<span style="font-weight:600;">'+d.room+'</span>' +
+        '<span style="font-size:11px;color:var(--text-muted);">'+d.type+'</span>' +
+        '<span style="width:6px;height:6px;border-radius:50%;background:'+statusColor+';flex-shrink:0;"></span>' +
+        '<span style="font-size:11px;color:'+statusColor+';">'+(d.status==='online'?'在线':d.status==='low'?'低电量':'离线')+'</span>' +
+        '<span style="font-size:11px;color:var(--text-muted);">'+d.battery+'%</span></div>';
+    }).join('');
+    list.innerHTML = html;
+  }
+  document.getElementById('bdc-selected-count').textContent = batchSelectedDevices.length;
+  updateBatchConfirmArea();
+}
+
+function toggleBatchDevice(uuid) {
+  var idx = batchSelectedDevices.indexOf(uuid);
+  if (idx >= 0) batchSelectedDevices.splice(idx, 1);
+  else batchSelectedDevices.push(uuid);
+  renderBatchDeviceList();
+}
+
+function selectBatchOp(el, op) {
+  batchSelectedOp = op;
+  document.querySelectorAll('.bdc-op-card').forEach(function(c){ c.style.borderColor = 'var(--border)'; c.style.background = 'white'; });
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'var(--blue-bg)';
+  updateBatchConfirmArea();
+}
+
+function updateBatchConfirmArea() {
+  var area = document.getElementById('bdc-confirm-area');
+  if (batchSelectedDevices.length > 0 && batchSelectedOp) {
+    area.style.display = 'block';
+    document.getElementById('bdc-confirm-count').textContent = batchSelectedDevices.length;
+    var opNames = {unlock:'批量开锁', sync:'批量同步', power:'通断电控制', restart:'批量重启', battery:'换电池提醒', freeze:'冻结权限'};
+    document.getElementById('bdc-confirm-op').textContent = opNames[batchSelectedOp] || batchSelectedOp;
+  } else {
+    area.style.display = 'none';
+  }
+  toggleBatchConfirm();
+}
+
+function toggleBatchConfirm() {
+  var checked = document.getElementById('bdc-confirm-check').checked;
+  var btn = document.getElementById('bdc-execute-btn');
+  if (checked && batchSelectedDevices.length > 0 && batchSelectedOp) {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+  } else {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+  }
+}
+
+function executeBatchControl() {
+  var opNames = {unlock:'批量开锁', sync:'批量同步', power:'通断电控制', restart:'批量重启', battery:'换电池提醒', freeze:'冻结权限'};
+  closeModal('batch-device-control');
+  showToast('⚡ 正在对 ' + batchSelectedDevices.length + ' 台设备执行「' + opNames[batchSelectedOp] + '」操作...', 'info');
+  setTimeout(function(){
+    var success = Math.floor(batchSelectedDevices.length * 0.9);
+    showToast('✅ ' + opNames[batchSelectedOp] + '完成：成功 ' + success + ' 台，失败 ' + (batchSelectedDevices.length - success) + ' 台', success === batchSelectedDevices.length ? 'success' : 'warning');
+  }, 2500);
+}
+</script>
+
+<!-- 【物联后台v3.5 改进5】设备固件升级管理面板：设备详情页新增固件版本管理、批量升级任务、升级历史查看 -->
+<div class="modal-overlay hidden" id="modal-firmware-upgrade">
+  <div class="modal" style="width:680px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;">
+    <div class="modal-header">
+      <div class="modal-title">📦 设备固件升级管理</div>
+      <button class="modal-close" onclick="closeModal('firmware-upgrade')">✕</button>
+    </div>
+    <div class="modal-body" style="flex:1;overflow-y:auto;">
+      <!-- 当前固件信息 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--blue);margin-bottom:4px;">当前版本</div>
+          <div style="font-size:18px;font-weight:700;color:var(--blue);" id="fw-current-ver">v2.3.1</div>
+        </div>
+        <div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--green);margin-bottom:4px;">最新版本</div>
+          <div style="font-size:18px;font-weight:700;color:var(--green);" id="fw-latest-ver">v2.4.0</div>
+          <div style="font-size:10px;color:var(--green);">2026-03-25发布</div>
+        </div>
+        <div style="padding:12px;background:var(--purple-bg);border-radius:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--purple);margin-bottom:4px;">待升级设备</div>
+          <div style="font-size:18px;font-weight:700;color:var(--purple);" id="fw-pending-count">5</div>
+          <div style="font-size:10px;color:var(--purple);">共16台设备</div>
+        </div>
+      </div>
+      <!-- 版本更新说明 -->
+      <div style="padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px;">📋 v2.4.0 更新说明</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.7;">
+          <div style="margin-bottom:4px;">✅ 修复设备离线后无法自动重连问题</div>
+          <div style="margin-bottom:4px;">✅ 优化电量检测精度，提升15%准确率</div>
+          <div style="margin-bottom:4px;">✅ 新增支持断电告警推送功能</div>
+          <div>✅ 降低待机功耗，延长电池寿命约20%</div>
+        </div>
+      </div>
+      <!-- 升级策略配置 -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;">⚙️ 升级策略</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="radio" name="fw-strategy" id="fw-strategy-auto" checked style="accent-color:var(--blue);">
+            <label for="fw-strategy-auto" style="font-size:13px;cursor:pointer;">🚀 自动升级（新版本发布后自动推送到所有在线设备）</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="radio" name="fw-strategy" id="fw-strategy-manual" style="accent-color:var(--blue);">
+            <label for="fw-strategy-manual" style="font-size:13px;cursor:pointer;">⏰ 手动升级（由管理员确认后分批推送）</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="radio" name="fw-strategy" id="fw-strategy-schedule" style="accent-color:var(--blue);">
+            <label for="fw-strategy-schedule" style="font-size:13px;cursor:pointer;">🕐 定时升级（凌晨02:00-05:00闲时自动推送）</label>
+          </div>
+        </div>
+      </div>
+      <!-- 待升级设备列表 -->
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:13px;font-weight:700;">📱 待升级设备（<span id="fw-pending-list-count">5</span>台）</div>
+          <div style="display:flex;gap:8px;">
+            <button class="action-btn small" onclick="selectAllFWDevices()" style="padding:3px 10px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">全选</button>
+            <button class="action-btn small" onclick="clearFWSelection()" style="padding:3px 10px;font-size:11px;">清空</button>
+          </div>
+        </div>
+        <div id="fw-device-list" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg);">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <div onclick="toggleFWDevice(this,'301')" class="fw-device-chip selected" style="padding:6px 10px;border:2px solid var(--blue);border-radius:20px;background:var(--blue-bg);font-size:12px;cursor:pointer;">
+              <span style="font-weight:600;">301</span> <span style="color:var(--text-muted);">v2.3.1</span>
+            </div>
+            <div onclick="toggleFWDevice(this,'303')" class="fw-device-chip" style="padding:6px 10px;border:2px solid var(--border);border-radius:20px;background:white;font-size:12px;cursor:pointer;">
+              <span style="font-weight:600;">303</span> <span style="color:var(--red);">离线</span>
+            </div>
+            <div onclick="toggleFWDevice(this,'305')" class="fw-device-chip selected" style="padding:6px 10px;border:2px solid var(--blue);border-radius:20px;background:var(--blue-bg);font-size:12px;cursor:pointer;">
+              <span style="font-weight:600;">305</span> <span style="color:var(--text-muted);">v2.3.1</span>
+            </div>
+            <div onclick="toggleFWDevice(this,'201')" class="fw-device-chip selected" style="padding:6px 10px;border:2px solid var(--blue);border-radius:20px;background:var(--blue-bg);font-size:12px;cursor:pointer;">
+              <span style="font-weight:600;">201</span> <span style="color:var(--text-muted);">v2.3.1</span>
+            </div>
+            <div onclick="toggleFWDevice(this,'202')" class="fw-device-chip selected" style="padding:6px 10px;border:2px solid var(--blue);border-radius:20px;background:var(--blue-bg);font-size:12px;cursor:pointer;">
+              <span style="font-weight:600;">202</span> <span style="color:var(--text-muted);">v2.3.1</span>
+            </div>
+            <div onclick="toggleFWDevice(this,'203')" class="fw-device-chip" style="padding:6px 10px;border:2px solid var(--border);border-radius:20px;background:white;font-size:12px;cursor:pointer;">
+              <span style="font-weight:600;">203</span> <span style="color:var(--text-muted);">v2.4.0 ✓</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 升级历史 -->
+      <div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;">📜 升级历史</div>
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:12px;">
+            <span style="width:70px;color:var(--text-muted);">2026-03-25</span>
+            <span style="background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:10px;font-size:11px;">成功</span>
+            <span>v2.3.1 → v2.4.0</span>
+            <span style="color:var(--text-muted);">11台设备</span>
+          </div>
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:12px;">
+            <span style="width:70px;color:var(--text-muted);">2026-02-15</span>
+            <span style="background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:10px;font-size:11px;">成功</span>
+            <span>v2.2.8 → v2.3.1</span>
+            <span style="color:var(--text-muted);">16台设备</span>
+          </div>
+          <div style="padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:12px;">
+            <span style="width:70px;color:var(--text-muted);">2026-01-10</span>
+            <span style="background:var(--orange-bg);color:var(--orange);padding:2px 8px;border-radius:10px;font-size:11px;">部分成功</span>
+            <span>v2.2.5 → v2.2.8</span>
+            <span style="color:var(--text-muted);">14台成功，2台失败</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('firmware-upgrade')">取消</button>
+      <button class="modal-btn" onclick="checkFWUpdate()" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔄 检查更新</button>
+      <button class="modal-btn" onclick="startFWUpgrade()" id="fw-upgrade-btn" style="background:var(--purple);color:white;border:none;">📦 开始升级（4台）</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 固件升级管理功能
+var fwSelectedDevices = ['301','305','201','202'];
+
+function toggleFWDevice(el, room) {
+  var idx = fwSelectedDevices.indexOf(room);
+  if (idx >= 0) {
+    fwSelectedDevices.splice(idx, 1);
+    el.classList.remove('selected');
+    el.style.borderColor = 'var(--border)';
+    el.style.background = 'white';
+  } else {
+    fwSelectedDevices.push(room);
+    el.classList.add('selected');
+    el.style.borderColor = 'var(--blue)';
+    el.style.background = 'var(--blue-bg)';
+  }
+  document.getElementById('fw-upgrade-btn').textContent = '📦 开始升级（'+fwSelectedDevices.length+'台）';
+}
+
+function selectAllFWDevices() {
+  fwSelectedDevices = ['301','305','201','202','203'];
+  document.querySelectorAll('.fw-device-chip').forEach(function(c){
+    c.classList.add('selected');
+    c.style.borderColor = 'var(--blue)';
+    c.style.background = 'var(--blue-bg)';
+  });
+  document.getElementById('fw-upgrade-btn').textContent = '📦 开始升级（5台）';
+}
+
+function clearFWSelection() {
+  fwSelectedDevices = [];
+  document.querySelectorAll('.fw-device-chip').forEach(function(c){
+    c.classList.remove('selected');
+    c.style.borderColor = 'var(--border)';
+    c.style.background = 'white';
+  });
+  document.getElementById('fw-upgrade-btn').textContent = '📦 开始升级（0台）';
+}
+
+function checkFWUpdate() {
+  showToast('🔄 正在检查固件更新...', 'info');
+  setTimeout(function(){
+    showToast('📢 已是最新版本 v2.4.0，暂无可用更新', 'success');
+  }, 1500);
+}
+
+function startFWUpgrade() {
+  if (fwSelectedDevices.length === 0) { showToast('请先选择要升级的设备', 'error'); return; }
+  closeModal('firmware-upgrade');
+  showToast('📦 正在推送固件升级至 ' + fwSelectedDevices.length + ' 台设备，预计需要3-5分钟...', 'info');
+  setTimeout(function(){
+    showToast('✅ 固件升级任务已创建，设备将在联网后自动下载并安装', 'success');
+  }, 2000);
+}
+
+function openFirmwareUpgradeModal() {
+  openModal('firmware-upgrade');
+}
+</script>
+
 <!-- 改进2: 工单创建完整表单弹窗（支持类型/房间/客户/紧急程度/处理人全字段） -->
 <div class="modal-overlay hidden" id="modal-create-wo">
   <div class="modal" style="width:520px;">
@@ -17245,6 +17976,7 @@ function submitCheckoutSettlement() {
     </div>
     <div class="modal-footer">
       <button class="modal-btn secondary" onclick="closeModal('checkout')">取消</button>
+      <button class="modal-btn" onclick="openBillingDetailFromCheckout()" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">💳 查看账单</button>
       <button class="modal-btn primary" onclick="submitCheckout()">确认退房</button>
     </div>
   </div>
