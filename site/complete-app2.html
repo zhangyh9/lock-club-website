@@ -26362,12 +26362,40 @@ function submitStaffForm() {
   closeModal('add-employee');
   renderStaffTable();
 }
-function deleteStaff(idx) {
+// ============================================================
+// 【物联后台 v3.5 改进 5】员工删除确认弹窗
+// 理由：deleteStaff 原使用浏览器 confirm() 弹窗，交互体验差且无法执行真正的删除逻辑
+// 功能：替换为美化的确认弹窗，支持双向确认，包含删除后果提示
+function openDeleteStaffConfirmModal(idx) {
   var s = staffStore[idx];
-  if (!confirm('⚠️ 确定要删除员工「' + s.name + '」吗？\n\n删除后该账号将无法登录！')) return;
+  if (!s) return;
+  var existing = document.getElementById('modal-delete-staff-confirm');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-delete-staff-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-delete-staff-confirm\').remove()">' +
+    '<div class="modal" style="width:420px;background:white;border-radius:12px;overflow:hidden;">' +
+    '<div style="padding:24px 24px 16px;text-align:center;">' +
+    '<div style="width:60px;height:60px;background:var(--red-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px;">⚠️</div>' +
+    '<div style="font-size:16px;font-weight:700;margin-bottom:8px;">确定删除员工？</div>' +
+    '<div style="font-size:13px;color:var(--text-muted);line-height:1.6;">' +
+    '即将删除员工：<b style="color:var(--text);">' + s.name + '</b><br>' +
+    '岗位：' + (s.position || '员工') + ' · 部门：' + (s.dept || '--') + '<br><br>' +
+    '<b style="color:var(--red);">⚠️ 删除后无法恢复，该员工所有数据将一并清除</b></div></div>' +
+    '<div style="padding:0 24px 20px;display:flex;gap:10px;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-delete-staff-confirm\').remove()" style="flex:1;padding:10px;">取消</button>' +
+    '<button class="modal-btn" style="flex:1;padding:10px;background:var(--red);color:white;border-color:var(--red);" onclick="confirmDeleteStaff(' + idx + ')">🗑️ 确认删除</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function confirmDeleteStaff(idx) {
+  var s = staffStore[idx];
+  if (!s) return;
   staffStore.splice(idx, 1);
-  showToast('员工「' + s.name + '」已从系统中移除', 'warning');
+  document.getElementById('modal-delete-staff-confirm').remove();
+  showToast('🗑️ 员工「' + s.name + '」已从系统中永久移除', 'warning');
   renderStaffTable();
+}
+// deleteStaff 改为调用弹窗版本
+function deleteStaff(idx) {
+  openDeleteStaffConfirmModal(idx);
 }
 function disableStaff(idx) {
   var s = staffStore[idx];
@@ -28524,6 +28552,332 @@ var workorderSLAStore = [
   {id:'WO202603085', title:'302房间需要加床', type:'服务', room:'302', priority:'normal', assignee:'周敏', createTime:'2026-03-27 16:00', slaMinutes:120, status:'done'},
   {id:'WO202603086', title:'餐厅油烟机异响', type:'报修', room:'餐厅', priority:'urgent', assignee:'李师傅', createTime:'2026-03-28 07:00', slaMinutes:60, status:'overdue'}
 ];
+
+// ============================================================
+// 【物联后台 v3.5 改进 1】身份证扫描入住弹窗
+// 理由：首页「身份证入住」按钮已绑定此函数但未实现，影响入住办理效率
+// 功能：模拟身份证OCR读取，自动填充姓名/身份证/手机号，支持确认入住
+function openCheckinWithIDScanModal() {
+  var existing = document.getElementById('modal-checkin-id-scan');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-checkin-id-scan" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-checkin-id-scan\').remove()">' +
+    '<div class="modal" style="width:520px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">🪪 身份证扫描入住</div><span style="padding:3px 8px;background:var(--green-bg);color:var(--green);border-radius:12px;font-size:11px;font-weight:600;">实时OCR识别</span></div>' +
+    '<button onclick="document.getElementById(\'modal-checkin-id-scan\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    // 扫描模拟区域
+    '<div id="id-scan-area" onclick="simulateIDScan()" style="height:160px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;margin-bottom:16px;position:relative;overflow:hidden;">' +
+    '<div id="id-scan-pulse" style="position:absolute;width:60px;height:60px;border:3px solid #00ff88;border-radius:50%;animation:idScanPulse 1.5s ease-out infinite;"></div>' +
+    '<div style="font-size:48px;margin-bottom:8px;">🪪</div>' +
+    '<div style="color:white;font-size:13px;text-align:center;">点击此处模拟扫描身份证</div>' +
+    '<div style="color:rgba(255,255,255,0.6);font-size:11px;margin-top:4px;">（实际对接身份证读卡器硬件）</div></div>' +
+    // OCR读取结果区（默认隐藏）
+    '<div id="id-scan-result" style="display:none;padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;margin-bottom:16px;">' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:16px;">✅</span><span style="font-size:13px;font-weight:700;color:var(--green);">身份信息已识别</span></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">' +
+    '<div><span style="color:var(--text-muted);">姓名：</span><span style="font-weight:600;" id="id-result-name">张三</span></div>' +
+    '<div><span style="color:var(--text-muted);">性别：</span><span id="id-result-gender">男</span></div>' +
+    '<div><span style="color:var(--text-muted);">民族：</span><span id="id-result-nation">汉</span></div>' +
+    '<div><span style="color:var(--text-muted);">出生：</span><span id="id-result-birth">1990-01-01</span></div>' +
+    '<div style="grid-column:1/-1;"><span style="color:var(--text-muted);">身份证号：</span><span style="font-weight:600;" id="id-result-idnum">110101199001011234</span></div>' +
+    '<div style="grid-column:1/-1;"><span style="color:var(--text-muted);">住址：</span><span id="id-result-addr">北京市朝阳区某街道某小区</span></div></div></div>' +
+    // 扫描动画样式
+    '<style>@keyframes idScanPulse { 0%{transform:scale(0.5);opacity:1;} 100%{transform:scale(2.5);opacity:0;} }</style>' +
+    // 表单区
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">📝 入住信息</div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">姓名 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="id-form-name" placeholder="自动识别或手动输入" value=""></div>' +
+    '<div class="form-group"><label class="form-label">手机号 <span class="required">*</span></label>' +
+    '<input type="tel" class="form-input" id="id-form-phone" placeholder="138****8888" maxlength="11"></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">房间号 <span class="required">*</span></label>' +
+    '<select class="form-select" id="id-form-room"><option value="">请选择房间</option><option>301</option><option>302</option><option>201</option><option>202</option><option>101</option></select></div>' +
+    '<div class="form-group"><label class="form-label">入住天数</label>' +
+    '<select class="form-select" id="id-form-nights"><option>1晚</option><option selected>2晚</option><option>3晚</option><option>5晚</option><option>7晚</option></select></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">房型</label>' +
+    '<select class="form-select" id="id-form-type"><option>亲子间</option><option>大床房</option><option>标准间</option></select></div>' +
+    '<div class="form-group"><label class="form-label">押金</label>' +
+    '<input type="number" class="form-input" id="id-form-deposit" value="100" placeholder="元"></div></div>' +
+    '<div style="padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;display:flex;align-items:center;gap:8px;margin-top:8px;">' +
+    '<input type="checkbox" id="id-form-auto-key" checked style="accent-color:var(--blue);"><label for="id-form-auto-key" style="font-size:12px;color:var(--blue);cursor:pointer;">自动开通手机开锁权限</label></div>' +
+    '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-checkin-id-scan\').remove()">取消</button>' +
+    '<button class="modal-btn" style="background:var(--green-bg);color:var(--green);border-color:var(--green);" onclick="submitIDScanCheckin()">🪪 确认入住</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// 模拟身份证OCR扫描
+function simulateIDScan() {
+  var scanArea = document.getElementById('id-scan-area');
+  if (!scanArea) return;
+  scanArea.innerHTML = '<div style="color:white;font-size:24px;animation:blink 0.5s ease infinite;">🔍 识别中...</div><div style="color:rgba(255,255,255,0.7);font-size:12px;margin-top:8px;">正在读取芯片信息</div>';
+  setTimeout(function() {
+    // 模拟识别结果
+    document.getElementById('id-form-name').value = '李明';
+    document.getElementById('id-result-name').textContent = '李明';
+    document.getElementById('id-result-gender').textContent = '男';
+    document.getElementById('id-result-nation').textContent = '汉族';
+    document.getElementById('id-result-birth').textContent = '1985-06-15';
+    document.getElementById('id-result-idnum').textContent = '110101198506151234';
+    document.getElementById('id-result-addr').textContent = '北京市朝阳区建国路88号';
+    document.getElementById('id-scan-area').style.display = 'none';
+    document.getElementById('id-scan-result').style.display = 'block';
+    showToast('🪪 身份证识别成功！请核对信息并填写入住房间', 'success');
+  }, 1500);
+}
+
+// 提交身份证入住
+function submitIDScanCheckin() {
+  var name = document.getElementById('id-form-name').value.trim();
+  var phone = document.getElementById('id-form-phone').value.trim();
+  var room = document.getElementById('id-form-room').value;
+  if (!name) { showToast('请填写姓名', 'error'); return; }
+  if (!phone || phone.length < 11) { showToast('请填写正确的手机号', 'error'); return; }
+  if (!room) { showToast('请选择入住房间', 'error'); return; }
+  var nights = document.getElementById('id-form-nights').value;
+  var deposit = document.getElementById('id-form-deposit').value;
+  document.getElementById('modal-checkin-id-scan').remove();
+  showToast('✅ 入住成功！' + name + ' 已入住 ' + room + '，' + nights + '，押金 ¥' + deposit, 'success');
+  // 刷新首页房态
+  setTimeout(function() {
+    showPage('home');
+  }, 500);
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 2】发票开具弹窗
+// 理由：发票管理页「开具发票」功能缺失，运营中开票流程不完整
+// 功能：选择客户/金额/税目，开具电子发票，支持发送至邮箱/手机
+function openInvoiceGenerateModal() {
+  var existing = document.getElementById('modal-invoice-generate');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-invoice-generate" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-generate\').remove()">' +
+    '<div class="modal" style="width:540px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">🧾 开具发票</div><span style="padding:3px 8px;background:var(--blue-bg);color:var(--blue);border-radius:12px;font-size:11px;font-weight:600;">电子发票</span></div>' +
+    '<button onclick="document.getElementById(\'modal-invoice-generate\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">发票类型</label>' +
+    '<select class="form-select" id="inv-type" onchange="toggleInvoiceTaxRate()">' +
+    '<option value="normal" selected>增值税普通发票</option><option value="special">增值税专用发票</option></select></div>' +
+    '<div class="form-group"><label class="form-label">抬头类型</label>' +
+    '<select class="form-select" id="inv-title-type" onchange="toggleInvoiceTitleInput()">' +
+    '<option value="personal" selected>个人</option><option value="company">企业单位</option></select></div></div>' +
+    '<div class="form-group"><label class="form-label">发票抬头 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="inv-title" placeholder="请输入发票抬头"></div></div>' +
+    '<div class="form-group" id="inv-taxno-group" style="display:none;"><label class="form-label">纳税人识别号</label>' +
+    '<input type="text" class="form-input" id="inv-tax-no" placeholder="请输入18位纳税人识别号" maxlength="18"></div></div>' +
+    '<div class="form-group"><label class="form-label">发票金额（元）<span class="required">*</span></label>' +
+    '<input type="number" class="form-input" id="inv-amount" placeholder="请输入开票金额" value="0" min="0" oninput="calcInvoiceTax()"></div></div>' +
+    '<div class="form-group" id="inv-tax-rate-group" style="display:none;"><label class="form-label">税率</label>' +
+    '<select class="form-select" id="inv-tax-rate" onchange="calcInvoiceTax()"><option value="0.06">6%（现代服务）</option><option value="0.09">9%（建筑/运输）</option><option value="0.13">13%（生活服务/餐饮）</option></select></div>' +
+    '<div class="form-group"><label class="form-label">价税合计</label>' +
+    '<div style="padding:10px 14px;background:var(--blue-bg);border-radius:8px;font-size:18px;font-weight:700;color:var(--blue);" id="inv-total-amount">¥0.00</div></div>' +
+    '<div class="form-group"><label class="form-label">税目</label>' +
+    '<select class="form-select" id="inv-tax-item">' +
+    '<option value="生活服务">生活服务</option><option value="住宿服务">住宿服务</option><option value="餐饮服务">餐饮服务</option>' +
+    '<option value="物业管理">物业管理</option><option value="其他">其他</option></select></div>' +
+    '<div class="form-group"><label class="form-label">接收方式</label>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<label style="flex:1;display:flex;align-items:center;gap:6px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:var(--bg);">' +
+    '<input type="checkbox" id="inv-send-email" style="accent-color:var(--blue);"><span style="font-size:13px;">📧 发送至邮箱</span></label>' +
+    '<label style="flex:1;display:flex;align-items:center;gap:6px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:var(--bg);">' +
+    '<input type="checkbox" id="inv-send-sms" style="accent-color:var(--blue);"><span style="font-size:13px;">📱 发送至手机</span></label></div></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<textarea class="form-textarea" id="inv-note" placeholder="可选：填写订单号/房间号等信息" style="min-height:60px;"></textarea></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-muted);line-height:1.6;">' +
+    '<div style="margin-bottom:4px;">📌 开票须知：</div>' +
+    '<div>1. 增值税普通发票可直接开具，专用发票需提供资质证明</div>' +
+    '<div>2. 发票内容均为实际消费明细，不可变更</div>' +
+    '<div>3. 电子发票与纸质发票具有同等法律效力</div></div>' +
+    '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-generate\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitInvoiceGenerate()">🧾 开具发票</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function toggleInvoiceTitleInput() {
+  var t = document.getElementById('inv-title-type').value;
+  var taxGroup = document.getElementById('inv-taxno-group');
+  if (taxGroup) taxGroup.style.display = t === 'company' ? 'block' : 'none';
+}
+function toggleInvoiceTaxRate() {
+  var t = document.getElementById('inv-type').value;
+  var rateGroup = document.getElementById('inv-tax-rate-group');
+  if (rateGroup) rateGroup.style.display = t === 'special' ? 'block' : 'none';
+  calcInvoiceTax();
+}
+function calcInvoiceTax() {
+  var amount = parseFloat(document.getElementById('inv-amount').value) || 0;
+  var type = document.getElementById('inv-type').value;
+  var taxRate = type === 'special' ? (parseFloat(document.getElementById('inv-tax-rate').value) || 0.06) : 0;
+  var tax = amount * taxRate;
+  var total = amount + tax;
+  var el = document.getElementById('inv-total-amount');
+  if (el) el.textContent = '¥' + total.toFixed(2) + '（税额 ¥' + tax.toFixed(2) + '）';
+}
+function submitInvoiceGenerate() {
+  var title = document.getElementById('inv-title').value.trim();
+  var amount = parseFloat(document.getElementById('inv-amount').value) || 0;
+  var invType = document.getElementById('inv-type').value;
+  if (!title) { showToast('请填写发票抬头', 'error'); return; }
+  if (amount <= 0) { showToast('请填写正确的发票金额', 'error'); return; }
+  var invNo = 'INV' + new Date().getFullYear() + ('0' + (new Date().getMonth()+1)).slice(-2) + ('0' + new Date().getDate()).slice(-2) + ('000' + Math.floor(Math.random()*9999)).slice(-4);
+  document.getElementById('modal-invoice-generate').remove();
+  showToast('🧾 发票 ' + invNo + ' 开具成功！电子发票已发送至您的手机', 'success');
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 3】服务满意度调查弹窗
+// 理由：工单完成后缺少满意度调查机制，无法形成服务闭环
+// 功能：工单完成时可弹出满意度评价，5星+选项+建议输入，支持查看历史评价统计
+function openSatisfactionSurveyModal(workorderId, guestName) {
+  var existing = document.getElementById('modal-satisfaction-survey');
+  if (existing) existing.remove();
+  var woId = workorderId || 'WO' + new Date().getFullYear() + ('0' + (new Date().getMonth()+1)).slice(-2) + ('0' + new Date().getDate()).slice(-2) + '01';
+  var guest = guestName || '客户';
+  var html = '<div class="modal-overlay" id="modal-satisfaction-survey" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-satisfaction-survey\').remove()">' +
+    '<div class="modal" style="width:460px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">⭐ 服务满意度评价</div><span style="padding:3px 8px;background:var(--orange-bg);color:var(--orange);border-radius:12px;font-size:11px;font-weight:600;">工单 ' + woId + '</span></div>' +
+    '<button onclick="document.getElementById(\'modal-satisfaction-survey\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="text-align:center;margin-bottom:20px;"><div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">您好 ' + guest + '，请问您对本次服务满意吗？</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);">您的反馈将帮助我们持续改进</div></div>' +
+    // 星级评分
+    '<div style="display:flex;justify-content:center;gap:12px;margin-bottom:20px;" id="star-rating-container">' +
+    '<button class="star-btn" onclick="setStarRating(1)" style="font-size:36px;background:none;border:none;cursor:pointer;color:#ddd;transition:transform 0.2s;" onmouseover="this.style.transform=\'scale(1.2)\'" onmouseout="this.style.transform=\'scale(1)\'">★</button>' +
+    '<button class="star-btn" onclick="setStarRating(2)" style="font-size:36px;background:none;border:none;cursor:pointer;color:#ddd;transition:transform 0.2s;" onmouseover="this.style.transform=\'scale(1.2)\'" onmouseout="this.style.transform=\'scale(1)\'">★</button>' +
+    '<button class="star-btn" onclick="setStarRating(3)" style="font-size:36px;background:none;border:none;cursor:pointer;color:#ddd;transition:transform 0.2s;" onmouseover="this.style.transform=\'scale(1.2)\'" onmouseout="this.style.transform=\'scale(1)\'">★</button>' +
+    '<button class="star-btn" onclick="setStarRating(4)" style="font-size:36px;background:none;border:none;cursor:pointer;color:#ddd;transition:transform 0.2s;" onmouseover="this.style.transform=\'scale(1.2)\'" onmouseout="this.style.transform=\'scale(1)\'">★</button>' +
+    '<button class="star-btn" onclick="setStarRating(5)" style="font-size:36px;background:none;border:none;cursor:pointer;color:#ddd;transition:transform 0.2s;" onmouseover="this.style.transform=\'scale(1.2)\'" onmouseout="this.style.transform=\'scale(1)\'">★</button></div>' +
+    '<div style="text-align:center;font-size:13px;color:var(--text-muted);margin-bottom:16px;" id="star-label">请选择评分</div>' +
+    // 评价标签
+    '<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">🏷️ 您对哪些方面满意？（可多选）</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
+    '<button class="sat-tag" onclick="toggleSatTag(this)" style="padding:5px 12px;border:1px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer;background:var(--bg);transition:all 0.2s;">😊 服务态度好</button>' +
+    '<button class="sat-tag" onclick="toggleSatTag(this)" style="padding:5px 12px;border:1px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer;background:var(--bg);transition:all 0.2s;">⚡ 响应速度快</button>' +
+    '<button class="sat-tag" onclick="toggleSatTag(this)" style="padding:5px 12px;border:1px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer;background:var(--bg);transition:all 0.2s;">🔧 技术专业</button>' +
+    '<button class="sat-tag" onclick="toggleSatTag(this)" style="padding:5px 12px;border:1px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer;background:var(--bg);transition:all 0.2s;">🧹 清洁彻底</button>' +
+    '<button class="sat-tag" onclick="toggleSatTag(this)" style="padding:5px 12px;border:1px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer;background:var(--bg);transition:all 0.2s;">💡 建议改进</button></div></div>' +
+    // 文字建议
+    '<div class="form-group"><label class="form-label">💬 您的建议（可选）</label>' +
+    '<textarea class="form-textarea" id="sat-comment" placeholder="请留下您的宝贵意见，我们会认真倾听..." style="min-height:80px;"></textarea></div>' +
+    // 历史统计
+    '<div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-muted);">' +
+    '<div style="font-weight:600;margin-bottom:6px;color:var(--text);">📊 本月服务评价统计</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+    '<span>⭐</span><div style="flex:1;height:6px;background:#ddd;border-radius:3px;overflow:hidden;"><div style="height:100%;width:78%;background:#faad14;border-radius:3px;"></div></div><span>4.6分</span></div>' +
+    '<div>总评价数：<b>128</b> · 好评率：<b style="color:var(--green);">94%</b> · 回复率：<b style="color:var(--blue);">98%</b></div></div>' +
+    '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-satisfaction-survey\').remove()">跳过</button>' +
+    '<button class="modal-btn primary" onclick="submitSatisfactionSurvey(\'' + woId + '\')">⭐ 提交评价</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+var _currentStarRating = 0;
+function setStarRating(n) {
+  _currentStarRating = n;
+  var labels = ['', '⭐ 非常不满意', '😞 不满意', '😐 一般', '😊 满意', '🤩 非常满意'];
+  document.getElementById('star-label').textContent = labels[n];
+  document.querySelectorAll('.star-btn').forEach(function(btn, i) {
+    btn.style.color = i < n ? '#faad14' : '#ddd';
+  });
+}
+function toggleSatTag(btn) {
+  btn.style.background = btn.style.background === 'var(--blue-bg)' ? 'var(--bg)' : 'var(--blue-bg)';
+  btn.style.borderColor = btn.style.borderColor === 'var(--blue)' ? 'var(--border)' : 'var(--blue)';
+  btn.style.color = btn.style.color === 'var(--blue)' ? '' : 'var(--blue)';
+}
+function submitSatisfactionSurvey(woId) {
+  if (_currentStarRating === 0) { showToast('请选择评分', 'warning'); return; }
+  var comment = document.getElementById('sat-comment').value.trim();
+  document.getElementById('modal-satisfaction-survey').remove();
+  showToast('感谢您的评价！⭐ ' + _currentStarRating + '星反馈已收录', 'success');
+  _currentStarRating = 0;
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 4】能耗成本预测弹窗
+// 理由：节能风控页缺少未来能耗成本预测功能，运营者无法规划预算
+// 功能：基于历史数据预测未来30天能耗和电费，支持自定义电价/入住率
+function openEnergyCostForecastModal() {
+  var existing = document.getElementById('modal-energy-forecast');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-energy-forecast" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-forecast\').remove()">' +
+    '<div class="modal" style="width:580px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">⚡ 能耗成本预测</div><span style="padding:3px 8px;background:var(--orange-bg);color:var(--orange);border-radius:12px;font-size:11px;font-weight:600;">未来30天</span></div>' +
+    '<button onclick="document.getElementById(\'modal-energy-forecast\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    // 预测参数
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div class="form-group" style="margin:0;"><label class="form-label">预测起始日</label>' +
+    '<input type="date" class="form-input" id="fc-start-date" value="' + new Date().toISOString().slice(0,10) + '"></div>' +
+    '<div class="form-group" style="margin:0;"><label class="form-label">预测天数</label>' +
+    '<select class="form-select" id="fc-days"><option>7天</option><option selected>30天</option><option>90天</option></select></div>' +
+    '<div class="form-group" style="margin:0;"><label class="form-label">电价（元/kWh）</label>' +
+    '<input type="number" class="form-input" id="fc-price" value="0.6" step="0.01" min="0"></div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div class="form-group" style="margin:0;"><label class="form-label">预计入住率（%）</label>' +
+    '<input type="number" class="form-input" id="fc-occupancy" value="78" min="0" max="100"></div>' +
+    '<div class="form-group" style="margin:0;"><label class="form-label">预测模式</label>' +
+    '<select class="form-select" id="fc-mode"><option value="conservative">保守（基准）</option><option value="normal" selected>常规（平均）</option><option value="aggressive">激进（节能）</option></select></div></div>' +
+    '<button class="action-btn" onclick="runEnergyForecast()" style="margin-bottom:16px;"><span>📊</span> 开始预测</button>' +
+    // 预测结果区
+    '<div id="fc-result-area" style="display:none;">' +
+    // 关键指标卡片
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:14px;background:linear-gradient(135deg,#fa541c,#ff7a45);border-radius:10px;color:white;text-align:center;"><div style="font-size:11px;opacity:0.9;margin-bottom:4px;">预测总用电</div><div style="font-size:22px;font-weight:700;" id="fc-total-kwh">--</div><div style="font-size:11px;opacity:0.8;">kWh</div></div>' +
+    '<div style="padding:14px;background:linear-gradient(135deg,#1890ff,#69c0ff);border-radius:10px;color:white;text-align:center;"><div style="font-size:11px;opacity:0.9;margin-bottom:4px;">预测总电费</div><div style="font-size:22px;font-weight:700;" id="fc-total-cost">--</div><div style="font-size:11px;opacity:0.8;">元</div></div>' +
+    '<div style="padding:14px;background:linear-gradient(135deg,#52c41a,#73d13d);border-radius:10px;color:white;text-align:center;"><div style="font-size:11px;opacity:0.9;margin-bottom:4px;">日均用电</div><div style="font-size:22px;font-weight:700;" id="fc-daily-kwh">--</div><div style="font-size:11px;opacity:0.8;">kWh/天</div></div>' +
+    '<div style="padding:14px;background:linear-gradient(135deg,#722ed1,#b37feb);border-radius:10px;color:white;text-align:center;"><div style="font-size:11px;opacity:0.9;margin-bottom:4px;">节能潜力</div><div style="font-size:22px;font-weight:700;" id="fc-save-pct">--</div><div style="font-size:11px;opacity:0.8;">相比上月</div></div></div>' +
+    // 7日柱状图
+    '<div style="padding:14px;background:var(--bg);border-radius:8px;margin-bottom:16px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:10px;">📈 未来7天用电量预测</div>' +
+    '<div id="fc-bars" style="display:flex;align-items:flex-end;gap:8px;height:100px;"></div></div>' +
+    // 节能建议
+    '<div style="padding:14px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;">' +
+    '<div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px;">💡 节能优化建议</div>' +
+    '<div style="font-size:12px;line-height:1.8;color:var(--text);">' +
+    '<div style="margin-bottom:4px;">1. <b>空调温度管控</b>：设定温度上调2°C，预计节省 <b style="color:var(--green);">180 kWh/月</b></div>' +
+    '<div style="margin-bottom:4px;">2. <b>空房断电策略</b>：退房后2小时自动断电，预计节省 <b style="color:var(--green);">120 kWh/月</b></div>' +
+    '<div style="margin-bottom:4px;">3. <b>高功率设备管控</b>：限制电热水器使用时段，预计节省 <b style="color:var(--green);">90 kWh/月</b></div>' +
+    '<div>4. <b>节能宣传</b>：引导客人关闭不用电器，预计节省 <b style="color:var(--green);">50 kWh/月</b></div></div></div></div>' +
+    '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-energy-forecast\').remove()">关闭</button>' +
+    '<button class="modal-btn" style="background:var(--green-bg);color:var(--green);border-color:var(--green);" onclick="showToast(\'节能策略已保存至系统配置\',\'success\')">💾 保存预测方案</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function runEnergyForecast() {
+  var days = parseInt(document.getElementById('fc-days').value) || 30;
+  var price = parseFloat(document.getElementById('fc-price').value) || 0.6;
+  var occupancy = parseInt(document.getElementById('fc-occupancy').value) || 78;
+  var mode = document.getElementById('fc-mode').value;
+  var baseDaily = 35 + (occupancy / 100) * 25; // 基础35kWh + 入住率影响
+  var modeMultiplier = {conservative: 1.15, normal: 1.0, aggressive: 0.85}[mode] || 1.0;
+  var dailyKwh = baseDaily * modeMultiplier;
+  var totalKwh = dailyKwh * days;
+  var totalCost = totalKwh * price;
+  var savePct = mode === 'aggressive' ? '15%' : mode === 'conservative' ? '-8%' : '0%';
+  document.getElementById('fc-total-kwh').textContent = Math.round(totalKwh);
+  document.getElementById('fc-total-cost').textContent = '¥' + Math.round(totalCost);
+  document.getElementById('fc-daily-kwh').textContent = dailyKwh.toFixed(1);
+  document.getElementById('fc-save-pct').textContent = savePct;
+  // 渲染7日柱状图
+  var barsEl = document.getElementById('fc-bars');
+  var maxH = 100;
+  var html = '';
+  var dayLabels = ['今天','明天','第3天','第4天','第5天','第6天','第7天'];
+  for (var i = 0; i < 7; i++) {
+    var h = Math.round((0.8 + Math.random() * 0.4) * dailyKwh * 100 / maxH);
+    var color = i === 0 ? '#fa541c' : '#1890ff';
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">' +
+      '<div style="height:' + h + 'px;width:100%;background:' + color + ';border-radius:4px 4px 0 0;"></div>' +
+      '<div style="font-size:10px;color:var(--text-muted);">' + dayLabels[i] + '</div></div>';
+  }
+  if (barsEl) barsEl.innerHTML = html;
+  document.getElementById('fc-result-area').style.display = 'block';
+  showToast('⚡ 预测完成：未来 ' + days + ' 天预计用电 ' + Math.round(totalKwh) + ' kWh，电费约 ¥' + Math.round(totalCost), 'success');
+}
 
 function openCreateWorkorderFullModal() {
   var existing = document.getElementById('modal-create-workorder-full');
