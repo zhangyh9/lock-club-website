@@ -848,7 +848,7 @@ function showToast(msg, type) {
           <span style="font-size:20px;">👥</span>
           <span>批量入住</span>
         </button>
-        <button class="quick-btn" onclick="openCheckoutFullModal('301','张三','2026-03-26 14:00')" style="flex:1;padding:16px;background:linear-gradient(135deg,#fa8c16,#ffc53d);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(250,140,22,0.3);transition:all 0.2s;">
+        <button class="quick-btn" onclick="openCheckoutSettleModal('301','张三',2,128)" style="flex:1;padding:16px;background:linear-gradient(135deg,#fa8c16,#ffc53d);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(250,140,22,0.3);transition:all 0.2s;">
           <span style="font-size:20px;">🚪</span>
           <span>退房办理</span>
         </button>
@@ -11103,21 +11103,18 @@ function openEditMemberLevelModalV2(idx) {
       <div class="card" style="margin-bottom:12px;">
         <div class="card-body" style="padding:12px 20px;">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <input type="text" class="form-input" id="staff-search-input" placeholder="🔍 搜索姓名/手机号/部门" style="width:200px;padding:7px 12px;font-size:12px;" onkeydown="if(event.key==='Enter')applyStaffSearch()">
-            <select class="form-select" id="staff-dept-filter" style="padding:7px 10px;font-size:12px;width:130px;">
-              <option value="all">全部部门</option>
-              <option value="前厅">前厅部</option>
-              <option value="客房">客房部</option>
-              <option value="工程">工程部</option>
-              <option value="管理">管理部</option>
+            <input type="text" class="form-input" id="staff-search-input" placeholder="🔍 搜索姓名/手机号/部门" style="width:200px;padding:7px 12px;font-size:12px;" onkeyup="filterStaffList()">
+            <select class="form-select" id="staff-role-filter" style="padding:7px 10px;font-size:12px;width:140px;" onchange="filterStaffList()">
+              <option value="all">全部角色</option>
+              <option value="admin">🔑 管理员</option>
+              <option value="manager">👨‍💼 前厅经理</option>
+              <option value="reception">👩‍💼 前厅接待</option>
+              <option value="housekeeping">🧹 客房主管</option>
+              <option value="cleaner">🧹 清洁人员</option>
+              <option value="engineer">🔧 工程师</option>
             </select>
-            <select class="form-select" id="staff-status-filter" style="padding:7px 10px;font-size:12px;width:120px;">
-              <option value="all">全部状态</option>
-              <option value="enabled">✅ 启用</option>
-              <option value="disabled">❌ 禁用</option>
-            </select>
-            <button class="action-btn small" onclick="applyStaffSearch()" style="padding:6px 12px;">🔍 搜索</button>
-            <button class="action-btn small" onclick="resetStaffSearch()" style="padding:6px 12px;">重置</button>
+            <button class="action-btn small" onclick="filterStaffList()" style="padding:6px 12px;">🔍 搜索</button>
+            <button class="action-btn small" onclick="document.getElementById('staff-search-input').value='';document.getElementById('staff-role-filter').value='all';filterStaffList();" style="padding:6px 12px;">重置</button>
             <span style="margin-left:auto;font-size:12px;color:var(--text-muted);" id="staff-filter-count">共 8 名员工</span>
           </div>
         </div>
@@ -11127,7 +11124,7 @@ function openEditMemberLevelModalV2(idx) {
           <div class="card-title">👥 员工列表</div>
           <div style="display:flex;gap:6px;">
             <button class="action-btn small" onclick="exportStaffCSV()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出</button>
-            <button class="action-btn small" onclick="openNewStaffForm()" style="padding:4px 10px;">+ 新增员工</button>
+            <button class="action-btn small" onclick="openAddStaffModal()" style="padding:4px 10px;">+ 新增员工</button>
             <button class="action-btn small" onclick="openStaffBatchImportModal()" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📥 批量导入</button>
             <button class="action-btn small" onclick="openLeaveRequestModal()" style="padding:4px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">📋 请假申请</button>
             <!-- 【改进3】员工考勤打卡入口 -->
@@ -12179,6 +12176,8 @@ function openEditMemberLevelModalV2(idx) {
         <div class="page-title">👑 会员管理</div>
         <div class="page-sub">会员等级权益 · 入住历史 · 消费记录</div>
         <button class="action-btn small" onclick="openMemberChurnRiskModal()" style="padding:4px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">⚠️ 流失预警</button>
+        <!-- 【改进3-积分兑换入口】 -->
+        <button class="action-btn small" onclick="openPointsExchangeModal()" style="padding:4px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🎁 积分兑换</button>
         <!-- 【改进2-V3触发入口】会员生命周期全旅程分析 -->
         <button class="action-btn small" onclick="openMemberLifecycleAnalyticsModal()" style="padding:4px 10px;background:var(--blue);color:white;border:none;margin-left:auto;">👑 生命周期分析</button>
       </div>
@@ -13986,6 +13985,8 @@ function openEditMemberLevelModalV2(idx) {
         <div style="display:flex;gap:6px;margin-left:auto;">
           <!-- 【改进v3-3】系统健康诊断入口 -->
           <button class="action-btn small" onclick="openSystemHealthModal()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🩺 系统健康</button>
+          <!-- 【改进4-系统设置编辑入口】 -->
+          <button class="action-btn small" onclick="openConfigEditModal()" style="padding:4px 10px;background:var(--blue);color:white;border:none;">⚙️ 系统设置</button>
         </div>
       </div>
       <!-- 【改进5：系统设置独立Tab页面（非Modal），支持多模块配置切换】 -->
@@ -15961,7 +15962,766 @@ function submitCreateWorkorder() {
   showToast('✅ 工单已创建：' + wo.id + '，含' + (photos === '无' ? '无附件' : photos.split(', ').length + '张照片'), 'success');
   closeModal('create-wo');
 }
+
+// ====== 【改进1】员工管理完整CRUD功能 ======
+var _staffEditingId = null;
+var _staffDeleteId = null;
+var _staffResetId = null;
+var _staffList = [
+  {id:'S001',name:'赵飞',code:'EMP001',phone:'138****1234',role:'manager',dept:'front',hire:'2024-01-15',status:'active',last:'今天 09:00'},
+  {id:'S002',name:'周敏',code:'EMP002',phone:'139****5678',role:'reception',dept:'front',hire:'2024-03-01',status:'active',last:'今天 08:30'},
+  {id:'S003',name:'吴倩',code:'EMP003',phone:'136****9012',role:'housekeeping',dept:'housekeeping',hire:'2023-11-20',status:'active',last:'昨天 18:00'},
+  {id:'S004',name:'郑强',code:'EMP004',phone:'135****3456',role:'cleaner',dept:'housekeeping',hire:'2024-06-01',status:'active',last:'昨天 17:30'},
+  {id:'S005',name:'王工',code:'EMP005',phone:'137****7890',role:'engineer',dept:'engineering',hire:'2023-08-15',status:'active',last:'今天 10:00'}
+];
+
+function getStaffRoleLabel(role) {
+  var map = {manager:'👨‍💼 前厅经理',reception:'👩‍💼 前厅接待',housekeeping:'🧹 客房主管',cleaner:'🧹 清洁人员',engineer:'🔧 工程师',admin:'🔑 管理员'};
+  return map[role] || role;
+}
+function getStaffDeptLabel(dept) {
+  var map = {front:'前厅部',housekeeping:'客房部',engineering:'工程部',admin:'行政部'};
+  return map[dept] || dept;
+}
+
+function openAddStaffModal() {
+  _staffEditingId = null;
+  var titleEl = document.getElementById('staff-form-title');
+  if (titleEl) titleEl.textContent = '👨‍💼 新增员工';
+  var submitBtn = document.getElementById('staff-form-submit');
+  if (submitBtn) { submitBtn.textContent = '添加员工'; submitBtn.style.background = ''; }
+  var nameEl = document.getElementById('staff-name');
+  if (nameEl) nameEl.value = '';
+  var codeEl = document.getElementById('staff-code');
+  if (codeEl) codeEl.value = 'EMP' + String(_staffList.length + 1).padStart(3,'0');
+  var phoneEl = document.getElementById('staff-phone');
+  if (phoneEl) phoneEl.value = '';
+  var roleEl = document.getElementById('staff-role');
+  if (roleEl) roleEl.value = '';
+  var deptEl = document.getElementById('staff-dept');
+  if (deptEl) deptEl.value = '';
+  var hireEl = document.getElementById('staff-hire-date');
+  if (hireEl) hireEl.value = '';
+  var pwdEl = document.getElementById('staff-password');
+  if (pwdEl) pwdEl.value = '88888888';
+  var remarkEl = document.getElementById('staff-remark');
+  if (remarkEl) remarkEl.value = '';
+  var pwdGroup = document.getElementById('staff-password-group');
+  if (pwdGroup) pwdGroup.style.display = '';
+  openModal('staff-form');
+}
+
+function openEditStaffModal(idx) {
+  var staff = _staffList[idx];
+  if (!staff) return;
+  _staffEditingId = idx;
+  var titleEl = document.getElementById('staff-form-title');
+  if (titleEl) titleEl.textContent = '✏️ 编辑员工 - ' + staff.name;
+  var submitBtn = document.getElementById('staff-form-submit');
+  if (submitBtn) { submitBtn.textContent = '保存修改'; submitBtn.style.background = 'var(--blue)'; }
+  var nameEl = document.getElementById('staff-name');
+  if (nameEl) nameEl.value = staff.name;
+  var codeEl = document.getElementById('staff-code');
+  if (codeEl) codeEl.value = staff.code;
+  var phoneEl = document.getElementById('staff-phone');
+  if (phoneEl) phoneEl.value = staff.phone;
+  var roleEl = document.getElementById('staff-role');
+  if (roleEl) roleEl.value = staff.role;
+  var deptEl = document.getElementById('staff-dept');
+  if (deptEl) deptEl.value = staff.dept;
+  var hireEl = document.getElementById('staff-hire-date');
+  if (hireEl) hireEl.value = staff.hire;
+  var pwdEl = document.getElementById('staff-password');
+  if (pwdEl) pwdEl.value = '88888888';
+  var remarkEl = document.getElementById('staff-remark');
+  if (remarkEl) remarkEl.value = '';
+  var pwdGroup = document.getElementById('staff-password-group');
+  if (pwdGroup) pwdGroup.style.display = 'none';
+  openModal('staff-form');
+}
+
+function submitStaffForm() {
+  var name = document.getElementById('staff-name') ? document.getElementById('staff-name').value.trim() : '';
+  var phone = document.getElementById('staff-phone') ? document.getElementById('staff-phone').value.trim() : '';
+  var role = document.getElementById('staff-role') ? document.getElementById('staff-role').value : '';
+  if (!name || !phone || !role) {
+    showToast('请填写必填项（姓名、手机号、角色）', 'error');
+    return;
+  }
+  if (_staffEditingId !== null) {
+    var s = _staffList[_staffEditingId];
+    s.name = name;
+    var codeEl = document.getElementById('staff-code');
+    s.code = codeEl ? (codeEl.value.trim() || s.code) : s.code;
+    s.phone = phone;
+    s.role = role;
+    var deptEl = document.getElementById('staff-dept');
+    s.dept = deptEl ? deptEl.value : s.dept;
+    var hireEl = document.getElementById('staff-hire-date');
+    s.hire = hireEl ? hireEl.value : s.hire;
+    showToast('员工 ' + name + ' 信息已更新', 'success');
+  } else {
+    var codeEl2 = document.getElementById('staff-code');
+    var deptEl2 = document.getElementById('staff-dept');
+    var hireEl2 = document.getElementById('staff-hire-date');
+    var newStaff = {
+      id: 'S' + String(Date.now()).slice(-3),
+      name: name,
+      code: codeEl2 ? (codeEl2.value.trim() || 'EMP' + String(_staffList.length + 1).padStart(3,'0')) : 'EMP' + String(_staffList.length + 1).padStart(3,'0'),
+      phone: phone,
+      role: role,
+      dept: deptEl2 ? deptEl2.value : '',
+      hire: hireEl2 ? hireEl2.value : '',
+      status: 'active',
+      last: '刚刚'
+    };
+    _staffList.push(newStaff);
+    showToast('员工 ' + name + ' 添加成功，初始密码：88888888', 'success');
+  }
+  closeModal('staff-form');
+  renderStaffTable();
+}
+
+function openDeleteStaffModal(idx) {
+  var staff = _staffList[idx];
+  if (!staff) return;
+  _staffDeleteId = idx;
+  var delNameEl = document.getElementById('staff-del-name');
+  if (delNameEl) delNameEl.textContent = '确定删除员工：' + staff.name + '？';
+  var delMetaEl = document.getElementById('staff-del-meta');
+  if (delMetaEl) delMetaEl.textContent = staff.code + ' · ' + staff.phone;
+  var reasonEl = document.getElementById('staff-del-reason');
+  if (reasonEl) reasonEl.value = '';
+  openModal('staff-delete');
+}
+
+function confirmStaffDelete() {
+  if (_staffDeleteId === null) return;
+  var staff = _staffList[_staffDeleteId];
+  var reasonEl = document.getElementById('staff-del-reason');
+  var reason = reasonEl ? reasonEl.value : '';
+  var reasonText = reason ? '（原因：' + reason + '）' : '';
+  _staffList.splice(_staffDeleteId, 1);
+  _staffDeleteId = null;
+  closeModal('staff-delete');
+  showToast('已删除员工 ' + staff.name + reasonText, 'success');
+  renderStaffTable();
+}
+
+function openResetPwdModal(idx) {
+  var staff = _staffList[idx];
+  if (!staff) return;
+  _staffResetId = idx;
+  var resetNameEl = document.getElementById('staff-reset-name');
+  if (resetNameEl) resetNameEl.textContent = '确定重置 ' + staff.name + ' 的密码？';
+  openModal('staff-resetpwd');
+}
+
+function doResetStaffPassword() {
+  if (_staffResetId === null) return;
+  var staff = _staffList[_staffResetId];
+  showToast('员工 ' + staff.name + ' 的密码已重置为 88888888', 'success');
+  closeModal('staff-resetpwd');
+  _staffResetId = null;
+}
+
+function renderStaffTable() {
+  var tbody = document.getElementById('staff-table-body');
+  if (!tbody) return;
+  var rows = '';
+  _staffList.forEach(function(s, i) {
+    var roleLabel = getStaffRoleLabel(s.role);
+    var statusBadge = s.status === 'active' ? '<span class="tbadge green">在职</span>' : '<span class="tbadge red">离职</span>';
+    rows += '<tr>' +
+      '<td><div style="font-weight:600;">' + s.name + '</div><div style="font-size:10px;color:var(--text-muted);">' + s.code + '</div></td>' +
+      '<td>' + s.phone + '</td>' +
+      '<td><span style="font-size:13px;">' + roleLabel + '</span></td>' +
+      '<td>' + getStaffDeptLabel(s.dept) + '</td>' +
+      '<td>' + (s.hire || '--') + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td>' + s.last + '</td>' +
+      '<td>' +
+        '<button class="action-btn small" onclick="openEditStaffModal(' + i + ')">编辑</button> ' +
+        '<button class="action-btn small" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);" onclick="openResetPwdModal(' + i + ')">重置密码</button> ' +
+        '<button class="action-btn small" style="background:var(--red-bg);color:var(--red);border-color:var(--red);" onclick="openDeleteStaffModal(' + i + ')">删除</button>' +
+      '</td>' +
+    '</tr>';
+  });
+  tbody.innerHTML = rows || '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">暂无员工数据</td></tr>';
+}
+
+function filterStaffList() {
+  var q = document.getElementById('staff-search-input') ? document.getElementById('staff-search-input').value.toLowerCase() : '';
+  var roleFilter = document.getElementById('staff-role-filter') ? document.getElementById('staff-role-filter').value : 'all';
+  var tbody = document.getElementById('staff-table-body');
+  if (!tbody) return;
+  var rows = '';
+  _staffList.forEach(function(s, i) {
+    var matchQ = !q || s.name.toLowerCase().indexOf(q) !== -1 || s.code.toLowerCase().indexOf(q) !== -1 || s.phone.indexOf(q) !== -1;
+    var matchRole = roleFilter === 'all' || s.role === roleFilter;
+    if (matchQ && matchRole) {
+      var roleLabel = getStaffRoleLabel(s.role);
+      var statusBadge = s.status === 'active' ? '<span class="tbadge green">在职</span>' : '<span class="tbadge red">离职</span>';
+      rows += '<tr>' +
+        '<td><div style="font-weight:600;">' + s.name + '</div><div style="font-size:10px;color:var(--text-muted);">' + s.code + '</div></td>' +
+        '<td>' + s.phone + '</td>' +
+        '<td><span style="font-size:13px;">' + roleLabel + '</span></td>' +
+        '<td>' + getStaffDeptLabel(s.dept) + '</td>' +
+        '<td>' + (s.hire || '--') + '</td>' +
+        '<td>' + statusBadge + '</td>' +
+        '<td>' + s.last + '</td>' +
+        '<td>' +
+          '<button class="action-btn small" onclick="openEditStaffModal(' + i + ')">编辑</button> ' +
+          '<button class="action-btn small" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);" onclick="openResetPwdModal(' + i + ')">重置密码</button> ' +
+          '<button class="action-btn small" style="background:var(--red-bg);color:var(--red);border-color:var(--red);" onclick="openDeleteStaffModal(' + i + ')">删除</button>' +
+        '</td>' +
+      '</tr>';
+    }
+  });
+  tbody.innerHTML = rows || '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">未找到匹配的员工</td></tr>';
+}
+
+// ====== 【改进2】工单完整CRUD功能 ======
+var _currentWoProcessIdx = null;
+var _woSatisfaction = 0;
+var _woList = [
+  {id:'WO2026032701',type:'complaint',room:'305',customer:'李四',phone:'139****6666',desc:'房间热水不稳定，洗澡时忽冷忽热，影响入住体验',priority:'urgent',status:'pending',assign:'赵飞',create:'今天 09:30',sla:'今天 11:30',satisfaction:0},
+  {id:'WO2026032702',type:'repair',room:'201',customer:'王五',phone:'137****9012',desc:'空调出风口有异响',priority:'high',status:'processing',assign:'王工',create:'今天 08:15',sla:'今天 14:00',satisfaction:0},
+  {id:'WO2026032703',type:'delivery',room:'304',customer:'钱七',phone:'136****4444',desc:'需要加送两瓶矿泉水',priority:'normal',status:'pending',assign:'郑强',create:'今天 10:00',sla:'今天 12:00',satisfaction:0},
+  {id:'WO2026032704',type:'invoice',room:'301',customer:'张三',phone:'138****8888',desc:'申请开具增值税普通发票',priority:'normal',status:'done',assign:'赵飞',create:'昨天 15:00',sla:'昨天 18:00',satisfaction:5},
+  {id:'WO2026032705',type:'praise',room:'203',customer:'孙八',phone:'135****2222',desc:'前台服务非常周到，提出表扬',priority:'low',status:'done',assign:'周敏',create:'昨天 11:00',sla:'--',satisfaction:5}
+];
+
+function getWoTypeLabel(type) {
+  var map = {complaint:'🔴 投诉',repair:'🔧 报修',delivery:'📦 送物',invoice:'📄 发票',praise:'⭐ 表扬',other:'📋 其他'};
+  return map[type] || type;
+}
+function getWoPriorityLabel(p) {
+  var map = {urgent:'🔴 紧急',high:'🟠 高',normal:'🟡 普通',low:'⚪ 低'};
+  return map[p] || p;
+}
+function getWoStatusLabel(s) {
+  var map = {pending:'⏳ 待接受',processing:'🔄 处理中',done:'✅ 已完成'};
+  return map[s] || s;
+}
+
+function setWoSatisfaction(val) {
+  _woSatisfaction = val;
+  var stars = document.querySelectorAll('#wo-satisfaction-stars span[data-val]');
+  stars.forEach(function(star, i) {
+    star.style.color = i < val ? '#f59e0b' : '#ddd';
+  });
+  var label = document.getElementById('wo-satisfaction-label');
+  if (label) {
+    var labels = ['','很差','较差','一般','满意','非常满意'];
+    label.textContent = labels[val] || '未评';
+  }
+}
+
+function openProcessWorkorderModal(idx) {
+  var wo = _woList[idx];
+  if (!wo) return;
+  _currentWoProcessIdx = idx;
+  setWoSatisfaction(wo.satisfaction || 0);
+  var statusEl = document.getElementById('wop-status-text');
+  if (statusEl) statusEl.textContent = getWoStatusLabel(wo.status);
+  var assignSel = document.getElementById('wop-assign');
+  if (assignSel) assignSel.value = wo.assign || '';
+  var notifyCheckbox = document.getElementById('wop-notify-guest');
+  if (notifyCheckbox) notifyCheckbox.checked = true;
+  openModal('wo-process');
+}
+
+function submitWorkorderProcessV2() {
+  if (_currentWoProcessIdx === null) return;
+  var wo = _woList[_currentWoProcessIdx];
+  var result = document.getElementById('wop-result') ? document.getElementById('wop-result').value : 'solved';
+  var remark = document.getElementById('wop-remark') ? document.getElementById('wop-remark').value : '';
+  var assign = document.getElementById('wop-assign') ? document.getElementById('wop-assign').value : '';
+  var notify = document.getElementById('wop-notify-guest') ? document.getElementById('wop-notify-guest').checked : false;
+  if (result === 'solved') {
+    wo.status = 'done';
+    wo.satisfaction = _woSatisfaction;
+  } else if (result === 'processing') {
+    wo.status = 'processing';
+  }
+  if (assign) wo.assign = assign;
+  var actionText = result === 'solved' ? '处理完成' : result === 'processing' ? '开始处理' : '已转交';
+  var toastMsg = '工单 ' + wo.id + ' ' + actionText;
+  if (notify) toastMsg += '，已通知客户';
+  showToast(toastMsg, result === 'solved' ? 'success' : 'info');
+  closeModal('wo-process');
+  renderWorkorderTable();
+  _currentWoProcessIdx = null;
+}
+
+function renderWorkorderTable() {
+  var tbody = document.getElementById('workorder-table-body');
+  if (!tbody) return;
+  var rows = '';
+  _woList.forEach(function(wo, i) {
+    var isOverdue = wo.status !== 'done' && wo.sla && wo.sla !== '--' && new Date(wo.sla.replace('今天','2026-03-29')) < new Date();
+    var priorityColor = {urgent:'red',high:'orange',normal:'blue',low:'gray'}[wo.priority] || 'gray';
+    var statusBadge = wo.status === 'done' ? '<span class="tbadge green">已完成</span>'
+      : wo.status === 'processing' ? '<span class="tbadge orange">处理中</span>'
+      : '<span class="tbadge blue">待接受</span>';
+    var actionBtn = wo.status === 'done'
+      ? '<button class="action-btn small" onclick="openProcessWorkorderModal(' + i + ')">查看</button>'
+      : '<button class="action-btn small" onclick="openProcessWorkorderModal(' + i + ')">处理</button>';
+    rows += '<tr' + (isOverdue ? ' style="background:var(--red-bg);"' : '') + '>' +
+      '<td style="font-size:11px;font-family:monospace;">' + wo.id + '</td>' +
+      '<td>' + getWoTypeLabel(wo.type) + '</td>' +
+      '<td>' + wo.room + '</td>' +
+      '<td><div style="font-weight:600;">' + wo.customer + '</div><div style="font-size:10px;color:var(--text-muted);">' + wo.phone + '</div></td>' +
+      '<td><span class="tbadge ' + priorityColor + '">' + getWoPriorityLabel(wo.priority) + '</span></td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td>' + (wo.assign || '--') + '</td>' +
+      '<td style="font-size:11px;">' + wo.create + '</td>' +
+      '<td style="font-size:11px;color:' + (isOverdue ? 'var(--red)' : 'var(--text-muted)') + ';">' + (wo.sla || '--') + (isOverdue ? ' ⚠️' : '') + '</td>' +
+      '<td>' + actionBtn + '</td>' +
+    '</tr>';
+  });
+  tbody.innerHTML = rows;
+}
+
+// ====== 【改进3】会员积分兑换功能 ======
+var _pexSelectedPoints = 0;
+var _pexSelectedName = '';
+function selectPexItem(el, points, name) {
+  if (el.classList.contains('disabled')) return;
+  document.querySelectorAll('#pex-item-list .exchange-item').forEach(function(item) {
+    item.style.borderColor = 'var(--border)';
+    item.style.background = 'white';
+  });
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'var(--blue-bg)';
+  _pexSelectedPoints = points;
+  _pexSelectedName = name;
+  var nameEl = document.getElementById('pex-selected-name');
+  if (nameEl) nameEl.textContent = name;
+  var ptsEl = document.getElementById('pex-selected-points');
+  if (ptsEl) ptsEl.textContent = points;
+  var btn = document.getElementById('pex-submit-btn');
+  if (btn) { btn.disabled = false; btn.style.background = 'var(--blue)'; }
+}
+function submitPointsExchange() {
+  if (_pexSelectedPoints <= 0) { showToast('请选择要兑换的商品', 'error'); return; }
+  var available = 2850;
+  if (_pexSelectedPoints > available) {
+    showToast('积分不足，当前可用 ' + available + ' 积分', 'error');
+    return;
+  }
+  showToast('成功兑换：' + _pexSelectedName + '（-' + _pexSelectedPoints + '积分）', 'success');
+  closeModal('points-exchange');
+  _pexSelectedPoints = 0;
+  _pexSelectedName = '';
+}
+function openPointsExchangeModal() {
+  _pexSelectedPoints = 0;
+  _pexSelectedName = '';
+  var nameEl = document.getElementById('pex-selected-name');
+  if (nameEl) nameEl.textContent = '--';
+  var ptsEl = document.getElementById('pex-selected-points');
+  if (ptsEl) ptsEl.textContent = '0';
+  document.querySelectorAll('#pex-item-list .exchange-item').forEach(function(item) {
+    item.style.borderColor = '';
+    item.style.background = '';
+  });
+  var btn = document.getElementById('pex-submit-btn');
+  if (btn) { btn.disabled = true; btn.style.background = ''; }
+  openModal('points-exchange');
+}
+
+// ====== 【改进4】系统配置管理功能 ======
+function openConfigEditModal() {
+  var nameEl = document.getElementById('cfg-hotel-name');
+  if (nameEl) {
+    var currentName = '小度语音智慧房体验店';
+    var sidebarBrand = document.getElementById('sidebar-brand-text');
+    if (sidebarBrand) currentName = sidebarBrand.textContent || currentName;
+    nameEl.value = currentName;
+  }
+  openModal('config-edit');
+}
+function saveSystemConfig() {
+  var hotelName = document.getElementById('cfg-hotel-name-input') ? document.getElementById('cfg-hotel-name-input').value.trim() : (document.getElementById('cfg-hotel-name') ? document.getElementById('cfg-hotel-name').value.trim() : '');
+  if (!hotelName) { showToast('请输入酒店名称', 'error'); return; }
+  var tel = document.getElementById('cfg-hotel-tel') ? document.getElementById('cfg-hotel-tel').value.trim() : '';
+  var addr = document.getElementById('cfg-hotel-addr') ? document.getElementById('cfg-hotel-addr').value.trim() : '';
+  var sidebarBrand = document.getElementById('sidebar-brand-text');
+  if (sidebarBrand) sidebarBrand.textContent = hotelName;
+  closeModal('config-edit');
+  showToast('系统设置已保存，所有变更已生效', 'success');
+}
+
+// ====== 【改进5】退房结算完整功能 ======
+var _cosData = null;
+var _cosPaymentMethod = 'wechat';
+function openCheckoutSettleModal(room, name, nights, pricePerNight) {
+  _cosData = {room:room, name:name, nights:nights||2, pricePerNight:pricePerNight||128};
+  var roomFee = (nights||2) * (pricePerNight||128);
+  var deposit = 100;
+  var finalAmount = Math.max(0, roomFee - deposit);
+  var roomNumEl = document.getElementById('cos-room-num');
+  if (roomNumEl) roomNumEl.textContent = room;
+  var guestNameEl = document.getElementById('cos-guest-name');
+  if (guestNameEl) guestNameEl.textContent = name;
+  var roomEl = document.getElementById('cos-room');
+  if (roomEl) roomEl.textContent = room;
+  var nightsEl = document.getElementById('cos-nights');
+  if (nightsEl) nightsEl.textContent = (nights||2) + '晚';
+  var nightCountEl = document.getElementById('cos-night-count');
+  if (nightCountEl) nightCountEl.textContent = nights||2;
+  var nightPriceEl = document.getElementById('cos-night-price');
+  if (nightPriceEl) nightPriceEl.textContent = pricePerNight||128;
+  var roomFeeEl = document.getElementById('cos-room-fee');
+  if (roomFeeEl) roomFeeEl.textContent = '¥' + roomFee;
+  var totalEl = document.getElementById('cos-total');
+  if (totalEl) totalEl.textContent = '¥' + roomFee;
+  var depositUsedEl = document.getElementById('cos-deposit-used');
+  if (depositUsedEl) depositUsedEl.textContent = '¥' + Math.min(deposit, roomFee);
+  var refundEl = document.getElementById('cos-refund');
+  if (refundEl) refundEl.textContent = '¥' + Math.max(0, deposit - roomFee);
+  var finalAmtEl = document.getElementById('cos-final-amount');
+  if (finalAmtEl) {
+    finalAmtEl.textContent = '¥' + finalAmount;
+    finalAmtEl.style.color = finalAmount > 0 ? 'var(--blue)' : 'var(--green)';
+  }
+  _cosPaymentMethod = 'wechat';
+  document.querySelectorAll('[id^="pm-"]').forEach(function(el){ el.style.borderColor = 'var(--border)'; el.style.background = 'white'; });
+  var wechatEl = document.getElementById('pm-wechat');
+  if (wechatEl) { wechatEl.style.borderColor = 'var(--blue)'; wechatEl.style.background = 'var(--blue-bg)'; }
+  openModal('checkout-settle');
+}
+function selectPaymentMethod(el, method) {
+  _cosPaymentMethod = method;
+  document.querySelectorAll('[id^="pm-"]').forEach(function(e){ e.style.borderColor = 'var(--border)'; e.style.background = 'white'; });
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'var(--blue-bg)';
+}
+function submitCheckoutSettlement() {
+  if (!_cosData) return;
+  var finalAmtEl = document.getElementById('cos-final-amount');
+  var finalAmt = finalAmtEl ? (parseInt(finalAmtEl.textContent.replace('¥','')) || 0) : 0;
+  var paymentText = {wechat:'微信支付',alipay:'支付宝',cash:'现金',card:'银行卡'}[_cosPaymentMethod] || _cosPaymentMethod;
+  var invoiceOption = document.querySelector('input[name="invoice-option"]:checked');
+  var invoiceText = invoiceOption ? {electronic:'电子发票',paper:'纸质发票',none:'不开票'}[invoiceOption.value] : '';
+  closeModal('checkout-settle');
+  showToast('✅ 退房结算完成！房间 ' + _cosData.room + ' 已转为空房，实付 ' + (finalAmt > 0 ? '¥' + finalAmt : '¥0（押金抵扣）') + '，支付方式：' + paymentText + '，发票：' + invoiceText, 'success');
+  var roomCards = document.querySelectorAll('.room-card[data-room="' + _cosData.room + '"]');
+  roomCards.forEach(function(card) {
+    var badge = card.querySelector('.room-badge');
+    if (badge) { badge.className = 'room-badge badge-empty'; badge.textContent = '空房'; }
+    card.classList.remove('alert','low');
+    card.classList.add('empty');
+    var statusAttr = card.getAttribute('data-status');
+    if (statusAttr) card.setAttribute('data-status', 'empty');
+  });
+  _cosData = null;
+}
 </script>
+
+<!-- 【改进1】员工管理 - 新增/编辑员工弹窗 -->
+<div class="modal-overlay hidden" id="modal-staff-form">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header">
+      <div class="modal-title" id="staff-form-title">👨‍💼 新增员工</div>
+      <button class="modal-close" onclick="closeModal('staff-form')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="form-group">
+          <label class="form-label">姓名 <span class="required">*</span></label>
+          <input type="text" class="form-input" id="staff-name" placeholder="输入员工姓名">
+        </div>
+        <div class="form-group">
+          <label class="form-label">工号</label>
+          <input type="text" class="form-input" id="staff-code" placeholder="如：EMP001">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">手机号 <span class="required">*</span></label>
+        <input type="tel" class="form-input" id="staff-phone" placeholder="输入手机号">
+      </div>
+      <div class="form-group">
+        <label class="form-label">角色 <span class="required">*</span></label>
+        <select class="form-select" id="staff-role">
+          <option value="">选择角色</option>
+          <option value="admin">🔑 管理员</option>
+          <option value="manager">👨‍💼 前厅经理</option>
+          <option value="reception">👩‍💼 前厅接待</option>
+          <option value="housekeeping">🧹 客房主管</option>
+          <option value="cleaner">🧹 清洁人员</option>
+          <option value="engineer">🔧 工程师</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">部门</label>
+        <select class="form-select" id="staff-dept">
+          <option value="">选择部门</option>
+          <option value="front">前厅部</option>
+          <option value="housekeeping">客房部</option>
+          <option value="engineering">工程部</option>
+          <option value="admin">行政部</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">入职日期</label>
+        <input type="date" class="form-input" id="staff-hire-date">
+      </div>
+      <div class="form-group" id="staff-password-group">
+        <label class="form-label">初始化密码 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="staff-password" placeholder="请设置初始登录密码" value="88888888">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">⚠️ 首次登录必须修改密码</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="staff-remark" placeholder="可选备注" style="min-height:60px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('staff-form')">取消</button>
+      <button class="modal-btn primary" id="staff-form-submit" onclick="submitStaffForm()">添加员工</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进1】员工管理 - 删除确认弹窗 -->
+<div class="modal-overlay hidden" id="modal-staff-delete">
+  <div class="modal" style="width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">⚠️ 确认删除员工</div>
+      <button class="modal-close" onclick="closeModal('staff-delete')">✕</button>
+    </div>
+    <div class="modal-body" style="text-align:center;padding:24px;">
+      <div style="font-size:48px;margin-bottom:12px;">👤</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px;" id="staff-del-name">确定删除该员工？</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;" id="staff-del-meta">删除后将立即生效</div>
+      <div class="form-group" style="text-align:left;">
+        <label class="form-label">删除原因（选填）</label>
+        <select class="form-select" id="staff-del-reason">
+          <option value="">请选择原因</option>
+          <option value="quit">离职</option>
+          <option value="transfer">调岗</option>
+          <option value="trial">试用期未通过</option>
+          <option value="other">其他</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:12px;">
+        <button class="action-btn" onclick="closeModal('staff-delete')" style="padding:8px 20px;">取消</button>
+        <button class="action-btn" onclick="confirmStaffDelete()" style="padding:8px 20px;background:var(--red);color:white;border-color:var(--red);">🗑️ 确认删除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进1】员工管理 - 重置密码确认弹窗 -->
+<div class="modal-overlay hidden" id="modal-staff-resetpwd">
+  <div class="modal" style="width:380px;">
+    <div class="modal-header">
+      <div class="modal-title">🔑 重置密码</div>
+      <button class="modal-close" onclick="closeModal('staff-resetpwd')">✕</button>
+    </div>
+    <div class="modal-body" style="text-align:center;padding:24px;">
+      <div style="font-size:48px;margin-bottom:12px;">🔑</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:8px;" id="staff-reset-name">确定重置该员工密码？</div>
+      <div style="padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:13px;color:var(--orange);margin-bottom:16px;">密码将重置为默认密码：<b>88888888</b></div>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button class="action-btn" onclick="closeModal('staff-resetpwd')" style="padding:8px 20px;">取消</button>
+        <button class="action-btn" onclick="doResetStaffPassword()" style="padding:8px 20px;background:var(--orange);color:white;border-color:var(--orange);">🔑 确认重置</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进3】会员管理 - 积分兑换弹窗 -->
+<div class="modal-overlay hidden" id="modal-points-exchange">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">🎁 积分兑换</div>
+      <button class="modal-close" onclick="closeModal('points-exchange')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:16px;padding:16px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:10px;text-align:center;">
+        <div style="font-size:11px;color:var(--blue);font-weight:600;margin-bottom:4px;">可用积分</div>
+        <div style="font-size:32px;font-weight:700;color:var(--blue);" id="pex-available-points">2,850</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">会员等级：银卡 | 有效期至 2027-03-28</div>
+      </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;">🎯 可兑换商品</div>
+      <div id="pex-item-list">
+        <div class="exchange-item" onclick="selectPexItem(this, 500, '免房费抵扣券（50元）')" style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;background:white;">
+          <div style="font-size:24px;width:40px;text-align:center;">🏨</div>
+          <div style="flex:1;"><div style="font-weight:600;font-size:13px;">免房费抵扣券（50元）</div><div style="font-size:11px;color:var(--text-muted);">限本人使用，有效期30天</div></div>
+          <div style="font-size:12px;color:var(--blue);font-weight:600;">500积分</div>
+        </div>
+        <div class="exchange-item" onclick="selectPexItem(this, 200, '免费加急打扫服务')" style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;background:white;">
+          <div style="font-size:24px;width:40px;text-align:center;">🧹</div>
+          <div style="flex:1;"><div style="font-weight:600;font-size:13px;">免费加急打扫服务</div><div style="font-size:11px;color:var(--text-muted);">提前预约，优先安排</div></div>
+          <div style="font-size:12px;color:var(--blue);font-weight:600;">200积分</div>
+        </div>
+        <div class="exchange-item" onclick="selectPexItem(this, 1000, '房型升级券（亲子间升级套房）')" style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;background:white;">
+          <div style="font-size:24px;width:40px;text-align:center;">🔄</div>
+          <div style="flex:1;"><div style="font-weight:600;font-size:13px;">房型升级券</div><div style="font-size:11px;color:var(--text-muted);">亲子间升级套房，有效期14天</div></div>
+          <div style="font-size:12px;color:var(--blue);font-weight:600;">1000积分</div>
+        </div>
+        <div class="exchange-item disabled" style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:not-allowed;opacity:0.5;background:var(--bg);">
+          <div style="font-size:24px;width:40px;text-align:center;">🛎️</div>
+          <div style="flex:1;"><div style="font-weight:600;font-size:13px;">免费叫醒服务（30次）</div><div style="font-size:11px;color:var(--text-muted);">积分不足，需要3000积分</div></div>
+          <div style="font-size:12px;color:var(--text-muted);font-weight:600;">3000积分</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-muted);">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span>选择商品</span><span id="pex-selected-name" style="color:var(--text);font-weight:600;">--</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>扣除积分</span><span id="pex-selected-points" style="color:var(--blue);font-weight:700;">0</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('points-exchange')">取消</button>
+      <button class="modal-btn primary" id="pex-submit-btn" onclick="submitPointsExchange()" disabled style="opacity:0.5;cursor:not-allowed;">确认兑换</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进4】系统设置 - 编辑模式弹窗 -->
+<div class="modal-overlay hidden" id="modal-config-edit">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ 系统设置</div>
+      <button class="modal-close" onclick="closeModal('config-edit')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">
+        💡 修改系统设置后，所有前台展示和通知消息将立即应用新配置
+      </div>
+      <div class="form-group">
+        <label class="form-label">酒店/民宿名称 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="cfg-hotel-name-input" value="小度语音智慧房体验店" maxlength="30">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">联系电话</label>
+          <input type="tel" class="form-input" id="cfg-hotel-tel" value="400-888-8888">
+        </div>
+        <div class="form-group">
+          <label class="form-label">紧急电话</label>
+          <input type="tel" class="form-input" id="cfg-hotel-emergency" value="139****8888">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">详细地址</label>
+        <textarea class="form-textarea" id="cfg-hotel-addr" style="min-height:60px;">北京市朝阳区建国路88号SOHO现代城A座1201</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">营业时间</label>
+        <input type="text" class="form-input" id="cfg-hotel-hours" value="24小时营业">
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="cfg-remark" placeholder="系统备注信息" style="min-height:60px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('config-edit')">取消</button>
+      <button class="modal-btn primary" onclick="saveSystemConfig()">💾 保存设置</button>
+    </div>
+  </div>
+</div>
+
+<!-- 【改进5】退房结算完整弹窗 -->
+<div class="modal-overlay hidden" id="modal-checkout-settle">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">💰 退房结算 - <span id="cos-room-num" style="color:var(--blue);">--</span></div>
+      <button class="modal-close" onclick="closeModal('checkout-settle')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:12px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;">
+        <div>
+          <div style="font-size:10px;color:var(--text-muted);">客人姓名</div>
+          <div style="font-size:14px;font-weight:700;" id="cos-guest-name">--</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text-muted);">入住房间</div>
+          <div style="font-size:14px;font-weight:700;color:var(--blue);" id="cos-room">--</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text-muted);">入住天数</div>
+          <div style="font-size:14px;font-weight:700;" id="cos-nights">--</div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text);">💳 费用明细</div>
+        <div style="padding:10px;background:var(--bg);border-radius:8px;">
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px dashed var(--border);"><span>房费（<span id="cos-night-count">2</span>晚 × ¥<span id="cos-night-price">128</span>）</span><span id="cos-room-fee">¥256</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px dashed var(--border);"><span>加购项目</span><span id="cos-extras">¥0</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px dashed var(--border);"><span>损坏赔偿</span><span style="color:var(--green);" id="cos-damage">¥0</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px dashed var(--border);"><span>其他费用</span><span id="cos-other">¥0</span></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;font-weight:700;"><span>费用合计</span><span id="cos-total">¥256</span></div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text);">💵 押金处理</div>
+        <div style="padding:10px;background:var(--bg);border-radius:8px;">
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px dashed var(--border);"><span>押金（已付）</span><span style="color:var(--green);" id="cos-deposit">¥100</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px dashed var(--border);"><span>押金抵扣房费</span><span>−<span id="cos-deposit-used">¥100</span></span></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;font-weight:700;"><span>应退押金</span><span id="cos-refund">¥0</span></div>
+        </div>
+      </div>
+      <div style="padding:14px;background:linear-gradient(135deg,var(--blue-bg),#e6f4ff);border:2px solid var(--blue);border-radius:10px;text-align:center;margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">实际结算金额</div>
+        <div style="font-size:36px;font-weight:700;color:var(--blue);" id="cos-final-amount">¥156</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="cos-payment-status">已含押金抵扣</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">支付方式</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;" onclick="selectPaymentMethod(this,'wechat')" id="pm-wechat">
+            <input type="radio" name="payment-method" value="wechat" style="display:none;">
+            <span style="font-size:18px;">💳</span><span style="font-size:13px;">微信支付</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;" onclick="selectPaymentMethod(this,'alipay')" id="pm-alipay">
+            <input type="radio" name="payment-method" value="alipay" style="display:none;">
+            <span style="font-size:18px;">💰</span><span style="font-size:13px;">支付宝</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;" onclick="selectPaymentMethod(this,'cash')" id="pm-cash">
+            <input type="radio" name="payment-method" value="cash" style="display:none;">
+            <span style="font-size:18px;">💵</span><span style="font-size:13px;">现金</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;" onclick="selectPaymentMethod(this,'card')" id="pm-card">
+            <input type="radio" name="payment-method" value="card" style="display:none;">
+            <span style="font-size:18px;">💳</span><span style="font-size:13px;">银行卡</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">发票开具</label>
+        <div style="display:flex;gap:10px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="radio" name="invoice-option" value="electronic" checked style="accent-color:var(--blue);">电子发票
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="radio" name="invoice-option" value="paper" style="accent-color:var(--blue);">纸质发票
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="radio" name="invoice-option" value="none" style="accent-color:var(--blue);">不开票
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">结算备注</label>
+        <textarea class="form-textarea" id="cos-remark" placeholder="如有折扣、减免等特殊情况，请在此说明…" style="min-height:60px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary" onclick="closeModal('checkout-settle')">取消</button>
+      <button class="modal-btn primary" id="cos-submit-btn" onclick="submitCheckoutSettlement()" style="font-size:14px;padding:10px 24px;">💰 确认结算退房</button>
+    </div>
+  </div>
+</div>
 
 <!-- 改进3: 会员详情完整弹窗（Tab切换：基本信息/入住历史/消费记录/钥匙记录） -->
 <div class="modal-overlay hidden" id="modal-member-detail">
@@ -24482,4 +25242,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var countEl = document.getElementById('oplog-filter-count');
     if (countEl) countEl.textContent = '共 ' + oplogStore.length + ' 条记录';
   }
+  // Init staff and workorder tables for v3 improvements
+  var staffTab = document.getElementById('staff-table-body');
+  if (staffTab) renderStaffTable();
+  var woTab = document.getElementById('workorder-table-body');
+  if (woTab) renderWorkorderTable();
 });
