@@ -33054,3 +33054,611 @@ function clearWorkorderSelection() {
   updateBatchToolbar();
   showToast('已取消选择', 'info');
 }
+
+// ============================================================
+// 【物联后台 v3.5 改进 5】发票详情/编辑/处理/作废功能完整闭环
+// 理由：page-invoice 表格中「详情」「编辑」「处理」「作废」按钮均无对应函数，
+// 发票管理缺少完整增删改查闭环（开具→详情→编辑→处理→作废→重开）。
+// ============================================================
+
+// 发票数据存储（演示用）
+var invoiceStore = window.invoiceStore || [
+  {id:'INV-2026032701', company:'张三', tax:'', amount:368, type:'普通发票', email:'zhangsan@email.com', date:'2026-03-27', status:'已完成', voidReason:'', taxno:''},
+  {id:'INV-2026032702', company:'李四', tax:'110101199001011234', amount:1280, type:'增值税专用', email:'lisilisi@company.com', date:'2026-03-27', status:'待处理', voidReason:'', taxno:'110101199001011234'},
+  {id:'INV-2026032703', company:'王五', tax:'', amount:296, type:'电子发票', email:'wangwu@email.com', date:'2026-03-27', status:'开具中', voidReason:'', taxno:''},
+  {id:'INV-2026032601', company:'赵六', tax:'', amount:458, type:'普通发票', email:'zhaoliu@email.com', date:'2026-03-26', status:'待处理', voidReason:'', taxno:''},
+  {id:'INV-2026032501', company:'孙七', tax:'', amount:198, type:'普通发票', email:'sunqi@email.com', date:'2026-03-25', status:'已作废', voidReason:'客户信息错误', taxno:''}
+];
+
+// 发票详情弹窗
+function openInvoiceDetailModal(invId) {
+  var inv = invoiceStore.find(function(i){ return i.id === invId; });
+  if (!inv) { showToast('发票不存在', 'error'); return; }
+  var existing = document.getElementById('modal-invoice-detail');
+  if (existing) existing.remove();
+  var statusColors = {
+    '已完成': { bg: 'var(--green-bg)', color: 'var(--green)', badge: 'green' },
+    '待处理': { bg: 'var(--orange-bg)', color: 'var(--orange)', badge: 'orange' },
+    '开具中': { bg: 'var(--blue-bg)', color: 'var(--blue)', badge: 'blue' },
+    '已作废': { bg: 'var(--red-bg)', color: 'var(--red)', badge: 'red' }
+  };
+  var sc = statusColors[inv.status] || statusColors['已完成'];
+  var canEdit = inv.status === '待处理';
+  var canProcess = inv.status === '待处理' || inv.status === '开具中';
+  var canVoid = inv.status !== '已作废';
+  var html = '<div class="modal-overlay" id="modal-invoice-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-detail\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">🧾 发票详情</div><span id="invd-id" style="font-size:12px;color:var(--text-muted);">' + inv.id + '</span></div>' +
+    '<button onclick="document.getElementById(\'modal-invoice-detail\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    // 状态标签
+    '<div style="text-align:center;margin-bottom:16px;"><span style="display:inline-block;padding:6px 20px;background:' + sc.bg + ';color:' + sc.color + ';border-radius:20px;font-size:13px;font-weight:700;">' + inv.status + '</span></div>' +
+    // 基本信息
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">发票号码</div><div style="font-size:13px;font-weight:600;">' + inv.id + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">发票类型</div><div style="font-size:13px;font-weight:600;">' + inv.type + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">客户名称</div><div style="font-size:13px;font-weight:600;">' + inv.company + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">发票金额</div><div style="font-size:18px;font-weight:700;color:var(--green);">¥' + inv.amount.toLocaleString() + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">税务登记号</div><div style="font-size:13px;">' + (inv.taxno || inv.tax || '--') + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">接收邮箱</div><div style="font-size:13px;">' + inv.email + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;grid-column:1/-1;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">申请日期</div><div style="font-size:13px;">' + inv.date + '</div></div></div>';
+  if (inv.status === '已作废' && inv.voidReason) {
+    html += '<div style="padding:10px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:14px;">' +
+      '<div style="font-size:11px;font-weight:600;color:var(--red);">⚠️ 作废原因：' + inv.voidReason + '</div></div>';
+  }
+  // 时间线
+  html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-muted);">📍 操作记录</div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><div style="width:22px;height:22px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;">1</div>' +
+    '<div><div style="font-size:12px;font-weight:600;">提交申请</div><div style="font-size:11px;color:var(--text-muted);">' + inv.date + ' · ' + inv.company + '</div></div></div>' +
+    (inv.status === '已完成' ? '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><div style="width:22px;height:22px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;">2</div>' +
+    '<div><div style="font-size:12px;font-weight:600;color:var(--green);">✅ 已开具</div><div style="font-size:11px;color:var(--text-muted);">1个工作日内完成</div></div></div>' : '') +
+    (inv.status === '已作废' ? '<div style="display:flex;align-items:center;gap:10px;"><div style="width:22px;height:22px;background:var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;">✕</div>' +
+    '<div><div style="font-size:12px;font-weight:600;color:var(--red);">已作废</div><div style="font-size:11px;color:var(--text-muted);">' + inv.voidReason + '</div></div></div>' : '') +
+    '</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-detail\').remove()">关闭</button>';
+  if (canEdit) html += '<button class="modal-btn" onclick="document.getElementById(\'modal-invoice-detail\').remove();openInvoiceEditModal(\'' + inv.id + '\')" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">✏️ 编辑</button>';
+  if (canProcess) html += '<button class="modal-btn" onclick="processInvoice(\'' + inv.id + '\')" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">✅ 开具完成</button>';
+  if (canVoid) html += '<button class="modal-btn" id="invd-reissue-btn" onclick="reissueInvoice(\'' + inv.id + '\')" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔄 重开</button>';
+  if (canVoid) html += '<button class="modal-btn" onclick="document.getElementById(\'modal-invoice-detail\').remove();openInvoiceVoidModal(\'' + inv.id + '\')" style="background:var(--red-bg);color:var(--red);border-color:var(--red);">⚠️ 作废</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// 发票编辑弹窗
+function openInvoiceEditModal(invId) {
+  var inv = invoiceStore.find(function(i){ return i.id === invId; });
+  if (!inv) { showToast('发票不存在', 'error'); return; }
+  var existing = document.getElementById('modal-invoice-edit');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-invoice-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-edit\').remove()">' +
+    '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">✏️ 编辑发票</div>' +
+    '<button onclick="document.getElementById(\'modal-invoice-edit\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">📝 当前编辑：' + inv.id + '</div>' +
+    '<div class="form-group"><label class="form-label">客户名称 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="edit-inv-company" value="' + inv.company + '" placeholder="请输入客户名称"></div>' +
+    '<div class="form-group"><label class="form-label">发票类型</label>' +
+    '<select class="form-select" id="edit-inv-type"><option' + (inv.type === '普通发票' ? ' selected' : '') + '>普通发票</option><option' + (inv.type === '增值税专用' ? ' selected' : '') + '>增值税专用</option><option' + (inv.type === '电子发票' ? ' selected' : '') + '>电子发票</option></select></div>' +
+    '<div class="form-group"><label class="form-label">发票金额（元）<span class="required">*</span></label>' +
+    '<input type="number" class="form-input" id="edit-inv-amount" value="' + inv.amount + '" placeholder="请输入金额"></div>' +
+    '<div class="form-group"><label class="form-label">税务登记号</label>' +
+    '<input type="text" class="form-input" id="edit-inv-taxno" value="' + (inv.taxno || inv.tax || '') + '" placeholder="选填，用于增值税专用发票"></div>' +
+    '<div class="form-group"><label class="form-label">接收邮箱</label>' +
+    '<input type="email" class="form-input" id="edit-inv-email" value="' + inv.email + '" placeholder="用于发送电子发票"></div>' +
+    '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-edit\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitInvoiceEdit(\'' + inv.id + '\')">💾 保存修改</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// 提交发票编辑
+function submitInvoiceEdit(invId) {
+  var company = document.getElementById('edit-inv-company').value.trim();
+  var amount = parseFloat(document.getElementById('edit-inv-amount').value);
+  var type = document.getElementById('edit-inv-type').value;
+  var taxno = document.getElementById('edit-inv-taxno').value.trim();
+  var email = document.getElementById('edit-inv-email').value.trim();
+  if (!company) { showToast('请输入客户名称', 'error'); return; }
+  if (!amount || amount <= 0) { showToast('请输入正确的发票金额', 'error'); return; }
+  if (email && !email.includes('@')) { showToast('请输入正确的邮箱地址', 'error'); return; }
+  var inv = invoiceStore.find(function(i){ return i.id === invId; });
+  if (inv) {
+    inv.company = company;
+    inv.amount = amount;
+    inv.type = type;
+    inv.taxno = taxno;
+    inv.email = email;
+  }
+  document.getElementById('modal-invoice-edit').remove();
+  showToast('✅ 发票信息已修改', 'success');
+  if (typeof renderInvoiceTable === 'function') renderInvoiceTable();
+}
+
+// 处理发票（开具中→已完成）
+function processInvoice(invId) {
+  var inv = invoiceStore.find(function(i){ return i.id === invId; });
+  if (!inv) return;
+  inv.status = '已完成';
+  document.getElementById('modal-invoice-detail') && document.getElementById('modal-invoice-detail').remove();
+  showToast('✅ 发票 ' + invId + ' 已开具完成，金额 ¥' + inv.amount, 'success');
+  if (typeof renderInvoiceTable === 'function') renderInvoiceTable();
+}
+
+// 作废发票
+function cancelInvoice(invId) {
+  openInvoiceVoidModal(invId);
+}
+
+// 重开发票（从历史记录重开）
+function reissueInvoice(invId) {
+  var inv = invoiceStore.find(function(i){ return i.id === invId; });
+  if (!inv) return;
+  var newId = invId.replace(/-0(\d+)$/, function(m, d) { return '-' + (parseInt(d) + 1).toString().padStart(2, '0'); });
+  if (newId === invId) newId = invId + '-R1';
+  var newInv = {
+    id: newId,
+    company: inv.company,
+    tax: inv.tax,
+    amount: inv.amount,
+    type: inv.type,
+    email: inv.email,
+    date: new Date().toLocaleDateString('zh-CN'),
+    status: '待处理',
+    voidReason: '',
+    taxno: inv.taxno || ''
+  };
+  invoiceStore.unshift(newInv);
+  showToast('🔄 发票 ' + newId + ' 已创建，等待重新开具', 'success');
+  if (typeof renderInvoiceTable === 'function') renderInvoiceTable();
+}
+
+// 发票搜索筛选
+function applyInvoiceSearch() {
+  var keyword = document.getElementById('inv-search-input') ? document.getElementById('inv-search-input').value.toLowerCase() : '';
+  var statusFilter = document.getElementById('inv-status-filter') ? document.getElementById('inv-status-filter').value : 'all';
+  var rows = document.querySelectorAll('#invoice-table-body tr');
+  var count = 0;
+  rows.forEach(function(row) {
+    var text = row.textContent.toLowerCase();
+    var status = row.dataset.status || '';
+    var matchKeyword = !keyword || text.indexOf(keyword) !== -1;
+    var matchStatus = statusFilter === 'all' || status === statusFilter;
+    if (matchKeyword && matchStatus) {
+      row.style.display = '';
+      count++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+  var countEl = document.getElementById('inv-filter-count');
+  if (countEl) countEl.textContent = '共 ' + count + ' 条发票';
+}
+
+function resetInvoiceSearch() {
+  var inputs = ['inv-search-input'];
+  inputs.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  var sel = document.getElementById('inv-status-filter');
+  if (sel) sel.value = 'all';
+  applyInvoiceSearch();
+}
+
+function filterInvoiceTab(tab, el) {
+  document.querySelectorAll('#page-invoice .card-tab').forEach(function(t) { t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  var statusMap = { all: 'all', pending: '待处理', processing: '开具中', done: '已完成', cancelled: '已作废' };
+  var status = statusMap[tab] || 'all';
+  var rows = document.querySelectorAll('#invoice-table-body tr');
+  rows.forEach(function(row) {
+    var s = row.dataset.status || '';
+    var match = status === 'all' || s === status || (status === 'pending' && s === '待处理') || (status === 'processing' && s === '开具中') || (status === 'done' && s === '已完成') || (status === 'cancelled' && s === '已作废');
+    row.style.display = match ? '' : 'none';
+  });
+}
+
+function exportInvoiceCSV() {
+  var rows = [['发票号', '客户', '金额', '类型', '状态', '日期']];
+  invoiceStore.forEach(function(inv) {
+    rows.push([inv.id, inv.company, '¥' + inv.amount, inv.type, inv.status, inv.date]);
+  });
+  var csv = rows.map(function(r) { return r.join(','); }).join('\n');
+  var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'invoices-' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  showToast('📤 发票清单已导出，共 ' + invoiceStore.length + ' 条', 'success');
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 6】设备批量操作完整弹窗
+// 理由：page-device 页面有「批量操作」按钮但 openDeviceBatchModal 函数未实现，
+// 无法批量执行设备重启、参数配置、固件升级等核心操作。
+// 功能：设备多选、批量重启、批量参数配置、批量固件升级状态查看。
+// ============================================================
+
+var selectedDevices = [];
+
+function openDeviceBatchModal() {
+  var existing = document.getElementById('modal-device-batch');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-device-batch" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-batch\').remove()">' +
+    '<div class="modal" style="width:620px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">⚙️ 设备批量操作</div>' +
+    '<span id="batch-dev-count" style="padding:3px 10px;background:var(--blue-bg);color:var(--blue);border-radius:12px;font-size:11px;font-weight:600;">已选 0 台设备</span></div>' +
+    '<button onclick="document.getElementById(\'modal-device-batch\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    // 设备列表勾选区
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">📋 勾选要操作的设备（当前在线设备）</div>' +
+    '<div id="batch-device-list" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:16px;"></div>' +
+    // 操作类型选择
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">⚡ 选择批量操作</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div class="batch-op-card" onclick="selectBatchOp(\'restart\')" id="bop-restart" style="padding:14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">' +
+    '<div style="font-size:28px;margin-bottom:6px;">🔄</div><div style="font-size:12px;font-weight:600;">批量重启</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px;">同时重启多台设备</div></div>' +
+    '<div class="batch-op-card" onclick="selectBatchOp(\'config\')" id="bop-config" style="padding:14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">' +
+    '<div style="font-size:28px;margin-bottom:6px;">⚙️</div><div style="font-size:12px;font-weight:600;">批量配置</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px;">统一修改参数</div></div>' +
+    '<div class="batch-op-card" onclick="selectBatchOp(\'firmware\')" id="bop-firmware" style="padding:14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">' +
+    '<div style="font-size:28px;margin-bottom:6px;">📦</div><div style="font-size:12px;font-weight:600;">固件升级</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px;">批量推送固件</div></div></div>' +
+    // 参数配置面板（默认隐藏）
+    '<div id="batch-config-panel" style="display:none;padding:14px;background:var(--bg);border-radius:8px;margin-bottom:16px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:10px;">⚙️ 批量参数配置</div>' +
+    '<div class="form-row" style="margin-bottom:10px;"><div class="form-group" style="margin-bottom:0;"><label class="form-label">开锁超时（秒）</label>' +
+    '<input type="number" class="form-input" id="batch-cfg-timeout" value="5" min="1" max="30"></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">电量低阈值（%）</label>' +
+    '<input type="number" class="form-input" id="batch-cfg-battery" value="20" min="5" max="50"></div></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">同步间隔（分钟）</label>' +
+    '<select class="form-select" id="batch-cfg-interval"><option value="5">5分钟</option><option value="10" selected>10分钟</option><option value="30">30分钟</option><option value="60">1小时</option></select></div></div>' +
+    // 固件升级面板（默认隐藏）
+    '<div id="batch-firmware-panel" style="display:none;padding:14px;background:var(--bg);border-radius:8px;margin-bottom:16px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:10px;">📦 固件升级配置</div>' +
+    '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:white;border:1px solid var(--border);border-radius:6px;margin-bottom:10px;">' +
+    '<div style="font-size:20px;">📦</div><div style="flex:1;"><div style="font-size:12px;font-weight:600;">领锁LH-807 固件包 V2.4.1</div>' +
+    '<div style="font-size:10px;color:var(--text-muted);">大小 2.8MB · 包含续航优化和安全性修复</div></div>' +
+    '<span style="padding:2px 8px;background:var(--green-bg);color:var(--green);border-radius:10px;font-size:10px;font-weight:600;">最新</span></div></div>' +
+    // 重启确认面板
+    '<div id="batch-restart-panel" style="display:none;padding:14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:16px;">' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:20px;">⚠️</span>' +
+    '<div style="font-size:12px;font-weight:600;color:var(--orange);">批量重启将同时断开 ' + selectedDevices.length + ' 台设备的连接</div></div>' +
+    '<div style="font-size:11px;color:var(--text-muted);">设备重启期间客人将无法使用门锁，请确认操作时间。建议在非高峰期执行。</div></div>' +
+    '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-batch\').remove()">取消</button>' +
+    '<button class="modal-btn primary" id="batch-execute-btn" onclick="executeBatchOp()" style="background:var(--blue);border-color:var(--blue);">⚡ 执行批量操作</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  renderBatchDeviceList();
+}
+
+function renderBatchDeviceList() {
+  var container = document.getElementById('batch-device-list');
+  if (!container) return;
+  // 从设备页面获取在线设备
+  var deviceData = [
+    {uuid:'A84F1AF2', room:'301', model:'领握LH-807', status:'online', battery:88},
+    {uuid:'B95G2BG3', room:'302', model:'领握LH-807', status:'online', battery:92},
+    {uuid:'C06H3CH4', room:'303', model:'领握LH-807', status:'offline', battery:0},
+    {uuid:'D17I4DI5', room:'304', model:'领握LH-807', status:'online', battery:78},
+    {uuid:'E28J5EJ6', room:'305', model:'领握LH-807', status:'low', battery:28},
+    {uuid:'F39K6FK7', room:'201', model:'领握LH-807', status:'online', battery:85}
+  ];
+  container.innerHTML = deviceData.map(function(dev) {
+    var checked = selectedDevices.indexOf(dev.uuid) !== -1 ? 'checked' : '';
+    var disabled = dev.status === 'offline' ? 'disabled' : '';
+    var bg = dev.status === 'online' ? 'var(--green-bg)' : dev.status === 'low' ? 'var(--orange-bg)' : 'var(--red-bg)';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);background:' + bg + ';">' +
+      '<input type="checkbox" ' + checked + ' ' + disabled + ' onchange="toggleBatchDevice(\'' + dev.uuid + '\', this.checked)" style="accent-color:var(--blue);width:16px;height:16px;cursor:' + (disabled ? 'not-allowed' : 'pointer') + ';">' +
+      '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + dev.room + ' · ' + dev.model + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);">' + dev.uuid + '</div></div>' +
+      '<div style="font-size:11px;font-weight:600;">' + (dev.status === 'online' ? '🟢 在线' : dev.status === 'low' ? '🟡 ' + dev.battery + '%' : '🔴 离线') + '</div></div>';
+  }).join('');
+  updateBatchDeviceCount();
+}
+
+function toggleBatchDevice(uuid, checked) {
+  if (checked) {
+    if (selectedDevices.indexOf(uuid) === -1) selectedDevices.push(uuid);
+  } else {
+    selectedDevices = selectedDevices.filter(function(u) { return u !== uuid; });
+  }
+  updateBatchDeviceCount();
+}
+
+function updateBatchDeviceCount() {
+  var countEl = document.getElementById('batch-dev-count');
+  if (countEl) countEl.textContent = '已选 ' + selectedDevices.length + ' 台设备';
+  var btn = document.getElementById('batch-execute-btn');
+  if (btn) btn.disabled = selectedDevices.length === 0;
+}
+
+var currentBatchOp = '';
+
+function selectBatchOp(op) {
+  currentBatchOp = op;
+  document.querySelectorAll('.batch-op-card').forEach(function(el) {
+    el.style.borderColor = 'var(--border)';
+    el.style.background = '';
+  });
+  var sel = document.getElementById('bop-' + op);
+  if (sel) { sel.style.borderColor = 'var(--blue)'; sel.style.background = 'var(--blue-bg)'; }
+  document.getElementById('batch-config-panel') && (document.getElementById('batch-config-panel').style.display = op === 'config' ? 'block' : 'none');
+  document.getElementById('batch-firmware-panel') && (document.getElementById('batch-firmware-panel').style.display = op === 'firmware' ? 'block' : 'none');
+  document.getElementById('batch-restart-panel') && (document.getElementById('batch-restart-panel').style.display = op === 'restart' ? 'block' : 'none');
+}
+
+function executeBatchOp() {
+  if (selectedDevices.length === 0) { showToast('请先选择设备', 'error'); return; }
+  if (!currentBatchOp) { showToast('请选择操作类型', 'error'); return; }
+  var msg = '';
+  if (currentBatchOp === 'restart') {
+    msg = '🔄 已向 ' + selectedDevices.length + ' 台设备发送重启指令，预计30秒内完成';
+  } else if (currentBatchOp === 'config') {
+    var timeout = document.getElementById('batch-cfg-timeout') ? document.getElementById('batch-cfg-timeout').value : '5';
+    var battery = document.getElementById('batch-cfg-battery') ? document.getElementById('batch-cfg-battery').value : '20';
+    msg = '⚙️ 已批量更新 ' + selectedDevices.length + ' 台设备的参数（超时' + timeout + 's / 电量低阈值' + battery + '%）';
+  } else if (currentBatchOp === 'firmware') {
+    msg = '📦 已开始向 ' + selectedDevices.length + ' 台设备推送固件升级包 V2.4.1';
+  }
+  document.getElementById('modal-device-batch') && document.getElementById('modal-device-batch').remove();
+  showToast(msg, 'success');
+  selectedDevices = [];
+  currentBatchOp = '';
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 7】会员流失预警弹窗（openMemberChurnRiskModal）
+// 理由：page-member 页面有「流失预警」按钮但函数未定义，无法分析会员流失风险
+// 功能：展示高风险流失会员列表、近30天未消费分析、挽留优惠推送
+// ============================================================
+
+var memberChurnData = [
+  {name:'钱一', phone:'138****1111', level:'金卡', lastVisit:'2026-02-15', daysSince:42, avgConsume:680, risk:'high'},
+  {name:'孙二', phone:'139****2222', level:'银卡', lastVisit:'2026-03-01', daysSince:28, avgConsume:420, risk:'medium'},
+  {name:'周八', phone:'137****3333', level:'金卡', lastVisit:'2026-01-20', daysSince:68, avgConsume:890, risk:'high'},
+  {name:'吴九', phone:'136****4444', level:'普卡', lastVisit:'2026-02-28', daysSince:29, avgConsume:320, risk:'low'},
+  {name:'郑十', phone:'135****5555', level:'银卡', lastVisit:'2026-03-05', daysSince:24, avgConsume:510, risk:'medium'}
+];
+
+function openMemberChurnRiskModal() {
+  var existing = document.getElementById('modal-member-churn');
+  if (existing) existing.remove();
+  var highRisk = memberChurnData.filter(function(m){ return m.risk === 'high'; });
+  var mediumRisk = memberChurnData.filter(function(m){ return m.risk === 'medium'; });
+  var html = '<div class="modal-overlay" id="modal-member-churn" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-churn\').remove()">' +
+    '<div class="modal" style="width:600px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">⚠️ 会员流失预警</div>' +
+    '<span style="padding:3px 10px;background:var(--red-bg);color:var(--red);border-radius:12px;font-size:11px;font-weight:600;">' + highRisk.length + ' 高风险</span></div>' +
+    '<button onclick="document.getElementById(\'modal-member-churn\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    // 统计概览
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red);">' + highRisk.length + '</div><div style="font-size:11px;color:var(--text-muted);">高风险会员</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">' + mediumRisk.length + '</div><div style="font-size:11px;color:var(--text-muted);">中风险会员</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + memberChurnData.length + '</div><div style="font-size:11px;color:var(--text-muted);">监测会员</div></div></div>' +
+    // 风险列表
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">🚨 高风险会员（超过30天未到店）</div>';
+  memberChurnData.forEach(function(m) {
+    var riskColor = m.risk === 'high' ? 'var(--red)' : m.risk === 'medium' ? 'var(--orange)' : 'var(--green)';
+    var riskBg = m.risk === 'high' ? 'var(--red-bg)' : m.risk === 'medium' ? 'var(--orange-bg)' : 'var(--green-bg)';
+    var riskLabel = m.risk === 'high' ? '🔴 高' : m.risk === 'medium' ? '🟡 中' : '🟢 低';
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:12px;background:' + riskBg + ';border:1px solid ' + riskColor + ';border-radius:8px;margin-bottom:8px;">' +
+      '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">' + m.name + ' <span style="font-size:10px;padding:1px 6px;background:' + riskBg + ';color:' + riskColor + ';border-radius:8px;font-weight:600;">' + m.level + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + m.phone + ' · 上次到店 ' + m.lastVisit + ' · 已过 ' + m.daysSince + ' 天</div></div>' +
+      '<div style="text-align:right;margin-right:4px;"><div style="font-size:13px;font-weight:700;color:' + riskColor + ';">' + riskLabel + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">均消费 ¥' + m.avgConsume + '</div></div>' +
+      '<button onclick="sendMemberRetention(\'' + m.phone + '\')" style="padding:5px 10px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">🎁 推送挽留</button></div>';
+  });
+  html += '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-churn\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function sendMemberRetention(phone) {
+  showToast('🎁 挽留优惠已发送至 ' + phone + '（代金券¥50+住店折扣）', 'success');
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 8】结算历史弹窗（openSettlementHistoryModal）
+// 理由：page-settlement 页面有「结算历史」按钮但函数未定义
+// 功能：展示结算记录列表、筛选、重结算入口
+// ============================================================
+
+var settlementHistory = [
+  {id:'ST2026032701', room:'301', guest:'张三', type:'退房结算', amount:368, payment:'微信支付', time:'2026-03-27 14:00', status:'已完成'},
+  {id:'ST2026032702', room:'203', guest:'李四', type:'退房结算', amount:528, payment:'支付宝', time:'2026-03-27 11:30', status:'已完成'},
+  {id:'ST2026032601', room:'302', guest:'王五', type:'预结算', amount:200, payment:'押金', time:'2026-03-26 16:00', status:'已冲抵'},
+  {id:'ST2026032501', room:'205', guest:'赵六', type:'退房结算', amount:458, payment:'现金', time:'2026-03-25 13:20', status:'已完成'}
+];
+
+function openSettlementHistoryModal() {
+  var existing = document.getElementById('modal-settlement-history');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-settlement-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-history\').remove()">' +
+    '<div class="modal" style="width:700px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">📋 结算历史记录</div>' +
+    '<button onclick="document.getElementById(\'modal-settlement-history\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:16px 24px;">' +
+    '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">' +
+    '<input type="text" id="sh-search" placeholder="🔍 搜索客人/房间/单号" style="flex:1;min-width:180px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;" oninput="filterSettlementHistory()">' +
+    '<select id="sh-type-filter" onchange="filterSettlementHistory()" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><option value="all">全部类型</option><option>退房结算</option><option>预结算</option></select>' +
+    '<select id="sh-status-filter" onchange="filterSettlementHistory()" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><option value="all">全部状态</option><option>已完成</option><option>已冲抵</option></select>' +
+    '</div>' +
+    '<table class="table"><thead><tr><th>结算单号</th><th>房间</th><th>客人</th><th>类型</th><th>金额</th><th>支付方式</th><th>时间</th><th>状态</th><th>操作</th></tr></thead>' +
+    '<tbody id="sh-table-body"></tbody></table></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">' +
+    '<div style="font-size:12px;color:var(--text-muted);">共 <b id="sh-total-count">0</b> 条结算记录 · 合计 <b id="sh-total-amount" style="color:var(--green);">¥0</b></div>' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-settlement-history\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  renderSettlementHistoryTable();
+}
+
+function renderSettlementHistoryTable() {
+  var tbody = document.getElementById('sh-table-body');
+  var search = document.getElementById('sh-search') ? document.getElementById('sh-search').value.toLowerCase() : '';
+  var typeFilter = document.getElementById('sh-type-filter') ? document.getElementById('sh-type-filter').value : 'all';
+  var statusFilter = document.getElementById('sh-status-filter') ? document.getElementById('sh-status-filter').value : 'all';
+  var filtered = settlementHistory.filter(function(s) {
+    var matchSearch = !search || s.guest.toLowerCase().indexOf(search) !== -1 || s.room.indexOf(search) !== -1 || s.id.toLowerCase().indexOf(search) !== -1;
+    var matchType = typeFilter === 'all' || s.type === typeFilter;
+    var matchStatus = statusFilter === 'all' || s.status === statusFilter;
+    return matchSearch && matchType && matchStatus;
+  });
+  tbody.innerHTML = filtered.map(function(s) {
+    var statusBadge = s.status === '已完成' ? '<span class="tbadge green">已完成</span>' : '<span class="tbadge orange">已冲抵</span>';
+    var paymentIcons = { '微信支付': '💚', '支付宝': '💙', '现金': '💵', '押金': '💰', '银行卡': '💳' };
+    return '<tr>' +
+      '<td style="font-size:11px;font-family:monospace;">' + s.id + '</td>' +
+      '<td style="font-weight:600;">' + s.room + '</td>' +
+      '<td>' + s.guest + '</td>' +
+      '<td><span style="font-size:11px;">' + s.type + '</span></td>' +
+      '<td><span style="font-weight:700;color:var(--green);">¥' + s.amount + '</span></td>' +
+      '<td>' + (paymentIcons[s.payment] || '') + ' ' + s.payment + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + s.time + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td><button class="action-btn small" onclick="reprintSettlement(\'' + s.id + '\')">📄 补打</button></td></tr>';
+  }).join('');
+  var totalAmount = filtered.reduce(function(sum, s) { return sum + s.amount; }, 0);
+  var countEl = document.getElementById('sh-total-count');
+  var amountEl = document.getElementById('sh-total-amount');
+  if (countEl) countEl.textContent = filtered.length;
+  if (amountEl) amountEl.textContent = '¥' + totalAmount.toLocaleString();
+}
+
+function filterSettlementHistory() {
+  renderSettlementHistoryTable();
+}
+
+function reprintSettlement(id) {
+  showToast('📄 正在补打结算单 ' + id + ' ...', 'info');
+  setTimeout(function() { showToast('✅ 结算单 ' + id + ' 已发送至打印机', 'success'); }, 800);
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 9】会员行为分析弹窗（openMemberBehaviorPanel）
+// 理由：page-member 页面有「行为分析」按钮但函数未定义
+// 功能：展示会员消费频次/偏好房型/入住习惯/积分使用情况
+// ============================================================
+
+function openMemberBehaviorPanel(guestName) {
+  var existing = document.getElementById('modal-member-behavior');
+  if (existing) existing.remove();
+  var memberData = {
+    name: guestName || '张三',
+    level: '金卡',
+    totalStays: 12,
+    favoriteRoom: '亲子间',
+    avgConsume: 580,
+    totalPoints: 8600,
+    usedPoints: 3200,
+    lastVisit: '2026-03-15',
+    preferredPayment: '微信支付',
+    consumeTrend: [380, 420, 580, 520, 680, 720, 650, 800, 750, 680, 920, 1100]
+  };
+  var maxConsume = Math.max.apply(null, memberData.consumeTrend);
+  var html = '<div class="modal-overlay" id="modal-member-behavior" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-behavior\').remove()">' +
+    '<div class="modal" style="width:580px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">👤 会员行为分析</div><span style="padding:3px 10px;background:var(--blue-bg);color:var(--blue);border-radius:12px;font-size:11px;font-weight:600;">' + memberData.name + '</span></div>' +
+    '<button onclick="document.getElementById(\'modal-member-behavior\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    // 核心指标
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:16px;">' +
+    '<div style="text-align:center;padding:10px;background:var(--blue-bg);border-radius:8px;"><div style="font-size:20px;font-weight:700;color:var(--blue);">' + memberData.totalStays + '</div><div style="font-size:10px;color:var(--text-muted);">入住次数</div></div>' +
+    '<div style="text-align:center;padding:10px;background:var(--green-bg);border-radius:8px;"><div style="font-size:20px;font-weight:700;color:var(--green);">' + memberData.favoriteRoom + '</div><div style="font-size:10px;color:var(--text-muted);">偏好房型</div></div>' +
+    '<div style="text-align:center;padding:10px;background:var(--orange-bg);border-radius:8px;"><div style="font-size:20px;font-weight:700;color:var(--orange);">¥' + memberData.avgConsume + '</div><div style="font-size:10px;color:var(--text-muted);">平均消费</div></div>' +
+    '<div style="text-align:center;padding:10px;background:var(--purple-bg);border-radius:8px;"><div style="font-size:20px;font-weight:700;color:var(--purple);">' + memberData.totalPoints + '</div><div style="font-size:10px;color:var(--text-muted);">积分余额</div></div></div>' +
+    // 消费趋势图
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">📈 近12月消费趋势</div>' +
+    '<div style="display:flex;align-items:flex-end;gap:4px;height:100px;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:16px;">';
+  var months = ['3月','4月','5月','6月','7月','8月','9月','10月','11月','12月','1月','2月'];
+  memberData.consumeTrend.forEach(function(v, i) {
+    var h = Math.round(v / maxConsume * 80) + 10;
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">' +
+      '<div style="width:100%;background:var(--blue);border-radius:3px;height:' + h + 'px;cursor:pointer;" title="¥' + v + '"></div>' +
+      '<div style="font-size:8px;color:var(--text-muted);">' + months[i] + '</div></div>';
+  });
+  html += '</div>' +
+    // 消费习惯
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">🏷️ 消费习惯</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">上次入住</div><div style="font-size:12px;font-weight:600;">' + memberData.lastVisit + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">常用支付</div><div style="font-size:12px;font-weight:600;">' + memberData.preferredPayment + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">积分使用</div><div style="font-size:12px;font-weight:600;color:var(--green);">' + memberData.usedPoints + ' 已用 / ' + memberData.totalPoints + ' 总积分</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);">会员等级</div><div style="font-size:12px;font-weight:600;color:var(--orange);">' + memberData.level + '</div></div></div>' +
+    '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-behavior\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="showToast(\'已为 ' + memberData.name + ' 发送专属优惠卷\',\'success\')" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🎁 发送专属优惠</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// ============================================================
+// 【物联后台 v3.5 改进 10】工单满意度统计完整弹窗
+// 理由：page-workorder 页面有「满意度统计」按钮但函数未定义
+// 功能：展示满意度评分分布、平均分、趋势图
+// ============================================================
+
+var satisfactionData = [
+  {id:'WO001', room:'305', guest:'张三', score:5, comment:'服务很好', date:'2026-03-27'},
+  {id:'WO002', room:'201', guest:'李四', score:4, comment:'比较满意', date:'2026-03-26'},
+  {id:'WO003', room:'302', guest:'王五', score:5, comment:'非常满意', date:'2026-03-25'},
+  {id:'WO004', room:'203', guest:'赵六', score:3, comment:'一般', date:'2026-03-24'},
+  {id:'WO005', room:'401', guest:'孙七', score:5, comment:'超级棒', date:'2026-03-23'},
+  {id:'WO006', room:'205', guest:'周八', score:4, comment:'不错', date:'2026-03-22'},
+  {id:'WO007', room:'304', guest:'吴九', score:2, comment:'响应较慢', date:'2026-03-21'}
+];
+
+function openWorkorderSatisfactionStatsModal() {
+  var existing = document.getElementById('modal-wo-satisfaction');
+  if (existing) existing.remove();
+  var avgScore = (satisfactionData.reduce(function(s, d) { return s + d.score; }, 0) / satisfactionData.length).toFixed(1);
+  var score5 = satisfactionData.filter(function(d){ return d.score === 5; }).length;
+  var score4 = satisfactionData.filter(function(d){ return d.score === 4; }).length;
+  var score3 = satisfactionData.filter(function(d){ return d.score === 3; }).length;
+  var score2 = satisfactionData.filter(function(d){ return d.score === 2; }).length;
+  var score1 = satisfactionData.filter(function(d){ return d.score === 1; }).length;
+  var html = '<div class="modal-overlay" id="modal-wo-satisfaction" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-satisfaction\').remove()">' +
+    '<div class="modal" style="width:580px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">⭐ 服务满意度统计</div></div>' +
+    '<button onclick="document.getElementById(\'modal-wo-satisfaction\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    // 平均分
+    '<div style="text-align:center;margin-bottom:16px;padding:20px;background:linear-gradient(135deg,var(--blue),#69c0ff);border-radius:12px;color:white;">' +
+    '<div style="font-size:48px;font-weight:700;">' + avgScore + '</div>' +
+    '<div style="font-size:13px;opacity:0.9;">服务综合满意度</div>' +
+    '<div style="margin-top:8px;">' + '⭐'.repeat(Math.round(parseFloat(avgScore))) + '</div></div>' +
+    // 评分分布
+    '<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">📊 评分分布</div>';
+  var total = satisfactionData.length;
+  [{score:5, label:'⭐⭐⭐⭐⭐', color:'var(--green)'}, {score:4, label:'⭐⭐⭐⭐', color:'var(--blue)'}, {score:3, label:'⭐⭐⭐', color:'var(--orange)'}, {score:2, label:'⭐⭐', color:'var(--orange)'}, {score:1, label:'⭐', color:'var(--red)'}].forEach(function(s) {
+    var cnt = satisfactionData.filter(function(d){ return d.score === s.score; }).length;
+    var pct = Math.round(cnt / total * 100);
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">' +
+      '<div style="width:50px;font-size:11px;color:var(--text-muted);">' + s.label + '</div>' +
+      '<div style="flex:1;height:18px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + s.color + ';border-radius:4px;transition:width 0.5s;"></div></div>' +
+      '<div style="width:40px;font-size:11px;text-align:right;font-weight:600;">' + pct + '%</div></div>';
+  });
+  html += '</div>' +
+    // 最新评价列表
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">📝 最新评价</div>' +
+    '<div style="max-height:200px;overflow-y:auto;">';
+  satisfactionData.slice(0, 5).forEach(function(d) {
+    var stars = '⭐'.repeat(d.score);
+    html += '<div style="padding:10px;background:var(--bg);border-radius:6px;margin-bottom:6px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+      '<span style="font-size:12px;font-weight:600;">' + d.guest + ' · ' + d.room + '</span>' +
+      '<span style="color:var(--orange);font-size:12px;">' + stars + '</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + (d.comment || '无评论') + ' · ' + d.date + '</div></div>';
+  });
+  html += '</div></div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-satisfaction\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
