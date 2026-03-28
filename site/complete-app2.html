@@ -711,6 +711,7 @@ function showToast(msg, type) {
       <div class="menu-item" onclick="showPage('config')"><span class="icon">⚙️</span><span>管理配置</span></div>
       <div class="menu-item" onclick="showPage('keypad')"><span class="icon">🔑</span><span>密码管理</span></div>
       <div class="menu-item" onclick="showPage('oplog')"><span class="icon">📝</span><span>操作日志</span></div>
+    <div class="menu-item" onclick="openAnnouncementPublishModal()" style="color:var(--orange);"><span class="icon">📢</span><span>公告管理</span></div>
       <div class="menu-item" onclick="showPage('blacklist')"><span class="icon">🚫</span><span>黑名单管理</span></div>
       <div class="menu-item" onclick="showPage('report')"><span class="icon">📊</span><span>数据报表</span></div>
     <div class="menu-item" onclick="openNightAuditFullModal()" style="color:var(--orange);"><span class="icon">🌙</span><span>夜审报表</span></div>
@@ -868,6 +869,11 @@ function showToast(msg, type) {
           <span>清洁任务</span>
         </button>
         <!-- 【改进v3-3】首页预登记链接生成器快捷入口 -->
+        <!-- 【v3.4改进4】智能推荐房间入口 -->
+        <button class="quick-btn" onclick="openSmartRoomRecommendModal('张三',2,2)" style="flex:1;padding:16px;background:linear-gradient(135deg,#13c2c2,#36cfc9);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(19,194,194,0.3);transition:all 0.2s;">
+          <span style="font-size:20px;">🤖</span>
+          <span>智能选房</span>
+        </button>
         <button class="quick-btn" onclick="openPreregLinkGenerator()" style="flex:1;padding:16px;background:linear-gradient(135deg,#fa8c16,#ffc53d);color:white;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(250,140,22,0.3);transition:all 0.2s;">
           <span style="font-size:20px;">🔗</span>
           <span>预登记链接</span>
@@ -3120,6 +3126,8 @@ function showToast(msg, type) {
         <button class="action-btn small" onclick="openBatchDeviceBindingModal()" style="padding:5px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">📡 设备绑定</button>
         <!-- 【改进v3-2】设备重启历史记录按钮（展示最近重启记录+失败重试统计） -->
         <button class="action-btn small" onclick="openDeviceRestartHistoryModal()" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📋 重启历史</button>
+        <!-- 【v3.4改进3】批量固件升级向导入口 -->
+        <button class="action-btn small" onclick="openBatchFirmwareUpgradeModal()" style="padding:5px 10px;background:var(--green);color:white;border:none;font-size:11px;">🚀 批量升级向导</button>
         <button class="action-btn small" onclick="openFirmwareAnalyzerModal()" style="padding:5px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📡 版本分析器</button><button class="action-btn small" onclick="openFirmwareComparisonModal()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">📋 固件对比表</button><button class="action-btn small" onclick="openAlertRuleEngineModal()" style="padding:5px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">⚠️ 告警规则</button><button class="action-btn small" onclick="openDeviceFirmwareOTAModal()" style="padding:5px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📦 OTA升级</button><button class="action-btn small" onclick="openFirmwareVersionTrackerModal()" style="padding:5px 10px;background:var(--blue);color:white;border:none;">📡 版本跟踪器</button>
         <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">💡 勾选左侧设备列表可精确选择设备</span>
       </div>
@@ -9817,6 +9825,8 @@ function openEditMemberLevelModalV2(idx) {
         <div style="display:flex;gap:6px;margin-left:auto;">
           <!-- 【改进v3-new1】工单SLA超时监控弹窗触发按钮 -->
           <button class="action-btn small" onclick="openSLAAlertModal()" style="padding:5px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">⏱️ SLA监控</button>
+          <!-- 【v3.4改进1】工单SLA规则配置按钮 -->
+          <button class="action-btn small" onclick="openSlaConfigModal()" style="padding:5px 10px;background:var(--blue);color:white;border:none;font-size:11px;">⚡ SLA规则</button>
           <!-- 【改进v3-new5】工单完整流程演示按钮 -->
           <button class="action-btn small" onclick="demonstrateWorkorderLifecycle()" style="padding:5px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📋 工单流程演示</button>
           <button class="action-btn small" onclick="openBatchAssignWorkorder()" style="padding:5px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🔄 批量分配</button>
@@ -14353,6 +14363,8 @@ function openEditMemberLevelModalV2(idx) {
           <button class="action-btn small" onclick="openConfigEditModal()" style="padding:4px 10px;background:var(--blue);color:white;border:none;">⚙️ 系统设置</button>
           <!-- 【物联后台v3.5 改进2】PMS对接状态监控入口 -->
           <button class="action-btn small" onclick="openPmsStatusModal()" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🔗 PMS状态</button>
+          <!-- 【v3.4改进5】系统公告发布入口 -->
+          <button class="action-btn small" onclick="openAnnouncementPublishModal()" style="padding:4px 10px;background:var(--orange);color:white;border:none;font-size:11px;">📢 发布公告</button>
         </div>
       </div>
       <!-- 【改进5：系统设置独立Tab页面（非Modal），支持多模块配置切换】 -->
@@ -15046,6 +15058,8 @@ function openEditMemberLevelModalV2(idx) {
       <div class="page-header">
         <div class="page-title">💰 结算中心</div>
         <div class="page-sub">账单结算 · 押金管理 · 收入报表</div>
+        <!-- 【v3.4改进2】押金自动续期配置入口 -->
+        <button class="action-btn small" onclick="openDepositAutoConfigModal()" style="padding:5px 10px;background:var(--blue);color:white;border:none;margin-left:auto;font-size:11px;">💰 押金自动续期配置</button>
       </div>
       <div class="stats-row" style="grid-template-columns:repeat(5,1fr);">
         <div class="stat-card">
@@ -17469,6 +17483,495 @@ function submitCheckoutSettlement() {
     if (statusAttr) card.setAttribute('data-status', 'empty');
   });
   _cosData = null;
+}
+// ============================================================
+// 【物联后台 v3.4 新增改进 - 5个功能性改进】
+// ============================================================
+
+// 改进1：服务工单SLA规则配置 + 逾期自动升级
+var _slaRules = [
+  {type:'complaint',label:'客户投诉',时限:30,单位:'分钟',升级方式:'自动升级',通知人:'店长',状态:'已启用'},
+  {type:'clean',label:'清洁任务',时限:45,单位:'分钟',升级方式:'仅通知',通知人:'客房经理',状态:'已启用'},
+  {type:'deliver',label:'送物服务',时限:20,单位:'分钟',升级方式:'自动升级',通知人:'前台',状态:'已启用'},
+  {type:'invoice',label:'发票申请',时限:60,单位:'分钟',升级方式:'仅通知',通知人:'财务',状态:'已启用'},
+  {type:'repair',label:'设备维修',时限:120,单位:'分钟',升级方式:'自动升级',通知人:'工程部',状态:'已启用'}
+];
+
+function openSlaConfigModal() {
+  var existing = document.getElementById('modal-sla-config');
+  if (existing) existing.remove();
+  var rows = '';
+  _slaRules.forEach(function(r, i) {
+    var typeColors = {complaint:'red',clean:'green',deliver:'blue',invoice:'orange',repair:'purple'};
+    var typeColor = typeColors[r.type] || 'gray';
+    rows += '<tr data-type="' + r.type + '">' +
+      '<td><span class="tbadge ' + typeColor + '">' + r.label + '</span></td>' +
+      '<td><span style="font-weight:600;color:var(--blue);">' + r.时限 + '</span> ' + r.单位 + '</td>' +
+      '<td><span class="tbadge ' + (r.升级方式.indexOf('升级')>-1?'red':'gray') + '">' + r.升级方式 + '</span></td>' +
+      '<td>' + r.通知人 + '</td>' +
+      '<td><span class="tbadge ' + (r.状态==='已启用'?'green':'gray') + '">' + r.状态 + '</span></td>' +
+      '<td><button class="action-btn small" onclick="openEditSlaRule(' + i + ')">编辑</button></td>' +
+      '</tr>';
+  });
+  var html = '<div class="modal-overlay" id="modal-sla-config" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-sla-config\').remove()">' +
+    '<div class="modal" style="width:720px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="font-size:15px;font-weight:700;">⚡ 工单SLA规则配置 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">（SLA时限 → 升级方式 → 通知人）</span></div>' +
+    '<div style="display:flex;gap:8px;"><button class="action-btn small" onclick="openAddSlaRuleForm()" style="padding:5px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);">➕ 新增规则</button>' +
+    '<button onclick="document.getElementById(\'modal-sla-config\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div></div>' +
+    '<div style="padding:16px 24px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;background:var(--blue-bg);flex-shrink:0;">' +
+    '<div style="font-size:12px;color:var(--blue);"><span style="font-weight:700;font-size:20px;">⚠️</span> SLA超时将自动触发升级/通知，当前 <span style="font-weight:700;">2</span> 条工单处于超时预警</div>' +
+    '<button class="action-btn small" onclick="showSlaBreachList()" style="padding:4px 10px;background:var(--red);color:white;border:none;font-size:11px;">🔴 查看超时工单</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:16px 24px;">' +
+    '<table class="table">' +
+    '<thead><tr><th>工单类型</th><th>SLA时限</th><th>超时升级方式</th><th>通知人</th><th>状态</th><th>操作</th></tr></thead>' +
+    '<tbody id="sla-rules-tbody">' + rows + '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-sla-config\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="saveSlaRules();document.getElementById(\'modal-sla-config\').remove();">💾 保存配置</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openAddSlaRuleForm() {
+  var existing = document.getElementById('modal-sla-form');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-sla-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-sla-form\').remove()">' +
+    '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">➕ 新增SLA规则</div>' +
+    '<button onclick="document.getElementById(\'modal-sla-form\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">工单类型 <span style="color:var(--red);">*</span></label>' +
+    '<select class="form-select" id="sla-form-type"><option value="">请选择类型</option><option value="complaint">🔴 客户投诉</option><option value="clean">🟢 清洁任务</option><option value="deliver">🔵 送物服务</option><option value="invoice">🟠 发票申请</option><option value="repair">🟣 设备维修</option><option value="other">⚪ 其他</option></select></div>' +
+    '<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;"><div class="form-group"><label class="form-label">SLA时限 <span style="color:var(--red);">*</span></label>' +
+    '<input type="number" class="form-input" id="sla-form-duration" min="1" placeholder="请输入数字"></div>' +
+    '<div class="form-group"><label class="form-label">单位</label>' +
+    '<select class="form-select" id="sla-form-unit"><option value="分钟">分钟</option><option value="小时">小时</option></select></div></div>' +
+    '<div class="form-group"><label class="form-label">超时升级方式 <span style="color:var(--red);">*</span></label>' +
+    '<select class="form-select" id="sla-form-action"><option value="自动升级">🔴 自动升级（上级接管）</option><option value="仅通知">🔔 仅通知</option><option value="自动关闭">❌ 自动关闭</option></select></div>' +
+    '<div class="form-group"><label class="form-label">通知人 <span style="color:var(--red);">*</span></label>' +
+    '<input type="text" class="form-input" id="sla-form-notify" placeholder="如：店长/前台/工程部"></div>' +
+    '<div class="form-group"><label class="form-label">状态</label>' +
+    '<select class="form-select" id="sla-form-status"><option value="已启用">🟢 已启用</option><option value="已禁用">⚪ 已禁用</option></select></div></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-sla-form\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitSlaRule()">确认添加</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitSlaRule() {
+  var type = document.getElementById('sla-form-type').value;
+  var duration = document.getElementById('sla-form-duration').value;
+  var unit = document.getElementById('sla-form-unit').value;
+  var action = document.getElementById('sla-form-action').value;
+  var notify = document.getElementById('sla-form-notify').value.trim();
+  var status = document.getElementById('sla-form-status').value;
+  if (!type || !duration || !notify) { showToast('请填写必填项', 'error'); return; }
+  var labels = {complaint:'客户投诉',clean:'清洁任务',deliver:'送物服务',invoice:'发票申请',repair:'设备维修',other:'其他'};
+  _slaRules.push({type:type, label:labels[type]||type, 时限:parseInt(duration), 单位:unit, 升级方式:action, 通知人:notify, 状态:status});
+  document.getElementById('modal-sla-form').remove();
+  showToast('✅ SLA规则已添加：' + (labels[type]||type), 'success');
+  openSlaConfigModal();
+}
+
+function openEditSlaRule(idx) {
+  var r = _slaRules[idx];
+  if (!r) return;
+  var existing = document.getElementById('modal-sla-form');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-sla-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-sla-form\').remove()">' +
+    '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">✏️ 编辑SLA规则：' + r.label + '</div>' +
+    '<button onclick="document.getElementById(\'modal-sla-form\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">SLA时限 <span style="color:var(--red);">*</span></label>' +
+    '<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">' +
+    '<input type="number" class="form-input" id="sla-form-duration" min="1" value="' + r.时限 + '">' +
+    '<select class="form-select" id="sla-form-unit"><option value="分钟"' + (r.单位==='分钟'?' selected':'') + '>分钟</option><option value="小时"' + (r.单位==='小时'?' selected':'') + '>小时</option></select></div></div>' +
+    '<div class="form-group"><label class="form-label">超时升级方式 <span style="color:var(--red);">*</span></label>' +
+    '<select class="form-select" id="sla-form-action"><option value="自动升级"' + (r.升级方式==='自动升级'?' selected':'') + '>🔴 自动升级</option><option value="仅通知"' + (r.升级方式==='仅通知'?' selected':'') + '>🔔 仅通知</option><option value="自动关闭"' + (r.升级方式==='自动关闭'?' selected':'') + '>❌ 自动关闭</option></select></div>' +
+    '<div class="form-group"><label class="form-label">通知人 <span style="color:var(--red);">*</span></label>' +
+    '<input type="text" class="form-input" id="sla-form-notify" value="' + r.通知人 + '"></div>' +
+    '<div class="form-group"><label class="form-label">状态</label>' +
+    '<select class="form-select" id="sla-form-status"><option value="已启用"' + (r.状态==='已启用'?' selected':'') + '>🟢 已启用</option><option value="已禁用"' + (r.状态==='已禁用'?' selected':'') + '>⚪ 已禁用</option></select></div></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;">' +
+    '<button class="modal-btn red" onclick="deleteSlaRule(' + idx + ')" style="background:var(--red-bg);color:var(--red);border-color:var(--red);">🗑️ 删除</button>' +
+    '<div style="display:flex;gap:10px;"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-sla-form\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="updateSlaRule(' + idx + ')">保存修改</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function updateSlaRule(idx) {
+  var duration = document.getElementById('sla-form-duration').value;
+  var unit = document.getElementById('sla-form-unit').value;
+  var action = document.getElementById('sla-form-action').value;
+  var notify = document.getElementById('sla-form-notify').value.trim();
+  var status = document.getElementById('sla-form-status').value;
+  if (!duration || !notify) { showToast('请填写必填项', 'error'); return; }
+  _slaRules[idx].时限 = parseInt(duration);
+  _slaRules[idx].单位 = unit;
+  _slaRules[idx].升级方式 = action;
+  _slaRules[idx].通知人 = notify;
+  _slaRules[idx].状态 = status;
+  document.getElementById('modal-sla-form').remove();
+  showToast('✅ SLA规则已更新', 'success');
+  openSlaConfigModal();
+}
+
+function deleteSlaRule(idx) {
+  if (!confirm('确定删除该SLA规则？')) return;
+  _slaRules.splice(idx, 1);
+  document.getElementById('modal-sla-form').remove();
+  showToast('已删除SLA规则', 'info');
+  openSlaConfigModal();
+}
+
+function saveSlaRules() {
+  showToast('✅ SLA规则配置已保存（' + _slaRules.length + ' 条规则）', 'success');
+}
+
+function showSlaBreachList() {
+  var existing = document.getElementById('modal-sla-breach');
+  if (existing) existing.remove();
+  var breachItems = [
+    {id:'WO-2026032801',type:'客户投诉',room:'301-张三',create:'03-28 14:20',超时分钟:47,负责人:'小李'},
+    {id:'WO-2026032802',type:'设备维修',room:'205-王五',create:'03-28 13:45',超时分钟:23,负责人:'小张'}
+  ];
+  var rows = '';
+  breachItems.forEach(function(b) {
+    rows += '<tr style="background:var(--red-bg);">' +
+      '<td style="font-weight:600;color:var(--red);">' + b.id + '</td>' +
+      '<td><span class="tbadge red">' + b.type + '</span></td>' +
+      '<td>' + b.room + '</td>' +
+      '<td>' + b.create + '</td>' +
+      '<td style="color:var(--red);font-weight:700;">⚠️ 超时 ' + b.超时分钟 + ' 分钟</td>' +
+      '<td>' + b.负责人 + '</td>' +
+      '<td><button class="action-btn small red" onclick="showToast(\'已将 ' + b.id + ' 升级给店长\',\'info\')">升级处理</button></td>' +
+      '</tr>';
+  });
+  var html = '<div class="modal-overlay" id="modal-sla-breach" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-sla-breach\').remove()">' +
+    '<div class="modal" style="width:640px;max-height:70vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">⚠️ SLA超时工单（<span style="color:var(--red);">' + breachItems.length + '</span> 条）</div>' +
+    '<button onclick="document.getElementById(\'modal-sla-breach\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:16px 24px;">' +
+    '<table class="table"><thead><tr><th>工单号</th><th>类型</th><th>房间</th><th>创建时间</th><th>超时状态</th><th>当前负责人</th><th>操作</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-sla-breach\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="showToast(\'已通知所有责任人\',\'success\');document.getElementById(\'modal-sla-breach\').remove()">📢 批量升级通知</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// 改进2：押金自动续期配置弹窗
+var _depositAutoConfig = {
+  enabled: true,
+  triggerBalance: 100,
+  autoRenewalAmount: 500,
+  notifyBeforeDays: 3,
+  autoDeduct: false,
+  maxBalance: 2000
+};
+
+function openDepositAutoConfigModal() {
+  var existing = document.getElementById('modal-deposit-auto');
+  if (existing) existing.remove();
+  var c = _depositAutoConfig;
+  var html = '<div class="modal-overlay" id="modal-deposit-auto" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-deposit-auto\').remove()">' +
+    '<div class="modal" style="width:500px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">💰 押金自动续期配置</div>' +
+    '<button onclick="document.getElementById(\'modal-deposit-auto\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:14px 16px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:13px;color:var(--blue);">💡 配置押金余额不足时的自动续期规则，提升资金周转效率</div>' +
+    '<div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:600;padding:12px 14px;background:var(--bg);border-radius:8px;">' +
+    '<input type="checkbox" id="da-enabled" ' + (c.enabled ? 'checked' : '') + ' style="accent-color:var(--blue);width:17px;height:17px;">' +
+    '<span>启用自动续期功能</span></label></div>' +
+    '<div class="form-group"><label class="form-label">触发阈值（押金余额低于此值时触发）</label>' +
+    '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:20px;color:var(--red);font-weight:700;">¥</span>' +
+    '<input type="number" class="form-input" id="da-trigger" value="' + c.triggerBalance + '" min="0" style="width:120px;"></div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">余额低于此值时触发续期提醒/自动扣款</div></div>' +
+    '<div class="form-group"><label class="form-label">续期金额（每次自动续期增加）</label>' +
+    '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:20px;color:var(--green);font-weight:700;">¥</span>' +
+    '<input type="number" class="form-input" id="da-amount" value="' + c.autoRenewalAmount + '" min="100" style="width:120px;"></div></div>' +
+    '<div class="form-group"><label class="form-label">押金上限（超过此值不自动续期）</label>' +
+    '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:20px;color:var(--text);font-weight:700;">¥</span>' +
+    '<input type="number" class="form-input" id="da-max" value="' + c.maxBalance + '" min="0" style="width:120px;"></div></div>' +
+    '<div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;padding:10px 14px;background:var(--bg);border-radius:8px;">' +
+    '<input type="checkbox" id="da-autodeduct" ' + (c.autoDeduct ? 'checked' : '') + ' style="accent-color:var(--blue);width:15px;height:15px;">' +
+    '<span>自动扣除（不提醒，直接从账户扣款）</span></label></div>' +
+    '<div class="form-group"><label class="form-label">提前提醒天数</label>' +
+    '<div style="display:flex;align-items:center;gap:8px;">' +
+    '<input type="number" class="form-input" id="da-notify-days" value="' + c.notifyBeforeDays + '" min="1" max="30" style="width:80px;">' +
+    '<span style="font-size:13px;color:var(--text-light);">天</span></div></div>' +
+    '<div style="margin-top:6px;font-size:12px;color:var(--text-muted);">押金到期前N天自动发送续期提醒给客人</div>' +
+    '</div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;">' +
+    '<button class="modal-btn secondary" onclick="testDepositAutoNotify()">🧪 测试通知</button>' +
+    '<div style="display:flex;gap:10px;"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-deposit-auto\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="saveDepositAutoConfig()">💾 保存配置</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function saveDepositAutoConfig() {
+  _depositAutoConfig.enabled = document.getElementById('da-enabled').checked;
+  _depositAutoConfig.triggerBalance = parseInt(document.getElementById('da-trigger').value) || 100;
+  _depositAutoConfig.autoRenewalAmount = parseInt(document.getElementById('da-amount').value) || 500;
+  _depositAutoConfig.maxBalance = parseInt(document.getElementById('da-max').value) || 2000;
+  _depositAutoConfig.autoDeduct = document.getElementById('da-autodeduct').checked;
+  _depositAutoConfig.notifyBeforeDays = parseInt(document.getElementById('da-notify-days').value) || 3;
+  document.getElementById('modal-deposit-auto').remove();
+  showToast('✅ 押金自动续期配置已保存（触发¥' + _depositAutoConfig.triggerBalance + '以下自动提醒）', 'success');
+}
+
+function testDepositAutoNotify() {
+  showToast('📱 测试通知已发送至 138****8888：尊敬的客人，您的押金余额即将不足，请及时续期。【领锁物联】', 'info');
+}
+
+// 改进3：批量设备固件升级向导弹窗
+var _batchUpgradeDevices = [];
+var _batchUpgradeProgress = 0;
+
+function openBatchFirmwareUpgradeModal() {
+  var existing = document.getElementById('modal-batch-firmware');
+  if (existing) existing.remove();
+  _batchUpgradeDevices = [];
+  _batchUpgradeProgress = 0;
+  var devices = [
+    {uuid:'DEV-LK01-A301',room:'301',model:'领锁PRO-A',current:'v2.0.1',latest:'v2.1.0',need:false},
+    {uuid:'DEV-LK02-A302',room:'302',model:'领锁PRO-A',current:'v2.0.1',latest:'v2.1.0',need:false},
+    {uuid:'DEV-LK03-A303',room:'303',model:'领锁PRO-A',current:'v2.1.0',latest:'v2.1.0',need:false},
+    {uuid:'DEV-LK04-A304',room:'304',model:'领锁PRO-A',current:'v1.9.5',latest:'v2.1.0',need:true},
+    {uuid:'DEV-LK05-A305',room:'305',model:'领锁PRO-B',current:'v2.0.0',latest:'v2.1.2',need:true},
+    {uuid:'DEV-LK06-A201',room:'201',model:'领锁PRO-B',current:'v2.1.2',latest:'v2.1.2',need:false}
+  ];
+  var rows = '';
+  devices.forEach(function(d, i) {
+    var bg = d.need ? 'background:var(--orange-bg);' : '';
+    rows += '<tr style="' + bg + '" data-idx="' + i + '">' +
+      '<td><input type="checkbox" class="bfu-check" data-idx="' + i + '" ' + (d.need?'checked':'') + ' style="accent-color:var(--blue);cursor:pointer;width:16px;height:16px;" onchange="updateBatchUpgradeSummary()"></td>' +
+      '<td><span style="font-weight:600;">' + d.room + '</span></td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + d.uuid + '</td>' +
+      '<td>' + d.model + '</td>' +
+      '<td><span class="tbadge ' + (d.need?'orange':'gray') + '">' + d.current + '</span></td>' +
+      '<td><span class="tbadge green">' + d.latest + '</span></td>' +
+      '<td>' + (d.need ? '<span style="color:var(--orange);font-size:12px;font-weight:600;">需升级</span>' : '<span style="color:var(--green);font-size:12px;">已是最新</span>') + '</td>' +
+      '</tr>';
+  });
+  var html = '<div class="modal-overlay" id="modal-batch-firmware" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-firmware\').remove()">' +
+    '<div class="modal" style="width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="font-size:15px;font-weight:700;">📦 批量设备固件升级 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">（勾选设备 → 版本检测 → 一键升级）</span></div>' +
+    '<button onclick="document.getElementById(\'modal-batch-firmware\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:14px 24px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--blue-bg);flex-shrink:0;">' +
+    '<div style="font-size:12px;color:var(--blue);">📌 当前固件版本：v2.0.1 / v2.0.0，升级目标：v2.1.0（PRO-A）/ v2.1.2（PRO-B）</div>' +
+    '<div style="margin-left:auto;display:flex;gap:8px;"><button class="action-btn small" onclick="selectAllNeedUpgrade()" style="padding:4px 10px;font-size:11px;background:var(--orange);color:white;border:none;">全选需升级（2台）</button>' +
+    '<button class="action-btn small" onclick="clearAllUpgradeSelect()" style="padding:4px 10px;font-size:11px;">取消全选</button></div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 24px;">' +
+    '<table class="table"><thead><tr><th style="width:32px;"></th><th>房间</th><th>设备UUID</th><th>型号</th><th>当前版本</th><th>目标版本</th><th>状态</th></tr></thead><tbody id="bfu-device-list">' + rows + '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);flex-shrink:0;">' +
+    '<div id="bfu-summary" style="font-size:13px;margin-bottom:10px;color:var(--text);">已选 <strong id="bfu-count">2</strong> 台设备待升级</div>' +
+    '<div id="bfu-progress-wrap" style="display:none;margin-bottom:10px;">' +
+    '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:4px;"><span id="bfu-progress-label">正在升级...</span><span id="bfu-progress-pct">0%</span></div>' +
+    '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;"><div id="bfu-progress-bar" style="height:100%;background:var(--blue);border-radius:4px;width:0%;transition:width 0.5s;"></div></div></div>' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-batch-firmware\').remove()">取消</button>' +
+    '<button class="modal-btn primary" id="bfu-start-btn" onclick="startBatchFirmwareUpgrade()">🚀 开始批量升级</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  updateBatchUpgradeSummary();
+}
+
+function updateBatchUpgradeSummary() {
+  var checks = document.querySelectorAll('.bfu-check:checked');
+  var count = checks ? checks.length : 0;
+  var countEl = document.getElementById('bfu-count');
+  if (countEl) countEl.textContent = count;
+}
+
+function selectAllNeedUpgrade() {
+  document.querySelectorAll('.bfu-check').forEach(function(cb) { cb.checked = true; });
+  updateBatchUpgradeSummary();
+}
+
+function clearAllUpgradeSelect() {
+  document.querySelectorAll('.bfu-check').forEach(function(cb) { cb.checked = false; });
+  updateBatchUpgradeSummary();
+}
+
+function startBatchFirmwareUpgrade() {
+  var checks = document.querySelectorAll('.bfu-check:checked');
+  if (!checks || checks.length === 0) { showToast('请至少选择一台设备', 'warning'); return; }
+  var progressWrap = document.getElementById('bfu-progress-wrap');
+  var progressBar = document.getElementById('bfu-progress-bar');
+  var progressPct = document.getElementById('bfu-progress-pct');
+  var progressLabel = document.getElementById('bfu-progress-label');
+  var startBtn = document.getElementById('bfu-start-btn');
+  if (progressWrap) progressWrap.style.display = 'block';
+  if (startBtn) { startBtn.disabled = true; startBtn.textContent = '升级中...'; }
+  var total = checks.length;
+  var done = 0;
+  var interval = setInterval(function() {
+    done++;
+    var pct = Math.round((done / total) * 100);
+    if (progressBar) progressBar.style.width = pct + '%';
+    if (progressPct) progressPct.textContent = pct + '%';
+    if (progressLabel) progressLabel.textContent = '正在升级第 ' + done + '/' + total + ' 台设备...';
+    if (done >= total) {
+      clearInterval(interval);
+      if (progressLabel) progressLabel.textContent = '✅ 全部升级完成！';
+      if (startBtn) { startBtn.disabled = false; startBtn.textContent = '🚀 开始批量升级'; }
+      showToast('✅ ' + total + ' 台设备固件批量升级完成！', 'success');
+    }
+  }, 600);
+}
+
+// 改进4：入住推荐房间引擎弹窗
+var _checkinRecommendation = null;
+
+function openSmartRoomRecommendModal(guestName, nights, guestCount) {
+  var existing = document.getElementById('modal-room-recommend');
+  if (existing) existing.remove();
+  guestName = guestName || '张三';
+  nights = nights || 1;
+  guestCount = guestCount || 2;
+  var recommendRooms = [
+    {room:'301',type:'亲子间',floor:'3F',price:368,reason:'亲子间优先推荐，入住3天有优惠',features:['亲子主题','小度音箱','超大空间'],match:98},
+    {room:'302',type:'亲子间',floor:'3F',price:368,reason:'同房型可拼接，适合' + guestCount + '人入住',features:['亲子主题','小度音箱'],match:92},
+    {room:'201',type:'大床房',floor:'2F',price:268,reason:'大床房价格实惠，适合' + guestCount + '人入住',features:['大床1.8m','小度音箱'],match:85}
+  ];
+  _checkinRecommendation = recommendRooms[0];
+  var cards = '';
+  recommendRooms.forEach(function(r, i) {
+    var selected = i === 0 ? 'border-color:var(--blue);background:var(--blue-bg);' : '';
+    cards += '<div class="rec-room-card" data-room="' + r.room + '" onclick="selectRecommendRoom(this,\'' + r.room + '\')" style="cursor:pointer;border:2px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;transition:all 0.2s;' + selected + '">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+      '<div><div style="font-size:18px;font-weight:700;color:var(--blue);">' + r.room + '</div>' +
+      '<div style="font-size:12px;color:var(--text-muted);">' + r.type + ' · ' + r.floor + '</div></div>' +
+      '<div style="text-align:right;"><div style="font-size:18px;font-weight:700;color:var(--green);">¥' + r.price + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);">/晚</div></div></div>' +
+      '<div style="font-size:12px;color:var(--orange);margin-bottom:8px;">📌 推荐理由：' + r.reason + '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">';
+    r.features.forEach(function(f) {
+      cards += '<span style="padding:2px 8px;background:var(--bg);border-radius:4px;font-size:11px;color:var(--text-light);">' + f + '</span>';
+    });
+    cards += '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="height:100%;background:var(--green);border-radius:3px;width:' + r.match + '%;"></div></div><span style="font-size:11px;font-weight:700;color:var(--green);">' + r.match + '%匹配</span></div></div>';
+  });
+  var html = '<div class="modal-overlay" id="modal-room-recommend" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-room-recommend\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🏠 智能推荐房间 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">（基于 ' + guestName + ' · ' + nights + '晚 · ' + guestCount + '人入住）</span></div>' +
+    '<button onclick="document.getElementById(\'modal-room-recommend\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:16px 24px;">' +
+    '<div style="padding:12px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">' +
+    '🤖 推荐算法：综合入住天数(' + nights + '晚)、人数(' + guestCount + '人)、房型偏好(亲子间)、历史入住记录，匹配度最高优先推荐</div>' +
+    '<div id="rec-room-list">' + cards + '</div></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;">' +
+    '<button class="modal-btn secondary" onclick="showToast(\'请手动选择房间\',\'info\')">🖐️ 手动选择</button>' +
+    '<button class="modal-btn primary" onclick="confirmRoomRecommend()">✅ 确认推荐房间（' + (_checkinRecommendation ? _checkinRecommendation.room : '') + '）</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function selectRecommendRoom(el, roomNum) {
+  document.querySelectorAll('.rec-room-card').forEach(function(c) {
+    c.style.borderColor = 'var(--border)';
+    c.style.background = 'white';
+  });
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'var(--blue-bg)';
+  _checkinRecommendation = {room: roomNum};
+}
+
+function confirmRoomRecommend() {
+  if (!_checkinRecommendation || !_checkinRecommendation.room) {
+    showToast('请先选择一个推荐房间', 'warning');
+    return;
+  }
+  document.getElementById('modal-room-recommend').remove();
+  showToast('✅ 已确认推荐房间 ' + _checkinRecommendation.room + '，请继续完成入住办理', 'success');
+}
+
+// 改进5：系统公告发布管理弹窗
+var _announcements = [
+  {id:'ANN-001',title:'🎉 酒店WIFI升级通知',content:'尊敬的宾客，酒店公共区域WIFI已完成升级，网速提升至500M，感谢您的理解。',type:'notice',scope:'all',push:'device',time:'2026-03-28 09:00',status:'已发布',views:156},
+  {id:'ANN-002',title:'🔧 3层设备维护通知',content:'3层走廊照明设备维护，届时灯光可能闪烁，不便之处敬请谅解。',type:'repair',scope:'floor3',push:'device',time:'2026-03-27 15:30',status:'已发布',views:42}
+];
+
+function openAnnouncementPublishModal() {
+  var existing = document.getElementById('modal-announcement');
+  if (existing) existing.remove();
+  var historyRows = '';
+  _announcements.forEach(function(a) {
+    var typeBadge = {notice:'blue',repair:'orange',event:'green',urgent:'red'}[a.type] || 'gray';
+    var typeLabel = {notice:'📢 通知',repair:'🔧 维护',event:'🎉 活动',urgent:'🚨 紧急'}[a.type] || '📋 其他'};
+    historyRows += '<tr>' +
+      '<td><span style="font-size:11px;color:var(--text-muted);">' + a.id + '</span></td>' +
+      '<td><div style="font-weight:600;font-size:13px;">' + a.title + '</div><div style="font-size:11px;color:var(--text-muted);">' + a.content.substring(0,30) + '...</div></td>' +
+      '<td><span class="tbadge ' + typeBadge + '">' + typeLabel + '</span></td>' +
+      '<td>' + a.scope + '</td>' +
+      '<td><span style="font-size:11px;">' + a.time + '</span></td>' +
+      '<td><span class="tbadge green">' + a.status + '</span></td>' +
+      '<td><span style="font-size:12px;color:var(--text-muted);">' + a.views + '次</span></td>' +
+      '<td><button class="action-btn small red" onclick="revokeAnnouncement(\'' + a.id + '\')">撤回</button></td>' +
+      '</tr>';
+  });
+  var html = '<div class="modal-overlay" id="modal-announcement" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-announcement\').remove()">' +
+    '<div class="modal" style="width:760px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="font-size:15px;font-weight:700;">📢 系统公告发布中心</div>' +
+    '<button onclick="document.getElementById(\'modal-announcement\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:14px 24px 10px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">📝 发布新公告</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">公告标题 <span style="color:var(--red);">*</span></label>' +
+    '<input type="text" class="form-input" id="ann-title" placeholder="如：酒店WIFI升级通知" style="font-size:13px;"></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">公告类型</label>' +
+    '<select class="form-select" id="ann-type" style="font-size:13px;"><option value="notice">📢 通知公告</option><option value="repair">🔧 设施维护</option><option value="event">🎉 优惠活动</option><option value="urgent">🚨 紧急通知</option></select></div></div>' +
+    '<div class="form-group" style="margin-bottom:10px;"><label class="form-label">公告内容 <span style="color:var(--red);">*</span></label>' +
+    '<textarea class="form-textarea" id="ann-content" placeholder="请输入公告内容..." style="min-height:70px;font-size:13px;"></textarea></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;">' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">推送范围</label>' +
+    '<select class="form-select" id="ann-scope" style="font-size:13px;"><option value="all">📡 全部设备/住户</option><option value="floor3">🏠 3层全部房间</option><option value="floor2">🏠 2层全部房间</option><option value="devices">📱 仅设备推送</option><option value="staff">👨‍💼 仅员工</option></select></div>' +
+    '<div class="form-group" style="margin-bottom:0;"><label class="form-label">推送方式</label>' +
+    '<select class="form-select" id="ann-push" style="font-size:13px;"><option value="both">📱+🔔 全部</option><option value="device">📱 App推送</option><option value="sms">💬 短信</option></select></div>' +
+    '<button class="modal-btn primary" onclick="submitAnnouncement()" style="padding:9px 16px;font-size:13px;">📢 立即发布</button></div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:14px 24px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);">📋 发布历史</div>' +
+    '<table class="table"><thead><tr><th>ID</th><th>公告内容</th><th>类型</th><th>范围</th><th>发布时间</th><th>状态</th><th>浏览</th><th>操作</th></tr></thead><tbody id="ann-history-body">' + historyRows + '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-announcement\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitAnnouncement() {
+  var title = document.getElementById('ann-title').value.trim();
+  var content = document.getElementById('ann-content').value.trim();
+  var type = document.getElementById('ann-type').value;
+  var scope = document.getElementById('ann-scope').value;
+  var push = document.getElementById('ann-push').value;
+  if (!title || !content) { showToast('请填写标题和内容', 'error'); return; }
+  var newAnn = {
+    id: 'ANN-' + Date.now().toString().slice(-3),
+    title: title,
+    content: content,
+    type: type,
+    scope: scope,
+    push: push,
+    time: new Date().toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}),
+    status: '已发布',
+    views: 0
+  };
+  _announcements.unshift(newAnn);
+  showToast('📢 公告已发布至 ' + (scope==='all'?'全部设备':'指定范围'), 'success');
+  openAnnouncementPublishModal();
+}
+
+function revokeAnnouncement(id) {
+  if (!confirm('确定撤回该公告？')) return;
+  var ann = _announcements.find(function(a){ return a.id === id; });
+  if (ann) ann.status = '已撤回';
+  showToast('公告 ' + id + ' 已撤回', 'info');
+  openAnnouncementPublishModal();
 }
 </script>
 
