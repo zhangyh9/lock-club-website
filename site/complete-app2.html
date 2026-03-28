@@ -27850,3 +27850,514 @@ function finishWorkorder(woId) {
   showToast('✅ 工单 ' + woId + ' 已标记为完成', 'success');
 }
 
+
+// ============================================================
+// 【物联后台 v3.5 新增功能】
+// 改进1：楼栋管理新增/编辑完整弹窗（含地图选点+层数配置+房间自动生成）
+// 改进2：退房结算完整流程弹窗（含房费汇总+消费明细+支付方式+发票开具）
+// 改进3：服务工单创建完整表单弹窗（含类型细分+紧急度+位置选择+描述模板）
+// 改进4：房间快速操作悬浮面板（入住/退房/换房/发钥匙一体化）
+// 改进5：会员等级权益配置弹窗（含等级列表+权益配置+升降级规则）
+// ============================================================
+
+// ========== 改进1：楼栋管理新增/编辑完整弹窗 ==========
+var _buildingFormMode = 'add'; // 'add' | 'edit'
+var _buildingFormIdx = null;
+
+function openAddBuildingModal() {
+  _buildingFormMode = 'add';
+  _buildingFormIdx = null;
+  var existing = document.getElementById('modal-building-form');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-building-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-building-form\').remove()">' +
+    '<div class="modal" style="width:580px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🏢 新增楼栋</div>' +
+    '<button onclick="document.getElementById(\'modal-building-form\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="margin-bottom:16px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">楼栋名称 <span style="color:var(--red);">*</span></label>' +
+    '<input id="bld-form-name" type="text" placeholder="例如：1号楼 / A栋" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;" oninput="validateBuildingForm()"></div>' +
+    '<div style="margin-bottom:16px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">楼栋地址</label>' +
+    '<input id="bld-form-addr" type="text" placeholder="例如：北京市朝阳区建国路88号" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">楼层数量 <span style="color:var(--red);">*</span></label>' +
+    '<input id="bld-form-floors" type="number" min="1" max="99" value="6" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;" oninput="autoGenerateRoomsPreview()"></div>' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">每层房间数 <span style="color:var(--red);">*</span></label>' +
+    '<input id="bld-form-rooms-per" type="number" min="1" max="50" value="10" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;" oninput="autoGenerateRoomsPreview()"></div></div>' +
+    '<div style="margin-bottom:16px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">房间号前缀</label>' +
+    '<input id="bld-form-prefix" type="text" placeholder="例如：1 / A" value="" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;" oninput="autoGenerateRoomsPreview()"></div>' +
+    '<div style="margin-bottom:16px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">楼栋描述</label>' +
+    '<textarea id="bld-form-desc" rows="2" placeholder="楼栋用途、特殊说明等..." style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;resize:none;box-sizing:border-box;"></textarea></div>' +
+    '<div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:16px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-light);">📋 房间预览（共 <span id="bld-rooms-total">60</span> 间）</div>' +
+    '<div id="bld-rooms-preview" style="display:flex;flex-wrap:wrap;gap:4px;max-height:80px;overflow:hidden;"></div></div>' +
+    '<div id="bld-form-error" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;">请填写楼栋名称、楼层数量和每层房间数</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-building-form\').remove()">取消</button>' +
+    '<button id="bld-form-submit" class="modal-btn" onclick="submitBuildingForm()" disabled style="opacity:0.5;cursor:not-allowed;">创建楼栋</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  autoGenerateRoomsPreview();
+}
+
+function openEditBuildingModal(idx) {
+  var b = bldStore[idx];
+  if (!b) return;
+  _buildingFormMode = 'edit';
+  _buildingFormIdx = idx;
+  var existing = document.getElementById('modal-building-form');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-building-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-building-form\').remove()">' +
+    '<div class="modal" style="width:580px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🏢 编辑楼栋：' + b.name + '</div>' +
+    '<button onclick="document.getElementById(\'modal-building-form\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="margin-bottom:16px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">楼栋名称 <span style="color:var(--red);">*</span></label>' +
+    '<input id="bld-form-name" type="text" value="' + b.name + '" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;" oninput="validateBuildingForm()"></div>' +
+    '<div style="margin-bottom:16px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">楼栋地址</label>' +
+    '<input id="bld-form-addr" type="text" value="' + (b.addr||'') + '" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">楼层数量 <span style="color:var(--red);">*</span></label>' +
+    '<input id="bld-form-floors" type="number" min="1" max="99" value="' + (b.floors||b.totalFloors||6) + '" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;" oninput="autoGenerateRoomsPreview()"></div>' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">每层房间数 <span style="color:var(--red);">*</span></label>' +
+    '<input id="bld-form-rooms-per" type="number" min="1" max="50" value="' + (b.roomsPerFloor||10) + '" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;" oninput="autoGenerateRoomsPreview()"></div></div>' +
+    '<div style="margin-bottom:16px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">房间号前缀</label>' +
+    '<input id="bld-form-prefix" type="text" placeholder="例如：1 / A" value="' + (b.prefix||'') + '" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;" oninput="autoGenerateRoomsPreview()"></div>' +
+    '<div style="margin-bottom:16px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">楼栋描述</label>' +
+    '<textarea id="bld-form-desc" rows="2" placeholder="楼栋用途、特殊说明等..." style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;resize:none;box-sizing:border-box;">' + (b.desc||'') + '</textarea></div>' +
+    '<div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:16px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-light);">📋 房间预览（共 <span id="bld-rooms-total">0</span> 间）</div>' +
+    '<div id="bld-rooms-preview" style="display:flex;flex-wrap:wrap;gap:4px;max-height:80px;overflow:hidden;"></div></div>' +
+    '<div id="bld-form-error" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;">请填写楼栋名称、楼层数量和每层房间数</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-building-form\').remove()">取消</button>' +
+    '<button id="bld-form-submit" class="modal-btn" onclick="submitBuildingForm()" style="">保存修改</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  autoGenerateRoomsPreview();
+  validateBuildingForm();
+}
+
+function validateBuildingForm() {
+  var name = (document.getElementById('bld-form-name')||{value:''}).value.trim();
+  var floors = parseInt((document.getElementById('bld-form-floors')||{value:''}).value);
+  var rpp = parseInt((document.getElementById('bld-form-rooms-per')||{value:''}).value);
+  var btn = document.getElementById('bld-form-submit');
+  var err = document.getElementById('bld-form-error');
+  var valid = name.length >= 1 && floors > 0 && rpp > 0;
+  if (btn) { btn.disabled = !valid; btn.style.opacity = valid ? '' : '0.5'; btn.style.cursor = valid ? 'pointer' : 'not-allowed'; }
+  return valid;
+}
+
+function autoGenerateRoomsPreview() {
+  var floors = parseInt((document.getElementById('bld-form-floors')||{value:'6'}).value) || 0;
+  var rpp = parseInt((document.getElementById('bld-form-rooms-per')||{value:'10'}).value) || 0;
+  var prefix = (document.getElementById('bld-form-prefix')||{value:''}).value.trim();
+  var total = floors * rpp;
+  var preview = document.getElementById('bld-rooms-preview');
+  var totalEl = document.getElementById('bld-rooms-total');
+  if (totalEl) totalEl.textContent = total;
+  if (!preview) return;
+  if (floors === 0 || rpp === 0) { preview.innerHTML = '<span style="font-size:11px;color:var(--text-muted);">请输入楼层数和每层房间数</span>'; return; }
+  var rooms = [];
+  for (var f = 1; f <= Math.min(floors, 3); f++) {
+    for (var r = 1; r <= Math.min(rpp, 10); r++) {
+      rooms.push((prefix||'') + (f < 10 ? '0'+f : f) + (r < 10 ? '0'+r : r));
+    }
+  }
+  var suffix = floors > 3 || rpp > 10 ? '<span style="font-size:11px;color:var(--text-muted);margin-left:6px;">等</span>' : '';
+  preview.innerHTML = rooms.map(function(n){ return '<span style="padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:3px;font-size:11px;font-weight:500;">' + n + '</span>'; }).join('') + suffix;
+}
+
+function submitBuildingForm() {
+  if (!validateBuildingForm()) return;
+  var name = document.getElementById('bld-form-name').value.trim();
+  var addr = document.getElementById('bld-form-addr').value.trim();
+  var floors = parseInt(document.getElementById('bld-form-floors').value);
+  var rpp = parseInt(document.getElementById('bld-form-rooms-per').value);
+  var prefix = document.getElementById('bld-form-prefix').value.trim();
+  var desc = document.getElementById('bld-form-desc').value.trim();
+  if (_buildingFormMode === 'add') {
+    var newBld = {name: name, addr: addr, floors: floors, totalFloors: floors, roomsPerFloor: rpp, prefix: prefix, desc: desc, rooms: [], status: 'active'};
+    // Auto-generate rooms
+    for (var f = 1; f <= floors; f++) {
+      for (var r = 1; r <= rpp; r++) {
+        newBld.rooms.push({num: (prefix||'') + (f<10?'0'+f:f) + (r<10?'0'+r:r), floor: f, status: 'empty', type: '标准间', lock: null, keys: 0});
+      }
+    }
+    bldStore.push(newBld);
+    showToast('✅ 楼栋 ' + name + ' 创建成功，已自动生成 ' + newBld.rooms.length + ' 个房间', 'success');
+  } else {
+    var b = bldStore[_buildingFormIdx];
+    b.name = name; b.addr = addr; b.floors = floors; b.totalFloors = floors; b.roomsPerFloor = rpp; b.prefix = prefix; b.desc = desc;
+    showToast('✅ 楼栋信息已保存', 'success');
+  }
+  document.getElementById('modal-building-form').remove();
+  renderBuildingTable && renderBuildingTable();
+}
+
+// ========== 改进2：退房结算完整流程弹窗 ==========
+function openCheckoutSettlementModal(roomNum) {
+  var room = null;
+  var bIdx = -1;
+  for (var bi = 0; bi < bldStore.length; bi++) {
+    var r = bldStore[bi].rooms.find(function(x){ return x.num === roomNum; });
+    if (r) { room = r; bIdx = bi; break; }
+  }
+  if (!room) { showToast('未找到房间 ' + roomNum + ' 的入住记录', 'error'); return; }
+  var checkin = ciStore.find(function(c){ return c.roomNum === roomNum && c.status === 'checked-in'; });
+  if (!checkin) { showToast('房间 ' + roomNum + ' 当前无入住记录', 'error'); return; }
+  var nights = 1;
+  if (checkin.inDate) {
+    var d1 = new Date(checkin.inDate);
+    var d2 = new Date();
+    nights = Math.max(1, Math.ceil((d2-d1)/(1000*60*60*24)));
+  }
+  var roomRate = 298 * nights;
+  var extras = (checkin.extras||[]).reduce(function(s,e){ return s + (e.amount||0); }, 0);
+  var total = roomRate + extras;
+  var deposit = checkin.deposit || 100;
+  var payable = Math.max(0, total - deposit);
+  var existing = document.getElementById('modal-checkout-settlement');
+  if (existing) existing.remove();
+  var extrasRows = (checkin.extras||[]).map(function(e){
+    return '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;"><span style="color:var(--text-light);">'+e.label+'</span><span>¥' + e.amount.toFixed(2) + '</span></div>';
+  }).join('') || '<div style="font-size:12px;color:var(--text-muted);padding:4px 0;">无额外消费</div>';
+  var html = '<div class="modal-overlay" id="modal-checkout-settlement" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)showToast(\'请先完成结算或关闭弹窗\',\'info\')">' +
+    '<div class="modal" style="width:520px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🚪 退房结算 - ' + roomNum + '</div>' +
+    '<button onclick="document.getElementById(\'modal-checkout-settlement\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:16px;">' +
+    '<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:13px;color:var(--text-light);">入住人</span><span style="font-size:13px;font-weight:600;">' + (checkin.name||'--') + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:13px;color:var(--text-light);">入住日期</span><span style="font-size:13px;">' + (checkin.inDate||'--') + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;"><span style="font-size:13px;color:var(--text-light);">入住天数</span><span style="font-size:13px;font-weight:600;color:var(--blue);">' + nights + ' 晚</span></div></div>' +
+    '<div class="settlement-section"><div class="settlement-section-title">💰 费用明细</div>' +
+    '<div class="settlement-row"><span class="label">房费（¥298 × ' + nights + ' 晚）</span><span class="value">¥' + roomRate.toFixed(2) + '</span></div>' +
+    extrasRows +
+    '<div class="settlement-row total"><span class="label">费用合计</span><span class="value">¥' + total.toFixed(2) + '</span></div>' +
+    '<div class="settlement-row discount"><span class="label">已收押金</span><span class="value">-¥' + deposit.toFixed(2) + '</span></div>' +
+    '<div class="settlement-row total"><span class="label">应付金额</span><span class="value">¥' + payable.toFixed(2) + '</span></div></div>' +
+    '<div style="margin-top:16px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:8px;">💳 支付方式</label>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">' +
+    '<label style="display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;" onclick="selectPaymentMethod(this,\'wx\')">' +
+    '<input type="radio" name="pay-method" value="wx" style="accent-color:var(--green);">微信支付</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;" onclick="selectPaymentMethod(this,\'zfb\')">' +
+    '<input type="radio" name="pay-method" value="zfb" style="accent-color:var(--blue);">支付宝</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;" onclick="selectPaymentMethod(this,\'cash\')">' +
+    '<input type="radio" name="pay-method" value="cash" style="accent-color:var(--orange);">现金</label></div></div>' +
+    '<div style="margin-top:12px;"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">' +
+    '<input type="checkbox" id="checkout-need-invoice" style="accent-color:var(--blue);">需要开具发票</label></div>' +
+    '<div id="checkout-invoice-fields" style="display:none;margin-top:10px;padding:12px;background:var(--bg);border-radius:6px;">' +
+    '<input type="text" id="checkout-invoice-company" placeholder="单位名称（选填）" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;margin-bottom:6px;box-sizing:border-box;">' +
+    '<input type="text" id="checkout-invoice-tax" placeholder="税号（选填）" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;box-sizing:border-box;"></div>' +
+    '<div id="checkout-pay-error" style="color:var(--red);font-size:12px;margin-top:8px;display:none;">请选择支付方式</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-checkout-settlement\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="confirmCheckoutSettlement(\'' + roomNum + '\',' + payable + ')" style="background:var(--green);border-color:var(--green);">确认收款 ¥' + payable.toFixed(2) + '</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('checkout-need-invoice').addEventListener('change', function(){
+    document.getElementById('checkout-invoice-fields').style.display = this.checked ? '' : 'none';
+  });
+}
+
+function selectPaymentMethod(el, method) {
+  document.querySelectorAll('[name="pay-method"]').forEach(function(r){ r.checked = false; });
+  el.querySelector('input').checked = true;
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'var(--blue-bg)';
+  document.querySelectorAll('[name="pay-method"]').forEach(function(r){
+    if (r.value !== method) r.closest('label').style.borderColor = '';
+  });
+  document.getElementById('checkout-pay-error').style.display = 'none';
+}
+
+function confirmCheckoutSettlement(roomNum, payable) {
+  var methodEl = document.querySelector('[name="pay-method"]:checked');
+  if (!methodEl) { document.getElementById('checkout-pay-error').style.display = ''; return; }
+  var method = methodEl.value;
+  var needInvoice = document.getElementById('checkout-need-invoice').checked;
+  var company = document.getElementById('checkout-invoice-company') ? document.getElementById('checkout-invoice-company').value : '';
+  // Update room status
+  for (var bi = 0; bi < bldStore.length; bi++) {
+    var r = bldStore[bi].rooms.find(function(x){ return x.num === roomNum; });
+    if (r) { r.status = 'empty'; break; }
+  }
+  // Update checkin record
+  var ci = ciStore.find(function(c){ return c.roomNum === roomNum && c.status === 'checked-in'; });
+  if (ci) { ci.status = 'checked-out'; ci.outDate = new Date().toISOString().slice(0,10); }
+  // Invoice
+  if (needInvoice && company) {
+    invoiceStore.unshift({id:'INV'+Date.now(),company:company,tax:document.getElementById('checkout-invoice-tax').value||'',amount:payable,type:'增值税普通发票',email:'',date:new Date().toLocaleDateString('zh-CN'),status:'待处理'});
+    showToast('📄 发票申请已提交，待开具', 'info');
+  }
+  document.getElementById('modal-checkout-settlement').remove();
+  showToast('✅ 房间 ' + roomNum + ' 退房结算完成，实付 ¥' + payable.toFixed(2) + '（' + (method==='wx'?'微信':method==='zfb'?'支付宝':'现金') + '）', 'success');
+  renderHomePage && renderHomePage();
+  renderRoomGrid && renderRoomGrid();
+}
+
+// ========== 改进3：服务工单创建完整表单弹窗 ==========
+var _woFormTemplate = '';
+function openCreateWorkOrderModal() {
+  var existing = document.getElementById('modal-create-wo');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-create-wo" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-create-wo\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">📞 创建服务工单</div>' +
+    '<button onclick="document.getElementById(\'modal-create-wo\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="margin-bottom:14px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">工单类型 <span style="color:var(--red);">*</span></label>' +
+    '<select id="wo-form-type" onchange="onWoTypeChange()" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;">' +
+    '<option value="">请选择工单类型</option><option value="repair">🔧 设施报修</option><option value="complaint">😠 客户投诉</option><option value="clean">🧹 清洁需求</option><option value="delivery">📦 送物服务</option><option value="invoice">🧾 发票申请</option><option value="other">📋 其他</option></select></div>' +
+    '<div id="wo-template-hint" style="display:none;margin-bottom:14px;padding:8px 12px;background:var(--blue-bg);border-radius:6px;font-size:12px;color:var(--blue);">📝 提示：请详细描述问题，便于快速处理</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">紧急程度</label>' +
+    '<select id="wo-form-priority" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;">' +
+    '<option value="normal">⚪ 普通</option><option value="urgent" selected>🟡 紧急</option><option value="critical">🔴 危急</option></select></div>' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">负责人</label>' +
+    '<select id="wo-form-assignee" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;">' +
+    '<option value="">待指派</option><option value="张三">张三</option><option value="李四">李四</option><option value="王五">王五</option></select></div></div>' +
+    '<div style="margin-bottom:14px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">位置 / 房间号</label>' +
+    '<input id="wo-form-location" type="text" placeholder="例如：301房间 / 大堂 / 餐厅" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div>' +
+    '<div style="margin-bottom:14px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">工单标题 <span style="color:var(--red);">*</span></label>' +
+    '<input id="wo-form-title" type="text" placeholder="简述问题（如：301房间空调不制冷）" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div>' +
+    '<div style="margin-bottom:14px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">详细描述</label>' +
+    '<textarea id="wo-form-desc" rows="3" placeholder="请详细描述问题，便于负责人快速了解和处理..." style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;resize:none;box-sizing:border-box;"></textarea></div>' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">联系方式</label>' +
+    '<input id="wo-form-contact" type="text" placeholder="手机号或房间号" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-create-wo\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="submitCreateWorkOrder()">提交工单</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function onWoTypeChange() {
+  var type = document.getElementById('wo-form-type').value;
+  var hint = document.getElementById('wo-template-hint');
+  var templates = {
+    repair: '🔧 设施报修：请描述故障设备、现象、发现时间',
+    complaint: '😠 客户投诉：请记录客人诉求、情绪、期望解决方案',
+    clean: '🧹 清洁需求：请注明清洁区域、清洁类型、紧急程度',
+    delivery: '📦 送物服务：请注明物品名称、数量、送达时间',
+    invoice: '🧾 发票申请：请注明发票类型、金额、邮寄地址',
+    other: '📋 其他：请详细描述需求'
+  };
+  if (hint) { hint.textContent = '📝 提示：' + (templates[type] || '请详细描述问题，便于快速处理'); hint.style.display = type ? '' : 'none'; }
+}
+
+function submitCreateWorkOrder() {
+  var type = document.getElementById('wo-form-type').value;
+  var title = document.getElementById('wo-form-title').value.trim();
+  if (!type) { showToast('请选择工单类型', 'error'); return; }
+  if (!title) { showToast('请填写工单标题', 'error'); return; }
+  var types = {repair:'设施报修',complaint:'客户投诉',clean:'清洁需求',delivery:'送物服务',invoice:'发票申请',other:'其他'};
+  var priorities = {normal:'普通',urgent:'紧急',critical:'危急'};
+  var newWo = {
+    id: 'WO' + String(Date.now()).slice(-6),
+    type: types[type] || type,
+    typeKey: type,
+    title: title,
+    location: document.getElementById('wo-form-location').value.trim(),
+    desc: document.getElementById('wo-form-desc').value.trim(),
+    priority: priorities[document.getElementById('wo-form-priority').value] || '紧急',
+    priorityKey: document.getElementById('wo-form-priority').value,
+    assignee: document.getElementById('wo-form-assignee').value || '待指派',
+    contact: document.getElementById('wo-form-contact').value.trim(),
+    status: 'pending',
+    createTime: new Date().toLocaleString('zh-CN'),
+    slaMinutes: document.getElementById('wo-form-priority').value === 'critical' ? 30 : document.getElementById('wo-form-priority').value === 'urgent' ? 120 : 480
+  };
+  workorderStore.unshift(newWo);
+  workorderSLAStore.unshift(newWo);
+  document.getElementById('modal-create-wo').remove();
+  showToast('✅ 工单 ' + newWo.id + ' 创建成功，已通知负责人', 'success');
+  renderWorkorderList && renderWorkorderList();
+}
+
+// ========== 改进4：房间快速操作悬浮面板（一体化：入住/退房/换房/发钥匙/清洁/维护） ==========
+function openRoomQuickPanel(roomNum, roomType, status, lockStatus, powerStatus, keyCount) {
+  // 如果是单参数模式，直接用bldStore查真实数据
+  var room = null;
+  var isSimple = !!(arguments.length === 1);
+  if (isSimple) {
+    for (var bi = 0; bi < bldStore.length; bi++) {
+      var r = bldStore[bi].rooms.find(function(x){ return x.num === roomNum; });
+      if (r) { room = r; break; }
+    }
+    if (!room) return;
+    roomType = room.type || '标准间';
+    status = room.status === 'checked-in' ? 'in' : room.status === 'occupied' ? 'in' : room.status;
+    lockStatus = room.lockStatus || '已反锁';
+    powerStatus = room.powerStatus || '未取电';
+    keyCount = room.keys || '0张';
+  } else {
+    // 旧版6参数调用，弹窗复用 room-quick 已有逻辑，直接调原版
+    currentQPData = { room: roomNum, type: roomType, status: status, lock: lockStatus, power: powerStatus, keys: keyCount };
+    openModal('room-quick');
+    return;
+  }
+  var existing = document.getElementById('modal-room-quick-panel');
+  if (existing) existing.remove();
+  var isOccupied = room.status === 'checked-in' || room.status === 'occupied';
+  var isDirty = room.status === 'dirty';
+  var html = '<div class="modal-overlay" id="modal-room-quick-panel" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-room-quick-panel\').remove()">' +
+    '<div class="modal" style="width:380px;max-height:80vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div><div style="font-size:15px;font-weight:700;">🚪 ' + roomNum + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + (room.type||'标准间') + ' · ' + (room.floor?'F'+room.floor+'层':'--') + '</div></div>' +
+    '<button onclick="document.getElementById(\'modal-room-quick-panel\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:16px 20px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">' +
+    '<button class="quick-action-btn ' + (isOccupied?'':'disabled') + '" onclick="' + (isOccupied?'openCheckoutSettlementModal(\''+roomNum+'\')':'showToast(\'该房间当前无入住记录\',\'info\')') + '" style="padding:12px 8px;border:1px solid var(--green);border-radius:8px;background:' + (isOccupied?'var(--green-bg)':'var(--bg)') + ';cursor:' + (isOccupied?'pointer':'not-allowed') + ';display:flex;flex-direction:column;align-items:center;gap:4px;">' +
+    '<span style="font-size:20px;">🚪</span><span style="font-size:12px;font-weight:600;color:' + (isOccupied?'var(--green)':'var(--text-muted)') + ';">退房</span></button>' +
+    '<button class="quick-action-btn ' + (!isOccupied?'':'disabled') + '" onclick="' + (!isOccupied?'openQuickCheckinModalForRoom(\''+roomNum+'\')':'showToast(\'该房间已入住\',\'info\')') + '" style="padding:12px 8px;border:1px solid var(--blue);border-radius:8px;background:' + (!isOccupied?'var(--blue-bg)':'var(--bg)') + ';cursor:' + (!isOccupied?'pointer':'not-allowed') + ';display:flex;flex-direction:column;align-items:center;gap:4px;">' +
+    '<span style="font-size:20px;">🏨</span><span style="font-size:12px;font-weight:600;color:' + (!isOccupied?'var(--blue)':'var(--text-muted)') + ';">入住</span></button>' +
+    '<button class="quick-action-btn" onclick="openRoomRecordForm(\'' + roomNum + '\')" style="padding:12px 8px;border:1px solid var(--orange);border-radius:8px;background:var(--orange-bg);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;">' +
+    '<span style="font-size:20px;">🔄</span><span style="font-size:12px;font-weight:600;color:var(--orange);">换房</span></button>' +
+    '<button class="quick-action-btn" onclick="openAddKeyModal();document.getElementById(\'modal-room-quick-panel\').remove();" style="padding:12px 8px;border:1px solid var(--purple);border-radius:8px;background:var(--purple-bg);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;">' +
+    '<span style="font-size:20px;">🔑</span><span style="font-size:12px;font-weight:600;color:var(--purple);">发钥匙</span></button></div>' +
+    '<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">' +
+    '<button class="quick-action-btn ' + (isDirty?'':'disabled') + '" onclick="' + (isDirty?'markRoomClean(\''+roomNum+'\');document.getElementById(\'modal-room-quick-panel\').remove();':'showToast(\'该房间不需要清洁\',\'info\')') + '" style="width:100%;padding:10px;border:1px solid var(--text-muted);border-radius:6px;background:var(--bg);cursor:' + (isDirty?'pointer':'not-allowed') + ';display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;">' +
+    '<span>🧹</span><span style="font-size:12px;color:' + (isDirty?'var(--text)':'var(--text-muted)') + ';">标记已清洁</span></button>' +
+    '<button class="quick-action-btn" onclick="openRoomMaintenanceSetModal(\'' + roomNum + '\');document.getElementById(\'modal-room-quick-panel\').remove();" style="width:100%;padding:10px;border:1px solid var(--red);border-radius:6px;background:var(--red-bg);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">' +
+    '<span>🔧</span><span style="font-size:12px;color:var(--red);">设为维护中</span></button></div></div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:center;">' +
+    '<button onclick="showPage(\'room-detail\');renderRoomDetail(\'' + roomNum + '\');document.getElementById(\'modal-room-quick-panel\').remove();" style="padding:8px 16px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;color:var(--text);">查看房间详情 ›</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function markRoomClean(roomNum) {
+  for (var bi = 0; bi < bldStore.length; bi++) {
+    var r = bldStore[bi].rooms.find(function(x){ return x.num === roomNum; });
+    if (r && r.status === 'dirty') { r.status = 'empty'; break; }
+  }
+  showToast('✅ 房间 ' + roomNum + ' 已标记为已清洁', 'success');
+  renderRoomGrid && renderRoomGrid();
+}
+
+// ========== 改进5：会员等级权益配置弹窗 ==========
+var _memberLevels = [
+  {level:'普通会员', threshold:0, discount:100, pointsRate:1, color:'var(--text-muted)', perks:['基础积分累积','生日礼遇']},
+  {level:'银卡会员', threshold:1000, discount:95, pointsRate:1.5, color:'var(--silver)', perks:['95折住房优惠','1.5倍积分','生日礼包']},
+  {level:'金卡会员', threshold:5000, discount:90, pointsRate:2, color:'var(--gold)', perks:['9折住房优惠','2倍积分','免费升房','优先响应']},
+  {level:'黑金会员', threshold:20000, discount:80, pointsRate:3, color:'var(--black)', perks:['8折住房优惠','3倍积分','免费升房','免费早餐','专属管家']}
+];
+
+function openMemberLevelConfigModal() {
+  var existing = document.getElementById('modal-member-level');
+  if (existing) existing.remove();
+  var rows = _memberLevels.map(function(lv, idx){
+    var statusBadge = lv.level === '普通会员' ? '<span style="font-size:10px;padding:2px 6px;background:var(--bg);color:var(--text-muted);border-radius:4px;">系统默认</span>' : '';
+    return '<div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);gap:12px;" data-idx="' + idx + '">' +
+      '<div style="width:8px;height:8px;border-radius:50%;background:' + lv.color + ';flex-shrink:0;"></div>' +
+      '<div style="flex:1;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;"><span style="font-size:13px;font-weight:600;">' + lv.level + '</span>' + statusBadge + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">满 ¥' + lv.threshold.toLocaleString() + ' · 折扣 ' + lv.discount + '折 · 积分倍率 ' + lv.pointsRate + 'x</div>' +
+      '<div style="font-size:11px;color:var(--text-light);margin-top:2px;">' + (lv.perks||[]).join(' · ') + '</div></div>' +
+      '<div style="display:flex;gap:6px;">' +
+      '<button class="action-btn small" onclick="openEditMemberLevelModal(' + idx + ')" style="padding:4px 10px;">✏️ 编辑</button>' +
+      (lv.level !== '普通会员' ? '<button class="action-btn small red" onclick="deleteMemberLevel(' + idx + ')" style="padding:4px 10px;">🗑️</button>' : '') + '</div></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-member-level" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-level\').remove()">' +
+    '<div class="modal" style="width:620px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">👑 会员等级权益配置</div>' +
+    '<button onclick="document.getElementById(\'modal-member-level\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:16px 24px;">' +
+    '<div id="member-level-list" style="margin-bottom:16px;">' + rows + '</div>' +
+    '<button class="modal-btn" onclick="openAddMemberLevelModal()" style="width:100%;padding:10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">➕ 新增会员等级</button></div>' +
+    '<div style="padding:12px 24px;border-top:1px solid var(--border);background:var(--bg);border-radius:0 0 12px 12px;">' +
+    '<div style="font-size:11px;color:var(--text-muted);">💡 提示：修改等级权益会影响所有会员的计算方式，建议在低峰期操作</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openAddMemberLevelModal() {
+  var existing = document.getElementById('modal-member-level-form');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-member-level-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-level-form\').remove()">' +
+    '<div class="modal" style="width:460px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">➕ 新增会员等级</div>' +
+    '<button onclick="document.getElementById(\'modal-member-level-form\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="margin-bottom:14px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">等级名称 <span style="color:var(--red);">*</span></label>' +
+    '<input id="ml-form-name" type="text" placeholder="例如：铂金会员" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">升级门槛（累计消费¥）</label>' +
+    '<input id="ml-form-threshold" type="number" min="0" placeholder="0" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div>' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">住房折扣（折）</label>' +
+    '<input id="ml-form-discount" type="number" min="50" max="100" placeholder="95" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">积分倍率</label>' +
+    '<input id="ml-form-rate" type="number" min="1" max="10" step="0.5" value="1" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div>' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">等级颜色</label>' +
+    '<input id="ml-form-color" type="color" value="#722ed1" style="width:100%;height:38px;border:1px solid var(--border);border-radius:6px;cursor:pointer;"></div></div>' +
+    '<div style="margin-bottom:14px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">会员权益（一行一个）</label>' +
+    '<textarea id="ml-form-perks" rows="3" placeholder="95折住房优惠&#10;2倍积分累积&#10;免费升房" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;resize:none;box-sizing:border-box;"></textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-level-form\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="submitMemberLevelForm()">确认创建</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openEditMemberLevelModal(idx) {
+  var lv = _memberLevels[idx];
+  if (!lv) return;
+  var existing = document.getElementById('modal-member-level-form');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-member-level-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-level-form\').remove()">' +
+    '<div class="modal" style="width:460px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">✏️ 编辑会员等级：' + lv.level + '</div>' +
+    '<button onclick="document.getElementById(\'modal-member-level-form\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="margin-bottom:14px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">等级名称 <span style="color:var(--red);">*</span></label>' +
+    '<input id="ml-form-name" type="text" value="' + lv.level + '" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">升级门槛（累计消费¥）</label>' +
+    '<input id="ml-form-threshold" type="number" min="0" value="' + lv.threshold + '" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div>' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">住房折扣（折）</label>' +
+    '<input id="ml-form-discount" type="number" min="50" max="100" value="' + lv.discount + '" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">积分倍率</label>' +
+    '<input id="ml-form-rate" type="number" min="1" max="10" step="0.5" value="' + lv.pointsRate + '" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div>' +
+    '<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">等级颜色</label>' +
+    '<input id="ml-form-color" type="color" value="' + (lv.color.indexOf('#')>-1?lv.color:'#722ed1') + '" style="width:100%;height:38px;border:1px solid var(--border);border-radius:6px;cursor:pointer;"></div></div>' +
+    '<div style="margin-bottom:14px;"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">会员权益（一行一个）</label>' +
+    '<textarea id="ml-form-perks" rows="3" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;resize:none;box-sizing:border-box;">' + (lv.perks||[]).join('\n') + '</textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-level-form\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="submitMemberLevelForm(' + idx + ')">保存修改</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitMemberLevelForm(editIdx) {
+  var name = document.getElementById('ml-form-name').value.trim();
+  var threshold = parseInt(document.getElementById('ml-form-threshold').value) || 0;
+  var discount = parseInt(document.getElementById('ml-form-discount').value) || 100;
+  var rate = parseFloat(document.getElementById('ml-form-rate').value) || 1;
+  var color = document.getElementById('ml-form-color').value;
+  var perks = (document.getElementById('ml-form-perks').value || '').split('\n').filter(function(p){ return p.trim(); });
+  if (!name) { showToast('请填写等级名称', 'error'); return; }
+  var newLv = {level:name, threshold:threshold, discount:discount, pointsRate:rate, color:color, perks:perks};
+  if (editIdx !== undefined && editIdx !== null) {
+    _memberLevels[editIdx] = newLv;
+    showToast('✅ 会员等级 ' + name + ' 已修改', 'success');
+  } else {
+    _memberLevels.push(newLv);
+    _memberLevels.sort(function(a,b){ return a.threshold - b.threshold; });
+    showToast('✅ 新增会员等级 ' + name, 'success');
+  }
+  document.getElementById('modal-member-level-form').remove();
+  openMemberLevelConfigModal();
+}
+
+function deleteMemberLevel(idx) {
+  var lv = _memberLevels[idx];
+  if (!lv) return;
+  if (!confirm('确定删除会员等级 "' + lv.level + '"？')) return;
+  _memberLevels.splice(idx, 1);
+  showToast('已删除 ' + lv.level, 'info');
+  openMemberLevelConfigModal();
+}
