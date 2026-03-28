@@ -545,6 +545,123 @@ function showPage(pageName) {
 }
 
 // ======= 全局 Toast 提示 =======
+// ============================================================
+// 【物联后台 v3.5 改进 2】账单消费异常检测弹窗
+// 理由：结算中心（行~909）「消费异常检测」按钮已渲染但 openBillAnomalyPanel 函数未定义
+// 功能：检测客人账单中的异常消费（超时费、损坏赔付、加购物品、小冰箱消耗等），支持一键结算
+// ============================================================
+var billAnomalyGuests = [
+  {room:'301', name:'张三', phone:'138****1234', checkin:'2026-03-26', checkout:'今天', nights:2, roomFee:328, extras:80, deposit:100, anomaly:180, anomalyDesc:'退房超时4h + 床单污渍赔付'},
+  {room:'203', name:'李四', phone:'139****5678', checkin:'2026-03-25', checkout:'昨天', nights:1, roomFee:168, extras:28, deposit:100, anomaly:68, anomalyDesc:'小冰箱饮料消费'},
+  {room:'102', name:'王五', phone:'137****9012', checkin:'2026-03-27', checkout:'今天', nights:1, roomFee:228, extras:0, deposit:100, anomaly:0, anomalyDesc:''},
+  {room:'305', name:'赵六', phone:'136****3456', checkin:'2026-03-24', checkout:'昨天', nights:3, roomFee:498, extras:150, deposit:100, anomaly:0, anomalyDesc:'加购早餐×3份'},
+  {room:'201', name:'孙九', phone:'135****7890', checkin:'2026-03-23', checkout:'前天', nights:2, roomFee:328, extras:0, deposit:100, anomaly:50, anomalyDesc:'退房超时2h'}
+];
+
+function openBillAnomalyPanel() {
+  var existing = document.getElementById('modal-bill-anomaly');
+  if (existing) existing.remove();
+  var totalAnomaly = billAnomalyGuests.reduce(function(s, g) { return s + g.anomaly; }, 0);
+  var hasAnomaly = billAnomalyGuests.filter(function(g){ return g.anomaly > 0; });
+  var rowsHtml = billAnomalyGuests.map(function(g) {
+    var anomalyColor = g.anomaly > 0 ? 'var(--red)' : 'var(--green)';
+    var anomalyBg = g.anomaly > 0 ? 'var(--red-bg)' : 'var(--green-bg)';
+    var refund = g.deposit - g.anomaly + g.extras;
+    return '<tr style="cursor:pointer;" onclick="openGuestBillAnomaly(\'' + g.room + '\')">' +
+      '<td><span style="font-weight:700;color:var(--blue);">' + g.room + '</span></td>' +
+      '<td><span style="font-weight:600;">' + g.name + '</span></td>' +
+      '<td style="font-size:12px;color:var(--text-muted);">' + g.checkout + '</td>' +
+      '<td style="font-size:12px;"><span style="padding:2px 6px;background:' + anomalyBg + ';color:' + anomalyColor + ';border-radius:8px;font-size:11px;font-weight:600;">' + (g.anomaly > 0 ? '⚠️ ¥' + g.anomaly : '✅ 正常') + '</span></td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + g.anomalyDesc + '</td>' +
+      '<td><button class="action-btn small" style="padding:3px 8px;font-size:11px;">处理</button></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-bill-anomaly" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-bill-anomaly\').remove()">' +
+    '<div class="modal" style="width:760px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:15px;font-weight:700;">📊 账单消费异常检测</div>' +
+    '<span style="padding:3px 10px;background:var(--red-bg);border:1px solid var(--red);border-radius:12px;font-size:11px;color:var(--red);font-weight:600;">⚠️ ' + hasAnomaly.length + ' 条异常</span>' +
+    '<span style="padding:3px 10px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:12px;font-size:11px;color:var(--orange);font-weight:600;">总计 ¥' + totalAnomaly + '</span></div>' +
+    '<button onclick="document.getElementById(\'modal-bill-anomaly\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:16px 24px;">' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:14px;background:var(--red-bg);border-radius:10px;text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--red);">' + hasAnomaly.length + '</div><div style="font-size:11px;color:var(--red);">异常账单</div></div>' +
+    '<div style="padding:14px;background:var(--orange-bg);border-radius:10px;text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--orange);">¥' + totalAnomaly + '</div><div style="font-size:11px;color:var(--orange);">待收金额</div></div>' +
+    '<div style="padding:14px;background:var(--green-bg);border-radius:10px;text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--green);">' + (billAnomalyGuests.length - hasAnomaly.length) + '</div><div style="font-size:11px;color:var(--green);">正常账单</div></div>' +
+    '<div style="padding:14px;background:var(--blue-bg);border-radius:10px;text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--blue);">' + billAnomalyGuests.length + '</div><div style="font-size:11px;color:var(--blue);">总记录</div></div></div>' +
+    '<div style="padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--orange);">💡 点击任意行可查看客人账单详情并处理异常项。超时费按50元/h计算，赔付金额由前台确认。</div>' +
+    '<table class="table" style="width:100%;"><thead><tr><th>房间</th><th>客人</th><th>退房时间</th><th>异常状态</th><th>异常描述</th><th>操作</th></tr></thead>' +
+    '<tbody>' + rowsHtml + '</tbody></table></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-bill-anomaly\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="autoResolveAllAnomalies()" style="background:var(--orange);border-color:var(--orange);color:white;">🤖 AI批量处理</button>' +
+    '<button class="modal-btn primary" onclick="exportAnomalyReport()" style="background:var(--blue);border-color:var(--blue);">📤 导出报表</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openGuestBillAnomaly(roomNum) {
+  var g = billAnomalyGuests.find(function(x){ return x.room === roomNum; });
+  if (!g) return;
+  var existing = document.getElementById('modal-guest-bill-detail');
+  if (existing) existing.remove();
+  var totalPayable = g.roomFee + g.extras + g.anomaly;
+  var refund = g.deposit - g.anomaly;
+  var anomalyItems = [];
+  if (g.anomalyDesc.indexOf('超时') > -1) anomalyItems.push({icon:'⏰', label:'退房超时费', amount:50});
+  if (g.anomalyDesc.indexOf('赔付') > -1 || g.anomalyDesc.indexOf('污渍') > -1) anomalyItems.push({icon:'💔', label:'损坏赔付', amount:80});
+  if (g.anomalyDesc.indexOf('小冰箱') > -1 || g.anomalyDesc.indexOf('饮料') > -1) anomalyItems.push({icon:'🛒', label:'加购物品', amount:g.anomaly - (g.anomalyDesc.indexOf('超时') > -1 ? 50 : 0)});
+  var anomalyRows = anomalyItems.map(function(a) {
+    return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
+      '<span>' + a.icon + ' ' + a.label + '</span><span style="font-weight:700;color:var(--red);">¥' + a.amount + '</span></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-guest-bill-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-guest-bill-detail\').remove()">' +
+    '<div class="modal" style="width:480px;max-height:88vh;overflow-y:auto;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🧾 账单详情 — ' + g.room + ' ' + g.name + '</div>' +
+    '<button onclick="document.getElementById(\'modal-guest-bill-detail\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:12px;">' +
+    '<div style="padding:8px;background:var(--bg);border-radius:6px;"><div style="color:var(--text-muted);margin-bottom:2px;">入住日期</div><div style="font-weight:600;">' + g.checkin + '</div></div>' +
+    '<div style="padding:8px;background:var(--bg);border-radius:6px;"><div style="color:var(--text-muted);margin-bottom:2px;">退房日期</div><div style="font-weight:600;">' + g.checkout + '</div></div></div>' +
+    '<div style="margin-bottom:14px;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">📋 账单明细</div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;">' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;"><span>房费（' + g.nights + '晚）</span><span>¥' + g.roomFee + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;"><span>加购消费</span><span>¥' + g.extras + '</span></div>' +
+    (anomalyItems.length > 0 ? anomalyRows : '') +
+    '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid var(--border);margin-top:6px;font-size:15px;font-weight:700;"><span>应缴总额</span><span style="color:var(--red);">¥' + totalPayable + '</span></div></div></div>' +
+    '<div style="margin-bottom:14px;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">💰 押金信息</div>' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;">' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;"><span>已缴押金</span><span style="font-weight:700;color:var(--blue);">¥' + g.deposit + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;"><span>异常扣款</span><span style="font-weight:700;color:var(--red);">-¥' + g.anomaly + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border);font-size:14px;font-weight:700;"><span>应退/应补</span><span style="color:' + (refund >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (refund >= 0 ? '¥' + refund + ' 退' : '¥' + Math.abs(refund) + ' 补') + '</span></div></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-guest-bill-detail\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmGuestAnomalySettlement(\'' + g.room + '\')" style="background:var(--green);border-color:var(--green);">✅ 确认结算</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function autoResolveAllAnomalies() {
+  var count = billAnomalyGuests.filter(function(g){ return g.anomaly > 0; }).length;
+  showToast('🤖 AI批量处理完成，已自动标记 ' + count + ' 条异常账单', 'success');
+}
+
+function exportAnomalyReport() {
+  var csv = '\uFEFF房间,客人,退房日期,异常金额,异常描述\n';
+  billAnomalyGuests.forEach(function(g) {
+    csv += g.room + ',' + g.name + ',' + g.checkout + ',' + g.anomaly + ',"' + g.anomalyDesc + '"\n';
+  });
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '账单异常报表_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv';
+  a.click(); showToast('📤 报表已导出', 'success');
+}
+
+function confirmGuestAnomalySettlement(roomNum) {
+  document.getElementById('modal-guest-bill-detail') && document.getElementById('modal-guest-bill-detail').remove();
+  document.getElementById('modal-bill-anomaly') && document.getElementById('modal-bill-anomaly').remove();
+  showToast('✅ 房间 ' + roomNum + ' 账单异常已结算确认', 'success');
+}
+
 function showToast(msg, type) {
   if (type === undefined) type = 'info';
   var container = document.getElementById('toast-container') || (function() {
@@ -19239,6 +19356,99 @@ function openEnergyRoomDetail(room) {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
+// ============================================================
+// 【物联后台 v3.5 改进 3】房间级节能阈值设置弹窗
+// 理由：原系统只有全局节能规则，缺少按房间设置差异化合闸阈值的功能（行~19235备注）
+// 功能：每个房间独立设置日用电上限、月预算上限、是否启用节能控制，房间详情中可查看阈值状态
+// ============================================================
+var _energyRoomSettings = {
+  '301': {dailyLimit:15, monthlyLimit:400, enabled:true, desc:'亲子间·高价房'},
+  '302': {dailyLimit:12, monthlyLimit:320, enabled:true, desc:'大床房'},
+  '303': {dailyLimit:10, monthlyLimit:280, enabled:false, desc:'标准间'},
+  '304': {dailyLimit:15, monthlyLimit:400, enabled:true, desc:'亲子间'},
+  '305': {dailyLimit:12, monthlyLimit:320, enabled:true, desc:'大床房'},
+  '201': {dailyLimit:10, monthlyLimit:280, enabled:false, desc:'标准间'},
+  '202': {dailyLimit:12, monthlyLimit:320, enabled:true, desc:'大床房'},
+  '203': {dailyLimit:10, monthlyLimit:280, enabled:true, desc:'标准间'}
+};
+
+function openRoomEnergyThresholdModal() {
+  var existing = document.getElementById('modal-room-energy');
+  if (existing) existing.remove();
+  var rooms = Object.keys(_energyRoomSettings);
+  var rowsHtml = rooms.map(function(room) {
+    var s = _energyRoomSettings[room];
+    var enabledBadge = s.enabled
+      ? '<span style="padding:2px 8px;background:var(--green-bg);color:var(--green);border-radius:8px;font-size:10px;font-weight:600;">🟢 已启用</span>'
+      : '<span style="padding:2px 8px;background:var(--bg);color:var(--text-muted);border-radius:8px;font-size:10px;font-weight:600;">⚪ 已关闭</span>';
+    return '<tr>' +
+      '<td><span style="font-weight:700;color:var(--blue);">' + room + '</span></td>' +
+      '<td style="font-size:12px;color:var(--text-muted);">' + s.desc + '</td>' +
+      '<td><span style="padding:2px 8px;background:var(--orange-bg);color:var(--orange);border-radius:8px;font-size:11px;font-weight:600;">' + s.dailyLimit + ' kWh/日</span></td>' +
+      '<td><span style="padding:2px 8px;background:var(--blue-bg);color:var(--blue);border-radius:8px;font-size:11px;font-weight:600;">' + s.monthlyLimit + ' kWh/月</span></td>' +
+      '<td>' + enabledBadge + '</td>' +
+      '<td><button class="action-btn small" onclick="openRoomEnergyEdit(\'' + room + '\')" style="padding:3px 8px;font-size:11px;">✏️ 设置</button></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-room-energy" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-room-energy\').remove()">' +
+    '<div class="modal" style="width:760px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:15px;font-weight:700;">⚡ 房间级节能阈值设置</div>' +
+    '<span style="padding:3px 10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:12px;font-size:11px;color:var(--blue);font-weight:600;">' + rooms.length + ' 个房间</span></div>' +
+    '<button onclick="document.getElementById(\'modal-room-energy\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 20px;">' +
+    '<div style="padding:10px 0 6px;font-size:12px;color:var(--text-muted);">💡 每个房间可独立设置用电阈值，超出后将触发告警并可自动合闸。关闭的房间不受节能规则控制。</div>' +
+    '<table class="table" style="width:100%;"><thead><tr><th>房间</th><th>描述</th><th>日上限</th><th>月预算</th><th>状态</th><th>操作</th></tr></thead>' +
+    '<tbody>' + rowsHtml + '</tbody></table></div>' +
+    '<div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-room-energy\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="applyAllRoomThresholds()" style="background:var(--green);border-color:var(--green);">✅ 应用全部阈值</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openRoomEnergyEdit(roomNum) {
+  var s = _energyRoomSettings[roomNum] || {dailyLimit:10, monthlyLimit:280, enabled:false, desc:''};
+  var existing = document.getElementById('modal-room-energy-edit');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-room-energy-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-room-energy-edit\').remove()">' +
+    '<div class="modal" style="width:440px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">⚙️ ' + roomNum + ' 节能设置</div>' +
+    '<button onclick="document.getElementById(\'modal-room-energy-edit\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">房间描述</label>' +
+    '<input type="text" class="form-input" id="rei-desc" value="' + s.desc + '" placeholder="如：亲子间·高价房"></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">日用电上限（kWh）</label>' +
+    '<input type="number" class="form-input" id="rei-daily" value="' + s.dailyLimit + '" min="1" max="50"></div>' +
+    '<div class="form-group"><label class="form-label">月预算（kWh）</label>' +
+    '<input type="number" class="form-input" id="rei-monthly" value="' + s.monthlyLimit + '" min="10" max="2000"></div></div>' +
+    '<div class="form-group"><label class="form-label" style="display:flex;align-items:center;gap:8px;">' +
+    '<input type="checkbox" id="rei-enabled"' + (s.enabled ? ' checked' : '') + ' style="accent-color:var(--green);width:16px;height:16px;">' +
+    '启用节能控制（超出阈值自动告警/合闸）</label></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;font-size:11px;color:var(--orange);">⚠️ 启用后，当日用电超过 ' + s.dailyLimit + ' kWh 时将自动推送告警；超过 ' + (s.dailyLimit * 1.5) + ' kWh 时可自动合闸断电。</div>' +
+    '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-room-energy-edit\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="saveRoomEnergyEdit(\'' + roomNum + '\')" style="background:var(--blue);border-color:var(--blue);">保存设置</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function saveRoomEnergyEdit(roomNum) {
+  _energyRoomSettings[roomNum] = {
+    desc: document.getElementById('rei-desc').value.trim(),
+    dailyLimit: parseInt(document.getElementById('rei-daily').value) || 10,
+    monthlyLimit: parseInt(document.getElementById('rei-monthly').value) || 280,
+    enabled: document.getElementById('rei-enabled').checked
+  };
+  document.getElementById('modal-room-energy-edit') && document.getElementById('modal-room-energy-edit').remove();
+  document.getElementById('modal-room-energy') && document.getElementById('modal-room-energy').remove();
+  openRoomEnergyThresholdModal();
+  showToast('✅ ' + roomNum + ' 节能阈值已保存', 'success');
+}
+
+function applyAllRoomThresholds() {
+  showToast('✅ 已向所有房间设备同步节能阈值配置（共' + Object.keys(_energyRoomSettings).length + '个房间）', 'success');
+}
+
 function openEnergyRulesConfigModal() {
   var existing = document.getElementById('modal-energy-rules');
   if (existing) existing.remove();
@@ -29204,6 +29414,117 @@ var invoiceStore = [
   {id:'INV202603004', company:'广州恒通会议服务', tax:'91440101MA59FXYZ92', amount:3200, email:'order@hengtonghz.com', date:'2026-03-10', status:'已作废', type:'增值税普通发票', voidReason:'重复开票'},
   {id:'INV202603005', company:'杭州阿里云计算', tax:'91330108MA27WXYZ34', amount:890, email:'finance@aliyun.com', date:'2026-03-25', status:'已完成', type:'增值税普通发票'}
 ];
+
+// ============================================================
+// 【物联后台 v3.5 改进 1】发票抬头管理弹窗
+// 理由：发票页面（行~13818）「🏛️ 发票抬头管理」按钮已渲染但 openInvoiceHeaderManageModal 函数未定义
+// 功能：增删改查发票抬头（公司名称、税号、地址、电话、开户行、账号），支持默认抬头设置
+// ============================================================
+var _invoiceHeaderEditId = null;
+
+function openInvoiceHeaderManageModal() {
+  var existing = document.getElementById('modal-invoice-header');
+  if (existing) existing.remove();
+  var rowsHtml = invoiceHeaderStore.length === 0
+    ? '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">暂无发票抬头，点击下方按钮添加</div>'
+    : invoiceHeaderStore.map(function(h) {
+      var defaultBadge = h.default ? '<span style="padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:8px;font-size:10px;font-weight:600;margin-left:6px;">默认</span>' : '';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--border);">' +
+        '<div style="flex:1;min-width:0;">' +
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
+        '<span style="font-weight:700;font-size:13px;">' + h.company + '</span>' + defaultBadge + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);">税号：' + h.tax + '</div>' +
+        '<div style="font-size:10px;color:var(--text-muted);">' + (h.addr || '') + (h.bank ? ' · ' + h.bank : '') + '</div></div>' +
+        '<div style="display:flex;gap:5px;flex-shrink:0;">' +
+        '<button class="action-btn small" onclick="openInvoiceHeaderEditForm(\'' + h.id + '\')" style="padding:3px 8px;font-size:11px;">✏️</button>' +
+        '<button class="action-btn small" onclick="setDefaultInvoiceHeader(\'' + h.id + '\')"' + (h.default ? ' disabled style="opacity:0.4;"' : '') + '>⭐</button>' +
+        '<button class="action-btn small red" onclick="deleteInvoiceHeader(\'' + h.id + '\')" style="padding:3px 8px;font-size:11px;">🗑️</button></div></div>';
+    }).join('');
+  var html = '<div class="modal-overlay" id="modal-invoice-header" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-header\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🏛️ 发票抬头管理</div>' +
+    '<span style="padding:3px 10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:12px;font-size:11px;color:var(--blue);font-weight:600;">' + invoiceHeaderStore.length + ' 个抬头</span>' +
+    '<button onclick="document.getElementById(\'modal-invoice-header\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:12px 20px;">' + rowsHtml + '</div>' +
+    '<div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-header\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="openInvoiceHeaderEditForm(null)" style="background:var(--blue);border-color:var(--blue);">➕ 添加抬头</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openInvoiceHeaderEditForm(editId) {
+  _invoiceHeaderEditId = editId;
+  var h = editId ? invoiceHeaderStore.find(function(x){ return x.id === editId; }) : null;
+  var title = h ? '✏️ 编辑发票抬头' : '➕ 添加发票抬头';
+  var btnLabel = h ? '保存修改' : '确认添加';
+  var existing = document.getElementById('modal-invoice-header-form');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-invoice-header-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-header-form\').remove()">' +
+    '<div class="modal" style="width:480px;max-height:88vh;overflow-y:auto;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">' + title + '</div>' +
+    '<button onclick="document.getElementById(\'modal-invoice-header-form\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">单位名称 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="ihf-company" value="' + (h ? h.company : '') + '" placeholder="请输入单位全称"></div>' +
+    '<div class="form-group"><label class="form-label">纳税人识别号 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="ihf-tax" value="' + (h ? h.tax : '') + '" placeholder="请输入18位税号" maxlength="20"></div>' +
+    '<div class="form-group"><label class="form-label">注册地址</label>' +
+    '<input type="text" class="form-input" id="ihf-addr" value="' + (h ? (h.addr||'') : '') + '" placeholder="请输入注册地址"></div>' +
+    '<div class="form-group"><label class="form-label">注册电话</label>' +
+    '<input type="text" class="form-input" id="ihf-phone" value="' + (h ? (h.phone||'') : '') + '" placeholder="请输入注册电话"></div>' +
+    '<div class="form-group"><label class="form-label">开户银行</label>' +
+    '<input type="text" class="form-input" id="ihf-bank" value="' + (h ? (h.bank||'') : '') + '" placeholder="请输入开户银行"></div>' +
+    '<div class="form-group"><label class="form-label">银行账号</label>' +
+    '<input type="text" class="form-input" id="ihf-account" value="' + (h ? (h.account||'') : '') + '" placeholder="请输入银行账号"></div>' +
+    '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-header-form\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitInvoiceHeaderForm()" style="background:var(--blue);border-color:var(--blue);">' + btnLabel + '</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function editInvoiceHeader(id) { openInvoiceHeaderEditForm(id); }
+
+function setDefaultInvoiceHeader(id) {
+  invoiceHeaderStore.forEach(function(h){ h.default = false; });
+  var h = invoiceHeaderStore.find(function(x){ return x.id === id; });
+  if (h) { h.default = true; showToast('⭐「' + h.company + '」已设为默认发票抬头', 'success'); }
+  document.getElementById('modal-invoice-header') && document.getElementById('modal-invoice-header').remove();
+  openInvoiceHeaderManageModal();
+}
+
+function deleteInvoiceHeader(id) {
+  var h = invoiceHeaderStore.find(function(x){ return x.id === id; });
+  if (!h) return;
+  if (h.default) { showToast('默认抬头无法删除，请先设置另一个默认', 'warning'); return; }
+  if (!confirm('确认删除发票抬头「' + h.company + '」？')) return;
+  invoiceHeaderStore = invoiceHeaderStore.filter(function(x){ return x.id !== id; });
+  document.getElementById('modal-invoice-header') && document.getElementById('modal-invoice-header').remove();
+  openInvoiceHeaderManageModal();
+  showToast('🗑️ 已删除', 'success');
+}
+
+function submitInvoiceHeaderForm() {
+  var company = document.getElementById('ihf-company').value.trim();
+  var tax = document.getElementById('ihf-tax').value.trim();
+  var addr = document.getElementById('ihf-addr').value.trim();
+  var phone = document.getElementById('ihf-phone').value.trim();
+  var bank = document.getElementById('ihf-bank').value.trim();
+  var account = document.getElementById('ihf-account').value.trim();
+  if (!company || !tax) { showToast('请填写单位名称和纳税人识别号', 'error'); return; }
+  if (_invoiceHeaderEditId) {
+    var h = invoiceHeaderStore.find(function(x){ return x.id === _invoiceHeaderEditId; });
+    if (h) { h.company = company; h.tax = tax; h.addr = addr; h.phone = phone; h.bank = bank; h.account = account; }
+    showToast('✅ 发票抬头已更新', 'success');
+  } else {
+    invoiceHeaderStore.push({id:'H' + Date.now(), company:company, tax:tax, addr:addr, phone:phone, bank:bank, account:account, default:false});
+    showToast('✅ 新发票抬头「' + company + '」已添加', 'success');
+  }
+  document.getElementById('modal-invoice-header-form') && document.getElementById('modal-invoice-header-form').remove();
+  document.getElementById('modal-invoice-header') && document.getElementById('modal-invoice-header').remove();
+  openInvoiceHeaderManageModal();
+}
 
 function openInvoiceIssueModal() {
   var existing = document.getElementById('modal-invoice-issue');
