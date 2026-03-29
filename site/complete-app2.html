@@ -23781,6 +23781,513 @@ function reissueInvoice(invId) {
   if (typeof updateInvoiceStats === 'function') updateInvoiceStats();
 }
 
+// 【v4改进1】通知中心完整功能实现
+var _notifList = [
+  {id:1,type:'alert',title:'⚠️ 设备电量告警',content:'303房间门锁电量低于20%，请及时更换电池',time:'10分钟前',read:false,room:'303'},
+  {id:2,type:'alert',title:'🚨 长时间离线告警',content:'306房间门锁已离线超过2小时，请检查网络',time:'25分钟前',read:false,room:'306'},
+  {id:3,type:'alert',title:'⚠️ 门锁异常',content:'201房间门锁被暴力拆卸告警',time:'1小时前',read:true,room:'201'},
+  {id:4,type:'device',title:'📱 设备同步完成',content:'主楼3层全部设备数据已同步至云端',time:'15分钟前',read:false},
+  {id:5,type:'device',title:'📱 新设备登记',content:'东配楼2层新进门锁已登记，UUID：LK-20260329-001',time:'30分钟前',read:true},
+  {id:6,type:'workorder',title:'🛠️ 工单提醒',content:'客户投诉工单#WO-2026032901等待处理，距 SLA 剩余2小时',time:'20分钟前',read:false},
+  {id:7,type:'workorder',title:'🛠️ 工单完成',content:'维修工单#WO-2026032803已完成，客户已确认',time:'2小时前',read:true},
+  {id:8,type:'system',title:'⚙️ 系统通知',content:'物联后台已自动更新至 v4.2.1 版本',time:'1天前',read:true},
+  {id:9,type:'alert',title:'⚠️ 入住率预警',content:'今日入住率已达95%，仅剩1间空房',time:'3小时前',read:true},
+  {id:10,type:'device',title:'📱 固件升级',content:'5台门锁设备已成功升级至最新固件 v2.3.1',time:'5小时前',read:true},
+  {id:11,type:'workorder',title:'🛠️ 新工单',content:'发票索要工单#WO-2026032902已创建，等待财务处理',time:'40分钟前',read:false},
+  {id:12,type:'system',title:'⚙️ 数据备份',content:'系统自动备份已于凌晨3:00完成，备份文件大小：1.2GB',time:'1天前',read:true}
+];
+var _currentNotifFilter = {type:'all', status:'all'};
+
+function renderNotifList() {
+  var body = document.getElementById('notif-list-body');
+  if (!body) return;
+  var filtered = _notifList.filter(function(n) {
+    var typeMatch = _currentNotifFilter.type === 'all' || n.type === _currentNotifFilter.type;
+    var statusMatch = _currentNotifFilter.status === 'all' || 
+      (_currentNotifFilter.status === 'unread' && !n.read) || 
+      (_currentNotifFilter.status === 'read' && n.read);
+    return typeMatch && statusMatch;
+  });
+  var typeIcon = {alert:'🚨',device:'📱',workorder:'🛠️',system:'⚙️'};
+  var typeColor = {alert:'var(--red)',device:'var(--blue)',workorder:'var(--green)',system:'var(--purple)'};
+  var rows = filtered.map(function(n) {
+    var icon = typeIcon[n.type] || '📨';
+    var color = typeColor[n.type] || 'var(--blue)';
+    var bg = n.read ? 'background:#f8f9fa;' : 'background:#e8f4ff;';
+    var bold = n.read ? '' : 'font-weight:600;';
+    return '<div style="padding:14px 20px;border-bottom:1px solid var(--border);' + bg + 'cursor:pointer;display:flex;align-items:flex-start;gap:12px;" onclick="handleNotifClick(' + n.id + ')">' +
+      '<div style="width:36px;height:36px;border-radius:50%;background:' + color.replace('var(--','') + ';opacity:0.15;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">' + icon + '</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+          '<span style="font-size:13px;' + bold + 'color:var(--text);">' + n.title + '</span>' +
+          (n.read ? '' : '<span style="width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0;"></span>') +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">' + n.content + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);">' + n.time + (n.room ? ' · 房间' + n.room : '') + '</div></div>' +
+      '<button class="action-btn small red" onclick="event.stopPropagation();deleteNotif(' + n.id + ')" style="padding:3px 8px;font-size:10px;flex-shrink:0;">删除</button></div>';
+  }).join('');
+  body.innerHTML = rows || '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">暂无通知</div>';
+  var countEl = document.getElementById('notif-list-count');
+  if (countEl) countEl.textContent = '共 ' + filtered.length + ' 条通知';
+  updateNotifStats();
+}
+
+function updateNotifStats() {
+  var all = _notifList.length;
+  var alerts = _notifList.filter(function(n){ return n.type === 'alert'; }).length;
+  var devices = _notifList.filter(function(n){ return n.type === 'device'; }).length;
+  var workorders = _notifList.filter(function(n){ return n.type === 'workorder'; }).length;
+  var unread = _notifList.filter(function(n){ return !n.read; }).length;
+  var el = document.getElementById('notif-stat-all'); if (el) el.textContent = all;
+  var el2 = document.getElementById('notif-stat-alert'); if (el2) el2.textContent = alerts;
+  var el3 = document.getElementById('notif-stat-device'); if (el3) el3.textContent = devices;
+  var el4 = document.getElementById('notif-stat-workorder'); if (el4) el4.textContent = workorders;
+  var el5 = document.getElementById('notif-stat-unread'); if (el5) el5.textContent = unread;
+}
+
+function filterNotifByType(type, el) {
+  _currentNotifFilter.type = type;
+  document.querySelectorAll('#page-notif .stat-card').forEach(function(c){ c.style.borderColor = 'var(--border)'; });
+  if (el) el.style.borderColor = 'var(--blue)';
+  applyNotifFilter();
+}
+
+function applyNotifFilter() {
+  var typeFilter = document.getElementById('notif-type-filter');
+  _currentNotifFilter.type = typeFilter ? typeFilter.value : 'all';
+  var statusFilter = document.getElementById('notif-status-filter');
+  _currentNotifFilter.status = statusFilter ? statusFilter.value : 'all';
+  renderNotifList();
+  var resultEl = document.getElementById('notif-filter-result');
+  if (resultEl) resultEl.textContent = '筛选完成';
+}
+
+function markAllNotifRead() {
+  _notifList.forEach(function(n){ n.read = true; });
+  renderNotifList();
+  showToast('✅ 已将所有通知标为已读', 'success');
+}
+
+function clearAllNotif() {
+  var existing = document.getElementById('modal-notif-clear');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-notif-clear" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:380px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:28px;">⚠️</div><div style="font-size:15px;font-weight:700;">确认清空通知</div></div>' +
+    '<div style="padding:20px 24px;"><p style="font-size:13px;color:var(--text);margin-bottom:12px;">确定要清空全部 ' + _notifList.length + ' 条通知吗？</p>' +
+    '<p style="font-size:12px;color:var(--orange);padding:10px;background:var(--orange-bg);border-radius:6px;">⚠️ 此操作不可恢复</p></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="closeModal(\'notif-clear\')">取消</button>' +
+    '<button class="modal-btn" onclick="doClearAllNotif()" style="background:var(--red);color:white;border:none;">🗑️ 确认清空</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doClearAllNotif() {
+  _notifList = [];
+  closeModal('notif-clear');
+  renderNotifList();
+  showToast('🗑️ 通知已全部清空', 'success');
+}
+
+function handleNotifClick(id) {
+  var n = _notifList.find(function(x){ return x.id === id; });
+  if (n && !n.read) { n.read = true; renderNotifList(); }
+  if (n && n.type === 'alert' && n.room) {
+    showToast('📍 正在跳转到房间 ' + n.room + ' 的设备详情...', 'info');
+  } else if (n && n.type === 'workorder') {
+    showToast('🛠️ 正在跳转到工单详情...', 'info');
+  } else if (n) {
+    showToast(n.title + '：' + n.content, 'info');
+  }
+}
+
+function deleteNotif(id) {
+  _notifList = _notifList.filter(function(n){ return n.id !== id; });
+  renderNotifList();
+  showToast('🗑️ 通知已删除', 'success');
+}
+
+// 绑定通知中心事件
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    renderNotifList();
+    var notifTypeFilter = document.getElementById('notif-type-filter');
+    if (notifTypeFilter) notifTypeFilter.addEventListener('change', applyNotifFilter);
+    var notifStatusFilter = document.getElementById('notif-status-filter');
+    if (notifStatusFilter) notifStatusFilter.addEventListener('change', applyNotifFilter);
+  }, 300);
+});
+
+// 【v4改进2】客房清洁任务分配完整弹窗
+function openHKTaskAddModal() {
+  var existing = document.getElementById('modal-hk-task');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-hk-task" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:500px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:28px;">🧹</div><div style="font-size:15px;font-weight:700;">分配清洁任务</div>' +
+    '<button onclick="closeModal(\'hk-task\')" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">房间号 <span class="required">*</span></label>' +
+    '<select class="form-select" id="hkt-room" style="width:100%;">' +
+    '<option value="">-- 选择房间 --</option>' +
+    '<option value="301">301（亲子间，退房脏房）</option>' +
+    '<option value="302">302（亲子间，退房脏房）</option>' +
+    '<option value="303">303（大床房，住客离店）</option>' +
+    '<option value="304">304（大床房，退房脏房）</option></select></div>' +
+    '<div class="form-group"><label class="form-label">优先级</label>' +
+    '<select class="form-select" id="hkt-priority" style="width:100%;">' +
+    '<option value="normal">⚡ 普通</option>' +
+    '<option value="urgent">🚨 紧急</option>' +
+    '<option value="low">🔽 低</option></select></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">负责保洁员 <span class="required">*</span></label>' +
+    '<select class="form-select" id="hkt-staff" style="width:100%;">' +
+    '<option value="">-- 选择保洁员 --</option>' +
+    '<option value="李丽">李丽（当前空闲）</option>' +
+    '<option value="王芳">王芳（当前空闲）</option>' +
+    '<option value="张梅">张梅（清洁中-201）</option>' +
+    '<option value="刘婷">刘婷（当前空闲）</option></select></div>' +
+    '<div class="form-group"><label class="form-label">预计时长</label>' +
+    '<select class="form-select" id="hkt-duration" style="width:100%;">' +
+    '<option value="30">30分钟</option>' +
+    '<option value="45" selected>45分钟</option>' +
+    '<option value="60">60分钟</option>' +
+    '<option value="90">90分钟</option></select></div></div>' +
+    '<div class="form-group"><label class="form-label">备注说明</label>' +
+    '<textarea class="form-textarea" id="hkt-note" placeholder="可选，填写特殊清洁要求..." style="min-height:60px;width:100%;"></textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="closeModal(\'hk-task\')">取消</button>' +
+    '<button class="modal-btn" onclick="submitHKTask()" style="background:var(--blue);color:white;border:none;">🧹 确认分配</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitHKTask() {
+  var room = document.getElementById('hkt-room') ? document.getElementById('hkt-room').value : '';
+  var staff = document.getElementById('hkt-staff') ? document.getElementById('hkt-staff').value : '';
+  var priority = document.getElementById('hkt-priority') ? document.getElementById('hkt-priority').value : 'normal';
+  if (!room) { showToast('请选择房间号', 'error'); return; }
+  if (!staff) { showToast('请选择负责保洁员', 'error'); return; }
+  var prioLabel = {urgent:'🚨 紧急', normal:'⚡ 普通', low:'🔽 低'};
+  closeModal('hk-task');
+  showToast('🧹 已将房间 ' + room + ' 清洁任务分配给 ' + staff + '（优先级：' + prioLabel[priority] + '）', 'success');
+  // 更新保洁员下拉显示
+  var staffSel = document.querySelector('#hk-task-body tr td select');
+  if (staffSel) applyHousekeepingFilter();
+}
+
+// 【v4改进3】办理记录完整CRUD功能
+var _recordList = [
+  {id:1,type:'in',name:'张三',room:'301',roomType:'亲子间',phone:'138****8888',time:'2026-03-27 10:30',status:'active'},
+  {id:2,type:'in',name:'李四',room:'203',roomType:'大床房',phone:'139****6666',time:'2026-03-27 11:15',status:'active'},
+  {id:3,type:'out',name:'王五',room:'304',roomType:'大床房',phone:'137****5555',time:'2026-03-27 09:00',status:'done'},
+  {id:4,type:'change',name:'赵六',room:'201→202',roomType:'大床房',phone:'136****4444',time:'2026-03-26 15:30',status:'done'},
+  {id:5,type:'in',name:'孙七',room:'302',roomType:'亲子间',phone:'135****3333',time:'2026-03-26 14:00',status:'active'},
+  {id:6,type:'cancel',name:'周八',room:'-',roomType:'-',phone:'134****2222',time:'2026-03-25 11:00',status:'cancelled'}
+];
+var _recordSelected = {};
+var _recordCurrentPage = 1;
+var _recordPageSize = 5;
+
+function renderRecordTable() {
+  var tbody = document.getElementById('records-table-body');
+  if (!tbody) return;
+  var searchKw = document.getElementById('record-search-input') ? document.getElementById('record-search-input').value.toLowerCase().trim() : '';
+  var typeFilter = document.getElementById('record-type-filter') ? document.getElementById('record-type-filter').value : 'all';
+  var statusFilter = document.getElementById('record-status-filter') ? document.getElementById('record-status-filter').value : 'all';
+  var dateFrom = document.getElementById('record-date-from') ? document.getElementById('record-date-from').value : '';
+  var dateTo = document.getElementById('record-date-to') ? document.getElementById('record-date-to').value : '';
+  var filtered = _recordList.filter(function(r) {
+    var kwMatch = !searchKw || (r.name + r.phone + r.room).toLowerCase().indexOf(searchKw) >= 0;
+    var typeMatch = typeFilter === 'all' || r.type === typeFilter;
+    var statusMap = {active:'active', done:'done', cancelled:'cancelled'};
+    var statusMatch = statusFilter === 'all' || statusMap[statusFilter] === r.status;
+    var dateMatch = (!dateFrom || r.time >= dateFrom) && (!dateTo || r.time <= dateTo + ' 23:59:59');
+    return kwMatch && typeMatch && statusMatch && dateMatch;
+  });
+  var typeIcon = {in:'🏨', out:'🚪', change:'🔄', cancel:'❌'};
+  var typeLabel = {in:'入住', out:'退房', change:'换房', cancel:'取消'};
+  var statusBadge = {active:'<span class="tbadge green">✅ 进行中</span>', done:'<span class="tbadge gray">📪 已完成</span>', cancelled:'<span class="tbadge red">❌ 已取消</span>'};
+  var start = (_recordCurrentPage - 1) * _recordPageSize;
+  var pageData = filtered.slice(start, start + _recordPageSize);
+  var totalPages = Math.ceil(filtered.length / _recordPageSize) || 1;
+  var rows = pageData.map(function(r) {
+    var checked = _recordSelected[r.id] ? 'checked' : '';
+    return '<tr>' +
+      '<td><input type="checkbox" ' + checked + ' onchange="toggleRecordSelect(' + r.id + ',this.checked)" style="accent-color:var(--blue);"></td>' +
+      '<td>' + typeIcon[r.type] + ' ' + typeLabel[r.type] + '</td>' +
+      '<td style="font-weight:600;">' + r.name + '</td>' +
+      '<td>' + r.room + '</td>' +
+      '<td>' + r.roomType + '</td>' +
+      '<td>' + r.phone + '</td>' +
+      '<td style="font-size:12px;">' + r.time + '</td>' +
+      '<td>' + statusBadge[r.status] + '</td>' +
+      '<td><button class="action-btn small" onclick="openEditRecordModal(' + r.id + ')" style="font-size:11px;padding:3px 8px;">编辑</button> ' +
+      '<button class="action-btn small red" onclick="deleteRecord(' + r.id + ')" style="font-size:11px;padding:3px 8px;">删除</button></td></tr>';
+  }).join('');
+  tbody.innerHTML = rows || '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">暂无办理记录</td></tr>';
+  var infoEl = document.getElementById('records-pagination-info');
+  if (infoEl) infoEl.textContent = '第 ' + _recordCurrentPage + ' / ' + totalPages + ' 页，共 ' + filtered.length + ' 条';
+  var prevBtn = document.getElementById('records-page-prev');
+  if (prevBtn) prevBtn.disabled = _recordCurrentPage <= 1;
+  var nextBtn = document.getElementById('records-page-next');
+  if (nextBtn) nextBtn.disabled = _recordCurrentPage >= totalPages;
+  var countEl = document.getElementById('record-filter-count');
+  if (countEl) countEl.textContent = '共 ' + filtered.length + ' 条记录';
+  updateRecordBatchToolbar();
+}
+
+function toggleRecordSelect(id, checked) {
+  _recordSelected[id] = checked;
+  updateRecordBatchToolbar();
+}
+
+function updateRecordBatchToolbar() {
+  var count = Object.keys(_recordSelected).filter(function(k){ return _recordSelected[k]; }).length;
+  var toolbar = document.getElementById('record-batch-toolbar');
+  var countEl = document.getElementById('record-batch-count');
+  if (toolbar) toolbar.style.display = count > 0 ? 'flex' : 'none';
+  if (countEl) countEl.textContent = '已选 ' + count + ' 项';
+  var selectAll = document.getElementById('record-select-all');
+  if (selectAll) selectAll.checked = count > 0 && count === _recordList.length;
+}
+
+function toggleAllRecordSelect(checked) {
+  if (checked) {
+    _recordList.forEach(function(r){ _recordSelected[r.id] = true; });
+  } else {
+    _recordSelected = {};
+  }
+  renderRecordTable();
+}
+
+function applyRecordFilter() {
+  _recordCurrentPage = 1;
+  renderRecordTable();
+}
+
+function resetRecordFilter() {
+  var si = document.getElementById('record-search-input');
+  if (si) si.value = '';
+  var tf = document.getElementById('record-type-filter');
+  if (tf) tf.value = 'all';
+  var sf = document.getElementById('record-status-filter');
+  if (sf) sf.value = 'all';
+  var df = document.getElementById('record-date-from');
+  if (df) df.value = '';
+  var dt = document.getElementById('record-date-to');
+  if (dt) dt.value = '';
+  _recordSelected = {};
+  _recordCurrentPage = 1;
+  renderRecordTable();
+  showToast('🔄 筛选条件已重置', 'info');
+}
+
+function goRecordsPage(dir) {
+  var totalPages = Math.ceil(_recordList.length / _recordPageSize) || 1;
+  if (dir === 'prev' && _recordCurrentPage > 1) _recordCurrentPage--;
+  if (dir === 'next' && _recordCurrentPage < totalPages) _recordCurrentPage++;
+  renderRecordTable();
+}
+
+function openAddRecordModal() {
+  openRecordFormModal(null);
+}
+
+function openEditRecordModal(id) {
+  openRecordFormModal(id);
+}
+
+function openRecordFormModal(id) {
+  var existing = document.getElementById('modal-record-form');
+  if (existing) existing.remove();
+  var r = id ? _recordList.find(function(x){ return x.id === id; }) : null;
+  var isEdit = !!r;
+  var html = '<div class="modal-overlay" id="modal-record-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:28px;">📋</div><div style="font-size:15px;font-weight:700;">' + (isEdit ? '编辑记录' : '新增记录') + '</div>' +
+    '<button onclick="closeModal(\'record-form\')" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">类型</label>' +
+    '<select class="form-select" id="rf-type" style="width:100%;">' +
+    '<option value="in" ' + (r && r.type==='in' ? 'selected' : '') + '>🏨 入住</option>' +
+    '<option value="out" ' + (r && r.type==='out' ? 'selected' : '') + '>🚪 退房</option>' +
+    '<option value="change" ' + (r && r.type==='change' ? 'selected' : '') + '>🔄 换房</option>' +
+    '<option value="cancel" ' + (r && r.type==='cancel' ? 'selected' : '') + '>❌ 取消</option></select></div>' +
+    '<div class="form-group"><label class="form-label">状态</label>' +
+    '<select class="form-select" id="rf-status" style="width:100%;">' +
+    '<option value="active" ' + (r && r.status==='active' ? 'selected' : '') + '>✅ 进行中</option>' +
+    '<option value="done" ' + (r && r.status==='done' ? 'selected' : '') + '>📪 已完成</option>' +
+    '<option value="cancelled" ' + (r && r.status==='cancelled' ? 'selected' : '') + '>❌ 已取消</option></select></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">姓名</label>' +
+    '<input type="text" class="form-input" id="rf-name" value="' + (r ? r.name : '') + '" placeholder="请输入姓名" style="width:100%;"></div>' +
+    '<div class="form-group"><label class="form-label">房间号</label>' +
+    '<input type="text" class="form-input" id="rf-room" value="' + (r ? r.room : '') + '" placeholder="如：301" style="width:100%;"></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">房型</label>' +
+    '<input type="text" class="form-input" id="rf-roomtype" value="' + (r ? r.roomType : '') + '" placeholder="如：大床房" style="width:100%;"></div>' +
+    '<div class="form-group"><label class="form-label">联系方式</label>' +
+    '<input type="text" class="form-input" id="rf-phone" value="' + (r ? r.phone : '') + '" placeholder="手机号" style="width:100%;"></div></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="closeModal(\'record-form\')">取消</button>' +
+    '<button class="modal-btn" onclick="submitRecordForm(' + (id || 'null') + ')" style="background:var(--blue);color:white;border:none;">💾 保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitRecordForm(id) {
+  var type = document.getElementById('rf-type') ? document.getElementById('rf-type').value : 'in';
+  var status = document.getElementById('rf-status') ? document.getElementById('rf-status').value : 'active';
+  var name = document.getElementById('rf-name') ? document.getElementById('rf-name').value.trim() : '';
+  var room = document.getElementById('rf-room') ? document.getElementById('rf-room').value.trim() : '';
+  var roomType = document.getElementById('rf-roomtype') ? document.getElementById('rf-roomtype').value.trim() : '';
+  var phone = document.getElementById('rf-phone') ? document.getElementById('rf-phone').value.trim() : '';
+  if (!name) { showToast('请填写姓名', 'error'); return; }
+  var now = new Date().toISOString().slice(0,16).replace('T',' ');
+  if (id !== null) {
+    var r = _recordList.find(function(x){ return x.id === id; });
+    if (r) { r.type = type; r.status = status; r.name = name; r.room = room; r.roomType = roomType; r.phone = phone; }
+    showToast('📋 记录已更新', 'success');
+  } else {
+    _recordList.unshift({id:_recordList.length + 1, type:type, name:name, room:room, roomType:roomType, phone:phone, time:now, status:status});
+    showToast('✅ 新增记录已保存', 'success');
+  }
+  closeModal('record-form');
+  renderRecordTable();
+}
+
+function deleteRecord(id) {
+  var existing = document.getElementById('modal-record-del');
+  if (existing) existing.remove();
+  var r = _recordList.find(function(x){ return x.id === id; });
+  if (!r) return;
+  var html = '<div class="modal-overlay" id="modal-record-del" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:380px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:28px;">⚠️</div><div style="font-size:15px;font-weight:700;">确认删除记录</div></div>' +
+    '<div style="padding:20px 24px;"><p style="font-size:13px;">确定删除 <strong>' + r.name + '</strong> 的办理记录吗？</p></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="closeModal(\'record-del\')">取消</button>' +
+    '<button class="modal-btn" onclick="doDeleteRecord(' + id + ')" style="background:var(--red);color:white;border:none;">🗑️ 删除</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doDeleteRecord(id) {
+  _recordList = _recordList.filter(function(r){ return r.id !== id; });
+  delete _recordSelected[id];
+  closeModal('record-del');
+  renderRecordTable();
+  showToast('🗑️ 记录已删除', 'success');
+}
+
+function batchDeleteRecords() {
+  var ids = Object.keys(_recordSelected).filter(function(k){ return _recordSelected[k]; });
+  if (ids.length === 0) { showToast('请先选择要删除的记录', 'error'); return; }
+  var existing = document.getElementById('modal-record-batchdel');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-record-batchdel" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:380px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:28px;">⚠️</div><div style="font-size:15px;font-weight:700;">批量删除记录</div></div>' +
+    '<div style="padding:20px 24px;"><p style="font-size:13px;">确定删除选中的 <strong style="color:var(--red);">' + ids.length + '</strong> 条记录吗？</p>' +
+    '<p style="font-size:12px;color:var(--orange);margin-top:8px;">⚠️ 此操作不可恢复</p></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="closeModal(\'record-batchdel\')">取消</button>' +
+    '<button class="modal-btn" onclick="doBatchDeleteRecords()" style="background:var(--red);color:white;border:none;">🗑️ 确认删除</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doBatchDeleteRecords() {
+  var ids = Object.keys(_recordSelected).filter(function(k){ return _recordSelected[k]; });
+  _recordList = _recordList.filter(function(r){ return !_recordSelected[r.id]; });
+  _recordSelected = {};
+  closeModal('record-batchdel');
+  renderRecordTable();
+  showToast('🗑️ 已删除 ' + ids.length + ' 条记录', 'success');
+}
+
+function exportRecordsExcel() { showToast('📊 正在导出Excel文件...', 'info'); }
+function exportRecordsCSV() { showToast('📤 正在导出CSV文件...', 'info'); }
+
+// 绑定办理记录事件
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    renderRecordTable();
+    var recSearch = document.getElementById('record-search-input');
+    if (recSearch) recSearch.addEventListener('input', applyRecordFilter);
+    var recTypeFilter = document.getElementById('record-type-filter');
+    if (recTypeFilter) recTypeFilter.addEventListener('change', applyRecordFilter);
+    var recStatusFilter = document.getElementById('record-status-filter');
+    if (recStatusFilter) recStatusFilter.addEventListener('change', applyRecordFilter);
+  }, 400);
+});
+
+// 【v4改进4】批量退房完整功能
+function openBatchCheckoutModal() {
+  var existing = document.getElementById('modal-batch-checkout');
+  if (existing) existing.remove();
+  var activeRecords = _recordList.filter(function(r){ return r.status === 'active'; });
+  var html = '<div class="modal-overlay" id="modal-batch-checkout" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:560px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:28px;">🚪</div><div style="font-size:15px;font-weight:700;">批量退房</div>' +
+    '<button onclick="closeModal(\'batch-checkout\')" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="margin-bottom:16px;padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">' +
+    '💡 当前有 <strong>' + activeRecords.length + '</strong> 间在住房间，可批量办理退房</div>' +
+    '<div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">' +
+    '<table class="table" style="margin:0;"><thead><tr><th style="width:40px;"></th><th>房间</th><th>姓名</th><th>入住时间</th></tr></thead><tbody>';
+  activeRecords.forEach(function(r) {
+    html += '<tr><td><input type="checkbox" class="bco-room-check" value="' + r.id + '" checked style="accent-color:var(--blue);"></td>' +
+      '<td style="font-weight:600;">' + r.room + '</td><td>' + r.name + '</td><td style="font-size:12px;">' + r.time + '</td></tr>';
+  });
+  html += '</tbody></table></div>' +
+    '<div class="form-group" style="margin-top:14px;"><label class="form-label">退房备注</label>' +
+    '<textarea class="form-textarea" id="bco-note" placeholder="可选，填写退房备注..." style="min-height:50px;width:100%;"></textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="closeModal(\'batch-checkout\')">取消</button>' +
+    '<button class="modal-btn" onclick="submitBatchCheckout()" style="background:var(--orange);color:white;border:none;">🚪 确认批量退房</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitBatchCheckout() {
+  var checks = document.querySelectorAll('.bco-room-check:checked');
+  if (checks.length === 0) { showToast('请选择要退房的房间', 'error'); return; }
+  var count = 0;
+  checks.forEach(function(cb) {
+    var id = parseInt(cb.value);
+    var r = _recordList.find(function(x){ return x.id === id; });
+    if (r) { r.status = 'done'; count++; }
+  });
+  closeModal('batch-checkout');
+  renderRecordTable();
+  showToast('🚪 已完成 ' + count + ' 间房间批量退房', 'success');
+}
+
+// 【v4改进5】发票搜索重置功能（修复第二个applyInvoiceSearch被覆盖问题）
+function resetInvoiceSearchV2() {
+  var si = document.getElementById('inv-search-input');
+  if (si) si.value = '';
+  var sf = document.getElementById('inv-status-filter');
+  if (sf) sf.value = 'all';
+  var tf = document.getElementById('inv-type-filter');
+  if (tf) tf.value = 'all';
+  _invoiceCurrentSearch = '';
+  _invoiceCurrentStatusFilter = 'all';
+  _invoiceCurrentTypeFilter = 'all';
+  if (typeof renderInvoiceFilteredList === 'function') renderInvoiceFilteredList();
+  showToast('🔄 已重置发票筛选条件', 'info');
+}
+
+// 绑定发票搜索重置按钮
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var resetBtn = document.querySelector('[onclick="resetInvoiceSearch()"]');
+    if (resetBtn) {
+      resetBtn.setAttribute('onclick', 'resetInvoiceSearchV2()');
+    }
+  }, 500);
+});
+
 function applyInvoiceSearch() {
   var kw = document.getElementById('inv-search-input') ? document.getElementById('inv-search-input').value.toLowerCase().trim() : '';
   var statusFilter = document.getElementById('inv-status-filter') ? document.getElementById('inv-status-filter').value : 'all';
