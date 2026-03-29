@@ -539,6 +539,7 @@ function showPage(pageName) {
   }
   // 页面切换后初始化对应页面特有功能
   if (pageName === 'invoice') { setTimeout(function(){ renderInvoiceTable && renderInvoiceTable(); }, 100); }
+  if (pageName === 'records') { setTimeout(function(){ renderRecordTable && renderRecordTable(); }, 100); }
   if (pageName === 'log') { setTimeout(function(){ renderUnlockLogStats && renderUnlockLogStats(); }, 100); }
   if (pageName === 'workorder') { setTimeout(function(){ renderWorkorderSLATable && renderWorkorderSLATable(); renderWorkorderSLAMiniList && renderWorkorderSLAMiniList(); injectWorkorderCompleteButton && injectWorkorderCompleteButton(); }, 100); }
   if (pageName === 'member') { setTimeout(function(){ renderPointsExchangeHistory && renderPointsExchangeHistory(); }, 100); }
@@ -2577,6 +2578,26 @@ id="page-dashboard" class="page">
         </div>
       </div>
     </div>
+
+// 【v4修复3】房间详情页Tab切换（switchRoomDetailTab）
+// 理由：房间详情页有5个Tab（房间信息/门锁信息/钥匙信息/办理记录/历史记录），但switchRoomDetailTab函数不存在
+// 改进：实现Tab切换逻辑，联动显示对应内容面板
+function switchRoomDetailTab(tab, el) {
+  var tabs = ['info','doorlock','keys','records','history'];
+  var tabIds = ['room-tab-info','room-tab-doorlock','room-tab-keys','room-tab-records','room-tab-history'];
+  var contentIds = ['room-content-info','room-content-doorlock','room-content-keys','room-content-records','room-content-history'];
+  tabs.forEach(function(t) {
+    var tabEl = document.getElementById('room-tab-' + t);
+    var contentEl = document.getElementById('room-content-' + t);
+    if (tabEl) { tabEl.classList.remove('active'); }
+    if (contentEl) { contentEl.style.display = 'none'; }
+  });
+  var activeTab = document.getElementById('room-tab-' + tab);
+  var activeContent = document.getElementById('room-content-' + tab);
+  if (activeTab) activeTab.classList.add('active');
+  if (activeContent) activeContent.style.display = 'block';
+  showToast('📋 已切换至' + (tab === 'info' ? '房间信息' : tab === 'doorlock' ? '门锁信息' : tab === 'keys' ? '钥匙信息' : tab === 'records' ? '办理记录' : '历史记录') + '标签', 'info');
+}
 
     <!-- Page: Device Detail -->
     <div id="page-device-detail" class="page">
@@ -24666,29 +24687,106 @@ function renderWorkorderSLAMiniList() {
 // ============================================================
 
 function refreshDeviceTable() {
-  var tbody = document.getElementById('device-table-body');
-  if (!tbody) return;
-  var rows = '';
-  deviceData.forEach(function(d) {
-    var batteryColor = d.battery > 60 ? 'var(--green)' : d.battery > 20 ? 'var(--orange)' : 'var(--red)';
-    var batteryBg = d.battery > 60 ? 'var(--green-bg)' : d.battery > 20 ? 'var(--orange-bg)' : 'var(--red-bg)';
-    var statusColor = d.status === '在线' ? 'var(--green)' : d.status === '离线' ? 'var(--red)' : 'var(--text-muted)';
-    var statusBg = d.status === '在线' ? 'var(--green-bg)' : d.status === '离线' ? 'var(--red-bg)' : 'var(--bg)';
-    rows += '<tr>' +
-      '<td><div style="font-size:12px;font-weight:600;">' + d.room + '</div><div style="font-size:10px;color:var(--text-muted);">' + d.floor + '</div></td>' +
-      '<td><div style="font-size:12px;font-weight:600;">' + d.uuid + '</div><div style="font-size:10px;color:var(--text-muted);">' + d.model + '</div></td>' +
-      '<td><span style="padding:2px 8px;background:' + statusBg + ';color:' + statusColor + ';border-radius:10px;font-size:11px;font-weight:600;">' + d.status + '</span></td>' +
-      '<td><span style="padding:2px 8px;background:' + batteryBg + ';color:' + batteryColor + ';border-radius:10px;font-size:11px;font-weight:600;">🔋 ' + d.battery + '%</span></td>' +
-      '<td style="font-size:12px;">' + d.signal + '格</td>' +
-      '<td style="font-size:11px;color:var(--text-muted);">' + d.lastSync + '</td>' +
-      '<td><div style="display:flex;gap:4px;flex-wrap:nowrap;">' +
-        '<button class="action-btn small" onclick="navigateToDeviceDetail(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">👁️ 详情</button>' +
-        '<button class="action-btn small" onclick="openDeviceEditModal(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">✏️ 编辑</button>' +
-        '<button class="action-btn small" onclick="openDeviceDiagnosticV2Enhanced(\'' + d.room + '\')" style="padding:3px 8px;font-size:11px;">🔍 诊断</button>' +
-        '<button class="action-btn small red" onclick="deleteDeviceConfirm(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">🗑️</button></div></td>' +
-    '</tr>';
+  _devicePage = 1;
+  renderDeviceFilteredTable();
+}
+
+// 【v4修复2】设备列表搜索+筛选+分页完整功能
+var _devicePage = 1;
+var _devicePageSize = 8;
+var _deviceGroupFilter = 'all';
+var _deviceStatusFilter = 'all';
+var _deviceSearchKw = '';
+
+function applyDeviceSearch() {
+  var inp = document.getElementById('device-search-input');
+  _deviceSearchKw = inp ? inp.value.trim().toLowerCase() : '';
+  _devicePage = 1;
+  renderDeviceFilteredTable();
+}
+
+function filterDeviceByGroup(group, el) {
+  _deviceGroupFilter = group;
+  document.querySelectorAll('.dg-tag-btn').forEach(function(b){ b.classList.remove('active'); b.style.background='var(--bg)'; b.style.color='var(--text)'; b.style.fontWeight='normal'; });
+  if (el) { el.classList.add('active'); el.style.background='var(--blue-bg)'; el.style.color='var(--blue)'; el.style.fontWeight='600'; }
+  _devicePage = 1;
+  renderDeviceFilteredTable();
+}
+
+function filterDeviceByStatus(status, el) {
+  _deviceStatusFilter = status;
+  var parent = el ? el.parentElement : null;
+  if (parent) parent.querySelectorAll('.card-tab').forEach(function(t){ t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  _devicePage = 1;
+  renderDeviceFilteredTable();
+}
+
+function filterDeviceTable(filter, el) {
+  var parent = el ? el.parentElement : null;
+  if (parent) parent.querySelectorAll('.card-tab').forEach(function(t){ t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  _devicePage = 1;
+  renderDeviceFilteredTable();
+}
+
+function goDevicePage(dir) {
+  var filtered = getFilteredDeviceList();
+  var totalPages = Math.ceil(filtered.length / _devicePageSize) || 1;
+  if (dir === 'prev' && _devicePage > 1) _devicePage--;
+  if (dir === 'next' && _devicePage < totalPages) _devicePage++;
+  renderDeviceFilteredTable();
+}
+
+function getFilteredDeviceList() {
+  return deviceData.filter(function(d) {
+    var groupMap = {'main':['301','302','303','304','305','306'],'east':['201','202','203','204','205','206'],'vip':['101','102','103','104']};
+    var groupMatch = _deviceGroupFilter === 'all' || (groupMap[_deviceGroupFilter] && groupMap[_deviceGroupFilter].indexOf(d.room) >= 0) || _deviceGroupFilter === 'lowbat' && d.battery < 30;
+    var statusMap = {'online':d.status==='在线','offline':d.status==='离线','lowbattery':d.status.indexOf('低电量')>=0,'all':true};
+    var statusMatch = statusMap[_deviceStatusFilter] !== undefined ? statusMap[_deviceStatusFilter] : true;
+    var kwMatch = !_deviceSearchKw || d.room.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.uuid.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.model.toLowerCase().indexOf(_deviceSearchKw) >= 0;
+    return groupMatch && statusMatch && kwMatch;
   });
-  tbody.innerHTML = rows || '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">暂无设备数据</td></tr>';
+}
+
+function renderDeviceFilteredTable() {
+  var filtered = getFilteredDeviceList();
+  var tbody = document.getElementById('device-table-body');
+  var infoEl = document.getElementById('device-pagination-info');
+  var prevBtn = document.getElementById('device-page-prev');
+  var nextBtn = document.getElementById('device-page-next');
+  if (!tbody) return;
+  var totalPages = Math.ceil(filtered.length / _devicePageSize) || 1;
+  var start = (_devicePage - 1) * _devicePageSize;
+  var pageData = filtered.slice(start, start + _devicePageSize);
+  var rows = '';
+  if (pageData.length === 0) {
+    rows = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">暂无设备数据</td></tr>';
+  } else {
+    pageData.forEach(function(d) {
+      var batteryColor = d.battery > 60 ? 'var(--green)' : d.battery > 20 ? 'var(--orange)' : 'var(--red)';
+      var batteryBg = d.battery > 60 ? 'var(--green-bg)' : d.battery > 20 ? 'var(--orange-bg)' : 'var(--red-bg)';
+      var statusColor = d.status === '在线' ? 'var(--green)' : d.status === '离线' ? 'var(--red)' : 'var(--text-muted)';
+      var statusBg = d.status === '在线' ? 'var(--green-bg)' : d.status === '离线' ? 'var(--red-bg)' : 'var(--bg)';
+      rows += '<tr>' +
+        '<td><div style="font-size:12px;font-weight:600;">' + d.room + '</div></td>' +
+        '<td><div style="font-size:12px;font-weight:600;">' + d.uuid + '</div><div style="font-size:10px;color:var(--text-muted);">' + d.model + '</div></td>' +
+        '<td><span style="padding:2px 8px;background:' + statusBg + ';color:' + statusColor + ';border-radius:10px;font-size:11px;font-weight:600;">' + d.status + '</span></td>' +
+        '<td><span style="padding:2px 8px;background:' + batteryBg + ';color:' + batteryColor + ';border-radius:10px;font-size:11px;font-weight:600;">🔋 ' + d.battery + '%</span></td>' +
+        '<td style="font-size:12px;">' + d.signal + '</td>' +
+        '<td style="font-size:11px;color:var(--text-muted);">' + d.lastSync + '</td>' +
+        '<td><div style="display:flex;gap:4px;flex-wrap:nowrap;">' +
+          '<button class="action-btn small" onclick="navigateToDeviceDetail(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">👁️ 详情</button>' +
+          '<button class="action-btn small" onclick="openDeviceEditModal(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">✏️ 编辑</button>' +
+          '<button class="action-btn small" onclick="openDeviceDiagnosticV2Enhanced(\'' + d.room + '\')" style="padding:3px 8px;font-size:11px;">🔍 诊断</button>' +
+          '<button class="action-btn small red" onclick="deleteDeviceConfirm(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">🗑️</button></div></td>' +
+      '</tr>';
+    });
+  }
+  tbody.innerHTML = rows;
+  if (infoEl) infoEl.textContent = '第 ' + _devicePage + ' / ' + totalPages + ' 页，共 ' + filtered.length + ' 条';
+  if (prevBtn) prevBtn.disabled = _devicePage <= 1;
+  if (nextBtn) nextBtn.disabled = _devicePage >= totalPages;
 }
 
 function diagnoseDevice(uuid) {
@@ -24965,6 +25063,9 @@ function filterInvoiceTab(tab, el) {
   }
   renderInvoiceFilteredList();
 }
+
+// 【v4修复】renderInvoiceTable - showPage('invoice')调用别名
+function renderInvoiceTable() { renderInvoiceFilteredList(); }
 
 function renderInvoiceFilteredList() {
   var tbody = document.getElementById('invoice-table-body');
