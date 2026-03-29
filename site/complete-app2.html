@@ -801,6 +801,15 @@ function exportDeviceList() {
     {type:'设备离线', room:'304 - 亲子间', duration:'已恢复', time:'昨天 15:20', status:'已处理', detail:'设备恢复在线', history:[{time:'03-28 15:25',action:'设备重启',note:'远程重启后恢复'}]}
   ];
 
+  // 【v4修复】工单SLA数据源
+  var workorderSLAStore = [
+    {id:1, title:'客户投诉-房间隔音差', type:'complaint', status:'pending', priority:'urgent', createTime:'2026-03-29 09:00', slaMinutes:30, room:'301', handler:'前厅员工'},
+    {id:2, title:'送物服务-矿泉水×2', type:'delivery', status:'pending', priority:'normal', createTime:'2026-03-29 08:30', slaMinutes:20, room:'203', handler:'前厅员工'},
+    {id:3, title:'设备报修-门锁响应慢', type:'repair', status:'processing', priority:'high', createTime:'2026-03-28 15:00', slaMinutes:60, room:'102', handler:'工程部'},
+    {id:4, title:'发票需求-普通发票', type:'invoice', status:'done', priority:'low', createTime:'2026-03-28 10:00', slaMinutes:120, room:'304', handler:'财务'},
+    {id:5, title:'客户投诉-热水无供应', type:'complaint', status:'pending', priority:'urgent', createTime:'2026-03-29 07:00', slaMinutes:15, room:'205', handler:'前厅经理'}
+  ];
+
   // 【v4修复】发票数据源 - 供printInvoice使用
   var invoiceStore = [
     {id:'INV-2026032701', company:'张三', tax:'--', type:'普通发票', amount:368, date:'2026-03-27', status:'已完成', email:'zhangsan@email.com'},
@@ -25255,6 +25264,198 @@ function filterInvoiceTab(tab, el) {
 
 // 【v4修复】renderInvoiceTable - showPage('invoice')调用别名
 function renderInvoiceTable() { renderInvoiceFilteredList(); }
+
+// 【v4修复】服务工单 - 完整创建工单弹窗
+function openCreateWorkorderFullModal() {
+  var existing = document.getElementById('modal-workorder-create');
+  if (existing) { existing.classList.remove('hidden'); return; }
+  var html = '<div class="modal-overlay" id="modal-workorder-create" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-workorder-create\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:20px;">📝</div><div style="font-size:15px;font-weight:700;">创建服务工单</div>' +
+    '<button onclick="document.getElementById(\'modal-workorder-create\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:20px 24px;">' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">工单类型 <span class="required">*</span></label>' +
+    '<select class="form-select" id="wo-create-type" style="width:100%;">' +
+    '<option value="">-- 选择类型 --</option>' +
+    '<option value="complaint">🔴 客户投诉</option>' +
+    '<option value="delivery">📦 送物服务</option>' +
+    '<option value="invoice">📄 发票需求</option>' +
+    '<option value="praise">⭐ 点评表扬</option>' +
+    '<option value="repair">🔧 设备报修</option>' +
+    '<option value="other">📋 其他</option></select></div>' +
+    '<div class="form-group"><label class="form-label">优先级</label>' +
+    '<select class="form-select" id="wo-create-priority" style="width:100%;">' +
+    '<option value="normal">🟡 普通</option>' +
+    '<option value="high">🟠 高</option>' +
+    '<option value="urgent">🔴 紧急</option>' +
+    '<option value="low">⚪ 低</option></select></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">关联房间</label>' +
+    '<select class="form-select" id="wo-create-room" style="width:100%;">' +
+    '<option value="">-- 选择房间 --</option>' +
+    '<option value="301">301</option><option value="203">203</option><option value="304">304</option><option value="102">102</option><option value="205">205</option></select></div>' +
+    '<div class="form-group"><label class="form-label">指派给</label>' +
+    '<select class="form-select" id="wo-create-handler" style="width:100%;">' +
+    '<option value="staff">前厅员工</option>' +
+    '<option value="manager">前厅经理</option>' +
+    '<option value="engineer">工程部</option>' +
+    '<option value="finance">财务部</option></select></div></div>' +
+    '<div class="form-group"><label class="form-label">工单标题 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="wo-create-title" placeholder="请输入工单标题" style="width:100%;"></div>' +
+    '<div class="form-group"><label class="form-label">详细描述</label>' +
+    '<textarea class="form-input" id="wo-create-desc" placeholder="请输入详细描述..." style="width:100%;height:80px;resize:none;"></textarea></div>' +
+    '<div style="padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-top:8px;font-size:12px;color:var(--orange);">💡 紧急工单需在2小时内响应，普通工单24小时内处理完成。</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-workorder-create\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitWorkorderCreate()" style="background:var(--blue);color:white;border:none;">📋 创建工单</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitWorkorderCreate() {
+  var title = document.getElementById('wo-create-title') ? document.getElementById('wo-create-title').value.trim() : '';
+  var type = document.getElementById('wo-create-type') ? document.getElementById('wo-create-type').value : '';
+  var priority = document.getElementById('wo-create-priority') ? document.getElementById('wo-create-priority').value : 'normal';
+  var room = document.getElementById('wo-create-room') ? document.getElementById('wo-create-room').value : '';
+  var handler = document.getElementById('wo-create-handler') ? document.getElementById('wo-create-handler').value : 'staff';
+  var desc = document.getElementById('wo-create-desc') ? document.getElementById('wo-create-desc').value.trim() : '';
+  if (!title) { showToast('请填写工单标题', 'error'); return; }
+  if (!type) { showToast('请选择工单类型', 'error'); return; }
+  var typeLabels = {complaint:'🔴 客户投诉', delivery:'📦 送物服务', invoice:'📄 发票需求', praise:'⭐ 点评表扬', repair:'🔧 设备报修', other:'📋 其他'};
+  var now = new Date();
+  var newItem = {
+    id: workorderSLAStore.length + 1,
+    title: title,
+    type: type,
+    status: 'pending',
+    priority: priority,
+    room: room,
+    handler: handler,
+    createTime: now.toISOString().slice(0,16).replace('T',' '),
+    desc: desc
+  };
+  var slaMap = {complaint:30, delivery:20, invoice:120, praise:60, repair:60, other:120};
+  newItem.slaMinutes = slaMap[type] || 60;
+  workorderSLAStore.unshift(newItem);
+  // Also add to main _woList for unified rendering
+  var handlerLabels = {staff:'前厅员工', manager:'前厅经理', engineer:'工程部', finance:'财务部'};
+  _woList.unshift({
+    id: 'WO' + new Date().toISOString().slice(0,10).replace(/-/g,'') + String(_woList.length + 1).padStart(2,'0'),
+    type: type,
+    room: room,
+    customer: '客户',
+    phone: '--',
+    desc: title,
+    priority: priority,
+    status: 'pending',
+    assign: handlerLabels[handler] || handler,
+    create: new Date().toLocaleString('zh-CN', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).replace(/\//g,'-'),
+    sla: '--',
+    satisfaction: 0
+  });
+  document.getElementById('modal-workorder-create') && document.getElementById('modal-workorder-create').remove();
+  showToast('✅ 工单【' + (typeLabels[type] || type) + '】已创建', 'success');
+  renderWorkorderTable && renderWorkorderTable();
+}
+
+function updateWorkorderSLAMiniList() {
+  renderWorkorderSLAMiniList();
+}
+
+function openBatchAssignWorkorder() {
+  var pending = workorderSLAStore.filter(function(w){ return w.status === 'pending'; });
+  if (pending.length === 0) { showToast('暂无待分配的工单', 'info'); return; }
+  var existing = document.getElementById('modal-wo-batch-assign');
+  if (existing) existing.remove();
+  var options = pending.map(function(w) {
+    return '<option value="' + w.id + '">' + w.title + '（' + w.room + '）</option>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-wo-batch-assign" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-batch-assign\').remove()">' +
+    '<div class="modal" style="width:440px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:20px;">🔄</div><div style="font-size:15px;font-weight:700;">批量分配工单</div>' +
+    '<button onclick="document.getElementById(\'modal-wo-batch-assign\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">选择工单（可多选）</label>' +
+    '<select class="form-select" id="wo-batch-ids" multiple size="5" style="width:100%;height:120px;">' + options + '</select></div>' +
+    '<div class="form-group"><label class="form-label">指派给</label>' +
+    '<select class="form-select" id="wo-batch-handler" style="width:100%;">' +
+    '<option value="staff">前厅员工</option>' +
+    '<option value="manager">前厅经理</option>' +
+    '<option value="engineer">工程部</option></select></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-batch-assign\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="doBatchAssignWorkorder()" style="background:var(--purple);color:white;border:none;">✅ 确认分配</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doBatchAssignWorkorder() {
+  var sel = document.getElementById('wo-batch-ids');
+  var handler = document.getElementById('wo-batch-handler') ? document.getElementById('wo-batch-handler').value : 'staff';
+  if (!sel || sel.selectedOptions.length === 0) { showToast('请选择要分配的工单', 'error'); return; }
+  var count = 0;
+  var handlerLabels = {staff:'前厅员工', manager:'前厅经理', engineer:'工程部'};
+  Array.from(sel.selectedOptions).forEach(function(opt) {
+    var item = workorderSLAStore.find(function(w){ return w.id === parseInt(opt.value); });
+    if (item) { item.handler = handler; item.status = 'processing'; count++; }
+    // Also sync to main _woList
+    var wo = _woList.find(function(x){ return x.desc === item.title || x.room === item.room; });
+    if (wo) { wo.assign = handlerLabels[handler] || handler; wo.status = 'processing'; }
+  });
+  document.getElementById('modal-wo-batch-assign') && document.getElementById('modal-wo-batch-assign').remove();
+  showToast('✅ 已分配 ' + count + ' 条工单', 'success');
+  renderWorkorderTable && renderWorkorderTable();
+}
+
+function batchCompleteWorkorder() {
+  var pending = workorderSLAStore.filter(function(w){ return w.status === 'pending' || w.status === 'processing'; });
+  if (pending.length === 0) { showToast('暂无可完成的工单', 'info'); return; }
+  var existing = document.getElementById('modal-wo-batch-complete');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-wo-batch-complete" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-batch-complete\').remove()">' +
+    '<div class="modal" style="width:380px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:20px;">✅</div><div style="font-size:15px;font-weight:700;">批量完成工单</div>' +
+    '<button onclick="document.getElementById(\'modal-wo-batch-complete\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<p style="font-size:13px;">确定完成选中的 <strong style="color:var(--green);">' + pending.length + '</strong> 条工单吗？</p></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-batch-complete\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="doBatchCompleteWorkorder()" style="background:var(--green);color:white;border:none;">✅ 确认完成</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doBatchCompleteWorkorder() {
+  var count = 0;
+  workorderSLAStore.forEach(function(w) {
+    if (w.status === 'pending' || w.status === 'processing') { w.status = 'done'; count++; }
+  });
+  // Also sync to main _woList
+  _woList.forEach(function(wo) {
+    if (wo.status === 'pending' || wo.status === 'processing') { wo.status = 'done'; }
+  });
+  document.getElementById('modal-wo-batch-complete') && document.getElementById('modal-wo-batch-complete').remove();
+  showToast('✅ 已完成 ' + count + ' 条工单', 'success');
+  renderWorkorderTable && renderWorkorderTable();
+}
+
+function demonstrateWorkorderLifecycle() {
+  var existing = document.getElementById('modal-wo-demo');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-wo-demo" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-demo\').remove()">' +
+    '<div class="modal" style="width:500px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:20px;">📋</div><div style="font-size:15px;font-weight:700;">工单完整生命周期演示</div>' +
+    '<button onclick="document.getElementById(\'modal-wo-demo\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;font-size:13px;line-height:2;">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:var(--blue-bg);color:var(--blue);padding:4px 12px;border-radius:12px;font-weight:700;">1️⃣ 创建</span><span>客户发起工单，系统自动分配SLA时限</span></div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:var(--orange-bg);color:var(--orange);padding:4px 12px;border-radius:12px;font-weight:700;">2️⃣ 受理</span><span>员工接单，工单状态变为"处理中"</span></div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:var(--green-bg);color:var(--green);padding:4px 12px;border-radius:12px;font-weight:700;">3️⃣ 处理</span><span>员工执行服务，更新处理进度</span></div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:var(--purple-bg);color:var(--purple);padding:4px 12px;border-radius:12px;font-weight:700;">4️⃣ 完成</span><span>服务完成，客户确认评价</span></div>' +
+    '<div style="display:flex;align-items:center;gap:10px;"><span style="background:var(--red-bg);color:var(--red);padding:4px 12px;border-radius:12px;font-weight:700;">⚠️ 超时</span><span>SLA超时自动升级给上级处理</span></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn primary" onclick="document.getElementById(\'modal-wo-demo\').remove()" style="background:var(--blue);color:white;border:none;">我知道了</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
 
 function renderInvoiceFilteredList() {
   var tbody = document.getElementById('invoice-table-body');
