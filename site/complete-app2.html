@@ -33212,19 +33212,28 @@ function calcTaxAmount() {
 function saveInvoiceDraft() {
   showToast('💾 发票草稿已暂存', 'success');
 }
+// ======= 【物联后台v4-修复3】submitInvoiceCreate：静态HTML用inv-create-*，动态弹窗用inv-*，统一兼容 =======
 function submitInvoiceCreate() {
-  var title = document.getElementById('inv-title').value.trim();
-  var amount = parseFloat(document.getElementById('inv-amount').value) || 0;
-  var invType = document.getElementById('inv-type').value;
+  var title = (document.getElementById('inv-create-title') || document.getElementById('inv-title') || {value:''}).value.trim();
+  var amount = parseFloat((document.getElementById('inv-create-amount') || document.getElementById('inv-amount') || {value:'0'}).value) || 0;
+  var invType = (document.getElementById('inv-create-type') || document.getElementById('inv-type') || {value:'normal'}).value;
   if (!title) { showToast('请填写发票抬头', 'error'); return; }
   if (amount <= 0) { showToast('请填写有效的开票金额', 'error'); return; }
-  var invId = document.getElementById('inv-num').value;
-  var date = document.getElementById('inv-date').value;
-  var tax = (amount * parseFloat(document.getElementById('inv-taxrate').value)).toFixed(2);
+  var invNumEl = document.getElementById('inv-num');
+  var invDateEl = document.getElementById('inv-date');
+  var invId = invNumEl ? invNumEl.value : 'INV-' + Date.now().toString().slice(-8);
+  var date = invDateEl ? invDateEl.value : new Date().toLocaleDateString('zh-CN');
+  var taxrate = (document.getElementById('inv-create-taxrate') || document.getElementById('inv-taxrate') || {value:'0.03'}).value;
+  var tax = (amount * parseFloat(taxrate)).toFixed(2);
   var total = (amount + parseFloat(tax)).toFixed(2);
-  document.getElementById('modal-invoice-create').remove();
-  showToast('🧾 发票 ' + invId + ' 开具成功，价税合计 ' + total + ' 元', 'success');
+  if (typeof invoiceStore !== 'undefined') {
+    invoiceStore.unshift({id:invId, title:title, amount:amount, tax:tax, total:total, type:invType, date:date, status:'pending', room:(document.getElementById('inv-create-room')||{value:''}).value, guest:(document.getElementById('inv-create-name')||{value:''}).value, phone:(document.getElementById('inv-create-phone')||{value:''}).value, taxNo:(document.getElementById('inv-create-tax')||{value:''}).value, note:(document.getElementById('inv-create-note')||{value:''}).value});
+  }
+  var modalEl = document.getElementById('modal-invoice-create');
+  if (modalEl) modalEl.remove();
+  showToast('🧾 发票 ' + invId + ' 开具成功，价税合计 ¥' + total + ' 元\n抬头：' + title, 'success');
   if (typeof renderInvoiceTable === 'function') renderInvoiceTable();
+  if (typeof closeModal === 'function') closeModal('invoice-create');
 }
 
 // ========== 改进2：夜审报表完整弹窗（openNightAuditFullModal） ==========
@@ -40118,3 +40127,157 @@ function rejectBlacklistItem(idx) {
 // Simulate adding to pending review when adding blacklist
 var _originalDoAddBlacklist = null;
 
+
+// ======= 【物联后台v4-修复1】房间详情页快速操作按钮缺失函数 =======
+// 修复：rdOpenCheckin/rdOpenCheckout/rdOpenClean 是房间详情页快速操作按钮的点击处理函数，但原系统中完全缺失
+function rdOpenCheckin() {
+  var roomNum = document.getElementById('rd-page-title') ? document.getElementById('rd-page-title').textContent.replace('🚪 房间详情 - ', '') : '';
+  if (typeof openCheckinModal === 'function') {
+    openCheckinModal(roomNum);
+  } else if (typeof openQuickCheckinModal === 'function') {
+    openQuickCheckinModal(roomNum);
+  } else {
+    // 兜底：尝试打开快速入住弹窗
+    var existing = document.getElementById('modal-quick-checkin-v4');
+    if (existing) existing.remove();
+    var html = '<div class="modal-overlay" id="modal-quick-checkin-v4" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-checkin-v4\').remove()">' +
+      '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
+      '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+      '<div style="font-size:15px;font-weight:700;">🏨 快速入住</div>' +
+      '<button onclick="document.getElementById(\'modal-quick-checkin-v4\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+      '<div style="padding:20px 24px;">' +
+      '<div class="form-group"><label class="form-label">房间号</label>' +
+      '<input type="text" class="form-input" id="rd-ci-room" value="' + roomNum + '" placeholder="如：301" style="padding:10px;font-size:14px;"></div>' +
+      '<div class="form-group"><label class="form-label">客人姓名 <span class="required">*</span></label>' +
+      '<input type="text" class="form-input" id="rd-ci-name" placeholder="请输入客人姓名" style="padding:10px;font-size:14px;"></div>' +
+      '<div class="form-group"><label class="form-label">手机号</label>' +
+      '<input type="tel" class="form-input" id="rd-ci-phone" placeholder="请输入手机号" style="padding:10px;font-size:14px;"></div>' +
+      '<div class="form-group"><label class="form-label">入住天数</label>' +
+      '<input type="number" class="form-input" id="rd-ci-days" value="1" min="1" style="padding:10px;font-size:14px;"></div>' +
+      '<div style="padding:12px;background:var(--green-bg);border-radius:8px;margin-top:8px;font-size:12px;color:var(--green);">💡 入住后系统将自动发送门锁密码至客人手机</div>' +
+      '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+      '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-quick-checkin-v4\').remove()">取消</button>' +
+      '<button class="modal-btn primary" onclick="rdSubmitCheckin()" style="background:var(--green);border-color:var(--green);">✅ 确认入住</button></div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+  }
+}
+function rdSubmitCheckin() {
+  var room = document.getElementById('rd-ci-room').value.trim();
+  var name = document.getElementById('rd-ci-name').value.trim();
+  var phone = document.getElementById('rd-ci-phone').value.trim();
+  var days = parseInt(document.getElementById('rd-ci-days').value) || 1;
+  if (!name) { showToast('请输入客人姓名', 'error'); return; }
+  document.getElementById('modal-quick-checkin-v4').remove();
+  showToast('🏨 房间 ' + room + ' 已为 ' + name + ' 办理入住（' + days + '晚）', 'success');
+  // 刷新房间状态显示
+  if (typeof renderRoomDetail === 'function') renderRoomDetail();
+}
+function rdOpenCheckout() {
+  var roomNum = document.getElementById('rd-page-title') ? document.getElementById('rd-page-title').textContent.replace('🚪 房间详情 - ', '') : '';
+  if (typeof openCheckoutFullModal === 'function') {
+    openCheckoutFullModal(roomNum, '', '');
+  } else if (typeof openCheckoutModal === 'function') {
+    openCheckoutModal(roomNum);
+  } else {
+    // 兜底弹窗
+    var existing = document.getElementById('modal-quick-checkout-v4');
+    if (existing) existing.remove();
+    var html = '<div class="modal-overlay" id="modal-quick-checkout-v4" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-checkout-v4\').remove()">' +
+      '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
+      '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+      '<div style="font-size:15px;font-weight:700;">🏁 快速退房</div>' +
+      '<button onclick="document.getElementById(\'modal-quick-checkout-v4\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+      '<div style="padding:20px 24px;">' +
+      '<div style="padding:14px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:16px;text-align:center;">' +
+      '<div style="font-size:13px;font-weight:600;color:var(--orange);">房间 ' + roomNum + ' 快速退房确认</div></div>' +
+      '<div class="form-group"><label class="form-label">押金退还方式</label>' +
+      '<select class="form-select" id="rd-co-deposit" style="padding:10px;font-size:14px;">' +
+      '<option value="cash">💵 现金退还</option><option value="wechat">📱 微信退款</option>' +
+      '<option value="alipay">📱 支付宝退款</option><option value="card">💳 原卡退款</option></select></div>' +
+      '<div class="form-group"><label class="form-label">结算备注</label>' +
+      '<textarea class="form-textarea" id="rd-co-note" placeholder="可选备注" style="min-height:60px;padding:10px;font-size:13px;"></textarea></div>' +
+      '<div style="display:flex;gap:8px;margin-top:8px;">' +
+      '<button class="action-btn" onclick="openCheckoutAnomalyModal(\'' + roomNum + '\',\'\')" style="padding:6px 14px;background:var(--red-bg);color:var(--red);border-color:var(--red);font-size:12px;">⚠️ 消费异常检测</button></div>' +
+      '</div><div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+      '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-quick-checkout-v4\').remove()">取消</button>' +
+      '<button class="modal-btn primary" onclick="rdSubmitCheckout()" style="background:var(--orange);border-color:var(--orange);">✅ 确认退房</button></div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+  }
+}
+function rdSubmitCheckout() {
+  var room = document.getElementById('rd-page-title') ? document.getElementById('rd-page-title').textContent.replace('🚪 房间详情 - ', '') : '';
+  var deposit = document.getElementById('rd-co-deposit') ? document.getElementById('rd-co-deposit').value : 'cash';
+  var note = document.getElementById('rd-co-note') ? document.getElementById('rd-co-note').value.trim() : '';
+  document.getElementById('modal-quick-checkout-v4').remove();
+  showToast('🏁 房间 ' + room + ' 已完成退房，押金已' + (deposit === 'cash' ? '现金退还' : '原路退回'), 'success');
+  if (typeof renderRoomDetail === 'function') renderRoomDetail();
+}
+function rdQuickSetStatus(status) {
+  var roomNum = document.getElementById('rd-page-title') ? document.getElementById('rd-page-title').textContent.replace('🚪 房间详情 - ', '') : '';
+  var statusMap = { '空房': 'vacant', '入住': 'occupied', '维修': 'maintenance', '停用': 'disabled', '脏房': 'dirty' };
+  showToast('🏠 房间 ' + roomNum + ' 已设置为 ' + status, 'success');
+}
+
+// ======= 【物联后台v4-修复2】submitMemberForm修复：memberListData不存在问题 =======
+// 修复：submitMemberForm 错误地检查 memberListData，但实际数据存储在 memberStore 中
+// 将 memberListData alias 为 memberStore 确保增删改查闭环
+if (typeof memberListData === 'undefined') {
+  var memberListData = memberStore;
+}
+
+// ======= 【物联后台v4-修复5】resetInvoiceForm 和 saveInvoiceDraft 缺失函数 =======
+// 修复：静态HTML模板中引用了这些函数但缺失
+function resetInvoiceForm() {
+  var fields = ['inv-create-name','inv-create-phone','inv-create-amount','inv-create-title','inv-create-tax','inv-create-note'];
+  fields.forEach(function(id){ var el = document.getElementById(id); if(el) el.value = ''; });
+  var typeEl = document.getElementById('inv-create-type');
+  if(typeEl) typeEl.value = 'normal';
+  var preview = document.getElementById('inv-preview-section');
+  if(preview) preview.style.display = 'none';
+  showToast('🔄 发票表单已重置', 'info');
+}
+function saveInvoiceDraft() {
+  var draft = {
+    name: (document.getElementById('inv-create-name')||{value:''}).value,
+    phone: (document.getElementById('inv-create-phone')||{value:''}).value,
+    amount: (document.getElementById('inv-create-amount')||{value:''}).value,
+    title: (document.getElementById('inv-create-title')||{value:''}).value,
+    tax: (document.getElementById('inv-create-tax')||{value:''}).value,
+    type: (document.getElementById('inv-create-type')||{value:'normal'}).value,
+    time: new Date().toLocaleString('zh-CN')
+  };
+  try { localStorage.setItem('inv_draft', JSON.stringify(draft)); } catch(e){}
+  showToast('💾 草稿已保存，下次打开自动恢复', 'success');
+}
+function loadInvoiceDraft() {
+  try {
+    var draft = JSON.parse(localStorage.getItem('inv_draft') || '{}');
+    if (draft && draft.name) {
+      if (document.getElementById('inv-create-name')) document.getElementById('inv-create-name').value = draft.name;
+      if (document.getElementById('inv-create-phone')) document.getElementById('inv-create-phone').value = draft.phone;
+      if (document.getElementById('inv-create-amount')) document.getElementById('inv-create-amount').value = draft.amount;
+      if (document.getElementById('inv-create-title')) document.getElementById('inv-create-title').value = draft.title;
+      if (document.getElementById('inv-create-tax')) document.getElementById('inv-create-tax').value = draft.tax;
+      if (document.getElementById('inv-create-type')) document.getElementById('inv-create-type').value = draft.type || 'normal';
+      var draftTime = document.getElementById('inv-draft-time');
+      if (draftTime) draftTime.textContent = draft.time;
+      showToast('📋 草稿已恢复：' + draft.name + ' · ¥' + draft.amount, 'success');
+    } else {
+      showToast('没有找到保存的草稿', 'info');
+    }
+  } catch(e) { showToast('草稿恢复失败', 'error'); }
+}
+function updateInvoicePreview() {
+  var name = (document.getElementById('inv-create-name')||{value:''}).value;
+  var title = (document.getElementById('inv-create-title')||{value:''}).value;
+  var amount = (document.getElementById('inv-create-amount')||{value:''}).value;
+  var preview = document.getElementById('inv-preview-section');
+  var content = document.getElementById('inv-preview-content');
+  if (!preview || !content) return;
+  if (name || title || amount) {
+    preview.style.display = 'block';
+    content.innerHTML = '抬头：' + (title || '--') + '<br>金额：¥' + (amount || '0') + '<br>联系人：' + (name || '--');
+  } else {
+    preview.style.display = 'none';
+  }
+}
