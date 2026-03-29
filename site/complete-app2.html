@@ -539,12 +539,15 @@ function showPage(pageName) {
   // 页面切换后初始化对应页面特有功能
   if (pageName === 'invoice') { setTimeout(function(){ renderInvoiceTable && renderInvoiceTable(); }, 100); }
   if (pageName === 'log') { setTimeout(function(){ renderUnlockLogStats && renderUnlockLogStats(); }, 100); }
-  if (pageName === 'workorder') { setTimeout(function(){ renderWorkorderSLATable && renderWorkorderSLATable(); renderWorkorderSLAMiniList && renderWorkorderSLAMiniList(); }, 100); }
+  if (pageName === 'workorder') { setTimeout(function(){ renderWorkorderSLATable && renderWorkorderSLATable(); renderWorkorderSLAMiniList && renderWorkorderSLAMiniList(); injectWorkorderCompleteButton && injectWorkorderCompleteButton(); }, 100); }
   if (pageName === 'member') { setTimeout(function(){ renderPointsExchangeHistory && renderPointsExchangeHistory(); }, 100); }
   if (pageName === 'blacklist') { setTimeout(function(){ renderBlacklist && renderBlacklist(); }, 100); }
   if (pageName === 'staffschedule') { setTimeout(function(){ renderStaffSchedule && renderStaffSchedule(); }, 100); }
   if (pageName === 'energy') { setTimeout(function(){ renderEnergyChart && renderEnergyChart(); }, 100); }
   if (pageName === 'device') { setTimeout(function(){ refreshDeviceTable && refreshDeviceTable(); }, 100); }
+  if (pageName === 'alert') { setTimeout(function(){ injectAlertDetailButton && injectAlertDetailButton(); }, 300); }
+  if (pageName === 'oplog') { setTimeout(function(){ enhanceOplogSearchUI && enhanceOplogSearchUI(); }, 500); }
+  if (pageName === 'config') { setTimeout(function(){ enhanceOplogSearchUI && enhanceOplogSearchUI(); }, 500); }
   window.scrollTo(0, 0);
 }
 
@@ -24232,7 +24235,7 @@ function submitKeypad() {
 
 function openAlertDetailFullModal(idx) {
   var d = alertData[idx];
-  if (!d) return;
+  if (!d) { showToast('未找到该告警记录', 'error'); return; }
   var existing = document.getElementById('modal-alert-detail-full');
   if (existing) existing.remove();
   var typeIcon = d.type === '设备离线' ? '🔴' : d.type === '低电量' ? '🟠' : '⚠️';
@@ -24504,7 +24507,8 @@ function searchOplogByKeyword(keyword) {
       row.style.display = 'none';
     }
   });
-  document.getElementById('oplog-count-label') && (document.getElementById('oplog-count-label').textContent = '匹配 ' + matchCount + ' 条记录');
+  var countEl = document.getElementById('oplog-count');
+  if (countEl) countEl.innerHTML = '共 <strong>' + matchCount + '</strong> 条（已筛选）';
   showToast('🔍 找到 ' + matchCount + ' 条匹配记录', 'info');
 }
 
