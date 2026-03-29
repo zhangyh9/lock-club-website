@@ -1511,3 +1511,261 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }, 500);
 });
+
+// ============================================================
+// 【物联后台 v4 - 第6轮】5个缺失功能性改进
+// ============================================================
+
+// 【改进1】openBatchUpgradeModal - 批量升级固件弹窗（UI按钮存在但函数缺失）
+// 理由：设备管理工具栏有"批量升级固件"按钮onclick="openBatchUpgradeModal()"但函数体缺失
+function openBatchUpgradeModal() {
+  var existing = document.getElementById('modal-batch-upgrade');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-batch-upgrade" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-upgrade\').remove()">' +
+    '<div class="modal" style="width:580px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📦</div><div><div style="font-size:15px;font-weight:700;">批量固件升级</div><div style="font-size:11px;color:var(--text-muted);">支持多设备同时升级固件</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-batch-upgrade\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px;background:var(--purple-bg);border:1px solid var(--purple);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--purple);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:20px;">💡</div><div><strong>升级说明：</strong>批量升级将同时向选中设备推送固件包，升级过程中设备将暂时离线，预计每台设备耗时30-60秒</div></div>' +
+    '<div class="form-group"><label class="form-label">选择目标版本</label>' +
+    '<select class="form-select" id="bu-version" style="width:100%;">' +
+    '<option value="v3.2.1">v3.2.1（最新稳定版，推荐）</option>' +
+    '<option value="v3.2.0">v3.2.0（上一稳定版）</option>' +
+    '<option value="v3.1.5">v3.1.5（历史版本）</option></select></div>' +
+    '<div class="form-group"><label class="form-label">升级策略</label>' +
+    '<select class="form-select" id="bu-strategy" style="width:100%;">' +
+    '<option value="auto">🔄 自动（依次升级）</option>' +
+    '<option value="parallel">⚡ 并行（同时升级所有设备）</option>' +
+    '<option value="batch">📦 分批（每批3台）</option></select></div>' +
+    '<div class="form-group"><label class="form-label">已选设备（<span id="bu-device-count">0</span> 台）</label>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;max-height:120px;overflow-y:auto;font-size:12px;color:var(--text-muted);" id="bu-device-list">请从左侧设备列表勾选要升级的设备</div></div>' +
+    '<div style="padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);">⚠️ 升级过程中请勿断开设备电源，升级完成后设备将自动重启</div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-batch-upgrade\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="confirmBatchUpgrade()" style="background:var(--purple);color:white;border:none;">📦 开始批量升级</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  // 更新已选设备数量
+  var selectedDevices = window._selectedDevicesForBatch || [];
+  var countEl = document.getElementById('bu-device-count');
+  if (countEl) countEl.textContent = selectedDevices.length;
+  var listEl = document.getElementById('bu-device-list');
+  if (listEl && selectedDevices.length > 0) {
+    listEl.innerHTML = selectedDevices.map(function(d) { return '<div>• ' + d + '</div>'; }).join('');
+    listEl.style.color = 'var(--text)';
+  }
+}
+
+function confirmBatchUpgrade() {
+  var version = document.getElementById('bu-version') ? document.getElementById('bu-version').value : 'v3.2.1';
+  var strategy = document.getElementById('bu-strategy') ? document.getElementById('bu-strategy').value : 'auto';
+  var selectedDevices = window._selectedDevicesForBatch || [];
+  var count = selectedDevices.length;
+  if (count === 0) { showToast('请先勾选要升级的设备', 'error'); return; }
+  document.getElementById('modal-batch-upgrade') && document.getElementById('modal-batch-upgrade').remove();
+  showToast('📦 批量升级已启动（目标版本：' + version + '，策略：' + (strategy === 'auto' ? '自动' : strategy === 'parallel' ? '并行' : '分批') + '）', 'success');
+  setTimeout(function() {
+    showToast('✅ 批量升级完成：' + count + ' 台设备已全部升级到 ' + version, 'success');
+  }, 3000);
+}
+
+// 【改进2】openBatchDeviceBindingModal - 批量设备绑定弹窗（UI按钮存在但函数缺失）
+function openBatchDeviceBindingModal() {
+  var existing = document.getElementById('modal-batch-binding');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-batch-binding" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-binding\').remove()">' +
+    '<div class="modal" style="width:500px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📡</div><div><div style="font-size:15px;font-weight:700;">批量设备绑定</div><div style="font-size:11px;color:var(--text-muted);">将设备批量绑定到房间或楼栋</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-batch-binding\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">绑定类型</label>' +
+    '<select class="form-select" id="bbb-type" style="width:100%;" onchange="updateBBBOptions()">' +
+    '<option value="room">🏠 绑定到房间</option>' +
+    '<option value="floor">🏢 绑定到楼层</option>' +
+    '<option value="building">🏗️ 绑定到楼栋</option></select></div>' +
+    '<div class="form-group"><label class="form-label">目标位置</label>' +
+    '<select class="form-select" id="bbb-target" style="width:100%;">' +
+    '<option value="">请先选择绑定类型</option></select></div>' +
+    '<div class="form-group"><label class="form-label">待绑定设备（<span id="bbb-count">0</span> 台）</label>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;max-height:100px;overflow-y:auto;font-size:12px;color:var(--text-muted);" id="bbb-device-list">从设备列表勾选设备后在此显示</div></div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-batch-binding\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="confirmBatchBinding()" style="background:var(--orange);color:white;border:none;">📡 确认绑定</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  updateBBBOptions();
+  var selectedDevices = window._selectedDevicesForBatch || [];
+  var countEl = document.getElementById('bbb-count');
+  if (countEl) countEl.textContent = selectedDevices.length;
+  var listEl = document.getElementById('bbb-device-list');
+  if (listEl && selectedDevices.length > 0) {
+    listEl.innerHTML = selectedDevices.map(function(d) { return '<div>• ' + d + '</div>'; }).join('');
+    listEl.style.color = 'var(--text)';
+  }
+}
+
+function updateBBBOptions() {
+  var type = document.getElementById('bbb-type') ? document.getElementById('bbb-type').value : 'room';
+  var targetSelect = document.getElementById('bbb-target');
+  if (!targetSelect) return;
+  var options = {
+    'room': [
+      {v:'101',n:'101室'},{v:'102',n:'102室'},{v:'201',n:'201室'},{v:'202',n:'202室'},
+      {v:'301',n:'301室'},{v:'302',n:'302室'},{v:'401',n:'401室'},{v:'402',n:'402室'}
+    ],
+    'floor': [
+      {v:'1F',n:'1层'},{v:'2F',n:'2层'},{v:'3F',n:'3层'},{v:'4F',n:'4层'}
+    ],
+    'building': [
+      {v:'MAIN',n:'主楼'},{v:'EAST',n:'东配楼'},{v:'WEST',n:'西配楼'}
+    ]
+  };
+  var opts = options[type] || [];
+  targetSelect.innerHTML = '<option value="">请选择</option>' + opts.map(function(o) {
+    return '<option value="' + o.v + '">' + o.n + '</option>';
+  }).join('');
+}
+
+function confirmBatchBinding() {
+  var type = document.getElementById('bbb-type') ? document.getElementById('bbb-type').value : '';
+  var target = document.getElementById('bbb-target') ? document.getElementById('bbb-target').value : '';
+  var selectedDevices = window._selectedDevicesForBatch || [];
+  if (!type || !target) { showToast('请选择绑定类型和目标位置', 'error'); return; }
+  if (selectedDevices.length === 0) { showToast('请先勾选要绑定的设备', 'error'); return; }
+  var typeLabel = {room:'房间',floor:'楼层',building:'楼栋'}[type] || type;
+  document.getElementById('modal-batch-binding') && document.getElementById('modal-batch-binding').remove();
+  showToast('📡 批量绑定成功：' + selectedDevices.length + ' 台设备已绑定到' + typeLabel, 'success');
+}
+
+// 【改进3】openFirmwareOTAModal - OTA固件升级弹窗（UI按钮存在但函数缺失）
+function openFirmwareOTAModal() {
+  var existing = document.getElementById('modal-firmware-ota');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-firmware-ota" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-ota\').remove()">' +
+    '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📦</div><div><div style="font-size:15px;font-weight:700;">OTA 在线升级</div><div style="font-size:11px;color:var(--text-muted);">通过OTA方式远程推送固件</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-firmware-ota\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--green);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:20px;">🌐</div><div><strong>OTA优势：</strong>支持差分升级，包体积小，升级速度快，断点续传</div></div>' +
+    '<div class="form-group"><label class="form-label">固件来源</label>' +
+    '<select class="form-select" id="ota-source" style="width:100%;">' +
+    '<option value="cloud">☁️ 云端最新固件库</option>' +
+    '<option value="custom">📁 自定义固件包上传</option></select></div>' +
+    '<div class="form-group"><label class="form-label">目标固件版本</label>' +
+    '<select class="form-select" id="ota-version" style="width:100%;">' +
+    '<option value="v3.2.1">v3.2.1（最新）</option>' +
+    '<option value="v3.2.0">v3.2.0</option>' +
+    '<option value="v3.1.8">v3.1.8</option></select></div>' +
+    '<div class="form-group"><label class="form-label">升级设备</label>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-muted);">从左侧设备列表选择，或输入设备UUID（多个用逗号分隔）</div>' +
+    '<input type="text" class="form-input" id="ota-devices" placeholder="DEV-LK01, DEV-LK02, DEV-LK03" style="margin-top:8px;"></div>' +
+    '<div style="padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">📶 OTA升级需要设备在线，建议在低峰期操作</div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-firmware-ota\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="startOTAUpgrade()" style="background:var(--green);color:white;border:none;">🌐 开始OTA升级</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function startOTAUpgrade() {
+  var version = document.getElementById('ota-version') ? document.getElementById('ota-version').value : '';
+  var devices = document.getElementById('ota-devices') ? document.getElementById('ota-devices').value.trim() : '';
+  if (!devices) { showToast('请输入目标设备UUID', 'error'); return; }
+  document.getElementById('modal-firmware-ota') && document.getElementById('modal-firmware-ota').remove();
+  showToast('🌐 OTA升级已启动，目标版本：' + version, 'success');
+  setTimeout(function() {
+    showToast('✅ OTA升级完成！设备正在重启...', 'success');
+  }, 2500);
+}
+
+// 【改进4】openFirmwareVersionTrackerModal - 固件版本跟踪器弹窗（UI按钮存在但函数缺失）
+function openFirmwareVersionTrackerModal() {
+  var existing = document.getElementById('modal-firmware-tracker');
+  if (existing) existing.remove();
+  var versions = [
+    {v:'v3.2.1', date:'2026-03-25', status:'stable', devices:12, desc:'最新稳定版，修复了若干Bug'},
+    {v:'v3.2.0', date:'2026-03-20', status:'stable', devices:8, desc:'新增节能模式'},
+    {v:'v3.1.8', date:'2026-03-15', status:'stable', devices:5, desc:'修复低电量告警延迟'},
+    {v:'v3.1.5', date:'2026-03-01', status:'old', devices:2, desc:'历史版本'}
+  ];
+  var rows = versions.map(function(v) {
+    var statusBadge = v.status === 'stable' ? '<span style="background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:10px;font-size:10px;">稳定</span>' :
+                       v.status === 'old' ? '<span style="background:var(--bg);color:var(--text-muted);padding:2px 8px;border-radius:10px;font-size:10px;">旧版</span>' : '';
+    return '<tr style="border-bottom:1px solid var(--border);">' +
+      '<td style="padding:10px 8px;font-weight:600;">' + v.v + '</td>' +
+      '<td style="padding:10px 8px;font-size:12px;color:var(--text-muted);">' + v.date + '</td>' +
+      '<td style="padding:10px 8px;">' + statusBadge + '</td>' +
+      '<td style="padding:10px 8px;font-size:12px;">' + v.devices + ' 台</td>' +
+      '<td style="padding:10px 8px;font-size:12px;color:var(--text-muted);">' + v.desc + '</td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-firmware-tracker" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-tracker\').remove()">' +
+    '<div class="modal" style="width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📡</div><div><div style="font-size:15px;font-weight:700;">固件版本跟踪器</div><div style="font-size:11px;color:var(--text-muted);">查看所有设备的固件版本分布</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-firmware-tracker\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:16px 24px;background:var(--bg);display:flex;gap:20px;flex-shrink:0;">' +
+    '<div style="text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--blue);">27</div><div style="font-size:11px;color:var(--text-muted);">设备总数</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--green);">12</div><div style="font-size:11px;color:var(--text-muted);">v3.2.1</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--orange);">8</div><div style="font-size:11px;color:var(--text-muted);">v3.2.0</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--text-light);">7</div><div style="font-size:11px;color:var(--text-muted);">旧版本</div></div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 24px 16px;">' +
+    '<table style="width:100%;border-collapse:collapse;">' +
+    '<thead><tr style="border-bottom:2px solid var(--border);">' +
+    '<th style="text-align:left;padding:8px;font-size:11px;font-weight:700;color:var(--text-muted);">版本</th>' +
+    '<th style="text-align:left;padding:8px;font-size:11px;font-weight:700;color:var(--text-muted);">发布日期</th>' +
+    '<th style="text-align:left;padding:8px;font-size:11px;font-weight:700;color:var(--text-muted);">状态</th>' +
+    '<th style="text-align:left;padding:8px;font-size:11px;font-weight:700;color:var(--text-muted);">设备数</th>' +
+    '<th style="text-align:left;padding:8px;font-size:11px;font-weight:700;color:var(--text-muted);">说明</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-firmware-tracker\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="openFirmwareOTAModal()" style="background:var(--green);color:white;border:none;">📦 批量升级</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// 【改进5】openFirmwareAnalyzerModal - 固件版本分析器弹窗（UI按钮存在但函数缺失）
+function openFirmwareAnalyzerModal() {
+  var existing = document.getElementById('modal-firmware-analyzer');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-firmware-analyzer" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-analyzer\').remove()">' +
+    '<div class="modal" style="width:580px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📡</div><div><div style="font-size:15px;font-weight:700;">固件版本分析器</div><div style="font-size:11px;color:var(--text-muted);">深度分析设备固件版本与兼容性</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-firmware-analyzer\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">选择设备（可多选）</label>' +
+    '<select class="form-select" id="fa-devices" multiple style="width:100%;height:100px;">' +
+    '<option value="DEV-LK01">DEV-LK01 - v3.2.1（正常）</option>' +
+    '<option value="DEV-LK02">DEV-LK02 - v3.2.0（建议升级）</option>' +
+    '<option value="DEV-LK03">DEV-LK03 - v3.1.8（版本过旧）</option>' +
+    '<option value="DEV-LK04">DEV-LK04 - v3.2.1（正常）</option>' +
+    '<option value="DEV-LK05">DEV-LK05 - v3.1.5（版本过旧）</option></select></div>' +
+    '<div class="form-group"><label class="form-label">分析维度</label>' +
+    '<div style="display:flex;flex-direction:column;gap:8px;">' +
+    '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;"><input type="checkbox" checked style="accent-color:var(--blue);"> 版本分布统计</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;"><input type="checkbox" checked style="accent-color:var(--blue);"> 升级路径推荐</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;"><input type="checkbox" checked style="accent-color:var(--blue);"> 兼容性风险评估</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;"><input type="checkbox" style="accent-color:var(--blue);"> 固件包大小对比</label></div></div>' +
+    '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-top:8px;font-size:12px;color:var(--blue);">📊 分析结果将显示版本分布、推荐升级路径及潜在兼容性风险</div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-firmware-analyzer\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="runFirmwareAnalysis()" style="background:var(--blue);color:white;border:none;">🔍 开始分析</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function runFirmwareAnalysis() {
+  var devicesSelect = document.getElementById('fa-devices');
+  var selected = devicesSelect ? Array.from(devicesSelect.selectedOptions).map(function(o){ return o.value; }) : [];
+  if (selected.length === 0) { showToast('请至少选择一个设备', 'error'); return; }
+  document.getElementById('modal-firmware-analyzer') && document.getElementById('modal-firmware-analyzer').remove();
+  showToast('🔍 正在分析 ' + selected.length + ' 台设备的固件版本...', 'info');
+  setTimeout(function() {
+    showToast('✅ 分析完成：2台建议升级，1台版本过旧需立即升级', 'success');
+  }, 2000);
+}

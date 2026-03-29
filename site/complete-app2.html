@@ -46,12 +46,12 @@ body.dark-mode .sidebar,
 body.dark-mode .main {
   background: var(--bg) !important;
 }
-body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: block !important; }
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: block !important; overflow: hidden; }
 
 /* Layout */
-.app { overflow: hidden; }
-.sidebar { width: 200px; float: left; background: var(--white); border-right: 1px solid var(--border); padding: 16px 0; overflow-y: auto; overflow-x: hidden; }
-.main { overflow: hidden; }
+.app { display: flex; flex-direction: row; height: 100vh; overflow: hidden; }
+.sidebar { width: 200px; flex-shrink: 0; background: var(--white); border-right: 1px solid var(--border); overflow-y: auto; overflow-x: hidden; height: 100vh; }
+.main { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 20px; }
 .sidebar-logo { padding: 0 16px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
 .sidebar-logo .icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--blue), #69c0ff); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
 .sidebar-logo span { font-size: 15px; font-weight: 600; }
@@ -1206,7 +1206,6 @@ function showToast(msg, type) {
     </div>
     <div id="global-search-results" style="max-width:640px;margin:8px auto 0;background:white;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);max-height:400px;overflow-y:auto;display:none;"></div>
   </div>
-</div>
 
 <!-- Main -->
 <div class="main">
@@ -2587,13 +2586,12 @@ function showToast(msg, type) {
               </tbody>
             </table>
 
+<script>
 // 【v4修复3】房间详情页Tab切换（switchRoomDetailTab）
 // 理由：房间详情页有5个Tab（房间信息/门锁信息/钥匙信息/办理记录/历史记录），但switchRoomDetailTab函数不存在
 // 改进：实现Tab切换逻辑，联动显示对应内容面板
 function switchRoomDetailTab(tab, el) {
   var tabs = ['info','doorlock','keys','records','history'];
-  var tabIds = ['room-tab-info','room-tab-doorlock','room-tab-keys','room-tab-records','room-tab-history'];
-  var contentIds = ['room-content-info','room-content-doorlock','room-content-keys','room-content-records','room-content-history'];
   tabs.forEach(function(t) {
     var tabEl = document.getElementById('room-tab-' + t);
     var contentEl = document.getElementById('room-content-' + t);
@@ -2606,6 +2604,7 @@ function switchRoomDetailTab(tab, el) {
   if (activeContent) activeContent.style.display = 'block';
   showToast('📋 已切换至' + (tab === 'info' ? '房间信息' : tab === 'doorlock' ? '门锁信息' : tab === 'keys' ? '钥匙信息' : tab === 'records' ? '办理记录' : '历史记录') + '标签', 'info');
 }
+</script>
 
     <!-- Page: Device Detail -->
     <div id="page-device-detail" class="page">
