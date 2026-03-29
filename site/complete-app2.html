@@ -547,6 +547,7 @@ function showPage(pageName) {
   if (pageName === 'staffschedule') { setTimeout(function(){ renderStaffSchedule && renderStaffSchedule(); }, 100); }
   if (pageName === 'energy') { setTimeout(function(){ renderEnergyChart && renderEnergyChart(); }, 100); }
   if (pageName === 'device') { setTimeout(function(){ refreshDeviceTable && refreshDeviceTable(); }, 100); }
+  if (pageName === 'roles') { setTimeout(function(){ renderRoleTable && renderRoleTable(); }, 100); }
   if (pageName === 'alert') { setTimeout(function(){ injectAlertDetailButton && injectAlertDetailButton(); }, 300); }
   if (pageName === 'oplog') { setTimeout(function(){ enhanceOplogSearchUI && enhanceOplogSearchUI(); }, 500); }
   if (pageName === 'config') { setTimeout(function(){ enhanceOplogSearchUI && enhanceOplogSearchUI(); }, 500); }
@@ -9789,38 +9790,7 @@ function openEditMemberLevelModalV2(idx) {
           <table class="table">
             <thead><tr><th>角色名称</th><th>类型</th><th>员工数</th><th>创建时间</th><th>状态</th><th>操作</th></tr></thead>
             <tbody id="role-table-body">
-              <tr>
-                <td><span style="font-weight:600;">👑 管理员</span></td>
-                <td><span class="tbadge purple">系统</span></td>
-                <td>2人</td>
-                <td>2026-01-01</td>
-                <td><span class="tbadge green">启用</span></td>
-                <td><button class="action-btn small" onclick="openEditRoleModal(0)">编辑</button> <button class="action-btn small red" onclick="showToast('系统角色不可删除','error')">删除</button></td>
-              </tr>
-              <tr>
-                <td><span style="font-weight:600;">🔧 运维人员</span></td>
-                <td><span class="tbadge blue">自定义</span></td>
-                <td>3人</td>
-                <td>2026-01-15</td>
-                <td><span class="tbadge green">启用</span></td>
-                <td><button class="action-btn small" onclick="openEditRoleModal(1)">编辑</button> <button class="action-btn small red" onclick="deleteRole(1)">删除</button></td>
-              </tr>
-              <tr>
-                <td><span style="font-weight:600;">🧹 客房人员</span></td>
-                <td><span class="tbadge blue">自定义</span></td>
-                <td>5人</td>
-                <td>2026-01-20</td>
-                <td><span class="tbadge green">启用</span></td>
-                <td><button class="action-btn small" onclick="openEditRoleModal(2)">编辑</button> <button class="action-btn small red" onclick="deleteRole(2)">删除</button></td>
-              </tr>
-              <tr>
-                <td><span style="font-weight:600;">👁️ 前台只读</span></td>
-                <td><span class="tbadge blue">自定义</span></td>
-                <td>2人</td>
-                <td>2026-02-01</td>
-                <td><span class="tbadge gray">已禁用</span></td>
-                <td><button class="action-btn small" onclick="openEditRoleModal(3)">编辑</button> <button class="action-btn small green" onclick="toggleRoleStatus(3)">启用</button></td>
-              </tr>
+            <!-- JS动态渲染：renderRoleTable() -->
             </tbody>
           </table>
         </div>
@@ -17836,12 +17806,142 @@ function openAddRoleModal() {
   document.body.insertAdjacentHTML('beforeend', html2);
 }
 
+// ======= 角色管理增删改查闭环 =======
+// 【物联后台 v4 改进】角色编辑/删除/启停完整闭环
+// 理由：角色管理页面点击"编辑/删除/启用"按钮报Uncaught ReferenceError
+var _roleStore = [
+  {id:0, name:'管理员', key:'admin', type:'system', desc:'系统最高管理员', status:'enabled', staffCount:2, createdAt:'2026-01-01'},
+  {id:1, name:'运维人员', key:'maintenance', type:'custom', desc:'设备运维与技术维护', status:'enabled', staffCount:3, createdAt:'2026-01-15'},
+  {id:2, name:'客房人员', key:'housekeeper', type:'custom', desc:'客房清洁与维护', status:'enabled', staffCount:5, createdAt:'2026-01-20'},
+  {id:3, name:'前台只读', key:'reception_ro', type:'custom', desc:'前台只读权限', status:'disabled', staffCount:2, createdAt:'2026-02-01'}
+];
+
+function openEditRoleModal(idx) {
+  var r = _roleStore[idx];
+  if (!r) { showToast('角色不存在', 'error'); return; }
+  var existing = document.getElementById('modal-role-edit');
+  if (existing) existing.remove();
+  var typeOptions = '<option value="system"' + (r.type==='system'?' selected':'') + '>⚙️ 系统角色</option><option value="custom"' + (r.type==='custom'?' selected':'') + '>🔧 自定义角色</option>';
+  var statusOptions = '<option value="enabled"' + (r.status==='enabled'?' selected':'') + '>✅ 启用</option><option value="disabled"' + (r.status==='disabled'?' selected':'') + '>🚫 禁用</option>';
+  var html = '<div class="modal-overlay" id="modal-role-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-role-edit\').remove()">' +
+    '<div class="modal" style="width:480px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:28px;">✏️</div><div style="font-size:15px;font-weight:700;">编辑角色</div>' +
+    '<button onclick="document.getElementById(\'modal-role-edit\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">角色名称 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="role-edit-name" value="' + r.name + '" placeholder="角色名称"></div>' +
+    '<div class="form-group"><label class="form-label">角色标识</label>' +
+    '<input type="text" class="form-input" id="role-edit-key" value="' + r.key + '" placeholder="英文标识" ' + (r.type==='system'?'readonly style="background:var(--bg);"':'') + '></div>' +
+    '<div class="form-group"><label class="form-label">角色描述</label>' +
+    '<input type="text" class="form-input" id="role-edit-desc" value="' + r.desc + '" placeholder="角色职责描述"></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">角色类型</label>' +
+    '<select class="form-select" id="role-edit-type" style="width:100%;" ' + (r.type==='system'?'disabled':'') + '>' + typeOptions + '</select></div>' +
+    '<div class="form-group"><label class="form-label">状态</label>' +
+    '<select class="form-select" id="role-edit-status" style="width:100%;">' + statusOptions + '</select></div></div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-role-edit\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitEditRole(' + idx + ')" style="background:var(--blue);color:white;border:none;">💾 保存修改</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitEditRole(idx) {
+  var r = _roleStore[idx];
+  if (!r) return;
+  var name = document.getElementById('role-edit-name') ? document.getElementById('role-edit-name').value.trim() : '';
+  var desc = document.getElementById('role-edit-desc') ? document.getElementById('role-edit-desc').value.trim() : '';
+  var status = document.getElementById('role-edit-status') ? document.getElementById('role-edit-status').value : r.status;
+  if (!name) { showToast('请填写角色名称', 'error'); return; }
+  r.name = name;
+  r.desc = desc;
+  r.status = status;
+  document.getElementById('modal-role-edit').remove();
+  renderRoleTable();
+  showToast('✅ 角色"' + name + '"修改成功', 'success');
+}
+
+function deleteRole(idx) {
+  var r = _roleStore[idx];
+  if (!r) return;
+  var existing = document.getElementById('modal-role-del');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-role-del" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:380px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:28px;">⚠️</div><div style="font-size:15px;font-weight:700;">确认删除角色</div></div>' +
+    '<div style="padding:20px 24px;"><p style="font-size:13px;">确定删除角色 <strong>' + r.name + '</strong> 吗？</p><p style="font-size:12px;color:var(--text-muted);margin-top:6px;">该操作不可恢复，关联员工将失去此角色权限。</p></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-role-del\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="doDeleteRole(' + idx + ')" style="background:var(--red);color:white;border:none;">🗑️ 删除</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doDeleteRole(idx) {
+  var r = _roleStore[idx];
+  if (!r) return;
+  _roleStore.splice(idx, 1);
+  document.getElementById('modal-role-del').remove();
+  renderRoleTable();
+  showToast('🗑️ 角色"' + r.name + '"已删除', 'success');
+}
+
+function toggleRoleStatus(idx) {
+  var r = _roleStore[idx];
+  if (!r) return;
+  r.status = r.status === 'enabled' ? 'disabled' : 'enabled';
+  renderRoleTable();
+  showToast((r.status === 'enabled' ? '✅ 已启用' : '🚫 已禁用') + '角色"' + r.name + '"', r.status === 'enabled' ? 'success' : 'warning');
+}
+
+function renderRoleTable() {
+  var tbody = document.getElementById('role-table-body');
+  if (!tbody) return;
+  var statusBadge = {enabled:'<span class="tbadge green">启用</span>', disabled:'<span class="tbadge gray">禁用</span>'};
+  var typeBadge = {system:'<span class="tbadge purple">系统</span>', custom:'<span class="tbadge blue">自定义</span>'};
+  var rows = _roleStore.map(function(r, i) {
+    var isSystem = r.type === 'system';
+    var deleteBtn = isSystem
+      ? '<button class="action-btn small red" onclick="showToast(\'系统角色不可删除\',\'error\')">删除</button>'
+      : '<button class="action-btn small red" onclick="deleteRole(' + i + ')">删除</button>';
+    var toggleBtn = r.status === 'enabled'
+      ? '<button class="action-btn small" onclick="toggleRoleStatus(' + i + ')" style="font-size:11px;padding:3px 8px;">🚫 禁用</button>'
+      : '<button class="action-btn small green" onclick="toggleRoleStatus(' + i + ')" style="font-size:11px;padding:3px 8px;">✅ 启用</button>';
+    return '<tr><td><span style="font-weight:600;">' + (isSystem ? '👑 ' : '🔧 ') + r.name + '</span></td><td>' + typeBadge[r.type] + '</td><td>' + r.staffCount + '人</td><td>' + r.createdAt + '</td><td>' + statusBadge[r.status] + '</td><td><button class="action-btn small" onclick="openEditRoleModal(' + i + ')" style="font-size:11px;padding:3px 8px;">编辑</button> ' + deleteBtn + ' ' + toggleBtn + '</td></tr>';
+  }).join('');
+  tbody.innerHTML = rows || '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">暂无角色数据</td></tr>';
+}
+
+// ======= 房间详情页快速操作 =======
+// 【物联后台 v4 改进】房间详情页快速入住/退房功能
+// 理由：房间详情页"快速入住""快速退房"按钮调用rdOpenCheckin()/rdOpenCheckout()但函数从未定义
+function rdOpenCheckin() {
+  var roomNum = document.getElementById('room-detail-room-num') ? document.getElementById('room-detail-room-num').textContent : '301';
+  var modal = document.getElementById('modal-checkin');
+  if (!modal) { showToast('入住模态框未找到，请先进入房间详情页', 'error'); return; }
+  var roomLabel = document.getElementById('checkin-room-label');
+  if (roomLabel) roomLabel.textContent = roomNum + '房间';
+  modal.classList.remove('hidden');
+  showToast('🏨 正在为房间 ' + roomNum + ' 办理入住', 'info');
+}
+
+function rdOpenCheckout() {
+  var roomNum = document.getElementById('room-detail-room-num') ? document.getElementById('room-detail-room-num').textContent : '301';
+  var modal = document.getElementById('modal-checkout');
+  if (!modal) { showToast('退房模态框未找到，请先进入房间详情页', 'error'); return; }
+  modal.classList.remove('hidden');
+  showToast('🚪 正在为房间 ' + roomNum + ' 办理退房', 'info');
+}
+
 function submitAddRole() {
   var name = document.getElementById('role-name-input').value.trim();
   var key = document.getElementById('role-key-input').value.trim();
   if (!name || !key) { showToast('请填写角色名称和标识', 'error'); return; }
   if (!/^[a-z_]+$/.test(key)) { showToast('角色标识只能使用小写英文和下划线', 'error'); return; }
+  var newRole = {id:_roleStore.length, name:name, key:key, type:'custom', desc:document.getElementById('role-desc-input') ? document.getElementById('role-desc-input').value.trim() : '', status:'enabled', staffCount:0, createdAt:new Date().toISOString().slice(0,10)};
+  _roleStore.push(newRole);
   document.getElementById('modal-add-role').remove();
+  renderRoleTable();
   showToast('✅ 角色"' + name + '"创建成功，请分配权限', 'success');
 }
 
