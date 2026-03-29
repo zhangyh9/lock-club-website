@@ -1199,7 +1199,7 @@ function showToast(msg, type) {
   <div class="main">
 
     <!-- Page: Home -->
-    <div     <div id="page-home" class="page active">
+    <div id="page-home" class="page active">
       <div class="page-header">
         <div class="page-title">🏠 首页 - 房态总览</div>
         <div class="page-sub">小度语音智慧房体验店 · 实时监控</div>
@@ -23010,7 +23010,6 @@ function submitKeypad() {
 }
 </script>
 <script>
-<script>
 // ============================================================
 // 【物联后台 v4 改进1】告警详情完整弹窗（闭环）
 // 理由：告警只有列表，缺少点击查看详情+处理+回退闭环
@@ -23258,7 +23257,11 @@ function printInvoice(invId) {
     '<div class="inv-item"><span>电子邮箱：</span><span>' + (inv.email || '--') + '</span></div>' +
     '<div class="inv-item"><span>收 款 人：</span><span>锁帮物联后台系统</span></div>' +
     '<div class="inv-item"><span>开 票 人：</span><span>系统自动开票</span></div></div></div>' +
-    '<div class="inv-footer">本发票由锁帮智慧酒店管理系统自动开具 · 如有疑问请联系客服<br>发票查询官网：https://inv.lockclub.cn · 客服电话：400-888-8888</div>
+    '<div class="inv-footer">本发票由锁帮智慧酒店管理系统自动开具 · 如有疑问请联系客服<br>发票查询官网：https://inv.lockclub.cn · 客服电话：400-888-8888</div></body></html>';
+  printWindow.document.write(printContent);
+  printWindow.document.close();
+  showToast('🖨️ 打印窗口已打开，请执行打印', 'success');
+}
 </script>
 
 <!-- 【v4全面检查修复】缺失的模态框HTML -->
@@ -23504,6 +23507,133 @@ function submitFullShiftHandover() {
 function printShiftHandoverReport() {
   showToast('🖨️ 交接班打印窗口已打开', 'success');
 }
+
+function searchOplogByKeyword(keyword) {
+  if (!keyword || !keyword.trim()) {
+    showToast('请输入搜索关键词', 'info');
+    return;
+  }
+  var kw = keyword.trim().toLowerCase();
+  var tbody = document.getElementById('oplog-table-body');
+  if (!tbody) return;
+  var rows = tbody.querySelectorAll('tr');
+  var matchCount = 0;
+  rows.forEach(function(row) {
+    var text = row.textContent.toLowerCase();
+    if (text.indexOf(kw) >= 0) {
+      row.style.display = '';
+      matchCount++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+  document.getElementById('oplog-count-label') && (document.getElementById('oplog-count-label').textContent = '匹配 ' + matchCount + ' 条记录');
+  showToast('🔍 找到 ' + matchCount + ' 条匹配记录', 'info');
+}
+function clearOplogSearch() {
+  var input = document.getElementById('oplog-keyword-search');
+  if (input) input.value = '';
+  var tbody = document.getElementById('oplog-table-body');
+  if (!tbody) return;
+  tbody.querySelectorAll('tr').forEach(function(r){ r.style.display = ''; });
+  var total = tbody.querySelectorAll('tr').length;
+  document.getElementById('oplog-count-label') && (document.getElementById('oplog-count-label').textContent = '共 ' + total + ' 条记录');
+  showToast('已清除搜索筛选', 'info');
+}
+function enhanceOplogSearchUI() {
+  var searchContainer = document.querySelector('#cfg-content-oplog [style*="flex-wrap"]');
+  if (!searchContainer) return;
+  var existingSearch = document.getElementById('oplog-keyword-search');
+  if (existingSearch) return; // already enhanced
+  var searchBox = document.createElement('div');
+  searchBox.style.cssText = 'display:flex;align-items:center;gap:6px;';
+  searchBox.innerHTML = '<input type="text" id="oplog-keyword-search" placeholder="🔍 搜索日志内容..." ' +
+    'style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:140px;" ' +
+    'onkeydown="if(event.key===\'Enter\')searchOplogByKeyword(this.value)">' +
+    '<button class="action-btn small" onclick="searchOplogByKeyword(document.getElementById(\'oplog-keyword-search\').value)" ' +
+    'style="padding:5px 10px;font-size:11px;">搜索</button>' +
+    '<button class="action-btn small" onclick="clearOplogSearch()" style="padding:5px 10px;font-size:11px;background:var(--bg);color:var(--text-muted);">清除</button>';
+  searchContainer.insertBefore(searchBox, searchContainer.firstChild);
+}
+function injectAlertDetailButton() {
+  // 找到告警列表的渲染逻辑，在适当位置添加详情按钮
+  var alertPage = document.getElementById('page-alert');
+  if (!alertPage) return;
+  // 在告警列表的操作列添加详情按钮
+  var actionCells = alertPage.querySelectorAll('td:last-child');
+  actionCells.forEach(function(cell) {
+    if (cell.textContent.indexOf('详情') < 0) {
+      var btns = cell.querySelectorAll('button, a');
+      if (btns.length > 0) {
+        var firstBtn = btns[0];
+        var detailBtn = document.createElement('button');
+        detailBtn.className = 'action-btn small';
+        detailBtn.style.cssText = 'padding:3px 8px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);margin-right:4px;';
+        detailBtn.textContent = '详情';
+        detailBtn.onclick = function() {
+          // Try to find the row index
+          var row = firstBtn.closest('tr');
+          if (row) {
+            var rows = row.parentElement.querySelectorAll('tr');
+            for (var i = 0; i < rows.length; i++) {
+              if (rows[i] === row) {
+                openAlertDetailFullModal(i);
+                break;
+              }
+            }
+          }
+        };
+        cell.insertBefore(detailBtn, cell.firstChild);
+      }
+    }
+  });
+}
+function injectWorkorderCompleteButton() {
+  var woPage = document.getElementById('page-workorder');
+  if (!woPage) return;
+  var rows = woPage.querySelectorAll('tbody tr');
+  rows.forEach(function(row) {
+    var statusCell = row.querySelector('td:nth-child(5)');
+    if (statusCell && (statusCell.textContent.indexOf('进行中') >= 0 || statusCell.textContent.indexOf('待处理') >= 0)) {
+      var actionCell = row.querySelector('td:last-child');
+      if (actionCell && actionCell.textContent.indexOf('完成') < 0) {
+        var completeBtn = document.createElement('button');
+        completeBtn.className = 'action-btn small';
+        completeBtn.style.cssText = 'padding:3px 8px;font-size:11px;background:var(--green-bg);color:var(--green);border-color:var(--green);margin-right:4px;';
+        completeBtn.textContent = '完成';
+        completeBtn.onclick = function(e) {
+          e.stopPropagation();
+          var rows = actionCell.closest('tbody').querySelectorAll('tr');
+          for (var i = 0; i < rows.length; i++) {
+            if (rows[i] === row) {
+              openWorkorderCompleteModal(i);
+              break;
+            }
+          }
+        };
+        if (actionCell.firstChild && actionCell.firstChild.nodeType === 3) {
+          actionCell.insertBefore(completeBtn, actionCell.firstChild);
+        } else {
+          actionCell.insertBefore(completeBtn, actionCell.firstChild);
+        }
+      }
+    }
+  });
+}
+function injectEnergyAISuggestBtn() {
+  var energyModal = document.getElementById('modal-energy-detail');
+  if (!energyModal) return;
+  var btnArea = energyModal.querySelector('[style*="display:flex"][style*="gap"]');
+  if (!btnArea) return;
+  if (btnArea.textContent.indexOf('AI节能建议') >= 0) return; // already injected
+  var aiBtn = document.createElement('button');
+  aiBtn.className = 'action-btn';
+  aiBtn.style.cssText = 'padding:8px 14px;font-size:12px;background:var(--purple);color:white;border:none;border-radius:6px;cursor:pointer;';
+  aiBtn.textContent = '🤖 AI节能建议';
+  aiBtn.onclick = function() { openEnergyAISuggestModal(); };
+  btnArea.insertBefore(aiBtn, btnArea.firstChild);
+}
+
 </script>
 
 </body></html>
