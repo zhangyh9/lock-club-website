@@ -1167,3 +1167,347 @@ if (!window.workorderStore) {
     };
   }
 })();
+
+// ============================================================
+// 【物联后台 v4-第5轮】房间记录CRUD闭环 + 审计日志筛选 + 房间详情Tab增强
+// ============================================================
+
+// 初始化房间记录数据
+if (!window.roomRecordData) {
+  window.roomRecordData = [
+    {id:'rec-001', type:'in', name:'张三', phone:'138****8888', method:'phone', room:'301', roomType:'亲子间', status:'active', time:'今天 10:32', note:'', fromRoom:'', changeReason:''},
+    {id:'rec-002', type:'out', name:'李四', phone:'139****6666', method:'card', room:'301', roomType:'亲子间', status:'done', time:'昨天 14:20', note:'', fromRoom:'', changeReason:'', depositReturned:true},
+    {id:'rec-003', type:'change', name:'钱七', phone:'137****7777', method:'phone', room:'301', roomType:'亲子间', status:'done', time:'03-25 16:00', note:'', fromRoom:'203', changeReason:'房间噪音大'},
+    {id:'rec-004', type:'out', name:'王五', phone:'137****5555', method:'phone', room:'301', roomType:'亲子间', status:'done', time:'03-24 12:00', note:'', fromRoom:'', changeReason:''}
+  ];
+}
+
+// 审计日志数据
+if (!window.auditLogData) {
+  window.auditLogData = [
+    {time:'2026-03-27 10:32:08', type:'config', desc:'修改房间301门锁灵敏度从「高」调整为「中」', operator:'赵飞', ip:'192.168.1.101', result:'成功'},
+    {time:'2026-03-27 10:30:15', type:'key', desc:'为张三添加手机开锁权限，有效期至 2026-03-28 12:00', operator:'赵飞', ip:'192.168.1.101', result:'成功'},
+    {time:'2026-03-27 10:30:10', type:'key', desc:'自动清除离店客人李四的门卡权限（入住状态变更触发）', operator:'系统', ip:'--', result:'成功'},
+    {time:'2026-03-27 10:15:33', type:'unlock', desc:'手机蓝牙开锁，响应时间 23ms，设备电量 88%', operator:'张三', ip:'--', result:'成功'},
+    {time:'2026-03-26 16:20:05', type:'config', desc:'修改房间301温控策略从「自动」切换为「节能模式」', operator:'周敏', ip:'192.168.1.102', result:'成功'},
+    {time:'2026-03-26 14:00:00', type:'auth', desc:'为张三创建会员卡，卡号 8888 6666 7777 9999', operator:'赵飞', ip:'192.168.1.101', result:'成功'},
+    {time:'2026-03-26 11:30:00', type:'device', desc:'远程重启设备 A84F1AF2，门锁响应正常', operator:'系统', ip:'--', result:'成功'},
+    {time:'2026-03-25 18:00:00', type:'key', desc:'为钱七生成临时密码，有效期 2026-03-25 18:00 至 2026-03-26 12:00', operator:'赵飞', ip:'192.168.1.101', result:'成功'},
+    {time:'2026-03-25 16:00:00', type:'config', desc:'房间换房：钱七从 203 换至 301，原因：房间噪音大', operator:'赵飞', ip:'192.168.1.101', result:'成功'},
+    {time:'2026-03-24 12:00:00', type:'out', desc:'王五退房，押金 ¥200 已退还', operator:'系统', ip:'--', result:'成功'}
+  ];
+}
+
+// ============================================================
+// 【改进3】filterRoomRecords - 房间记录Tab状态筛选
+// 理由：房间记录Tab有「全部/入住/退房/换房」但函数缺失，点击无响应
+// 改进：根据rtype过滤记录，更新Tab激活状态和计数
+// ============================================================
+function filterRoomRecords(status, el) {
+  // 更新Tab激活状态
+  var tabs = document.querySelectorAll('#room-records-list');
+  if (el) {
+    var parent = el.closest('.card-tabs') || el.closest('#room-content-records');
+    if (parent) {
+      parent.querySelectorAll('.card-tab').forEach(function(t) {
+        t.classList.remove('active');
+        t.style.background = '';
+        t.style.color = '';
+      });
+      el.classList.add('active');
+      el.style.background = 'var(--blue)';
+      el.style.color = 'white';
+    }
+  }
+  // 过滤记录
+  var container = document.getElementById('room-records-list');
+  if (!container) return;
+  var records = container.querySelectorAll('.checkin-record');
+  records.forEach(function(rec) {
+    var rtype = rec.getAttribute('data-rtype') || '';
+    var show = status === 'all' || rtype === status;
+    rec.style.display = show ? '' : 'none';
+  });
+  // 更新计数
+  var allCount = container.querySelectorAll('.checkin-record').length;
+  var inCount = container.querySelectorAll('.checkin-record[data-rtype="in"]').length;
+  var outCount = container.querySelectorAll('.checkin-record[data-rtype="out"]').length;
+  var changeCount = container.querySelectorAll('.checkin-record[data-rtype="change"]').length;
+  var elAll = document.getElementById('rr-count-all');
+  var elIn = document.getElementById('rr-count-in');
+  var elOut = document.getElementById('rr-count-out');
+  var elChange = document.getElementById('rr-count-change');
+  if (elAll) elAll.textContent = allCount;
+  if (elIn) elIn.textContent = inCount;
+  if (elOut) elOut.textContent = outCount;
+  if (elChange) elChange.textContent = changeCount;
+}
+
+// ============================================================
+// 【改进3】openAddRoomRecordModal - 打开添加房间记录弹窗
+// ============================================================
+function openAddRoomRecordModal() {
+  var modal = document.getElementById('modal-room-record-form');
+  if (!modal) {
+    showToast('房间记录表单未找到', 'error');
+    return;
+  }
+  // 重置表单
+  document.getElementById('rrf-title').textContent = '✏️ 添加记录';
+  document.getElementById('rrf-type').value = 'in';
+  document.getElementById('rrf-name').value = '';
+  document.getElementById('rrf-phone').value = '';
+  document.getElementById('rrf-method').value = 'phone';
+  document.getElementById('rrf-note').value = '';
+  document.getElementById('rrf-from-room').value = '';
+  document.getElementById('rrf-change-reason').value = '';
+  document.getElementById('rrf-change-fields').style.display = 'none';
+  document.getElementById('rrf-submit-btn').setAttribute('data-edit-id', '');
+  modal.classList.remove('hidden');
+}
+
+// ============================================================
+// 【改进3】editRoomRecord - 编辑房间记录
+// ============================================================
+function editRoomRecord(recordId) {
+  var record = (window.roomRecordData || []).find(function(r) { return r.id === recordId; });
+  if (!record) {
+    showToast('记录不存在', 'error');
+    return;
+  }
+  var modal = document.getElementById('modal-room-record-form');
+  if (!modal) return;
+  document.getElementById('rrf-title').textContent = '✏️ 编辑记录';
+  document.getElementById('rrf-type').value = record.type;
+  document.getElementById('rrf-name').value = record.name;
+  document.getElementById('rrf-phone').value = record.phone || '';
+  document.getElementById('rrf-method').value = record.method || 'phone';
+  document.getElementById('rrf-note').value = record.note || '';
+  document.getElementById('rrf-from-room').value = record.fromRoom || '';
+  document.getElementById('rrf-change-reason').value = record.changeReason || '';
+  document.getElementById('rrf-change-fields').style.display = record.type === 'change' ? '' : 'none';
+  document.getElementById('rrf-submit-btn').setAttribute('data-edit-id', recordId);
+  modal.classList.remove('hidden');
+}
+
+// ============================================================
+// 【改进3】deleteRoomRecord - 删除房间记录（先弹确认）
+// ============================================================
+function deleteRoomRecord(recordId) {
+  var record = (window.roomRecordData || []).find(function(r) { return r.id === recordId; });
+  var detailEl = document.getElementById('rr-del-detail');
+  if (detailEl) detailEl.textContent = '删除「' + (record ? record.name : recordId) + '」的记录？删除后将无法恢复。';
+  var confirmBtn = document.getElementById('rr-del-confirm-btn');
+  if (confirmBtn) confirmBtn.setAttribute('data-delete-id', recordId);
+  var modal = document.getElementById('modal-rr-delete-confirm');
+  if (modal) modal.classList.remove('hidden');
+}
+
+// ============================================================
+// 【改进3】confirmDeleteRoomRecord - 确认删除
+// ============================================================
+function confirmDeleteRoomRecord() {
+  var confirmBtn = document.getElementById('rr-del-confirm-btn');
+  var recordId = confirmBtn ? confirmBtn.getAttribute('data-delete-id') : '';
+  if (!recordId) return;
+  var idx = (window.roomRecordData || []).findIndex(function(r) { return r.id === recordId; });
+  if (idx >= 0) {
+    window.roomRecordData.splice(idx, 1);
+    showToast('✅ 记录已删除', 'success');
+  }
+  closeModal('rr-delete-confirm');
+  // 从DOM移除
+  var domRec = document.querySelector('.checkin-record[data-record-id="' + recordId + '"]');
+  if (domRec) domRec.remove();
+  // 更新计数
+  filterRoomRecords('all', document.querySelector('#room-content-records .card-tab'));
+}
+
+// ============================================================
+// 【改进3】submitRoomRecord - 提交房间记录（新增/编辑）
+// ============================================================
+function submitRoomRecord() {
+  var submitBtn = document.getElementById('rrf-submit-btn');
+  var editId = submitBtn ? submitBtn.getAttribute('data-edit-id') : '';
+  var rtype = document.getElementById('rrf-type').value;
+  var name = document.getElementById('rrf-name').value.trim();
+  var phone = document.getElementById('rrf-phone').value.trim();
+  var method = document.getElementById('rrf-method').value;
+  var note = document.getElementById('rrf-note').value.trim();
+  if (!name) {
+    showToast('请输入客人姓名', 'error');
+    return;
+  }
+  var now = new Date();
+  var timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+  var today = '今天';
+  if (editId) {
+    var idx = (window.roomRecordData || []).findIndex(function(r) { return r.id === editId; });
+    if (idx >= 0) {
+      window.roomRecordData[idx] = Object.assign({}, window.roomRecordData[idx], {
+        type: rtype, name: name, phone: phone, method: method, note: note,
+        fromRoom: rtype === 'change' ? document.getElementById('rrf-from-room').value : '',
+        changeReason: rtype === 'change' ? document.getElementById('rrf-change-reason').value : ''
+      });
+      showToast('✅ 记录已更新', 'success');
+    }
+  } else {
+    var newId = 'rec-' + Date.now();
+    window.roomRecordData.push({
+      id: newId, type: rtype, name: name, phone: phone, method: method,
+      room: '301', roomType: '亲子间', status: rtype === 'out' ? 'done' : 'active',
+      time: today + ' ' + timeStr, note: note,
+      fromRoom: rtype === 'change' ? document.getElementById('rrf-from-room').value : '',
+      changeReason: rtype === 'change' ? document.getElementById('rrf-change-reason').value : ''
+    });
+    showToast('✅ 记录已添加', 'success');
+  }
+  closeModal('room-record-form');
+  // 刷新列表（简单刷新当前Tab）
+  filterRoomRecords('all', document.querySelector('#room-content-records .card-tab'));
+}
+
+// ============================================================
+// 【改进3】openChangeRoomModal - 打开换房弹窗
+// ============================================================
+function openChangeRoomModal() {
+  var modal = document.getElementById('modal-change-room-record');
+  if (modal) {
+    modal.classList.remove('hidden');
+    document.getElementById('crr-name').textContent = '张三';
+    document.getElementById('crr-from-room').textContent = '301';
+    document.getElementById('crr-target-room').value = '';
+    document.getElementById('crr-reason').value = '';
+    document.getElementById('crr-note').value = '';
+  } else {
+    showToast('换房功能开发中', 'info');
+  }
+}
+
+// ============================================================
+// 【改进3】openEarlyCheckoutModal - 打开退房弹窗
+// ============================================================
+function openEarlyCheckoutModal() {
+  showToast('🚪 早退功能已打开，请在房间记录中编辑退房状态', 'info');
+}
+
+// ============================================================
+// 【改进3】submitChangeRoomRecord - 确认换房
+// ============================================================
+function submitChangeRoomRecord() {
+  var targetRoom = document.getElementById('crr-target-room').value.trim();
+  var reason = document.getElementById('crr-reason').value;
+  if (!targetRoom) {
+    showToast('请输入目标房间号', 'error');
+    return;
+  }
+  if (!reason) {
+    showToast('请选择换房原因', 'error');
+    return;
+  }
+  showToast('✅ 换房成功：301 → ' + targetRoom, 'success');
+  closeModal('change-room-record');
+}
+
+// ============================================================
+// 【改进3】exportRoomRevenueReport - 导出入账报告
+// ============================================================
+function exportRoomRevenueReport() {
+  showToast('💰 正在生成入账报告…', 'info');
+  setTimeout(function() {
+    var csv = '日期,房间,客人,类型,金额\n';
+    csv += '2026-03-29,301,张三,入住,¥0\n';
+    csv += '2026-03-28,301,李四,退房,¥200\n';
+    csv += '2026-03-25,301,钱七,换房,¥0\n';
+    csv += '2026-03-24,301,王五,退房,¥200\n';
+    var blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '入账报告_' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ 入账报告已导出', 'success');
+  }, 800);
+}
+
+// ============================================================
+// 【改进3】exportRoomAuditLog - 导出房间审计日志
+// ============================================================
+function exportRoomAuditLog() {
+  showToast('📤 正在导出审计日志…', 'info');
+  setTimeout(function() {
+    var data = window.auditLogData || [];
+    var csv = '\uFEFF时间,类型,操作描述,操作者,IP地址,结果\n';
+    data.forEach(function(row) {
+      csv += row.time + ',' + row.type + ',' + row.desc.replace(/,/g,'，') + ',' + row.operator + ',' + row.ip + ',' + row.result + '\n';
+    });
+    var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '审计日志_' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ 审计日志已导出', 'success');
+  }, 600);
+}
+
+// ============================================================
+// 【改进3】filterAuditLog - 审计日志搜索/筛选
+// ============================================================
+function filterAuditLog(keyword) {
+  var typeFilter = document.getElementById('audit-type-filter');
+  var opFilter = document.getElementById('audit-operator-filter');
+  var typeVal = typeFilter ? typeFilter.value : 'all';
+  var opVal = opFilter ? opFilter.value : 'all';
+  var kw = keyword ? keyword.toLowerCase() : '';
+  var data = window.auditLogData || [];
+  var filtered = data.filter(function(row) {
+    var matchType = typeVal === 'all' || row.type === typeVal;
+    var matchOp = opVal === 'all' || row.operator === opVal;
+    var matchKw = !kw || row.desc.toLowerCase().indexOf(kw) >= 0 || row.operator.toLowerCase().indexOf(kw) >= 0;
+    return matchType && matchOp && matchKw;
+  });
+  var tbody = document.getElementById('audit-log-body');
+  if (!tbody) return;
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">暂无审计日志</td></tr>';
+    return;
+  }
+  var typeLabels = {config:'⚙️ 配置', key:'🔑 钥匙', unlock:'🔓 开锁', auth:'🔐 权限', device:'📱 设备', out:'🚪 退房'};
+  tbody.innerHTML = filtered.map(function(row) {
+    var badgeStyle = row.type === 'config' ? 'var(--purple-bg)' : row.type === 'key' || row.type === 'auth' ? 'var(--green-bg)' : row.type === 'unlock' ? 'var(--blue-bg)' : 'var(--orange-bg)';
+    var badgeColor = row.type === 'config' ? 'var(--purple)' : row.type === 'key' || row.type === 'auth' ? 'var(--green)' : row.type === 'unlock' ? 'var(--blue)' : 'var(--orange)';
+    return '<tr data-type="' + row.type + '" data-operator="' + row.operator + '">' +
+      '<td style="font-size:11px;color:var(--text-muted);font-family:monospace;">' + row.time + '</td>' +
+      '<td><span class="tbadge" style="background:' + badgeStyle + ';color:' + badgeColor + ';font-size:10px;padding:2px 6px;">' + (typeLabels[row.type] || row.type) + '</span></td>' +
+      '<td style="font-size:12px;">' + row.desc + '</td>' +
+      '<td style="font-size:11px;font-weight:600;">' + row.operator + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);font-family:monospace;">' + row.ip + '</td>' +
+      '<td><span class="tbadge ' + (row.result === '成功' ? 'green' : 'red') + '" style="font-size:10px;">' + row.result + '</span></td>' +
+    '</tr>';
+  }).join('');
+  var countEl = document.getElementById('audit-record-count');
+  if (countEl) countEl.textContent = '共 ' + filtered.length + ' 条记录';
+}
+
+// ============================================================
+// 【补充】closeModal辅助函数（防止外部引用报错）
+// ============================================================
+if (typeof closeModal !== 'function') {
+  window.closeModal = function(id) {
+    var modal = document.getElementById(id);
+    if (modal) modal.classList.add('hidden');
+  };
+}
+
+// 初始化房间记录Tab点击
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var firstTab = document.querySelector('#room-content-records .card-tab');
+    if (firstTab && typeof filterRoomRecords === 'function') {
+      filterRoomRecords('all', firstTab);
+    }
+  }, 500);
+});
