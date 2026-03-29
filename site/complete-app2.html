@@ -30064,6 +30064,279 @@ var workorderSLAStore = [
 ];
 
 // ============================================================
+// 【物联后台 v4 新增】工单SLA超时统计弹窗
+// 按钮位于：工单页面SLA超时按钮
+// 功能：展示各优先级工单的SLA状态、超时统计、超时工单列表
+// ============================================================
+function openWorkorderSLAModal() {
+  var existing = document.getElementById('modal-workorder-sla');
+  if (existing) existing.remove();
+  var urgent = workorderSLAStore.filter(function(w){ return w.priority === 'urgent'; });
+  var high = workorderSLAStore.filter(function(w){ return w.priority === 'high'; });
+  var normal = workorderSLAStore.filter(function(w){ return w.priority === 'normal'; });
+  var low = workorderSLAStore.filter(function(w){ return w.priority === 'low'; });
+  var overdueAll = workorderSLAStore.filter(function(w){ return w.status === 'overdue'; });
+  var pendingAll = workorderSLAStore.filter(function(w){ return w.status === 'pending'; });
+  function priorityTag(p) {
+    return p === 'urgent' ? '🔴 紧急' : p === 'high' ? '🟠 高' : p === 'normal' ? '🟡 普通' : '⚪ 低';
+  }
+  function statusBadge(s) {
+    if (s === 'overdue') return '<span style="padding:2px 7px;background:var(--red-bg);color:var(--red);border-radius:8px;font-size:10px;font-weight:700;">超时</span>';
+    if (s === 'pending') return '<span style="padding:2px 7px;background:var(--orange-bg);color:var(--orange);border-radius:8px;font-size:10px;font-weight:700;">待接单</span>';
+    if (s === 'accepted') return '<span style="padding:2px 7px;background:var(--blue-bg);color:var(--blue);border-radius:8px;font-size:10px;font-weight:700;">处理中</span>';
+    if (s === 'done') return '<span style="padding:2px 7px;background:var(--green-bg);color:var(--green);border-radius:8px;font-size:10px;font-weight:700;">已完成</span>';
+    return s;
+  }
+  function woRow(w) {
+    return '<div style="display:flex;align-items:center;gap:8px;padding:10px;border-bottom:1px solid var(--border);font-size:12px;">' +
+      '<div style="flex:1;min-width:0;"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + w.id + '</div>' +
+      '<div style="color:var(--text-muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + w.title + '</div></div>' +
+      '<div style="font-size:10px;color:var(--text-muted);white-space:nowrap;">' + w.room + '</div>' +
+      '<div style="font-size:10px;white-space:nowrap;">' + priorityTag(w.priority) + '</div>' +
+      '<div style="white-space:nowrap;">' + statusBadge(w.status) + '</div></div>';
+  }
+  function priorityCard(list, label, color, bg) {
+    var overdue = list.filter(function(w){ return w.status === 'overdue'; }).length;
+    var pending = list.filter(function(w){ return w.status === 'pending'; }).length;
+    var done = list.filter(function(w){ return w.status === 'done'; }).length;
+    var accepted = list.filter(function(w){ return w.status === 'accepted'; }).length;
+    var rows = list.map(woRow).join('');
+    return '<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;">' +
+      '<div style="padding:10px 14px;background:' + bg + ';display:flex;align-items:center;justify-content:space-between;">' +
+      '<div style="font-size:13px;font-weight:700;color:' + color + ';">' + label + ' <span style="font-size:11px;font-weight:400;">（' + list.length + '条）</span></div>' +
+      '<div style="display:flex;gap:8px;">' +
+      (overdue > 0 ? '<span style="padding:2px 7px;background:var(--red);color:white;border-radius:8px;font-size:10px;font-weight:700;">超时 ' + overdue + '</span>' : '') +
+      (pending > 0 ? '<span style="padding:2px 7px;background:var(--orange);color:white;border-radius:8px;font-size:10px;font-weight:700;">待 ' + pending + '</span>' : '') +
+      (accepted > 0 ? '<span style="padding:2px 7px;background:var(--blue);color:white;border-radius:8px;font-size:10px;font-weight:700;">处理中 ' + accepted + '</span>' : '') +
+      (done > 0 ? '<span style="padding:2px 7px;background:var(--green);color:white;border-radius:8px;font-size:10px;font-weight:700;">完成 ' + done + '</span>' : '') +
+      '</div></div>' +
+      '<div style="max-height:140px;overflow-y:auto;">' + (rows || '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">暂无工单</div>') + '</div></div>';
+  }
+  var html = '<div class="modal-overlay" id="modal-workorder-sla" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-workorder-sla\').remove()">' +
+    '<div class="modal" style="width:640px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:24px;">⏱️</div><div><div style="font-size:15px;font-weight:700;">工单SLA超时状态</div><div style="font-size:11px;color:var(--text-muted);">查看各优先级工单SLA状态与超时统计</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-workorder-sla\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:12px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">' +
+    '<div style="padding:10px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red);">' + overdueAll.length + '</div><div style="font-size:11px;color:var(--red);">超时工单</div></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">' + pendingAll.length + '</div><div style="font-size:11px;color:var(--orange);">待接单</div></div>' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);">' + workorderSLAStore.filter(function(w){return w.status===\'accepted\';}).length + '</div><div style="font-size:11px;color:var(--blue);">处理中</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + workorderSLAStore.filter(function(w){return w.status===\'done\';}).length + '</div><div style="font-size:11px;color:var(--green);">已完成</div></div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:14px 20px;">' +
+    priorityCard(urgent, '🔴 紧急', 'var(--red)', 'var(--red-bg)') +
+    priorityCard(high, '🟠 高', 'var(--orange)', 'var(--orange-bg)') +
+    priorityCard(normal, '🟡 普通', 'var(--blue)', 'var(--blue-bg)') +
+    priorityCard(low, '⚪ 低', 'var(--text-muted)', 'var(--bg)') +
+    '</div>' +
+    '<div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-workorder-sla\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="document.getElementById(\'modal-workorder-sla\').remove();openSLATimeoutConfigModal();">⚙️ SLA规则配置</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// ============================================================
+// 【物联后台 v4 新增】SLA超时规则配置（slaConfigStore）
+// 功能：增删改查各优先级SLA时限、升级对象、升级方式、启用/停用开关
+// ============================================================
+var slaConfigStore = [
+  {priority:'urgent', label:'🔴 紧急', slaMinutes:30, escalationTo:'王总', escalationAction:'电话+短信', enabled:true},
+  {priority:'high', label:'🟠 高', slaMinutes:60, escalationTo:'客房主管', escalationAction:'系统通知', enabled:true},
+  {priority:'normal', label:'🟡 普通', slaMinutes:120, escalationTo:'前厅经理', escalationAction:'系统通知', enabled:true},
+  {priority:'low', label:'⚪ 低', slaMinutes:240, escalationTo:'-', escalationAction:'无', enabled:false}
+];
+var _slaConfigEditIdx = null;
+
+function openSLATimeoutConfigModal() {
+  var existing = document.getElementById('modal-sla-config');
+  if (existing) existing.remove();
+  var rows = slaConfigStore.map(function(rule, idx) {
+    var borderColor = rule.priority === 'urgent' ? 'var(--red)' : rule.priority === 'high' ? 'var(--orange)' : rule.priority === 'normal' ? 'var(--blue)' : 'var(--text-muted)';
+    var enabledBadge = rule.enabled
+      ? '<span style="padding:2px 8px;background:var(--green-bg);color:var(--green);border-radius:8px;font-size:10px;font-weight:700;">已启用</span>'
+      : '<span style="padding:2px 8px;background:var(--bg);color:var(--text-muted);border-radius:8px;font-size:10px;font-weight:700;">已停用</span>';
+    return '<div style="padding:14px;background:var(--bg);border-radius:8px;margin-bottom:10px;border-left:4px solid ' + borderColor + ';">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
+      '<div style="display:flex;align-items:center;gap:8px;"><div style="font-size:14px;font-weight:700;">' + rule.label + '</div>' + enabledBadge + '</div>' +
+      '<div style="display:flex;gap:6px;"><button class="action-btn small" onclick="editSLATimeoutConfig(' + idx + ')">✏️ 编辑</button>' +
+      (rule.enabled
+        ? '<button class="action-btn small" onclick="toggleSLATimeoutConfig(' + idx + ')" style="color:var(--orange);border-color:var(--orange);">⏸ 停用</button>'
+        : '<button class="action-btn small" onclick="toggleSLATimeoutConfig(' + idx + ')" style="color:var(--green);border-color:var(--green);">▶️ 启用</button>') +
+      '</div></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:12px;">' +
+      '<div><div style="color:var(--text-muted);font-size:10px;margin-bottom:2px;">SLA时限</div><div style="font-weight:600;">' + rule.slaMinutes + ' 分钟</div></div>' +
+      '<div><div style="color:var(--text-muted);font-size:10px;margin-bottom:2px;">升级至</div><div style="font-weight:600;">' + rule.escalationTo + '</div></div>' +
+      '<div><div style="color:var(--text-muted);font-size:10px;margin-bottom:2px;">升级方式</div><div style="font-weight:600;">' + rule.escalationAction + '</div></div></div></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-sla-config" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-sla-config\').remove()">' +
+    '<div class="modal" style="width:620px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:24px;">⚙️</div><div><div style="font-size:15px;font-weight:700;">SLA超时规则配置</div><div style="font-size:11px;color:var(--text-muted);">配置各优先级工单的SLA时限与升级规则</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-sla-config\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:14px 20px;">' + rows + '</div>' +
+    '<div style="padding:12px 20px;background:var(--blue-bg);border-top:1px solid var(--blue);display:flex;align-items:center;gap:8px;">' +
+    '<div style="font-size:11px;color:var(--blue);line-height:1.8;">💡 SLA超时后，系统将按配置的升级方式自动通知指定人员。停用的规则不会触发超时告警。</div></div>' +
+    '<div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-sla-config\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="saveSLATimeoutConfig()" style="background:var(--green);color:white;border:none;">💾 保存配置</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function editSLATimeoutConfig(idx) {
+  _slaConfigEditIdx = idx;
+  var rule = slaConfigStore[idx];
+  var html = '<div class="modal-overlay" id="modal-sla-config-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-sla-config-edit\').remove()">' +
+    '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">✏️ 编辑SLA规则 — ' + rule.label + '</div>' +
+    '<button onclick="document.getElementById(\'modal-sla-config-edit\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">SLA时限（分钟）</label>' +
+    '<input type="number" class="form-input" id="sla-cfg-minutes" value="' + rule.slaMinutes + '" min="5" placeholder="输入SLA时限"></div>' +
+    '<div class="form-group"><label class="form-label">超时升级至</label>' +
+    '<input type="text" class="form-input" id="sla-cfg-escalate" value="' + rule.escalationTo + '" placeholder="输入负责人姓名或部门"></div>' +
+    '<div class="form-group"><label class="form-label">升级方式</label>' +
+    '<select class="form-select" id="sla-cfg-action"><option value="系统通知">系统通知</option><option value="短信">短信</option><option value="电话+短信">电话+短信</option><option value="无">无</option></select></div>' +
+    '<div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:10px;background:var(--bg);border-radius:8px;">' +
+    '<input type="checkbox" id="sla-cfg-enabled" ' + (rule.enabled ? 'checked' : '') + ' style="accent-color:var(--blue);width:15px;height:15px;"><span>启用此规则</span></label></div></div>' +
+    '<div style="padding:14px 24px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-sla-config-edit\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="saveSLATimeoutConfigEdit(' + idx + ')">💾 保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('sla-cfg-action').value = rule.escalationAction;
+}
+
+function saveSLATimeoutConfigEdit(idx) {
+  var minutes = parseInt(document.getElementById('sla-cfg-minutes').value);
+  var escalate = document.getElementById('sla-cfg-escalate').value.trim();
+  var action = document.getElementById('sla-cfg-action').value;
+  var enabled = document.getElementById('sla-cfg-enabled').checked;
+  if (!minutes || minutes < 5) { showToast('SLA时限不能少于5分钟', 'error'); return; }
+  if (!escalate) { showToast('请输入升级通知对象', 'error'); return; }
+  slaConfigStore[idx].slaMinutes = minutes;
+  slaConfigStore[idx].escalationTo = escalate;
+  slaConfigStore[idx].escalationAction = action;
+  slaConfigStore[idx].enabled = enabled;
+  document.getElementById('modal-sla-config-edit').remove();
+  openSLATimeoutConfigModal();
+  showToast('✅ SLA规则已更新', 'success');
+}
+
+function toggleSLATimeoutConfig(idx) {
+  slaConfigStore[idx].enabled = !slaConfigStore[idx].enabled;
+  var msg = slaConfigStore[idx].enabled ? '✅ ' + slaConfigStore[idx].label + ' 规则已启用' : '⏸ ' + slaConfigStore[idx].label + ' 规则已停用';
+  openSLATimeoutConfigModal();
+  showToast(msg, slaConfigStore[idx].enabled ? 'success' : 'warn');
+}
+
+function saveSLATimeoutConfig() {
+  document.getElementById('modal-sla-config').remove();
+  showToast('💾 SLA超时规则配置已保存', 'success');
+}
+
+// ============================================================
+// 【物联后台 v4 新增】能耗预算配置弹窗V2（openEnergyBudgetConfigModalV2）
+// 按钮位于：节能风控页面 - 预算配置按钮
+// 功能：各楼层（1F/2F/3F/4F）每日/每月预算配置，当前消耗vs预算对比，告警阈值设置
+// ============================================================
+var energyBudgetStore = [
+  {floor:'1F', dailyBudget:80, monthlyBudget:2400, currentDaily:42.5, currentMonthly:892.3, alertThreshold:80},
+  {floor:'2F', dailyBudget:100, monthlyBudget:3000, currentDaily:78.3, currentMonthly:1650.8, alertThreshold:75},
+  {floor:'3F', dailyBudget:90, monthlyBudget:2700, currentDaily:35.2, currentMonthly:980.5, alertThreshold:80},
+  {floor:'4F', dailyBudget:110, monthlyBudget:3300, currentDaily:67.8, currentMonthly:2100.1, alertThreshold:75}
+];
+
+function openEnergyBudgetConfigModalV2() {
+  var existing = document.getElementById('modal-energy-budget-v2');
+  if (existing) existing.remove();
+  var cards = energyBudgetStore.map(function(item) {
+    var dailyPct = Math.round(item.currentDaily / item.dailyBudget * 100);
+    var monthlyPct = Math.round(item.currentMonthly / item.monthlyBudget * 100);
+    var dailyColor = dailyPct >= 100 ? 'var(--red)' : dailyPct >= item.alertThreshold ? 'var(--orange)' : 'var(--green)';
+    var monthlyColor = monthlyPct >= 100 ? 'var(--red)' : monthlyPct >= item.alertThreshold ? 'var(--orange)' : 'var(--green)';
+    return '<div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+      '<div style="font-size:15px;font-weight:700;">' + item.floor + '</div>' +
+      '<div style="display:flex;gap:6px;">' +
+      '<button class="action-btn small" onclick="openEnergyBudgetEditModal(\'' + item.floor + '\')">✏️ 配置</button></div></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+      '<div style="padding:10px;background:var(--bg);border-radius:8px;">' +
+      '<div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">📅 今日消耗</div>' +
+      '<div style="display:flex;align-items:baseline;gap:4px;"><span style="font-size:18px;font-weight:700;color:' + dailyColor + ';">' + item.currentDaily.toFixed(1) + '</span><span style="font-size:11px;color:var(--text-muted);">/ ' + item.dailyBudget + ' kWh</span></div>' +
+      '<div style="margin-top:6px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="height:100%;width:' + Math.min(dailyPct, 100) + '%;background:' + dailyColor + ';border-radius:3px;"></div></div>' +
+      '<div style="font-size:10px;color:' + dailyColor + ';margin-top:3px;">' + dailyPct + '%</div></div>' +
+      '<div style="padding:10px;background:var(--bg);border-radius:8px;">' +
+      '<div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">📆 本月消耗</div>' +
+      '<div style="display:flex;align-items:baseline;gap:4px;"><span style="font-size:18px;font-weight:700;color:' + monthlyColor + ';">' + item.currentMonthly.toFixed(1) + '</span><span style="font-size:11px;color:var(--text-muted);">/ ' + item.monthlyBudget + ' kWh</span></div>' +
+      '<div style="margin-top:6px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="height:100%;width:' + Math.min(monthlyPct, 100) + '%;background:' + monthlyColor + ';border-radius:3px;"></div></div>' +
+      '<div style="font-size:10px;color:' + monthlyColor + ';margin-top:3px;">' + monthlyPct + '%</div></div></div>' +
+      '<div style="margin-top:10px;padding:8px 10px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--text-muted);">⚠️ 告警阈值：<span style="color:var(--orange);font-weight:600;">' + item.alertThreshold + '%</span></div></div>';
+  }).join('');
+  var totalDailyBudget = energyBudgetStore.reduce(function(s, i){ return s + i.dailyBudget; }, 0);
+  var totalMonthlyBudget = energyBudgetStore.reduce(function(s, i){ return s + i.monthlyBudget; }, 0);
+  var totalCurrentDaily = energyBudgetStore.reduce(function(s, i){ return s + i.currentDaily; }, 0);
+  var totalCurrentMonthly = energyBudgetStore.reduce(function(s, i){ return s + i.currentMonthly; }, 0);
+  var totalDailyPct = Math.round(totalCurrentDaily / totalDailyBudget * 100);
+  var totalMonthlyPct = Math.round(totalCurrentMonthly / totalMonthlyBudget * 100);
+  var html = '<div class="modal-overlay" id="modal-energy-budget-v2" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-budget-v2\').remove()">' +
+    '<div class="modal" style="width:640px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:24px;">💰</div><div><div style="font-size:15px;font-weight:700;">能耗预算配置</div><div style="font-size:11px;color:var(--text-muted);">各楼层每日/每月能耗预算设置与告警阈值</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-energy-budget-v2\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:12px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--blue);">' + totalCurrentDaily.toFixed(0) + '</div><div style="font-size:10px;color:var(--blue);">今日总消耗(kWh)</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--green);">' + totalDailyBudget + '</div><div style="font-size:10px;color:var(--green);">今日预算(kWh)</div></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--orange);">' + totalMonthlyPct + '%</div><div style="font-size:10px;color:var(--orange);">月度消耗占比</div></div>' +
+    '<div style="padding:10px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--purple);">' + totalMonthlyBudget + '</div><div style="font-size:10px;color:var(--purple);">月度预算(kWh)</div></div></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:14px 20px;">' + cards + '</div>' +
+    '<div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-energy-budget-v2\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="document.getElementById(\'modal-energy-budget-v2\').remove();openEnergyAlertModal();" style="background:var(--orange);color:white;border:none;">⚡ 告警规则</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openEnergyBudgetEditModal(floor) {
+  var existing = document.getElementById('modal-energy-budget-form');
+  if (existing) existing.remove();
+  var item = energyBudgetStore.find(function(i){ return i.floor === floor; });
+  if (!item) return;
+  var html = '<div class="modal-overlay" id="modal-energy-budget-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-budget-form\').remove()">' +
+    '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">✏️ 预算配置 — ' + floor + '</div>' +
+    '<button onclick="document.getElementById(\'modal-energy-budget-form\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);line-height:1.8;">💡 设置各楼层每日/每月的能耗预算上限，以及触发告警的阈值百分比。</div>' +
+    '<div class="form-group"><label class="form-label">每日预算上限 (kWh)</label>' +
+    '<input type="range" id="eb-daily-slider" min="20" max="200" value="' + item.dailyBudget + '" style="width:100%;accent-color:var(--blue);" oninput="document.getElementById(\'eb-daily-val\').textContent=this.value + \' kWh\'">' +
+    '<div style="text-align:center;font-size:14px;font-weight:700;color:var(--blue);" id="eb-daily-val">' + item.dailyBudget + ' kWh</div></div>' +
+    '<div class="form-group"><label class="form-label">每月预算上限 (kWh)</label>' +
+    '<input type="range" id="eb-monthly-slider" min="500" max="5000" step="50" value="' + item.monthlyBudget + '" style="width:100%;accent-color:var(--green);" oninput="document.getElementById(\'eb-monthly-val\').textContent=this.value + \' kWh\'">' +
+    '<div style="text-align:center;font-size:14px;font-weight:700;color:var(--green);" id="eb-monthly-val">' + item.monthlyBudget + ' kWh</div></div>' +
+    '<div class="form-group"><label class="form-label">告警阈值 (%) — 消耗超过预算的此比例时告警</label>' +
+    '<input type="range" id="eb-alert-slider" min="50" max="99" value="' + item.alertThreshold + '" style="width:100%;accent-color:var(--orange);" oninput="document.getElementById(\'eb-alert-val\').textContent=this.value + \'%\'">' +
+    '<div style="text-align:center;font-size:14px;font-weight:700;color:var(--orange);" id="eb-alert-val">' + item.alertThreshold + '%</div></div></div>' +
+    '<div style="padding:14px 24px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-energy-budget-form\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="saveEnergyBudgetConfig(\'' + floor + '\')">💾 保存配置</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function saveEnergyBudgetConfig(floor) {
+  var daily = parseInt(document.getElementById('eb-daily-slider').value);
+  var monthly = parseInt(document.getElementById('eb-monthly-slider').value);
+  var alertThreshold = parseInt(document.getElementById('eb-alert-slider').value);
+  var item = energyBudgetStore.find(function(i){ return i.floor === floor; });
+  if (item) {
+    item.dailyBudget = daily;
+    item.monthlyBudget = monthly;
+    item.alertThreshold = alertThreshold;
+  }
+  document.getElementById('modal-energy-budget-form').remove();
+  openEnergyBudgetConfigModalV2();
+  showToast('💾 ' + floor + ' 预算配置已保存', 'success');
+}
+
+// ============================================================
 // 【物联后台 v3.5 改进 1】身份证扫描入住弹窗
 // 身份证快捷入住 - 首页身份证入住入口
 // 功能：模拟身份证OCR读取，自动填充姓名/身份证/手机号，支持确认入住
@@ -37925,4 +38198,439 @@ function deleteEnergyAlert(id) {
   openEnergyAlertModal();
 }
 
+
+
+// ============================================================
+// 【物联后台 v4 改进1】统一搜索中心
+// 理由：现有搜索仅限房间列表页，原系统截图首页有全局搜索需求
+// 功能：全局搜索房间/客人/设备/工单，支持Tab筛选和快速跳转
+// ============================================================
+var _globalSearchHistory = ['301房间', '张三', 'DEV-LK01'];
+
+function openGlobalSearchModal() {
+  var existing = document.getElementById('modal-global-search');
+  if (existing) existing.remove();
+  var histItems = _globalSearchHistory.map(function(h) {
+    return '<button onclick="document.getElementById(\'gs-input\').value=\'' + h + '\';document.getElementById(\'gs-input\').focus();performGlobalSearch();" style="padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer;margin:2px;">' + h + '</button>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-global-search" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:flex-start;justify-content:center;padding-top:80px;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-global-search\').remove()">' +
+    '<div style="width:640px;max-height:70vh;background:white;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2);">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
+    '<span style="font-size:20px;">🔍</span>' +
+    '<input type="text" id="gs-input" placeholder="搜索房间号 / 客人姓名 / 手机号 / 设备ID / 工单号..." style="flex:1;border:none;outline:none;font-size:15px;background:transparent;" oninput="performGlobalSearch()" onkeydown="if(event.key===\'Enter\')performGlobalSearch()">' +
+    '<button onclick="document.getElementById(\'modal-global-search\').remove()" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--text-muted);">✕</button></div>' +
+    '<div style="padding:10px 20px;border-bottom:1px solid var(--border);display:flex;gap:8px;background:var(--bg);flex-shrink:0;">' +
+    '<button class="gs-tab active" onclick="switchGSCat(this,\'all\')" data-cat="all" style="padding:4px 14px;border:1px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer;background:var(--blue);color:white;font-weight:600;">全部</button>' +
+    '<button class="gs-tab" onclick="switchGSCat(this,\'room\')" data-cat="room" style="padding:4px 14px;border:1px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer;background:white;color:var(--text);">🚪 房间</button>' +
+    '<button class="gs-tab" onclick="switchGSCat(this,\'guest\')" data-cat="guest" style="padding:4px 14px;border:1px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer;background:white;color:var(--text);">👤 客人</button>' +
+    '<button class="gs-tab" onclick="switchGSCat(this,\'device\')" data-cat="device" style="padding:4px 14px;border:1px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer;background:white;color:var(--text);">📱 设备</button>' +
+    '<button class="gs-tab" onclick="switchGSCat(this,\'wo\')" data-cat="wo" style="padding:4px 14px;border:1px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer;background:white;color:var(--text);">🛠️ 工单</button></div>' +
+    '<div id="gs-content" style="flex:1;overflow-y:auto;padding:16px 20px;">' +
+    '<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">⏱️ 最近搜索</div><div>' + histItems + '</div></div>' +
+    '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px;">输入关键词开始搜索...</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('gs-input').focus();
+}
+
+var _gsCurrentCat = 'all';
+
+function switchGSCat(btn, cat) {
+  _gsCurrentCat = cat;
+  document.querySelectorAll('.gs-tab').forEach(function(t) {
+    t.classList.remove('active');
+    t.style.background = 'white';
+    t.style.color = 'var(--text)';
+  });
+  btn.classList.add('active');
+  btn.style.background = 'var(--blue)';
+  btn.style.color = 'white';
+  performGlobalSearch();
+}
+
+function performGlobalSearchFull() {
+  var q = (document.getElementById('gs-input') || {value:''}).value.trim().toLowerCase();
+  var content = document.getElementById('gs-content');
+  if (!content) return;
+  if (!q) {
+    var histItems = _globalSearchHistory.map(function(h) {
+      return '<button onclick="document.getElementById(\'gs-input\').value=\'' + h + '\';performGlobalSearchFull();" style="padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer;margin:2px;">' + h + '</button>';
+    }).join('');
+    content.innerHTML = '<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">⏱️ 最近搜索</div><div>' + histItems + '</div></div><div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px;">输入关键词开始搜索...</div>';
+    return;
+  }
+  // Search data
+  var results = [];
+  var cat = _gsCurrentCat;
+  // Room search
+  if (cat === 'all' || cat === 'room') {
+    bldStore.forEach(function(b) {
+      b.rooms.forEach(function(r) {
+        if (r.num && r.num.toLowerCase().includes(q)) {
+          results.push({type:'room', icon:'🚪', title:r.num + ' ' + (r.type||'标准间'), subtitle:'楼层:'+(r.floor||'-')+'层 · 状态:'+(r.status==='checked-in'?'入住':r.status==='dirty'?'脏房':'空房'), action:'showPage(\'room-detail\');setTimeout(function(){renderRoomDetail(\''+r.num+'\')},100);', id:r.num});
+        }
+      });
+    });
+  }
+  // Guest search (from checkinStore)
+  if (cat === 'all' || cat === 'guest') {
+    checkinStore.forEach(function(c) {
+      if ((c.name&&c.name.toLowerCase().includes(q)) || (c.phone&&c.phone.includes(q))) {
+        results.push({type:'guest', icon:'👤', title:c.name + ' · ' + c.phone, subtitle:c.room + ' · ' + (c.nights||'1晚') + ' · ' + (c.status==='checked-in'?'入住中':'已退房'), action:'showPage(\'room-detail\');setTimeout(function(){renderRoomDetail(\''+c.room+'\')},100);', id:c.name});
+      }
+    });
+  }
+  // Device search
+  if (cat === 'all' || cat === 'device') {
+    var deviceMap = {'301':'DEV-LK01','302':'DEV-LK02','305':'DEV-LK05','201':'DEV-LK08'};
+    for (var room in deviceMap) {
+      if (room.toLowerCase().includes(q) || deviceMap[room].toLowerCase().includes(q)) {
+        results.push({type:'device', icon:'📱', title:deviceMap[room] + ' · ' + room+'房间', subtitle:'领握LH-807 · 在线', action:'showPage(\'device\');', id:deviceMap[room]});
+      }
+    }
+  }
+  // Workorder search
+  if (cat === 'all' || cat === 'wo') {
+    workorderStore.forEach(function(w) {
+      if ((w.id&&w.id.toLowerCase().includes(q)) || (w.title&&w.title.toLowerCase().includes(q))) {
+        results.push({type:'wo', icon:'🛠️', title:'#'+w.id+' '+w.title, subtitle:w.type+' · '+w.status+' · '+w.createTime, action:'showPage(\'workorder\');', id:w.id});
+      }
+    });
+  }
+  if (results.length === 0) {
+    content.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);"><div style="font-size:32px;margin-bottom:8px;">🔍</div><div style="font-size:13px;">未找到 "' + q + '" 相关结果</div></div>';
+    return;
+  }
+  var html = '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">找到 ' + results.length + ' 个结果</div>';
+  results.forEach(function(r) {
+    var typeColors = {room:'var(--blue)', guest:'var(--green)', device:'var(--purple)', wo:'var(--orange)'};
+    html += '<div onclick="' + r.action + ';document.getElementById(\'modal-global-search\').remove();" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'white\'">' +
+      '<div style="width:36px;height:36px;background:' + (typeColors[r.type]||'var(--text)') + '22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">' + r.icon + '</div>' +
+      '<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;margin-bottom:2px;">' + r.title + '</div><div style="font-size:11px;color:var(--text-muted);">' + r.subtitle + '</div></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">' + r.type + '</div></div>';
+  });
+  content.innerHTML = html;
+}
+
+// ============================================================
+// 【物联后台 v4 改进2】发票开具完整流程
+// 理由：现有发票管理入口存在，但开具流程不完整
+// 功能：选择客户→选择账单→选择税目→确认金额→开具发票→发送
+// ============================================================
+var _invoiceDraft = {guestName:'', guestPhone:'', amount:0, items:[], taxRate:6, title:''};
+
+function openInvoiceCreateFullModal() {
+  var existing = document.getElementById('modal-invoice-create-full');
+  if (existing) existing.remove();
+  _invoiceDraft = {guestName:'', guestPhone:'', amount:0, items:[], taxRate:6, title:''};
+  var billOptions = checkinStore.filter(function(c){return c.status==='checked-in'||c.status==='completed';}).map(function(c){
+    return '<option value="'+c.room+'" data-name="'+c.name+'" data-phone="'+c.phone+'">'+c.room+' - '+c.name+' - ¥'+(c.roomFee||0)+'</option>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-invoice-create-full" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-create-full\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">🧾 开具发票</div><span style="padding:3px 8px;background:var(--blue-bg);color:var(--blue);border-radius:12px;font-size:11px;font-weight:600;">完整流程</span></div>' +
+    '<button onclick="document.getElementById(\'modal-invoice-create-full\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">📋 步骤1：选择客户</div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">选择账单客户</label>' +
+    '<select class="form-select" id="inv-bill-select" onchange="onInvBillChange()" style="font-size:13px;"><option value="">-- 选择客户 --</option>'+billOptions+'</select></div>' +
+    '<div class="form-group"><label class="form-label">客户姓名</label>' +
+    '<input type="text" class="form-input" id="inv-guest-name" placeholder="客户姓名" style="font-size:13px;"></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">手机号</label>' +
+    '<input type="tel" class="form-input" id="inv-guest-phone" placeholder="手机号" style="font-size:13px;"></div>' +
+    '<div class="form-group"><label class="form-label">发票抬头</label>' +
+    '<input type="text" class="form-input" id="inv-title" placeholder="个人/公司名称" style="font-size:13px;"></div></div>' +
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin:16px 0 10px;">📋 步骤2：选择金额</div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">价税合计(¥) <span class="required">*</span></label>' +
+    '<input type="number" class="form-input" id="inv-amount" placeholder="0.00" min="0" step="0.01" oninput="calcInvTax()" style="font-size:13px;"></div>' +
+    '<div class="form-group"><label class="form-label">税率</label>' +
+    '<select class="form-select" id="inv-tax-rate" onchange="calcInvTax()" style="font-size:13px;"><option value="1">1%</option><option value="3">3%</option><option value="6" selected>6%</option><option value="9">9%</option><option value="13">13%</option></select></div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);">金额</div><div style="font-size:15px;font-weight:700;" id="inv-net-amount">¥0.00</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);">税额</div><div style="font-size:15px;font-weight:700;color:var(--orange);" id="inv-tax-amount">¥0.00</div></div>' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--blue);">价税合计</div><div style="font-size:15px;font-weight:700;color:var(--blue);" id="inv-total-amount">¥0.00</div></div></div>' +
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">📋 步骤3：选择税目</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">' +
+    '<label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;"><input type="radio" name="inv-tax-type" value=" accommodation" checked> 住宿服务</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;"><input type="radio" name="inv-tax-type" value=" catering"> 餐饮服务</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;"><input type="radio" name="inv-tax-type" value=" commodity"> 商品销售</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;"><input type="radio" name="inv-tax-type" value=" other"> 其他</label></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<input type="text" class="form-input" id="inv-remark" placeholder="可选备注信息" style="font-size:13px;"></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-create-full\').remove()">取消</button>' +
+    '<button class="modal-btn" style="background:var(--green-bg);color:var(--green);border-color:var(--green);" onclick="submitInvoiceCreateFull()">🧾 开具发票</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function onInvBillChange() {
+  var sel = document.getElementById('inv-bill-select');
+  if (sel && sel.value) {
+    var opt = sel.options[sel.selectedIndex];
+    document.getElementById('inv-guest-name').value = opt.dataset.name || '';
+    document.getElementById('inv-guest-phone').value = opt.dataset.phone || '';
+  }
+}
+
+function calcInvTax() {
+  var amount = parseFloat(document.getElementById('inv-amount').value) || 0;
+  var rate = parseFloat(document.getElementById('inv-tax-rate').value) || 6;
+  var net = amount / (1 + rate / 100);
+  var tax = amount - net;
+  document.getElementById('inv-net-amount').textContent = '¥' + net.toFixed(2);
+  document.getElementById('inv-tax-amount').textContent = '¥' + tax.toFixed(2);
+  document.getElementById('inv-total-amount').textContent = '¥' + amount.toFixed(2);
+}
+
+function submitInvoiceCreateFull() {
+  var name = document.getElementById('inv-guest-name').value.trim();
+  var phone = document.getElementById('inv-guest-phone').value.trim();
+  var amount = parseFloat(document.getElementById('inv-amount').value) || 0;
+  var title = document.getElementById('inv-title').value.trim();
+  var remark = document.getElementById('inv-remark').value.trim();
+  if (!name) { showToast('请填写客户姓名', 'error'); return; }
+  if (!amount || amount <= 0) { showToast('请填写正确的发票金额', 'error'); return; }
+  var invId = 'INV' + new Date().getFullYear() + String(Math.floor(Math.random()*100000)).padStart(5,'0');
+  var newInv = {id:invId, guestName:name, phone:phone, amount:amount, title:title||'个人', taxRate:document.getElementById('inv-tax-rate').value, remark:remark, status:'待开', createTime:new Date().toLocaleString('zh-CN')};
+  invoiceStore.unshift(newInv);
+  document.getElementById('modal-invoice-create-full').remove();
+  showToast('🧾 发票开具成功！票号：' + invId + '，金额 ¥' + amount.toFixed(2), 'success');
+  setTimeout(function() { showToast('📧 发票已发送至客人手机/邮箱', 'info'); }, 800);
+}
+
+// ============================================================
+// 【物联后台 v4 改进3】员工排班管理完整弹窗
+// 理由：员工排班入口存在但只有简单列表，缺少完整管理功能
+// 功能：周视图排班→点击格子设置班次→快速复制/清除→考勤统计
+// ============================================================
+var _scheduleWeekStart = new Date();
+_scheduleWeekStart.setDate(_scheduleWeekStart.getDate() - _scheduleWeekStart.getDay() + 1);
+var _staffScheduleData = [
+  {name:'赵飞', shift:'早班', color:'var(--green)'},
+  {name:'周敏', shift:'中班', color:'var(--blue)'},
+  {name:'王丽', shift:'晚班', color:'var(--orange)'},
+  {name:'刘芳', shift:'休息', color:'var(--text-muted)'}
+];
+
+function openStaffScheduleModal() {
+  var existing = document.getElementById('modal-staff-schedule');
+  if (existing) existing.remove();
+  var weekStr = formatWeekRange(_scheduleWeekStart);
+  var days = getWeekDays(_scheduleWeekStart);
+  var staffRows = _staffScheduleData.map(function(s, i) {
+    var cells = days.map(function(d, di) {
+      return '<td style="padding:6px 4px;text-align:center;border:1px solid var(--border);"><button onclick="openShiftEditModal('+i+','+di+')" style="padding:4px 8px;background:' + s.color + '22;color:' + s.color + ';border:1px solid ' + s.color + ';border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;min-width:50px;">' + s.shift + '</button></td>';
+    }).join('');
+    return '<tr><td style="padding:8px 10px;border:1px solid var(--border);font-weight:600;font-size:12px;background:var(--bg);">' + s.name + '</td>' + cells + '</tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-staff-schedule" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-staff-schedule\').remove()">' +
+    '<div class="modal" style="width:780px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">📅 员工排班管理</div>' +
+    '<button onclick="document.getElementById(\'modal-staff-schedule\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--bg);flex-shrink:0;">' +
+    '<button onclick="prevScheduleWeek()" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;cursor:pointer;font-size:12px;">‹ 上周</button>' +
+    '<span style="font-size:13px;font-weight:600;" id="ss-week-label">' + weekStr + '</span>' +
+    '<button onclick="nextScheduleWeek()" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;cursor:pointer;font-size:12px;">下周 ›</button>' +
+    '<div style="margin-left:auto;display:flex;gap:8px;">' +
+    '<button onclick="copyScheduleToNextWeek()" style="padding:5px 12px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);border-radius:6px;font-size:12px;cursor:pointer;">📋 复制到下周</button>' +
+    '<button onclick="clearScheduleWeek()" style="padding:5px 12px;background:var(--red-bg);color:var(--red);border:1px solid var(--red);border-radius:6px;font-size:12px;cursor:pointer;">🗑️ 清空本周</button></div></div>' +
+    '<div style="flex:1;overflow:auto;padding:16px 24px;">' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+    '<thead><tr><th style="padding:8px 10px;border:1px solid var(--border);background:var(--bg);font-weight:600;width:80px;">员工</th>' +
+    days.map(function(d) { return '<th style="padding:8px 4px;border:1px solid var(--border);background:var(--bg);font-weight:600;text-align:center;min-width:70px;">' + d + '</th>'; }).join('') +
+    '</tr></thead><tbody id="ss-table-body">' + staffRows + '</tbody></table></div>' +
+    '<div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;gap:16px;flex-shrink:0;background:var(--bg);">' +
+    '<div style="display:flex;align-items:center;gap:8px;font-size:12px;"><span style="width:12px;height:12px;background:var(--green);border-radius:2px;"></span>早班(8-16)</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;font-size:12px;"><span style="width:12px;height:12px;background:var(--blue);border-radius:2px;"></span>中班(14-22)</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;font-size:12px;"><span style="width:12px;height:12px;background:var(--orange);border-radius:2px;"></span>晚班(22-8)</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;font-size:12px;"><span style="width:12px;height:12px;background:var(--text-muted);border-radius:2px;"></span>休息</div>' +
+    '<button onclick="showPage(\'attendance\');document.getElementById(\'modal-staff-schedule\').remove();" style="margin-left:auto;padding:5px 14px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">📊 考勤统计</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function formatWeekRange(start) {
+  var end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  return start.getMonth()+1 + '月' + start.getDate() + '日 - ' + end.getMonth()+1 + '月' + end.getDate() + '日';
+}
+
+function getWeekDays(start) {
+  var days = [];
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(start);
+    d.setDate(d.getDate() + i);
+    days.push((d.getMonth()+1) + '/' + d.getDate());
+  }
+  return days;
+}
+
+function prevScheduleWeek() {
+  _scheduleWeekStart.setDate(_scheduleWeekStart.getDate() - 7);
+  openStaffScheduleModal();
+}
+
+function nextScheduleWeek() {
+  _scheduleWeekStart.setDate(_scheduleWeekStart.getDate() + 7);
+  openStaffScheduleModal();
+}
+
+function copyScheduleToNextWeek() {
+  showToast('📋 本周排班已复制到下周', 'success');
+}
+
+function clearScheduleWeek() {
+  if (!confirm('确定要清空本周所有排班？')) return;
+  showToast('🗑️ 本周排班已清空', 'warn');
+  openStaffScheduleModal();
+}
+
+var _shiftEditStaffIdx = 0;
+var _shiftEditDayIdx = 0;
+
+function openShiftEditModal(staffIdx, dayIdx) {
+  _shiftEditStaffIdx = staffIdx;
+  _shiftEditDayIdx = dayIdx;
+  var existing = document.getElementById('modal-shift-edit');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-shift-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">' +
+    '<div class="modal" style="width:320px;background:white;border-radius:12px;">' +
+    '<div style="padding:16px 20px 12px;border-bottom:1px solid var(--border);"><div style="font-size:14px;font-weight:700;">🕐 设置班次</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + _staffScheduleData[staffIdx].name + ' · ' + getWeekDays(_scheduleWeekStart)[dayIdx] + '</div></div>' +
+    '<div style="padding:16px 20px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
+    '<button onclick="setStaffShift(\'早班\',\'var(--green)\')" style="padding:10px;border:1px solid var(--green);border-radius:8px;background:var(--green-bg);color:var(--green);font-weight:600;font-size:12px;cursor:pointer;">早班 8-16</button>' +
+    '<button onclick="setStaffShift(\'中班\',\'var(--blue)\')" style="padding:10px;border:1px solid var(--blue);border-radius:8px;background:var(--blue-bg);color:var(--blue);font-weight:600;font-size:12px;cursor:pointer;">中班 14-22</button>' +
+    '<button onclick="setStaffShift(\'晚班\',\'var(--orange)\')" style="padding:10px;border:1px solid var(--orange);border-radius:8px;background:var(--orange-bg);color:var(--orange);font-weight:600;font-size:12px;cursor:pointer;">晚班 22-8</button>' +
+    '<button onclick="setStaffShift(\'休息\',\'var(--text-muted)\')" style="padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-weight:600;font-size:12px;cursor:pointer;">休息</button></div>' +
+    '<button onclick="document.getElementById(\'modal-shift-edit\').remove()" style="width:100%;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function setStaffShift(shift, color) {
+  _staffScheduleData[_shiftEditStaffIdx].shift = shift;
+  _staffScheduleData[_shiftEditStaffIdx].color = color;
+  document.getElementById('modal-shift-edit').remove();
+  openStaffScheduleModal();
+  showToast('✅ 已设置为' + shift, 'success');
+}
+
+// ============================================================
+// 【物联后台 v4 改进4】角色权限详情编辑
+// 理由：角色权限管理仅有列表，缺少详情查看和编辑
+// 功能：查看角色权限详情→编辑权限项→保存
+// ============================================================
+var _roleEditIdx = -1;
+var _rolePermTemplates = {
+  '前台':['page-home','page-checkin','page-checkout','action-keypad-issue','page-clean','page-alert'],
+  '客房':['page-clean','page-workorder','page-device','action-device-restart'],
+  '工程':['page-device','page-energy','page-workorder','action-device-restart','action-device-calibrate'],
+  '管理员':['page-all','action-all']
+};
+
+function openRoleDetailModal(idx) {
+  _roleEditIdx = idx;
+  var role = _roleStore[idx];
+  if (!role) return;
+  var existing = document.getElementById('modal-role-detail');
+  if (existing) existing.remove();
+  var permItems = role.permissions.map(function(p) {
+    var checked = role.permissions.includes(p) ? 'checked' : '';
+    var label = p.startsWith('page-') ? '📄 ' + p.replace('page-','').replace(/-/g,' ') : p.startsWith('action-') ? '⚡ ' + p.replace('action-','') : p;
+    return '<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;margin-bottom:6px;background:white;" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'white\'">' +
+      '<input type="checkbox" class="role-perm-check" data-perm="' + p + '" ' + checked + ' style="accent-color:var(--blue);width:15px;height:15px;">' +
+      '<span style="font-size:12px;font-weight:500;">' + label + '</span></label>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-role-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-role-detail\').remove()">' +
+    '<div class="modal" style="width:580px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">👑 角色详情 - ' + role.name + '</div><span style="padding:3px 8px;background:var(--purple-bg);color:var(--purple);border-radius:12px;font-size:11px;font-weight:600;">' + role.count + '人</span></div>' +
+    '<button onclick="document.getElementById(\'modal-role-detail\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:16px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;background:var(--bg);flex-shrink:0;">' +
+    '<span style="font-size:12px;color:var(--text-muted);padding:4px 0;">快速模板：</span>' +
+    '<button onclick="applyRoleTemplate(\'前台\')" style="padding:4px 10px;border:1px solid var(--blue);border-radius:16px;font-size:11px;background:var(--blue-bg);color:var(--blue);cursor:pointer;">前台</button>' +
+    '<button onclick="applyRoleTemplate(\'客房\')" style="padding:4px 10px;border:1px solid var(--green);border-radius:16px;font-size:11px;background:var(--green-bg);color:var(--green);cursor:pointer;">客房</button>' +
+    '<button onclick="applyRoleTemplate(\'工程\')" style="padding:4px 10px;border:1px solid var(--orange);border-radius:16px;font-size:11px;background:var(--orange-bg);color:var(--orange);cursor:pointer;">工程</button>' +
+    '<button onclick="applyRoleTemplate(\'管理员\')" style="padding:4px 10px;border:1px solid var(--purple);border-radius:16px;font-size:11px;background:var(--purple-bg);color:var(--purple);cursor:pointer;">管理员</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:16px 24px;">' +
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">📋 权限配置</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="role-perm-grid">' + permItems + '</div></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-role-detail\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="saveRolePermissions()">💾 保存权限</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function applyRoleTemplate(tplName) {
+  var tpl = _rolePermTemplates[tplName];
+  if (!tpl) return;
+  document.querySelectorAll('.role-perm-check').forEach(function(cb) {
+    cb.checked = tpl.includes(cb.dataset.perm);
+  });
+  showToast('✅ 已应用"' + tplName + '"模板', 'success');
+}
+
+function saveRolePermissions() {
+  var checked = [];
+  document.querySelectorAll('.role-perm-check:checked').forEach(function(cb) {
+    checked.push(cb.dataset.perm);
+  });
+  if (_roleEditIdx >= 0 && _roleStore[_roleEditIdx]) {
+    _roleStore[_roleEditIdx].permissions = checked;
+  }
+  document.getElementById('modal-role-detail').remove();
+  showToast('✅ 角色权限已保存', 'success');
+}
+
+// ============================================================
+// 【物联后台 v4 改进5】黑名单审核流程
+// 理由：黑名单仅有增删，缺少审核流程
+// 功能：提交审核→管理员审核→通过/拒绝→记录操作日志
+// ============================================================
+var _blacklistPendingReview = [];
+
+function openBlacklistReviewModal() {
+  var existing = document.getElementById('modal-blacklist-review');
+  if (existing) existing.remove();
+  var pendingItems = _blacklistPendingReview.length > 0 ? _blacklistPendingReview.map(function(b, i) {
+    var typeColors = {name:'var(--blue)', phone:'var(--green)', idcard:'var(--orange)'};
+    return '<div style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;background:white;" id="blr-item-' + i + '">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+      '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:14px;font-weight:700;color:var(--red);">🚫</span><span style="font-size:13px;font-weight:600;">' + b.name + '</span><span style="font-size:11px;color:var(--text-muted);">' + b.phone + '</span></div>' +
+      '<span style="padding:2px 8px;background:var(--orange-bg);color:var(--orange);border-radius:12px;font-size:10px;font-weight:600;">待审核</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">原因：' + b.reason + '</div>' +
+      '<div style="display:flex;gap:8px;"><button onclick="approveBlacklistItem(' + i + ')" style="flex:1;padding:6px;border:1px solid var(--green);border-radius:6px;background:var(--green-bg);color:var(--green);font-size:12px;font-weight:600;cursor:pointer;">✅ 通过</button>' +
+      '<button onclick="rejectBlacklistItem(' + i + ')" style="flex:1;padding:6px;border:1px solid var(--red);border-radius:6px;background:var(--red-bg);color:var(--red);font-size:12px;font-weight:600;cursor:pointer;">❌ 拒绝</button></div></div>';
+  }).join('') : '<div style="text-align:center;padding:30px;color:var(--text-muted);"><div style="font-size:32px;margin-bottom:8px;">✅</div><div style="font-size:13px;">暂无待审核项目</div></div>';
+  var html = '<div class="modal-overlay" id="modal-blacklist-review" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-blacklist-review\').remove()">' +
+    '<div class="modal" style="width:500px;max-height:80vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🔍 黑名单审核中心</div>' +
+    '<button onclick="document.getElementById(\'modal-blacklist-review\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;background:var(--bg);">' +
+    '<div style="text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);" id="blr-pending-count">' + _blacklistPendingReview.length + '</div><div style="font-size:10px;color:var(--text-muted);">待审核</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);">' + blacklistStore.filter(function(b){return b.status==='blocked';}).length + '</div><div style="font-size:10px;color:var(--text-muted);">已封禁</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);">' + blacklistStore.filter(function(b){return b.status==='released';}).length + '</div><div style="font-size:10px;color:var(--text-muted);">已解封</div></div></div>' +
+    '<div style="padding:16px 20px;" id="blr-list">' + pendingItems + '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function approveBlacklistItem(idx) {
+  var item = _blacklistPendingReview[idx];
+  if (!item) return;
+  blacklistStore.push({id:'BL'+String(blacklistStore.length+1).padStart(3,'0'), name:item.name, phone:item.phone, idcard:item.idcard||'', type:'auto', reason:item.reason, record:item.record||'', blockDate:new Date().toISOString().slice(0,10), expireDate:item.expireDate||'永久', status:'blocked', operator:'管理员'});
+  _blacklistPendingReview.splice(idx, 1);
+  showToast('✅ 已通过，' + item.name + ' 已加入黑名单', 'success');
+  openBlacklistReviewModal();
+}
+
+function rejectBlacklistItem(idx) {
+  var item = _blacklistPendingReview[idx];
+  if (!item) return;
+  _blacklistPendingReview.splice(idx, 1);
+  showToast('❌ 已拒绝，' + item.name + ' 未被加入黑名单', 'warn');
+  openBlacklistReviewModal();
+}
+
+// Simulate adding to pending review when adding blacklist
+var _originalDoAddBlacklist = null;
 
