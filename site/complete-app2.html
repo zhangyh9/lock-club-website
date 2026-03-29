@@ -12068,6 +12068,7 @@ function openEditMemberLevelModalV2(idx) {
       <div class="page-header">
         <div class="page-title">🏢 楼栋管理</div>
         <div class="page-sub">楼栋配置 · 楼层管理 · 房型管理</div>
+        <button class="action-btn" onclick="openBuildingAddModal()" style="margin-left:auto;padding:6px 14px;background:var(--blue);color:white;border:none;font-size:12px;">➕ 新增楼栋</button>
       </div>
       <!-- 【改进1：楼栋→楼层→房间三级级联筛选器，点击楼栋刷新楼层，点击楼层刷新房间网格+统计】 -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
@@ -17244,8 +17245,10 @@ function renderFloorList() {
     return '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">' +
       '<span style="font-size:16px;font-weight:700;color:var(--blue);width:40px;">' + f.floor + '层</span>' +
       '<span style="flex:1;font-size:12px;color:var(--text-muted);">' + f.rooms + '间 · <span style="color:' + usageColor + ';">' + (usageMap[f.usage] || f.usage) + '</span></span>' +
+      '<button class="action-btn small" onclick="openFloorEditModal(' + f.floor + ',\'' + (f.building || 'main') + '\')" style="padding:3px 8px;font-size:11px;">✏️ 编辑</button>' +
       '<button class="action-btn small" onclick="deleteFloor(' + f.floor + ')" style="padding:3px 8px;font-size:11px;">删除</button></div>';
   }).join('');
+  html += '<button class="action-btn" onclick="openFloorAddModal(\'main\')" style="width:100%;margin-top:8px;padding:8px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);font-size:12px;">➕ 新增楼层</button>';
   el.innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">暂无楼层数据</div>';
 }
 function deleteFloor(floorNum) {
@@ -24172,8 +24175,10 @@ function refreshDeviceTable() {
       '<td style="font-size:12px;">' + d.signal + '格</td>' +
       '<td style="font-size:11px;color:var(--text-muted);">' + d.lastSync + '</td>' +
       '<td><div style="display:flex;gap:4px;flex-wrap:nowrap;">' +
+        '<button class="action-btn small" onclick="navigateToDeviceDetail(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">👁️ 详情</button>' +
+        '<button class="action-btn small" onclick="openDeviceEditModal(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">✏️ 编辑</button>' +
         '<button class="action-btn small" onclick="openDeviceDiagnosticV2Enhanced(\'' + d.room + '\')" style="padding:3px 8px;font-size:11px;">🔍 诊断</button>' +
-        '<button class="action-btn small" onclick="diagnoseDevice(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">🛠️</button></div></td>' +
+        '<button class="action-btn small red" onclick="deleteDeviceConfirm(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">🗑️</button></div></td>' +
     '</tr>';
   });
   tbody.innerHTML = rows || '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">暂无设备数据</td></tr>';
@@ -24191,6 +24196,236 @@ function diagnoseDevice(uuid) {
     var status = issues.length === 0 ? '✅ 健康' : '⚠️ 需关注';
     showToast('🔍 ' + d.room + ' 诊断完成：' + status + '（评分 ' + score + '分）', score >= 80 ? 'success' : 'warning');
   }, 1000);
+}
+
+// ============================================================
+// 【物联后台v4-改进1】设备列表→详情页跳转函数
+// 理由：设备列表行缺少"详情"入口，对照截图（07-hardware-list-xbd.jpg）设备列表应能点击跳转详情
+// ============================================================
+function navigateToDeviceDetail(uuid) {
+  var d = deviceData.find(function(x){ return x.uuid === uuid; });
+  if (!d) { showToast('未找到设备', 'error'); return; }
+  // 预填充设备详情页数据（演示用，真实系统从API获取）
+  var detailPage = document.getElementById('page-device-detail');
+  if (detailPage) {
+    var subTitle = detailPage.querySelector('.page-sub');
+    if (subTitle) subTitle.textContent = '设备序列号 ' + d.uuid;
+    // 更新设备信息Tab
+    var infoGrid = document.querySelector('#page-device-detail #dev-content-info .info-grid');
+    if (infoGrid) {
+      infoGrid.innerHTML = '<div class="info-item"><div class="label">设备名称</div><div class="value">' + d.model + '</div></div>' +
+        '<div class="info-item"><div class="label">固件版本</div><div class="value">v2.3.1 <span style="font-size:11px;color:var(--green);background:var(--green-bg);padding:1px 6px;border-radius:4px;">已是最新</span></div></div>' +
+        '<div class="info-item"><div class="label">所属房间</div><div class="value">' + d.room + '室</div></div>' +
+        '<div class="info-item"><div class="label">设备状态</div><div class="value" style="color:var(--green);">🟢 ' + d.status + '</div></div>' +
+        '<div class="info-item"><div class="label">电池电量</div><div class="value" style="color:var(--green);">🔋 ' + d.battery + '%</div></div>' +
+        '<div class="info-item"><div class="label">信号强度</div><div class="value">' + d.signal + '</div></div>' +
+        '<div class="info-item"><div class="label">累计开锁</div><div class="value">28次</div></div>' +
+        '<div class="info-item"><div class="label">最后同步</div><div class="value">' + d.lastSync + '</div></div>';
+    }
+    // 激活信息Tab
+    switchDevTab('info');
+    showPage('device-detail');
+    showToast('📱 已跳转至设备 ' + d.room + ' 详情', 'success');
+  }
+}
+
+// ============================================================
+// 【物联后台v4-改进2】设备编辑弹窗
+// 理由：设备列表行缺少编辑功能，需对标截图实现完整CRUD
+// ============================================================
+function openDeviceEditModal(uuid) {
+  var d = deviceData.find(function(x){ return x.uuid === uuid; });
+  if (!d) { showToast('未找到设备', 'error'); return; }
+  var existing = document.getElementById('modal-device-edit');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-device-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-edit\').remove()">' +
+    '<div class="modal" style="width:500px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">✏️</div><div style="font-size:15px;font-weight:700;">编辑设备</div></div>' +
+    '<button onclick="document.getElementById(\'modal-device-edit\').remove();" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+    '<div class="form-group"><label class="form-label">设备UUID</label><input type="text" class="form-input" id="de-uuid" value="' + d.uuid + '" disabled style="background:var(--bg);color:var(--text-muted);"></div>' +
+    '<div class="form-group"><label class="form-label">设备型号</label><input type="text" class="form-input" id="de-model" value="' + d.model + '"></div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">' +
+    '<div class="form-group"><label class="form-label">所属房间</label><input type="text" class="form-input" id="de-room" value="' + d.room + '"></div>' +
+    '<div class="form-group"><label class="form-label">信号强度</label><select class="form-select" id="de-signal" style="width:100%;"><option value="强">强</option><option value="中">中</option><option value="弱">弱</option></select></div></div>' +
+    '<div class="form-group" style="margin-top:12px;"><label class="form-label">备注</label><input type="text" class="form-input" id="de-note" placeholder="可选，填写设备备注..."></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-edit\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitDeviceEdit(\'' + d.uuid + '\')" style="background:var(--blue);color:white;border:none;">💾 保存修改</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  // 回显信号强度
+  var sigMap = {'强':'强','中':'中','弱':'弱'};
+  if (d.signal && d.signal.indexOf('-') >= 0) {
+    var sigVal = '中';
+    if (d.signal.indexOf('-60') > 0 || d.signal.indexOf('-65') > 0) sigVal = '强';
+    if (d.signal.indexOf('-71') > 0 || d.signal.indexOf('-73') > 0) sigVal = '弱';
+    var sel = document.getElementById('de-signal');
+    if (sel) sel.value = sigVal;
+  }
+}
+function submitDeviceEdit(uuid) {
+  var d = deviceData.find(function(x){ return x.uuid === uuid; });
+  if (!d) { showToast('未找到设备', 'error'); return; }
+  var model = document.getElementById('de-model') ? document.getElementById('de-model').value.trim() : '';
+  var room = document.getElementById('de-room') ? document.getElementById('de-room').value.trim() : '';
+  var signal = document.getElementById('de-signal') ? document.getElementById('de-signal').value : d.signal;
+  var note = document.getElementById('de-note') ? document.getElementById('de-note').value.trim() : '';
+  if (!model || !room) { showToast('请填写必填项', 'error'); return; }
+  d.model = model;
+  d.room = room;
+  d.signal = signal;
+  document.getElementById('modal-device-edit') && document.getElementById('modal-device-edit').remove();
+  showToast('✅ 设备 ' + uuid + ' 已更新', 'success');
+  refreshDeviceTable && refreshDeviceTable();
+}
+
+// ============================================================
+// 【物联后台v4-改进3】设备删除二次确认
+// 理由：设备列表行缺少删除入口，对照截图（07-hardware-list-xbd.jpg）设备应能删除
+// ============================================================
+function deleteDeviceConfirm(uuid) {
+  var d = deviceData.find(function(x){ return x.uuid === uuid; });
+  if (!d) { showToast('未找到设备', 'error'); return; }
+  var existing = document.getElementById('modal-device-delete');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-device-delete" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-delete\').remove()">' +
+    '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
+    '<div style="width:44px;height:44px;background:var(--red-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">🗑️</div>' +
+    '<div><div style="font-size:15px;font-weight:700;">确认删除设备</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">设备UUID：' + d.uuid + '<br>房间号：' + d.room + '室</div></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-delete\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmDeviceDelete(\'' + d.uuid + '\')" style="background:var(--red);color:white;border:none;">🗑️ 确认删除</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function confirmDeviceDelete(uuid) {
+  var idx = deviceData.findIndex(function(x){ return x.uuid === uuid; });
+  if (idx !== -1) {
+    var d = deviceData[idx];
+    deviceData.splice(idx, 1);
+    document.getElementById('modal-device-delete') && document.getElementById('modal-device-delete').remove();
+    showToast('🗑️ 设备 ' + d.uuid + ' 已删除', 'success');
+    refreshDeviceTable && refreshDeviceTable();
+  }
+}
+
+// ============================================================
+// 【物联后台v4-改进4】楼栋新增弹窗
+// 理由：楼栋管理header缺少"新增楼栋"入口，对照截图（05-config-xbd.jpg）楼栋配置应有增删改查
+// ============================================================
+function openBuildingAddModal() {
+  var existing = document.getElementById('modal-building-add');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-building-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-building-add\').remove()">' +
+    '<div class="modal" style="width:460px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🏢</div><div style="font-size:15px;font-weight:700;">新增楼栋</div></div>' +
+    '<button onclick="document.getElementById(\'modal-building-add\').remove();" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">楼栋名称 <span class="required">*</span></label><input type="text" class="form-input" id="bld-add-name" placeholder="请输入楼栋名称，如：主楼/东配楼"></div>' +
+    '<div class="form-group"><label class="form-label">楼栋编号 <span class="required">*</span></label><input type="text" class="form-input" id="bld-add-code" placeholder="如：MAIN" maxlength="10" style="text-transform:uppercase;"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">' +
+    '<div class="form-group"><label class="form-label">楼层数</label><input type="number" class="form-input" id="bld-add-floors" value="3" min="1" max="50"></div>' +
+    '<div class="form-group"><label class="form-label">每层房间数</label><input type="number" class="form-input" id="bld-add-rooms" value="16" min="1" max="100"></div></div>' +
+    '<div class="form-group" style="margin-top:12px;"><label class="form-label">楼栋地址</label><input type="text" class="form-input" id="bld-add-address" placeholder="请输入楼栋详细地址"></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-building-add\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitBuildingAdd()" style="background:var(--blue);color:white;border:none;">✅ 确认新增</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitBuildingAdd() {
+  var name = document.getElementById('bld-add-name') ? document.getElementById('bld-add-name').value.trim() : '';
+  var code = document.getElementById('bld-add-code') ? document.getElementById('bld-add-code').value.trim().toUpperCase() : '';
+  var floors = parseInt(document.getElementById('bld-add-floors') ? document.getElementById('bld-add-floors').value : '3') || 3;
+  var rooms = parseInt(document.getElementById('bld-add-rooms') ? document.getElementById('bld-add-rooms').value : '16') || 16;
+  var address = document.getElementById('bld-add-address') ? document.getElementById('bld-add-address').value.trim() : '';
+  if (!name || !code) { showToast('请填写楼栋名称和编号', 'error'); return; }
+  var newId = 'bld_' + Date.now();
+  buildingStore.push({id:newId, name:name, code:code, floors:floors, rooms:rooms, status:'active', address:address});
+  document.getElementById('modal-building-add') && document.getElementById('modal-building-add').remove();
+  showToast('✅ 楼栋「' + name + '」已新增（共' + buildingStore.length + '栋）', 'success');
+  renderBuildingList && renderBuildingList();
+}
+
+// ============================================================
+// 【物联后台v4-改进5】楼层新增/编辑弹窗
+// 理由：楼层管理只有删除按钮，缺少新增/编辑入口，对照截图（02-hardware-xbd.jpg）楼层应有完整CRUD
+// ============================================================
+function openFloorAddModal(buildingId) {
+  var existing = document.getElementById('modal-floor-add');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-floor-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-add\').remove()">' +
+    '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🏗️</div><div style="font-size:15px;font-weight:700;">新增楼层</div></div>' +
+    '<button onclick="document.getElementById(\'modal-floor-add\').remove();" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">所属楼栋</label><select class="form-select" id="fl-add-building" style="width:100%;"><option value="main">主楼</option><option value="east">东配楼</option></select></div>' +
+    '<div class="form-group" style="margin-top:12px;"><label class="form-label">楼层号 <span class="required">*</span></label><input type="number" class="form-input" id="fl-add-num" placeholder="请输入楼层号（如：1/2/3）" min="1" max="99"></div>' +
+    '<div class="form-group" style="margin-top:12px;"><label class="form-label">房间数</label><input type="number" class="form-input" id="fl-add-rooms" value="8" min="1" max="50"></div>' +
+    '<div class="form-group" style="margin-top:12px;"><label class="form-label">备注</label><input type="text" class="form-input" id="fl-add-note" placeholder="可选，如：豪华楼层/员工楼层"></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-floor-add\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitFloorAdd()" style="background:var(--blue);color:white;border:none;">✅ 确认新增</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitFloorAdd() {
+  var building = document.getElementById('fl-add-building') ? document.getElementById('fl-add-building').value : 'main';
+  var num = parseInt(document.getElementById('fl-add-num') ? document.getElementById('fl-add-num').value : '') || 0;
+  var rooms = parseInt(document.getElementById('fl-add-rooms') ? document.getElementById('fl-add-rooms').value : '8') || 8;
+  var note = document.getElementById('fl-add-note') ? document.getElementById('fl-add-note').value.trim() : '';
+  if (!num) { showToast('请填写楼层号', 'error'); return; }
+  var buildingName = {main:'主楼', east:'东配楼'}[building] || building;
+  // 更新floorData
+  var existingFloor = floorData.find(function(f){ return f.floor === num && f.building === building; });
+  if (existingFloor) {
+    showToast('楼层 ' + num + ' 已存在', 'warning');
+    return;
+  }
+  floorData.push({building:building, buildingName:buildingName, floor:num, rooms:rooms, note:note, status:'active'});
+  document.getElementById('modal-floor-add') && document.getElementById('modal-floor-add').remove();
+  showToast('✅ ' + buildingName + ' ' + num + '层已新增', 'success');
+  renderFloorList && renderFloorList();
+}
+
+function openFloorEditModal(floorNum, buildingId) {
+  var f = floorData.find(function(x){ return x.floor === floorNum && x.building === buildingId; });
+  if (!f) { showToast('未找到楼层', 'error'); return; }
+  var existing = document.getElementById('modal-floor-edit');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-floor-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-edit\').remove()">' +
+    '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">✏️</div><div style="font-size:15px;font-weight:700;">编辑楼层</div></div>' +
+    '<button onclick="document.getElementById(\'modal-floor-edit\').remove();" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">所属楼栋</label><select class="form-select" id="fl-edit-building" style="width:100%;"><option value="main">主楼</option><option value="east">东配楼</option></select></div>' +
+    '<div class="form-group" style="margin-top:12px;"><label class="form-label">楼层号</label><input type="number" class="form-input" id="fl-edit-num" value="' + f.floor + '" min="1" max="99"></div>' +
+    '<div class="form-group" style="margin-top:12px;"><label class="form-label">房间数</label><input type="number" class="form-input" id="fl-edit-rooms" value="' + f.rooms + '" min="1" max="50"></div>' +
+    '<div class="form-group" style="margin-top:12px;"><label class="form-label">备注</label><input type="text" class="form-input" id="fl-edit-note" value="' + (f.note || '') + '" placeholder="可选"></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-floor-edit\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitFloorEdit(' + floorNum + ',\'' + buildingId + '\')" style="background:var(--blue);color:white;border:none;">💾 保存修改</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  var sel = document.getElementById('fl-edit-building');
+  if (sel) sel.value = buildingId;
+}
+function submitFloorEdit(floorNum, buildingId) {
+  var f = floorData.find(function(x){ return x.floor === floorNum && x.building === buildingId; });
+  if (!f) { showToast('未找到楼层', 'error'); return; }
+  var num = parseInt(document.getElementById('fl-edit-num') ? document.getElementById('fl-edit-num').value : '') || f.floor;
+  var rooms = parseInt(document.getElementById('fl-edit-rooms') ? document.getElementById('fl-edit-rooms').value : f.rooms) || f.rooms;
+  var note = document.getElementById('fl-edit-note') ? document.getElementById('fl-edit-note').value.trim() : '';
+  var building = document.getElementById('fl-edit-building') ? document.getElementById('fl-edit-building').value : buildingId;
+  f.floor = num;
+  f.rooms = rooms;
+  f.note = note;
+  f.building = building;
+  document.getElementById('modal-floor-edit') && document.getElementById('modal-floor-edit').remove();
+  showToast('✅ 楼层已更新', 'success');
+  renderFloorList && renderFloorList();
 }
 
 // 初始化黑名单搜索事件
