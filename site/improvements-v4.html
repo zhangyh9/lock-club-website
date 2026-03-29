@@ -1,0 +1,434 @@
+// ============================================================
+// 【物联后台 v4 改进1】告警详情完整弹窗（闭环）
+// 理由：告警只有列表，缺少点击查看详情+处理+回退闭环
+// 改进：点击告警行打开详情弹窗，展示告警信息/历史/处理方案，处理后可确认完成或回退
+// ============================================================
+
+function openAlertDetailFullModal(idx) {
+  var d = alertData[idx];
+  if (!d) return;
+  var existing = document.getElementById('modal-alert-detail-full');
+  if (existing) existing.remove();
+  var typeIcon = d.type === '设备离线' ? '🔴' : d.type === '低电量' ? '🟠' : '⚠️';
+  var levelColor = d.type === '设备离线' ? 'var(--red)' : 'var(--orange)';
+  var statusBadge = d.status === '待处理' ? '<span style="padding:2px 8px;background:var(--red-bg);color:var(--red);border-radius:12px;font-size:11px;font-weight:600;">待处理</span>' :
+                    d.status === '已忽略' ? '<span style="padding:2px 8px;background:var(--bg);color:var(--text-muted);border-radius:12px;font-size:11px;font-weight:600;">已忽略</span>' :
+                    '<span style="padding:2px 8px;background:var(--green-bg);color:var(--green);border-radius:12px;font-size:11px;font-weight:600;">已处理</span>';
+  var historyRows = (d.history || []).map(function(h) {
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">' +
+           '<div style="flex-shrink:0;font-size:11px;color:var(--text-muted);min-width:60px;">' + h.time + '</div>' +
+           '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + h.action + '</div>' +
+           (h.note ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + h.note + '</div>' : '') + '</div></div>';
+  }).join('') || '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">暂无处理历史记录</div>';
+  var html = '<div class="modal-overlay" id="modal-alert-detail-full" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-alert-detail-full\').remove()">' +
+    '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">' + typeIcon + '</div><div><div style="font-size:15px;font-weight:700;">告警详情</div><div style="font-size:11px;color:var(--text-muted);">' + d.type + ' · ' + d.room + '</div></div></div>' +
+    statusBadge + '<button onclick="document.getElementById(\'modal-alert-detail-full\').remove();" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    // 告警信息卡片
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">告警类型</div><div style="font-size:13px;font-weight:700;">' + typeIcon + ' ' + d.type + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">持续时间</div><div style="font-size:13px;font-weight:700;color:' + levelColor + ';">' + d.duration + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">发生时间</div><div style="font-size:12px;font-weight:600;">' + d.time + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">关联房间</div><div style="font-size:13px;font-weight:700;">' + d.room + '</div></div></div>' +
+    // 历史处理记录
+    '<div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-muted);">📋 处理历史</div>' +
+    '<div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 12px;margin-bottom:16px;">' + historyRows + '</div>' +
+    // 快速处理方案
+    '<div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-muted);">🛠️ 快速处理</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">' +
+    '<button onclick="submitAlertFullProcess(\'' + idx + '\',\'现场处理\',\'现场检查设备并处理\')" style="padding:10px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">🔧 现场处理</button>' +
+    '<button onclick="submitAlertFullProcess(\'' + idx + '\',\'更换电池\',\'更换设备电池\')" style="padding:10px;background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">🔋 更换电池</button>' +
+    '<button onclick="submitAlertFullProcess(\'' + idx + '\',\'设备重启\',\'远程重启设备\')" style="padding:10px;background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">🔄 设备重启</button>' +
+    '<button onclick="submitAlertFullProcess(\'' + idx + '\',\'忽略\',\'确认为正常波动\')" style="padding:10px;background:var(--bg);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">⏭️ 忽略</button></div>' +
+    '<div class="form-group"><label class="form-label">处理备注</label>' +
+    '<textarea class="form-textarea" id="alert-detail-note" placeholder="可选，添加处理说明..." style="min-height:50px;"></textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-alert-detail-full\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="submitAlertFullProcess(\'' + idx + '\',\'现场处理\',document.getElementById(\'alert-detail-note\').value)" style="background:var(--blue);color:white;border:none;">✅ 确认处理</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitAlertFullProcess(idx, action, note) {
+  var d = alertData[idx];
+  if (!d) return;
+  var now = new Date().toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\//g,'-');
+  if (!d.history) d.history = [];
+  d.history.push({time: now, action: action, note: note || ''});
+  d.status = action === '忽略' ? '已忽略' : '已处理';
+  document.getElementById('modal-alert-detail-full') && document.getElementById('modal-alert-detail-full').remove();
+  showToast('✅ 告警已处理：' + action, 'success');
+  if (typeof renderAlertList === 'function') renderAlertList();
+  if (typeof updateAlertBadge === 'function') updateAlertBadge();
+}
+
+// ============================================================
+// 【物联后台 v4 改进2】能耗AI节能建议弹窗
+// 理由：能耗分析只有图表，缺少AI节能建议和设备耗电排名
+// 改进：点击"AI节能建议"按钮弹出建议弹窗，展示节能空间/设备排名/优化建议
+// ============================================================
+
+function openEnergyAISuggestModal() {
+  var existing = document.getElementById('modal-energy-ai');
+  if (existing) existing.remove();
+  // 模拟AI分析数据
+  var suggestions = [
+    {icon:'💡', title:'空调温度优化', desc:'建议将3层空调设定温度从24°C调整至26°C，预计月省电约120kWh', saving:'¥60/月', color:'var(--blue)'},
+    {icon:'🔌', title:'关闭待机设备', desc:'2层走廊灯夜间00:00-06:00无人使用，建议配置定时关闭', saving:'¥35/月', color:'var(--green)'},
+    {icon:'📊', title:'能耗异常检测', desc:'4层今日用电67.8kWh，超出日均40%，建议排查大功率设备', saving:'需排查', color:'var(--orange)'},
+    {icon:'⏰', title:'高峰时段提醒', desc:'当前处于用电高峰(14:00-18:00)，非紧急设备建议错峰运行', saving:'¥25/月', color:'var(--purple)'}
+  ];
+  var deviceRanking = [
+    {name:'4层-空调WXYZ-301', kwh:18.5, pct:27},{name:'2层-空调WXYZ-205', kwh:15.2, pct:22},
+    {name:'1层-电热水器', kwh:12.8, pct:19},{name:'3层-走廊照明', kwh:8.3, pct:12},
+    {name:'其他设备', kwh:13.7, pct:20}
+  ];
+  var suggRows = suggestions.map(function(s) {
+    return '<div style="padding:14px;background:' + s.color.replace(')',',0.08)').replace('var(--','rgba(').replace('(','(') + ';border:1px solid ' + s.color + ';border-radius:10px;margin-bottom:10px;">' +
+           '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">' +
+           '<div style="font-size:20px;">' + s.icon + '</div>' +
+           '<div style="flex:1;"><div style="font-size:13px;font-weight:700;">' + s.title + '</div>' +
+           '<div style="font-size:11px;color:var(--text-muted);">' + s.desc + '</div></div>' +
+           '<div style="padding:4px 10px;background:' + s.color.replace(')',',0.15)').replace('var(--','rgba(') + ';color:' + s.color + ';border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap;">' + s.saving + '</div></div></div>';
+  }).join('');
+  var rankRows = deviceRanking.map(function(d, i) {
+    var barW = d.pct;
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+           '<div style="min-width:20px;font-size:12px;font-weight:700;color:' + (i===0?'var(--red)':i===1?'var(--orange)':'var(--text-muted)') + ';">' + (i+1) + '</div>' +
+           '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + d.name + '</div>' +
+           '<div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="height:100%;width:' + barW + '%;background:' + (i===0?'var(--red)':i===1?'var(--orange)':'var(--blue)') + ';border-radius:3px;"></div></div></div>' +
+           '<div style="min-width:70px;text-align:right;font-size:12px;font-weight:700;color:var(--blue);">' + d.kwh + ' kWh</div>' +
+           '<div style="min-width:36px;text-align:right;font-size:11px;color:var(--text-muted);">' + d.pct + '%</div></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-energy-ai" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-ai\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🤖</div><div><div style="font-size:15px;font-weight:700;">AI 节能建议</div><div style="font-size:11px;color:var(--text-muted);">基于历史数据智能分析</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-energy-ai\').remove();" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--green);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:20px;">📊</div><div>本月预估节能空间：<strong>约¥180</strong>，占当前电费预算的<strong>18%</strong></div></div>' +
+    '<div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-muted);">💡 优化建议（按节能效果排序）</div>' +
+    '<div style="margin-bottom:20px;">' + suggRows + '</div>' +
+    '<div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-muted);">🏆 设备耗电排行（今日）</div>' +
+    '<div style="padding:14px;background:var(--bg);border-radius:8px;">' + rankRows + '</div></div>' +
+    '<div style="padding:14px 24px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-energy-ai\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="applyEnergySuggestions()" style="background:var(--green);color:white;border:none;">✅ 一键应用建议</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function applyEnergySuggestions() {
+  showToast('💡 节能建议已加入执行计划，将于次日生效', 'success');
+  document.getElementById('modal-energy-ai') && document.getElementById('modal-energy-ai').remove();
+}
+
+// ============================================================
+// 【物联后台 v4 改进3】工单完成确认+评价闭环
+// 理由：工单只有列表和接单，缺少完成确认+满意度评价闭环
+// 改进：点击"完成"按钮弹出确认+评价弹窗，选择完成状态并打分
+// ============================================================
+
+var _workorderCompleteIdx = null;
+
+function openWorkorderCompleteModal(idx) {
+  _workorderCompleteIdx = idx;
+  var w = window._workorderList ? window._workorderList[idx] : null;
+  if (!w) return;
+  var existing = document.getElementById('modal-wo-complete');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-wo-complete" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-complete\').remove()">' +
+    '<div class="modal" style="width:440px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">✅ 完成工单</div>' +
+    '<button onclick="document.getElementById(\'modal-wo-complete\').remove();" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">📝 工单：' + (w.title || w.desc || '工单 #' + idx) + '</div>' +
+    '<div class="form-group"><label class="form-label">完成状态 <span class="required">*</span></label>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">' +
+    '<label style="display:flex;align-items:center;gap:6px;padding:10px;border:1px solid var(--green);border-radius:8px;cursor:pointer;background:var(--green-bg);" onclick="this.style.background=\'var(--green)\';this.style.color=\'white\';this.parentElement.parentElement.querySelectorAll(\'label\').forEach(function(l){if(l!==this.parentElement)l.style.background=\'\';},this)">' +
+    '<input type="radio" name="wo-complete-status" value="completed" checked style="accent-color:var(--green);"><span style="font-size:12px;font-weight:600;">✅ 已完成</span></label>' +
+    '<label style="display:flex;align-items:center;gap:6px;padding:10px;border:1px solid var(--orange);border-radius:8px;cursor:pointer;" onclick="this.style.background=\'var(--orange)\';this.style.color=\'white\';this.parentElement.parentElement.querySelectorAll(\'label\').forEach(function(l){if(l!==this.parentElement)l.style.background=\'\';},this)">' +
+    '<input type="radio" name="wo-complete-status" value="partial" style="accent-color:var(--orange);"><span style="font-size:12px;font-weight:600;">⚠️ 部分完成</span></label>' +
+    '<label style="display:flex;align-items:center;gap:6px;padding:10px;border:1px solid var(--red);border-radius:8px;cursor:pointer;" onclick="this.style.background=\'var(--red)\';this.style.color=\'white\';this.parentElement.parentElement.querySelectorAll(\'label\').forEach(function(l){if(l!==this.parentElement)l.style.background=\'\';},this)">' +
+    '<input type="radio" name="wo-complete-status" value="failed" style="accent-color:var(--red);"><span style="font-size:12px;font-weight:600;">❌ 无法完成</span></label></div></div>' +
+    '<div class="form-group"><label class="form-label">满意度评分</label>' +
+    '<div style="display:flex;gap:6px;margin-top:4px;">' +
+    '<button class="wo-star-btn" data-rating="1" onclick="setWoRating(1)" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--border);">★</button>' +
+    '<button class="wo-star-btn" data-rating="2" onclick="setWoRating(2)" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--border);">★</button>' +
+    '<button class="wo-star-btn" data-rating="3" onclick="setWoRating(3)" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--border);">★</button>' +
+    '<button class="wo-star-btn" data-rating="4" onclick="setWoRating(4)" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--border);">★</button>' +
+    '<button class="wo-star-btn" data-rating="5" onclick="setWoRating(5)" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--border);">★</button>' +
+    '<span id="wo-rating-label" style="font-size:12px;color:var(--text-muted);margin-left:8px;align-self:center;">点击评分</span></div></div>' +
+    '<div class="form-group"><label class="form-label">完成备注</label>' +
+    '<textarea class="form-textarea" id="wo-complete-note" placeholder="可选，填写完成说明或遗留问题..." style="min-height:60px;"></textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-complete\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitWorkorderComplete()" style="background:var(--green);border-color:var(--green);">✅ 确认完成</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  window._currentWoRating = 0;
+}
+
+function setWoRating(rating) {
+  window._currentWoRating = rating;
+  document.querySelectorAll('.wo-star-btn').forEach(function(btn) {
+    var r = parseInt(btn.dataset.rating);
+    btn.style.color = r <= rating ? 'var(--orange)' : 'var(--border)';
+  });
+  var labels = ['', '很差', '较差', '一般', '满意', '非常满意'];
+  document.getElementById('wo-rating-label').textContent = labels[rating] || '点击评分';
+}
+
+function submitWorkorderComplete() {
+  var status = document.querySelector('input[name="wo-complete-status"]:checked');
+  var note = document.getElementById('wo-complete-note') ? document.getElementById('wo-complete-note').value.trim() : '';
+  var rating = window._currentWoRating || 0;
+  if (!status) { showToast('请选择完成状态', 'error'); return; }
+  var statusVal = status.value;
+  var statusLabel = {completed:'已确认完成', partial:'部分完成', failed:'无法完成'}[statusVal];
+  var toastMsg = '✅ 工单 ' + statusLabel;
+  if (rating > 0) toastMsg += '，满意度 ' + rating + '星';
+  if (note) toastMsg += '：' + note.substring(0, 20);
+  document.getElementById('modal-wo-complete') && document.getElementById('modal-wo-complete').remove();
+  showToast(toastMsg, statusVal === 'failed' ? 'warning' : 'success');
+  if (typeof renderWorkorderList === 'function') renderWorkorderList();
+}
+
+// ============================================================
+// 【物联后台 v4 改进4】发票打印预览闭环
+// 理由：发票详情有打印按钮但printInvoice函数缺失
+// 改进：实现printInvoice函数，打开打印预览窗口含完整发票信息
+// ============================================================
+
+function printInvoice(invId) {
+  var inv = null;
+  if (invId) {
+    inv = invoiceStore.find(function(i){ return i.id === invId; });
+  } else {
+    // Find from detail modal
+    var el = document.getElementById('invd-id');
+    if (el) {
+      var id = el.textContent.trim();
+      inv = invoiceStore.find(function(i){ return i.id === id; });
+    }
+  }
+  if (!inv) { showToast('未找到发票信息', 'error'); return; }
+  var printContent = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>发票打印 - ' + inv.id + '</title>' +
+    '<style>body{font-family:"Microsoft YaHei",Arial,sans-serif;padding:40px;max-width:700px;margin:0 auto;color:#333;}' +
+    '.inv-header{border-bottom:2px solid #333;padding-bottom:20px;margin-bottom:20px;}' +
+    '.inv-title{font-size:28px;font-weight:800;text-align:center;margin:0 0 10px;}' +
+    '.inv-id{text-align:right;font-size:12px;color:#666;}' +
+    '.inv-section{margin-bottom:20px;}' +
+    '.inv-section h3{font-size:14px;border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px;}' +
+    '.inv-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;}' +
+    '.inv-item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted #eee;}' +
+    '.inv-total{font-size:24px;font-weight:800;color:#c00;text-align:right;padding:15px 0;}' +
+    '.inv-footer{text-align:center;font-size:11px;color:#999;margin-top:40px;padding-top:20px;border-top:1px solid #ddd;}' +
+    '.inv-qr{text-align:center;margin:15px 0;}' +
+    '.inv-print-btn{position:fixed;top:20px;right:20px;padding:10px 20px;background:#0066cc;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:14px;}' +
+    '@media print{.inv-print-btn{display:none;}}</style></head><body>' +
+    '<button class="inv-print-btn" onclick="window.print()">🖨️ 打印发票</button>' +
+    '<div class="inv-header"><div class="inv-title">增 值 税 发 票</div>' +
+    '<div class="inv-id">发票号码：' + inv.id + ' &nbsp;&nbsp; 开票日期：' + inv.date + '</div></div>' +
+    '<div class="inv-section"><h3>购买方信息</h3><div class="inv-grid">' +
+    '<div class="inv-item"><span>名 称：</span><span style="font-weight:600;">' + inv.company + '</span></div>' +
+    '<div class="inv-item"><span>纳税人识别号：</span><span>' + inv.tax + '</span></div></div></div>' +
+    '<div class="inv-section"><h3>销售方信息</h3><div class="inv-grid">' +
+    '<div class="inv-item"><span>名 称：</span><span>锁帮智慧酒店管理有限公司</span></div>' +
+    '<div class="inv-item"><span>纳税人识别号：</span><span>91310000MA1FL8XY12</span></div></div></div>' +
+    '<div class="inv-section"><h3>发票明细</h3>' +
+    '<div class="inv-item"><span>住宿服务</span><span>¥' + inv.amount.toFixed(2) + '</span></div></div>' +
+    '<div class="inv-total">价税合计（大写）：<span style="font-size:14px;">人民币 </span>' + inv.amount.toFixed(2) + ' 元</div>' +
+    '<div class="inv-section"><h3>其他信息</h3><div class="inv-grid">' +
+    '<div class="inv-item"><span>发票类型：</span><span>' + (inv.type || '增值税普通发票') + '</span></div>' +
+    '<div class="inv-item"><span>电子邮箱：</span><span>' + (inv.email || '--') + '</span></div>' +
+    '<div class="inv-item"><span>收 款 人：</span><span>锁帮物联后台系统</span></div>' +
+    '<div class="inv-item"><span>开 票 人：</span><span>系统自动开票</span></div></div></div>' +
+    '<div class="inv-footer">本发票由锁帮智慧酒店管理系统自动开具 · 如有疑问请联系客服<br>发票查询官网：https://inv.lockclub.cn · 客服电话：400-888-8888</div></body></html>';
+  var printWindow = window.open('', '_blank', 'width=800,height=900,scrollbars=yes');
+  if (!printWindow) { showToast('请允许弹出窗口以打印发票', 'warning'); return; }
+  printWindow.document.write(printContent);
+  printWindow.document.close();
+  showToast('🖨️ 打印窗口已打开，请执行打印', 'success');
+}
+
+// ============================================================
+// 【物联后台 v4 改进5】操作日志关键词搜索
+// 理由：操作日志只有筛选器，缺少关键词全文搜索功能
+// 改进：在操作日志Tab添加关键词搜索框，支持内容关键词匹配
+// ============================================================
+
+function searchOplogByKeyword(keyword) {
+  if (!keyword || !keyword.trim()) {
+    showToast('请输入搜索关键词', 'info');
+    return;
+  }
+  var kw = keyword.trim().toLowerCase();
+  var tbody = document.getElementById('oplog-table-body');
+  if (!tbody) return;
+  var rows = tbody.querySelectorAll('tr');
+  var matchCount = 0;
+  rows.forEach(function(row) {
+    var text = row.textContent.toLowerCase();
+    if (text.indexOf(kw) >= 0) {
+      row.style.display = '';
+      matchCount++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+  document.getElementById('oplog-count-label') && (document.getElementById('oplog-count-label').textContent = '匹配 ' + matchCount + ' 条记录');
+  showToast('🔍 找到 ' + matchCount + ' 条匹配记录', 'info');
+}
+
+function clearOplogSearch() {
+  var input = document.getElementById('oplog-keyword-search');
+  if (input) input.value = '';
+  var tbody = document.getElementById('oplog-table-body');
+  if (!tbody) return;
+  tbody.querySelectorAll('tr').forEach(function(r){ r.style.display = ''; });
+  var total = tbody.querySelectorAll('tr').length;
+  document.getElementById('oplog-count-label') && (document.getElementById('oplog-count-label').textContent = '共 ' + total + ' 条记录');
+  showToast('已清除搜索筛选', 'info');
+}
+
+// 在操作日志Tab的搜索区域注入搜索框（增强现有筛选器）
+function enhanceOplogSearchUI() {
+  var searchContainer = document.querySelector('#cfg-content-oplog [style*="flex-wrap"]');
+  if (!searchContainer) return;
+  var existingSearch = document.getElementById('oplog-keyword-search');
+  if (existingSearch) return; // already enhanced
+  var searchBox = document.createElement('div');
+  searchBox.style.cssText = 'display:flex;align-items:center;gap:6px;';
+  searchBox.innerHTML = '<input type="text" id="oplog-keyword-search" placeholder="🔍 搜索日志内容..." ' +
+    'style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:140px;" ' +
+    'onkeydown="if(event.key===\'Enter\')searchOplogByKeyword(this.value)">' +
+    '<button class="action-btn small" onclick="searchOplogByKeyword(document.getElementById(\'oplog-keyword-search\').value)" ' +
+    'style="padding:5px 10px;font-size:11px;">搜索</button>' +
+    '<button class="action-btn small" onclick="clearOplogSearch()" style="padding:5px 10px;font-size:11px;background:var(--bg);color:var(--text-muted);">清除</button>';
+  searchContainer.insertBefore(searchBox, searchContainer.firstChild);
+}
+
+// 初始化完成后增强操作日志搜索UI
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(enhanceOplogSearchUI, 1000);
+});
+
+// ============================================================
+// 【物联后台 v4 改进6】告警列表增加"查看详情"入口
+// 理由：告警列表没有直接打开详情弹窗的入口
+// 改进：在告警列表每行添加"详情"按钮，点击调用openAlertDetailFullModal
+// ============================================================
+
+var _originalRenderAlertList = null;
+
+// 检查现有告警渲染函数，注入详情按钮
+function injectAlertDetailButton() {
+  // 找到告警列表的渲染逻辑，在适当位置添加详情按钮
+  var alertPage = document.getElementById('page-alert');
+  if (!alertPage) return;
+  // 在告警列表的操作列添加详情按钮
+  var actionCells = alertPage.querySelectorAll('td:last-child');
+  actionCells.forEach(function(cell) {
+    if (cell.textContent.indexOf('详情') < 0) {
+      var btns = cell.querySelectorAll('button, a');
+      if (btns.length > 0) {
+        var firstBtn = btns[0];
+        var detailBtn = document.createElement('button');
+        detailBtn.className = 'action-btn small';
+        detailBtn.style.cssText = 'padding:3px 8px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);margin-right:4px;';
+        detailBtn.textContent = '详情';
+        detailBtn.onclick = function() {
+          // Try to find the row index
+          var row = firstBtn.closest('tr');
+          if (row) {
+            var rows = row.parentElement.querySelectorAll('tr');
+            for (var i = 0; i < rows.length; i++) {
+              if (rows[i] === row) {
+                openAlertDetailFullModal(i);
+                break;
+              }
+            }
+          }
+        };
+        cell.insertBefore(detailBtn, cell.firstChild);
+      }
+    }
+  });
+}
+
+// 页面切换到告警页时增强
+var _originalShowPage = typeof showPage === 'function' ? showPage : null;
+if (typeof showPage === 'function') {
+  eval('window._showPageBackup = ' + showPage.toString());
+  window._showPageEnhanceDone = false;
+}
+
+// ============================================================
+// 【物联后台 v4 改进7】工单列表增加"完成"按钮入口
+// 理由：工单列表缺少快速完成入口
+// 改进：在工单列表状态为"进行中"的工单行添加"完成"按钮
+// ============================================================
+
+function injectWorkorderCompleteButton() {
+  var woPage = document.getElementById('page-workorder');
+  if (!woPage) return;
+  var rows = woPage.querySelectorAll('tbody tr');
+  rows.forEach(function(row) {
+    var statusCell = row.querySelector('td:nth-child(5)');
+    if (statusCell && (statusCell.textContent.indexOf('进行中') >= 0 || statusCell.textContent.indexOf('待处理') >= 0)) {
+      var actionCell = row.querySelector('td:last-child');
+      if (actionCell && actionCell.textContent.indexOf('完成') < 0) {
+        var completeBtn = document.createElement('button');
+        completeBtn.className = 'action-btn small';
+        completeBtn.style.cssText = 'padding:3px 8px;font-size:11px;background:var(--green-bg);color:var(--green);border-color:var(--green);margin-right:4px;';
+        completeBtn.textContent = '完成';
+        completeBtn.onclick = function(e) {
+          e.stopPropagation();
+          var rows = actionCell.closest('tbody').querySelectorAll('tr');
+          for (var i = 0; i < rows.length; i++) {
+            if (rows[i] === row) {
+              openWorkorderCompleteModal(i);
+              break;
+            }
+          }
+        };
+        if (actionCell.firstChild && actionCell.firstChild.nodeType === 3) {
+          actionCell.insertBefore(completeBtn, actionCell.firstChild);
+        } else {
+          actionCell.insertBefore(completeBtn, actionCell.firstChild);
+        }
+      }
+    }
+  });
+}
+
+// ============================================================
+// 【物联后台 v4 改进8】在能耗分析弹窗添加AI建议按钮
+// 理由：能耗分析弹窗缺少AI建议入口
+// 改进：在能耗分析弹窗的操作按钮区添加"AI节能建议"按钮
+// ============================================================
+
+function injectEnergyAISuggestBtn() {
+  var energyModal = document.getElementById('modal-energy-detail');
+  if (!energyModal) return;
+  var btnArea = energyModal.querySelector('[style*="display:flex"][style*="gap"]');
+  if (!btnArea) return;
+  if (btnArea.textContent.indexOf('AI节能建议') >= 0) return; // already injected
+  var aiBtn = document.createElement('button');
+  aiBtn.className = 'action-btn';
+  aiBtn.style.cssText = 'padding:8px 14px;font-size:12px;background:var(--purple);color:white;border:none;border-radius:6px;cursor:pointer;';
+  aiBtn.textContent = '🤖 AI节能建议';
+  aiBtn.onclick = function() { openEnergyAISuggestModal(); };
+  btnArea.insertBefore(aiBtn, btnArea.firstChild);
+}
+
+// Hook into energy modal open
+var _origOpenEnergyDetailPage = typeof openEnergyDetailPage === 'function' ? openEnergyDetailPage : null;
+if (typeof openEnergyDetailPage === 'function') {
+  window.openEnergyDetailPageEnhanced = function() {
+    _origOpenEnergyDetailPage();
+    setTimeout(injectEnergyAISuggestBtn, 100);
+  };
+}
