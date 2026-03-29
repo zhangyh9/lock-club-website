@@ -126,8 +126,7 @@ function applyInvoiceSearch() {
   }
   renderInvoiceFilteredList();
   var count = document.querySelectorAll('#invoice-table-body tr:not([style*="display: none"])').length;
-  var hasResult = document.querySelector('#invoice-table-body tr td[colspan="9"]') === null;
-  showToast('🔍 搜索完成，找到 ' + (document.querySelector('#invoice-table-body tr td[colspan="9"]') ? '0' : count) + ' 条发票', 'info');
+  showToast('🔍 搜索完成，找到 ' + count + ' 条发票', 'info');
 }
 
 // ============================================================
@@ -168,7 +167,7 @@ function openInvoiceCreateModal() {
     '<div class="form-group"><label class="form-label">购方名称 <span class="required">*</span></label>' +
     '<input type="text" class="form-input" id="inv-f-company" placeholder="请输入购方名称/姓名"></div>' +
     '<div class="form-group"><label class="form-label">电子邮箱</label>' +
-    '<input type="email" class="form-input" id="inv-f-email" placeholder="用于接收电子发票"></div></div>' +
+    '<input type="email" class="form-input" id="inv-f-email" placeholder="用于接收电子发票"></input></div></div>' +
     '<div class="form-row">' +
     '<div class="form-group"><label class="form-label">纳税人识别号</label>' +
     '<input type="text" class="form-input" id="inv-f-tax" placeholder="请输入纳税人识别号（増值税专用必填）"></div>' +
@@ -282,7 +281,6 @@ function submitBatchInvoice() {
   var count = parseInt(document.getElementById('batch-count') ? document.getElementById('batch-count').value : 5);
   var type = document.getElementById('batch-type') ? document.getElementById('batch-type').value : '普通发票';
   var baseAmt = parseFloat(document.getElementById('batch-amount') ? document.getElementById('batch-amount').value : 0);
-  var note = document.getElementById('batch-note') ? document.getElementById('batch-note').value.trim() : '';
   var today = new Date().toISOString().slice(0,10).replace(/-/g,'');
   for (var i = 0; i < count; i++) {
     var amt = baseAmt > 0 ? baseAmt : Math.floor(100 + Math.random() * 900);
@@ -345,21 +343,16 @@ function injectAlertDetailButton() {
   rows.forEach(function(row, idx) {
     var lastCell = row.querySelector('td:last-child');
     if (!lastCell) return;
-    // 检查是否已有详情按钮
     if (lastCell.textContent.indexOf('详情') >= 0) return;
-    // 添加详情按钮在处理按钮前
     var detailBtn = document.createElement('button');
     detailBtn.className = 'action-btn small';
     detailBtn.style.cssText = 'padding:3px 8px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);margin-right:4px;';
     detailBtn.textContent = '详情';
     detailBtn.onclick = function(e) {
       e.stopPropagation();
-      // 找到行的索引（考虑隐藏行）
-      var visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(function(r){ return r.style.display !== 'none'; });
       var rowIdx = Array.from(tbody.querySelectorAll('tr')).indexOf(row);
       openAlertDetailFullModal(rowIdx);
     };
-    // 插入到第一个按钮前
     var firstBtn = lastCell.querySelector('button, a');
     if (firstBtn) {
       lastCell.insertBefore(detailBtn, firstBtn);
@@ -370,7 +363,6 @@ function injectAlertDetailButton() {
 }
 
 // Hook到showPage，在切换到告警页时自动注入
-var _origShowPage_impl = null;
 function _hookShowPageForAlert() {
   if (typeof showPage === 'function') {
     var originalShowPage = showPage;
@@ -382,14 +374,13 @@ function _hookShowPageForAlert() {
       // 初始化黑名单页面
       if (pageName === 'blacklist') {
         setTimeout(function() {
-          if (document.getElementById('bl-table-body')) renderBlacklist();
+          if (document.getElementById('bl-table-body')) renderBlacklist && renderBlacklist();
         }, 200);
       }
       // 初始化发票页面
       if (pageName === 'invoice') {
         setTimeout(function() {
           renderInvoiceFilteredList();
-          // 检查草稿
           try {
             var draft = JSON.parse(localStorage.getItem('inv_draft') || '{}');
             if (draft.company) {
@@ -411,7 +402,6 @@ function _hookShowPageForAlert() {
 // 改进：实现Tab切换逻辑，隐藏/显示对应内容区
 // ============================================================
 function switchConfigTab(tabName, el) {
-  // 更新Tab激活状态
   document.querySelectorAll('.config-tab').forEach(function(t) {
     t.classList.remove('active');
     t.style.background = 'var(--bg)';
@@ -424,7 +414,6 @@ function switchConfigTab(tabName, el) {
     el.style.color = 'white';
     el.style.borderColor = 'var(--blue)';
   }
-  // 隐藏所有内容区
   var contentIds = ['cfg-content-basic','cfg-content-notify','cfg-content-device',
     'cfg-content-security','cfg-content-oplog','cfg-content-building',
     'cfg-content-greeting','cfg-content-roles','cfg-content-backup'];
@@ -432,11 +421,9 @@ function switchConfigTab(tabName, el) {
     var el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
-  // 显示目标内容区
   var targetId = 'cfg-content-' + tabName;
   var target = document.getElementById(targetId);
   if (target) target.style.display = '';
-  // 渲染操作日志（如果切换到oplog tab）
   if (tabName === 'oplog') {
     setTimeout(function() {
       var oplogTbody = document.getElementById('oplog-table-body');
@@ -447,7 +434,6 @@ function switchConfigTab(tabName, el) {
 
 function saveConfigTab(tabName) {
   showToast('✅ ' + tabName + ' 配置已保存', 'success');
-  // 同步应用到系统
   applyConfigToSystem();
 }
 
@@ -456,14 +442,10 @@ function resetConfigTab(tabName) {
 }
 
 function applyConfigToSystem() {
-  // 收集配置并显示应用结果
   var hotelName = document.getElementById('cfg-hotel-name');
-  var hotelAddr = document.getElementById('cfg-hotel-addr');
   var hotelPhone = document.getElementById('cfg-hotel-phone');
-  var hotelEmail = document.getElementById('cfg-hotel-email');
   var checkinTime = document.getElementById('cfg-checkin-time');
   var checkoutTime = document.getElementById('cfg-checkout-time');
-  var lateCheckin = document.getElementById('cfg-late-checkin');
   var deposit = document.getElementById('cfg-deposit');
   var summary = [];
   if (hotelName && hotelName.value) summary.push('酒店名称:' + hotelName.value);
@@ -472,14 +454,6 @@ function applyConfigToSystem() {
   if (checkoutTime && checkoutTime.value) summary.push('退房时间:' + checkoutTime.value);
   if (deposit && deposit.value) summary.push('押金:' + deposit.value + '元');
   showToast('✅ 系统配置已更新' + (summary.length > 0 ? '：' + summary.slice(0,3).join('、') : ''), 'success');
-}
-
-function openConfigEditModal() {
-  var existing = document.getElementById('modal-config-edit');
-  if (existing) existing.remove();
-  showToast('⚙️ 系统设置弹窗已打开', 'info');
-  // Tab切换到basic
-  switchConfigTab('basic', document.getElementById('cfg-tab-basic'));
 }
 
 function exportSystemConfig() {
@@ -578,8 +552,6 @@ function renderOplogTable() {
   var userVal = userFilter ? userFilter.value : 'all';
   var statusFilter = document.getElementById('oplog-type-filter');
   var statusVal = statusFilter ? statusFilter.value : 'all';
-  var dateStart = document.getElementById('oplog-date-start');
-  var dateEnd = document.getElementById('oplog-date-end');
   var targetVal = document.getElementById('oplog-target') ? document.getElementById('oplog-target').value.trim() : '';
   var searchVal = document.getElementById('oplog-keyword') ? document.getElementById('oplog-keyword').value.trim().toLowerCase() : '';
   var mockLogs = [
@@ -620,7 +592,6 @@ function renderOplogTable() {
   if (countEl) countEl.textContent = '共 ' + filtered.length + ' 条记录';
 }
 
-// 操作日志筛选器应用
 function applyOplogFilter() {
   renderOplogTable();
 }
@@ -629,12 +600,9 @@ function applyOplogFilter() {
 // 初始化：自动注入所有缺失功能
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
-  // 1. Hook showPage for page init
   _hookShowPageForAlert();
-  // 2. 初始化发票列表
   setTimeout(function() {
     renderInvoiceFilteredList();
-    // 检查草稿
     try {
       var draft = JSON.parse(localStorage.getItem('inv_draft') || '{}');
       if (draft.company) {
@@ -645,18 +613,14 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     } catch(e) {}
   }, 300);
-  // 3. 初始化黑名单列表
   setTimeout(function() {
     if (document.getElementById('bl-table-body')) renderBlacklist && renderBlacklist();
   }, 300);
-  // 4. 初始化告警列表详情按钮
   setTimeout(function() {
     injectAlertDetailButton();
   }, 500);
-  // 5. 确保配置Tab初始化
   setTimeout(function() {
     switchConfigTab('basic', document.getElementById('cfg-tab-basic'));
-    // 绑定操作日志筛选器事件
     var oplogModule = document.getElementById('oplog-module-filter');
     if (oplogModule) oplogModule.addEventListener('change', applyOplogFilter);
     var oplogUser = document.getElementById('oplog-user-filter');
