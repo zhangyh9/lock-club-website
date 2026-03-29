@@ -633,3 +633,194 @@ document.addEventListener('DOMContentLoaded', function() {
     if (oplogDateEnd) oplogDateEnd.addEventListener('change', applyOplogFilter);
   }, 300);
 });
+
+// ============================================================
+// 【物联后台 v4 第2轮】功能性修复 - 5大缺失函数
+// 1. filterAlertTable - 告警Tab状态筛选
+// 2. openAlertModalV2 - 告警处理弹窗
+// 3. filterNotifCategory - 通知Tab分类筛选
+// 4. resetInvoiceSearch - 发票搜索重置
+// 5. openInvoiceDeleteModal - 发票删除确认弹窗
+// ============================================================
+
+// 【改进1】告警列表 - filterAlertTable（Tab状态筛选）
+var _alertCurrentTab = 'all';
+function filterAlertTable(tab, el) {
+  _alertCurrentTab = tab;
+  document.querySelectorAll('#page-alert .card-tabs .card-tab').forEach(function(t) {
+    t.classList.remove('active');
+    t.style.background = '';
+    t.style.color = '';
+  });
+  if (el) {
+    el.classList.add('active');
+    el.style.background = 'var(--blue)';
+    el.style.color = 'white';
+  }
+  var tbody = document.getElementById('alert-table-body');
+  if (!tbody) return;
+  var rows = tbody.querySelectorAll('tr');
+  rows.forEach(function(row) {
+    var status = row.getAttribute('data-status') || '';
+    var show = tab === 'all'
+      || (tab === 'pending' && status === 'pending')
+      || (tab === 'done' && (status === 'done' || status === 'resolved' || status === 'recovered' || status === 'ignored'));
+    row.style.display = show ? '' : 'none';
+  });
+  var shown = Array.from(rows).filter(function(r){ return r.style.display !== 'none'; }).length;
+  var countEl = document.getElementById('alert-filter-count');
+  if (countEl) countEl.textContent = '共 ' + shown + ' 条告警';
+}
+
+// 【改进2】告警列表 - openAlertModalV2（处理告警弹窗）
+function openAlertModalV2(idx) {
+  var d = alertData[idx];
+  if (!d) { showToast('未找到告警记录', 'error'); return; }
+  var existing = document.getElementById('modal-alert-process');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-alert-process" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-alert-process\').remove()">' +
+    '<div class="modal" style="width:480px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div style="width:44px;height:44px;background:var(--red-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">⚠️</div>' +
+    '<div><div style="font-size:15px;font-weight:700;">告警处理</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + d.type + ' · ' + d.room + '</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-alert-process\').remove();" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;">' +
+    '<div style="font-size:12px;color:var(--text-light);line-height:1.8;">' +
+    '<div><span style="color:var(--text-muted);">设备/房间：</span><strong>' + d.room + '</strong></div>' +
+    '<div><span style="color:var(--text-muted);">告警详情：</span>' + d.detail + '</div>' +
+    '<div><span style="color:var(--text-muted);">发生时间：</span>' + d.time + '</div>' +
+    '<div><span style="color:var(--text-muted);">当前状态：</span><span class="tbadge orange">' + d.status + '</span></div></div></div>' +
+    '<div class="form-group"><label class="form-label">处理方式 <span class="required">*</span></label>' +
+    '<select class="form-select" id="ap-action" style="width:100%;">' +
+    '<option value="resolved">✅ 标记已处理</option>' +
+    '<option value="ignored">👁️ 标记已忽略</option>' +
+    '<option value="repair">🔧 联系维修</option></select></div>' +
+    '<div class="form-group"><label class="form-label">处理备注</label>' +
+    '<textarea class="form-textarea" id="ap-note" placeholder="可选，填写处理说明..." style="min-height:70px;width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:13px;"></textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-alert-process\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="submitAlertProcessV2(' + idx + ')" style="background:var(--blue);color:white;border:none;">✅ 确认处理</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitAlertProcessV2(idx) {
+  var action = document.getElementById('ap-action') ? document.getElementById('ap-action').value : '';
+  var note = document.getElementById('ap-note') ? document.getElementById('ap-note').value.trim() : '';
+  var d = alertData[idx];
+  if (!d) { showToast('未找到告警记录', 'error'); return; }
+  var statusMap = {resolved:'已处理', ignored:'已忽略', repair:'维修中'};
+  var labelMap = {resolved:'✅ 已标记处理', ignored:'👁️ 已标记忽略', repair:'🔧 已提交维修'};
+  d.status = statusMap[action] || d.status;
+  if (note) d.note = note;
+  d.resolvedTime = new Date().toLocaleString('zh-CN');
+  var tbody = document.getElementById('alert-table-body');
+  if (tbody) {
+    var rows = tbody.querySelectorAll('tr');
+    if (rows[idx]) {
+      var row = rows[idx];
+      row.setAttribute('data-status', action === 'resolved' ? 'done' : action);
+      var cells = row.querySelectorAll('td');
+      if (cells[4]) {
+        var statusColors = {resolved:['green-bg','green','✅ '], ignored:['bg','text-muted','👁️ '], repair:['orange-bg','orange','🔧 ']};
+        var sc = statusColors[action] || ['bg','text-muted',''];
+        cells[4].innerHTML = '<span class="tbadge" style="background:var(' + sc[0] + ');color:var(' + sc[1] + ');">' + sc[2] + statusMap[action] + '</span>';
+      }
+      if (cells[5]) {
+        cells[5].innerHTML = '<button class="action-btn small" onclick="openAlertDetailFullModal(' + idx + ')">详情</button>';
+      }
+    }
+  }
+  document.getElementById('modal-alert-process') && document.getElementById('modal-alert-process').remove();
+  showToast(labelMap[action] || '✅ 告警已处理', 'success');
+}
+
+// 【改进3】通知管理 - filterNotifCategory（通知Tab分类筛选）
+var _notifCurrentCategory = 'all';
+function filterNotifCategory(category, el) {
+  _notifCurrentCategory = category;
+  document.querySelectorAll('#page-notif .card-tabs .card-tab').forEach(function(t) {
+    if (t.getAttribute('data-cat') === category) {
+      t.classList.add('active');
+      t.style.background = 'var(--blue)';
+      t.style.color = 'white';
+    } else {
+      t.classList.remove('active');
+      t.style.background = '';
+      t.style.color = '';
+    }
+  });
+  var cards = document.querySelectorAll('#page-notif .card');
+  cards.forEach(function(card) {
+    var notifCat = card.getAttribute('data-category') || '';
+    card.style.display = (category === 'all' || notifCat === category) ? '' : 'none';
+  });
+}
+
+// 【改进4】发票管理 - resetInvoiceSearch（重置搜索筛选）
+function resetInvoiceSearch() {
+  var searchInput = document.getElementById('inv-search-input');
+  if (searchInput) searchInput.value = '';
+  var statusFilter = document.getElementById('inv-status-filter');
+  if (statusFilter) statusFilter.value = 'all';
+  var typeFilter = document.getElementById('inv-type-filter');
+  if (typeFilter) typeFilter.value = 'all';
+  var dateFrom = document.getElementById('inv-date-from');
+  if (dateFrom) dateFrom.value = '2026-03-01';
+  var dateTo = document.getElementById('inv-date-to');
+  if (dateTo) dateTo.value = new Date().toISOString().slice(0,10);
+  _invoiceCurrentSearch = '';
+  _invoiceCurrentStatusFilter = 'all';
+  _invoiceCurrentTypeFilter = 'all';
+  filterInvoiceTab('all', document.getElementById('inv-tab-all'));
+  showToast('🔄 搜索条件已重置', 'info');
+}
+
+// 【改进5】发票管理 - openInvoiceDeleteModal（删除确认弹窗）
+function openInvoiceDeleteModal(invId) {
+  var inv = invoiceStore.find(function(i){ return i.id === invId; });
+  if (!inv) { showToast('未找到发票记录', 'error'); return; }
+  var existing = document.getElementById('modal-invoice-delete');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-invoice-delete" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-delete\').remove()">' +
+    '<div class="modal" style="width:420px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
+    '<div style="padding:24px 24px 16px;text-align:center;">' +
+    '<div style="font-size:48px;margin-bottom:12px;">🗑️</div>' +
+    '<div style="font-size:16px;font-weight:700;margin-bottom:8px;color:var(--text);">确认删除发票</div>' +
+    '<div style="font-size:13px;color:var(--text-light);line-height:1.6;">确定要删除发票 <strong style="color:var(--blue);">' + invId + '</strong> 吗？<br>该操作不可撤销。</div>' +
+    '<div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:8px;text-align:left;font-size:12px;">' +
+    '<div><span style="color:var(--text-muted);">购方：</span>' + inv.company + '</div>' +
+    '<div><span style="color:var(--text-muted);">金额：</span>¥' + inv.amount.toFixed(2) + '</div>' +
+    '<div><span style="color:var(--text-muted);">类型：</span>' + inv.type + '</div>' +
+    '<div><span style="color:var(--text-muted);">状态：</span>' + inv.status + '</div></div></div>' +
+    '<div style="padding:0 24px 24px;display:flex;gap:10px;justify-content:center;">' +
+    '<button onclick="document.getElementById(\'modal-invoice-delete\').remove()" style="flex:1;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);">取消</button>' +
+    '<button onclick="doInvoiceDelete(\'' + invId + '\')" style="flex:1;padding:10px;background:var(--red);border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:white;">🗑️ 确认删除</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doInvoiceDelete(invId) {
+  document.getElementById('modal-invoice-delete') && document.getElementById('modal-invoice-delete').remove();
+  var idx = invoiceStore.findIndex(function(i){ return i.id === invId; });
+  if (idx >= 0) {
+    invoiceStore.splice(idx, 1);
+    showToast('🗑️ 发票 ' + invId + ' 已删除', 'success');
+  } else {
+    showToast('未找到发票记录', 'error');
+  }
+  if (typeof applyInvoiceSearch === 'function') applyInvoiceSearch();
+  if (typeof renderInvoiceFilteredList === 'function') renderInvoiceFilteredList();
+}
+
+// 初始化：注册页面切换钩子
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    if (document.getElementById('alert-table-body')) {
+      filterAlertTable('all', document.querySelector('#page-alert .card-tab'));
+    }
+    if (document.getElementById('page-notif')) {
+      filterNotifCategory('all', document.querySelector('#page-notif .card-tab'));
+    }
+  }, 400);
+});
