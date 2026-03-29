@@ -24484,7 +24484,7 @@ function renderBuildingDetailContent(bld) {
   var rows = floors.map(function(f) {
     var rooms = Math.round(bld.rooms / bld.floors);
     var occupied = Math.round(rooms * bld.occupancy / 100);
-    return '<tr><td>' + f + '层</td><td>' + rooms + '间</td><td><span class="tbadge green">' + occupied + '间入住</span></td><td><span class="tbadge">' + (rooms - occupied) + '间空房</span></td><td><button class="action-btn small" onclick="showPage('floor')">管理</button></td></tr>';
+    return '<tr><td>' + f + '层</td><td>' + rooms + '间</td><td><span class="tbadge green">' + occupied + '间入住</span></td><td><span class="tbadge">' + (rooms - occupied) + '间空房</span></td><td><button class="action-btn small" onclick="openFloorDetailModal('" + bld.code + "'," + f + ")">详情</button></td></tr>';
   }).join('');
   document.getElementById('bldd-floor-table').innerHTML = '<table class="table"><thead><tr><th>楼层</th><th>房间数</th><th>入住</th><th>空房</th><th>操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
   var devOnline = Math.round(bld.rooms * 0.9);
@@ -24519,6 +24519,49 @@ function submitBldFloorAdd() {
   var m = document.getElementById('modal-bldd-floor-add');
   if (m) m.remove();
   if (currentBuildingDetail) renderBuildingDetailContent(currentBuildingDetail);
+}
+
+// ============================================================
+// 【物联后台 v4 改进4】楼层详情弹窗（openFloorDetailModal）
+// 改进：楼栋详情页楼层列表的"管理"按钮跳转到楼层页，缺少直接查看楼层详情的弹窗。
+// 新增楼层详情弹窗，显示该楼层所有房间列表、设备状态、入住情况。
+// ============================================================
+function openFloorDetailModal(bldCode, floorNum) {
+  var existing = document.getElementById('modal-floor-detail');
+  if (existing) existing.remove();
+  var rooms = [
+    {num:'301',type:'亲子间',status:'入住',guest:'张三',battery:92,signal:-67,device:'DEV-LK01'},
+    {num:'302',type:'亲子间',status:'空房',guest:null,battery:88,signal:-65,device:'DEV-LK02'},
+    {num:'303',type:'亲子间',status:'离线',guest:null,battery:15,signal:-90,device:'DEV-LK03'},
+    {num:'305',type:'亲子间',status:'低电量',guest:'钱七',battery:28,signal:-72,device:'DEV-LK05'},
+    {num:'306',type:'标准间',status:'停用',guest:null,battery:65,signal:-68,device:'DEV-LK06'}
+  ];
+  var onlineCount = rooms.filter(function(r){ return r.status === '入住' || r.status === '空房'; }).length;
+  var html = '<div class="modal-overlay" id="modal-floor-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-detail\').remove()">' +
+    '<div class="modal" style="width:640px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🏗️ ' + floorNum + '层 楼层详情 <span style="font-size:12px;color:var(--text-muted);font-weight:normal;">（' + bldCode + '）</span></div>' +
+    '<button onclick="document.getElementById(\'modal-floor-detail\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:16px 24px;">' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--blue);">' + rooms.length + '</div><div style="font-size:11px;color:var(--text-muted);">房间总数</div></div>' +
+    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">' + onlineCount + '</div><div style="font-size:11px;color:var(--text-muted);">正常在线</div></div>' +
+    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">1</div><div style="font-size:11px;color:var(--text-muted);">低电量</div></div>' +
+    '<div style="padding:10px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red);">1</div><div style="font-size:11px;color:var(--text-muted);">离线/停用</div></div></div>' +
+    '<div style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;"><div style="font-size:13px;font-weight:600;">📋 房间列表</div>' +
+    '<button onclick="document.getElementById(\'modal-floor-detail\').remove();showPage(\'floor\')" style="padding:6px 12px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;">🗺️ 楼层管理 →</button></div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead style="background:var(--bg);"><tr><th style="padding:8px 12px;text-align:left;font-weight:600;">房号</th><th style="padding:8px 12px;text-align:left;font-weight:600;">房型</th><th style="padding:8px 12px;text-align:left;font-weight:600;">状态</th><th style="padding:8px 12px;text-align:left;font-weight:600;">设备</th><th style="padding:8px 12px;text-align:left;font-weight:600;">电量</th><th style="padding:8px 12px;text-align:left;font-weight:600;">信号</th></tr></thead><tbody>';
+  rooms.forEach(function(r) {
+    var statusColor = r.status === '入住' ? 'var(--green)' : r.status === '空房' ? 'var(--blue)' : r.status === '低电量' ? 'var(--orange)' : 'var(--red)';
+    var battColor = r.battery > 60 ? 'var(--green)' : r.battery > 20 ? 'var(--orange)' : 'var(--red)';
+    var sigColor = r.signal > -70 ? 'var(--green)' : r.signal > -80 ? 'var(--orange)' : 'var(--red)';
+    html += '<tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;font-weight:600;">' + r.num + '</td><td style="padding:8px 12px;">' + r.type + '</td><td style="padding:8px 12px;"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:' + statusColor + '20;color:' + statusColor + ';">' + r.status + '</span></td><td style="padding:8px 12px;font-size:11px;color:var(--text-muted);">' + r.device + '</td><td style="padding:8px 12px;color:' + battColor + ';font-weight:600;">' + r.battery + '%</td><td style="padding:8px 12px;color:' + sigColor + ';">' + r.signal + ' dBm</td></tr>';
+  });
+  html += '</tbody></table></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'modal-floor-detail\').remove()" class="modal-btn secondary">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
 }
 
 // ======= 【改进2】工单SLA实时计时器 =======
@@ -26655,6 +26698,189 @@ function openDeviceFloorDetail(roomNum) {
 // ======= Modal 控制 =======
 function openModal(id) { var el = document.getElementById('modal-' + id); if (el) el.classList.remove('hidden'); }
 function closeModal(id) { document.getElementById('modal-' + id).classList.add('hidden'); }
+
+// ============================================================
+// 【物联后台 v4 改进1】批量升级固件入口（openBatchUpgradeModal）
+// 改进：按钮调用但函数未定义，导致点击无响应。本次实现完整批量升级选择界面。
+// ============================================================
+function openBatchUpgradeModal() {
+  var existing = document.getElementById('modal-batch-upgrade');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-batch-upgrade" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-upgrade\').remove()">' +
+    '<div class="modal" style="width:520px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">📦 批量固件升级</div>' +
+    '<button onclick="document.getElementById(\'modal-batch-upgrade\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="margin-bottom:16px;padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:6px;">💡 升级说明</div>' +
+    '<div style="font-size:12px;color:var(--text);line-height:1.6;">批量升级将向选中设备推送固件更新包，当前目标版本：<b>v2.4.1</b>。升级过程中设备将短暂离线（约10秒），升级完成后自动恢复在线。</div></div>' +
+    '<div style="margin-bottom:16px;"><div style="font-size:13px;font-weight:600;margin-bottom:10px;">📱 选择要升级的设备（当前版本 ≠ v2.4.1）</div>';
+  var devices = [
+    {uuid:'DEV-LK01',room:'301',fw:'v2.4.1',status:'online'},
+    {uuid:'DEV-LK02',room:'302',fw:'v2.4.0',status:'online'},
+    {uuid:'DEV-LK03',room:'303',fw:'v2.3.8',status:'offline'},
+    {uuid:'DEV-LK05',room:'305',fw:'v2.3.9',status:'low'},
+    {uuid:'DEV-LK08',room:'201',fw:'v2.4.1',status:'online'},
+    {uuid:'DEV-LK09',room:'202',fw:'v2.3.8',status:'online'}
+  ];
+  var upgradable = devices.filter(function(d){ return d.fw !== 'v2.4.1'; });
+  html += '<div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">';
+  upgradable.forEach(function(d) {
+    var disabled = d.status === 'offline' ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '';
+    html += '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:' + (d.status === 'offline' ? 'not-allowed' : 'pointer') + ';">' +
+      '<input type="checkbox" class="bup-device-cb" value="' + d.uuid + '" ' + disabled + '>' +
+      '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + d.room + ' · ' + d.uuid + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);">当前版本：' + d.fw + ' → v2.4.1</div></div>' +
+      '<span style="font-size:11px;padding:2px 8px;border-radius:10px;' + (d.status === 'offline' ? 'background:var(--red-bg);color:var(--red);' : 'background:var(--green-bg);color:var(--green);') + '">' + (d.status === 'offline' ? '离线' : d.status === 'low' ? '低电量' : '在线') + '</span></label>';
+  });
+  html += '</div></div>' +
+    '<div style="margin-bottom:16px;padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;font-size:12px;color:var(--orange);">⚠️ 离线设备无法升级，请先恢复网络连接后再操作</div>' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;"><div><span style="font-size:12px;color:var(--text-muted);">已选 <b id="bup-count">0</b> 台设备</span></div>' +
+    '<div style="display:flex;gap:10px;"><button onclick="selectAllUpgradable()" style="padding:7px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;">全选可升级</button></div></div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'modal-batch-upgrade\').remove()" class="modal-btn secondary">取消</button>' +
+    '<button onclick="executeBatchFirmwareUpgrade()" id="bup-start-btn" disabled class="modal-btn primary" style="opacity:0.5;cursor:not-allowed;">🚀 开始升级</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.querySelectorAll('.bup-device-cb').forEach(function(cb){ cb.addEventListener('change', updateBatchUpgradeCount); });
+}
+function updateBatchUpgradeCount() {
+  var checked = document.querySelectorAll('.bup-device-cb:checked').length;
+  var countEl = document.getElementById('bup-count');
+  var btn = document.getElementById('bup-start-btn');
+  if (countEl) countEl.textContent = checked;
+  if (btn) { btn.disabled = checked === 0; btn.style.opacity = checked === 0 ? '0.5' : '1'; btn.style.cursor = checked === 0 ? 'not-allowed' : 'pointer'; }
+}
+function selectAllUpgradable() {
+  document.querySelectorAll('.bup-device-cb:not(:disabled)').forEach(function(cb){ cb.checked = true; });
+  updateBatchUpgradeCount();
+}
+function executeBatchFirmwareUpgrade() {
+  var selected = Array.from(document.querySelectorAll('.bup-device-cb:checked')).map(function(cb){ return cb.value; });
+  if (selected.length === 0) { showToast('请先选择设备', 'warning'); return; }
+  document.getElementById('modal-batch-upgrade').remove();
+  showToast('📦 正在向 ' + selected.length + ' 台设备推送固件升级包 v2.4.1...', 'info');
+  setTimeout(function() { showToast('✅ ' + selected.length + ' 台设备固件升级完成！', 'success'); }, 3000);
+}
+
+// ============================================================
+// 【物联后台 v4 改进2】设备绑定管理弹窗（openBatchDeviceBindingModal）
+// 改进：设备绑定按钮存在但函数未定义，导致无响应。本次实现完整绑定流程。
+// ============================================================
+function openBatchDeviceBindingModal() {
+  var existing = document.getElementById('modal-device-binding');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-device-binding" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-binding\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">📡 设备绑定管理</div>' +
+    '<button onclick="document.getElementById(\'modal-device-binding\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:flex;gap:10px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;">' +
+    '<button id="bdb-tab-bind" onclick="switchBindingTab(\'bind\')" style="padding:8px 16px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">➕ 绑定设备</button>' +
+    '<button id="bdb-tab-unbind" onclick="switchBindingTab(\'unbind\')" style="padding:8px 16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">🔓 解绑设备</button>' +
+    '<button id="bdb-tab-history" onclick="switchBindingTab(\'history\')" style="padding:8px 16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">📋 绑定历史</button></div>' +
+    '<div id="bdb-content-bind">' +
+    '<div style="margin-bottom:14px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;">🔍 搜索设备 / 房间</div>' +
+    '<input type="text" id="bdb-search" placeholder="输入设备UUID或房间号" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;box-sizing:border-box;" oninput="filterBindingDevices()"></div>' +
+    '<div style="margin-bottom:14px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;">🏢 选择楼栋</div>' +
+    '<select id="bdb-building" onchange="filterBindingDevices()" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><option value="">全部楼栋</option><option>1号楼</option><option>2号楼</option></select></div>' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">📋 待绑定设备</div>' +
+    '<div id="bdb-device-list" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">' +
+    '<div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;"><input type="checkbox" onchange="toggleAllBinding(this.checked)"><span style="font-size:12px;font-weight:600;">301</span><span style="font-size:11px;color:var(--text-muted);">DEV-LK01 · 领握LH-807</span><span style="font-size:11px;color:var(--green);margin-left:auto;">未绑定</span></div>' +
+    '<div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;"><input type="checkbox" onchange="toggleAllBinding(this.checked)"><span style="font-size:12px;font-weight:600;">302</span><span style="font-size:11px;color:var(--text-muted);">DEV-LK02 · 领握LH-807</span><span style="font-size:11px;color:var(--blue);margin-left:auto;">→ 301</span></div>' +
+    '<div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;"><input type="checkbox" onchange="toggleAllBinding(this.checked)"><span style="font-size:12px;font-weight:600;">305</span><span style="font-size:11px;color:var(--text-muted);">DEV-LK05 · 领握LH-807</span><span style="font-size:11px;color:var(--orange);margin-left:auto;">低电量</span></div>' +
+    '<div style="padding:10px 12px;display:flex;align-items:center;gap:8px;"><input type="checkbox" onchange="toggleAllBinding(this.checked)"><span style="font-size:12px;font-weight:600;">201</span><span style="font-size:11px;color:var(--text-muted);">DEV-LK08 · 领握LH-807</span><span style="font-size:11px;color:var(--green);margin-left:auto;">未绑定</span></div></div>' +
+    '<div style="margin-top:14px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;">🏠 绑定到房间</div>' +
+    '<select style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><option>请选择目标房间</option><option>301 - 亲子间</option><option>302 - 亲子间</option><option>201 - 大床房</option><option>202 - 大床房</option></select></div></div>' +
+    '<div id="bdb-content-unbind" style="display:none;"><div style="font-size:13px;font-weight:600;margin-bottom:12px;">🔓 设备解绑</div>' +
+    '<div style="padding:12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--red);">⚠️ 解绑后设备将脱离当前房间关联，需重新绑定方可使用</div>' +
+    '<div style="margin-bottom:14px;"><input type="text" placeholder="输入设备UUID搜索" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;box-sizing:border-box;"></div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;"><div style="padding:10px 12px;background:var(--bg);font-size:12px;font-weight:600;border-bottom:1px solid var(--border);">DEV-LK01 → 301房间</div>' +
+    '<div style="padding:10px 12px;display:flex;align-items:center;justify-content:space-between;"><div><div style="font-size:12px;font-weight:600;">301 - 亲子间</div><div style="font-size:11px;color:var(--text-muted);">绑定时间：2026-03-01</div></div>' +
+    '<button onclick="confirmDeviceUnbind(\'DEV-LK01\',\'301\')" style="padding:6px 12px;background:var(--red);color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">确认解绑</button></div></div></div>' +
+    '<div id="bdb-content-history" style="display:none;"><div style="font-size:13px;font-weight:600;margin-bottom:12px;">📋 绑定历史记录</div>' +
+    '<div style="max-height:250px;overflow-y:auto;"><div style="padding:10px 12px;border-bottom:1px solid var(--border);"><div style="font-size:12px;font-weight:600;">DEV-LK01</div><div style="font-size:11px;color:var(--text-muted);">2026-03-15 10:30 绑定 → 301亲子间</div></div>' +
+    '<div style="padding:10px 12px;border-bottom:1px solid var(--border);"><div style="font-size:12px;font-weight:600;">DEV-LK02</div><div style="font-size:11px;color:var(--text-muted);">2026-03-10 14:20 解绑 ← 302亲子间</div></div>' +
+    '<div style="padding:10px 12px;border-bottom:1px solid var(--border);"><div style="font-size:12px;font-weight:600;">DEV-LK05</div><div style="font-size:11px;color:var(--text-muted);">2026-03-08 09:15 绑定 → 305亲子间</div></div></div></div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'modal-device-binding\').remove()" class="modal-btn secondary">取消</button>' +
+    '<button onclick="executeDeviceBind()" id="bdb-confirm-btn" disabled class="modal-btn primary" style="opacity:0.5;cursor:not-allowed;">✅ 确认绑定</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function switchBindingTab(tab) {
+  var tabs = ['bind','unbind','history'];
+  tabs.forEach(function(t) {
+    var btn = document.getElementById('bdb-tab-' + t);
+    var content = document.getElementById('bdb-content-' + t);
+    if (btn) { btn.style.background = t === tab ? 'var(--blue)' : 'var(--bg)'; btn.style.color = t === tab ? 'white' : 'var(--text)'; }
+    if (content) content.style.display = t === tab ? 'block' : 'none';
+  });
+}
+function filterBindingDevices() { showToast('已筛选设备列表', 'info'); }
+function toggleAllBinding(checked) { document.querySelectorAll('#bdb-device-list input[type="checkbox"]').forEach(function(cb){ cb.checked = checked; }); updateBindingConfirmBtn(); }
+function updateBindingConfirmBtn() {
+  var checked = document.querySelectorAll('#bdb-device-list input:checked').length;
+  var btn = document.getElementById('bdb-confirm-btn');
+  if (btn) { btn.disabled = checked === 0; btn.style.opacity = checked === 0 ? '0.5' : '1'; btn.style.cursor = checked === 0 ? 'not-allowed' : 'pointer'; }
+}
+function executeDeviceBind() {
+  var checked = document.querySelectorAll('#bdb-device-list input:checked').length;
+  if (checked === 0) { showToast('请选择要绑定的设备', 'warning'); return; }
+  document.getElementById('modal-device-binding').remove();
+  showToast('✅ ' + checked + ' 台设备绑定成功！', 'success');
+}
+function confirmDeviceUnbind(uuid, room) {
+  if (confirm('确认解绑设备 ' + uuid + '（' + room + '）？')) {
+    showToast('🔓 设备 ' + uuid + ' 已解绑', 'success');
+  }
+}
+
+// ============================================================
+// 【物联后台 v4 改进3】统一设备批量操作（openDeviceBatchActionModal）
+// 改进：多个按钮调用但函数未定义。本次实现统一的批量操作入口。
+// ============================================================
+function openDeviceBatchActionModal(action) {
+  var actionMap = {
+    unlock: { title: '🔓 批量开锁', icon: '🔓', desc: '向选中的多台设备下发开锁指令', color: 'var(--green)', confirmText: '确认向选中设备下发开锁指令' },
+    restart: { title: '🔄 批量重启', icon: '🔄', desc: '重启选中设备（期间无法开锁约10秒）', color: 'var(--orange)', confirmText: '确认重启选中设备？将导致设备短暂离线' },
+    battery: { title: '🔋 电池检测', icon: '🔋', desc: '检测选中设备的电池电量', color: 'var(--blue)', confirmText: '确认检测选中设备的电池状态？' },
+    sync: { title: '🔍 状态同步', icon: '🔍', desc: '同步选中设备的实时状态', color: 'var(--purple)', confirmText: '确认同步选中设备的状态？' }
+  };
+  var info = actionMap[action] || { title: '设备操作', icon: '⚡', desc: '', color: 'var(--blue)', confirmText: '' };
+  var existing = document.getElementById('modal-batch-action');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-batch-action" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-action\').remove()">' +
+    '<div class="modal" style="width:440px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">' + info.icon + ' ' + info.title + '</div>' +
+    '<button onclick="document.getElementById(\'modal-batch-action\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="text-align:center;margin-bottom:16px;"><div style="font-size:48px;margin-bottom:10px;">' + info.icon + '</div>' +
+    '<div style="font-size:14px;font-weight:600;margin-bottom:4px;">' + info.title + '</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);">' + info.desc + '</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--orange);">' + info.confirmText + '</div>' +
+    '<div style="margin-bottom:14px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;">已选设备：<span id="dbac-count" style="color:var(--blue);">0</span> 台</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);padding:8px;background:var(--bg);border-radius:6px;">设备将依次执行操作，请保持网络连接</div></div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'modal-batch-action\').remove()" class="modal-btn secondary">取消</button>' +
+    '<button onclick="executeDeviceBatchAction(\'' + action + '\')" class="modal-btn primary" style="background:' + info.color + ';border-color:' + info.color + ';color:white;">' + info.icon + ' 确认执行</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('dbac-count').textContent = typeof batchSelectedDevices !== 'undefined' ? batchSelectedDevices.length : 0;
+}
+function executeDeviceBatchAction(action) {
+  var count = typeof batchSelectedDevices !== 'undefined' ? batchSelectedDevices.length : 0;
+  document.getElementById('modal-batch-action').remove();
+  var msgs = { unlock: '🔓 开锁指令已下发', restart: '🔄 重启指令已发送', battery: '🔋 正在检测电池状态', sync: '🔍 正在同步设备状态' };
+  showToast(msgs[action] || '操作已执行', 'info');
+  setTimeout(function() {
+    var successMsgs = { unlock: '✅ 批量开锁完成', restart: '✅ 设备重启成功', battery: '✅ 电池检测完成', sync: '✅ 状态同步完成' };
+    showToast(successMsgs[action] || '操作完成', 'success');
+  }, 2000);
+}
 
 // ============================================================
 // 【物联后台 v3.6 改进3】设备详情完整弹窗（含固件信息+远程校准）
