@@ -26958,6 +26958,147 @@ function submitCheckin() {
 }
 
 // ======= 改进3: 告警处理模态框 =======
+
+// ============================================================
+// 【物联后台 v4.1 BUG1修复】openAlertModalV2 + submitAlertProcessV2
+// 理由：page-alert 表格的「处理」按钮调用 openAlertModalV2(idx) 但函数从未定义，
+//        modal-alert 弹窗的提交按钮调用 submitAlertProcessV2() 但函数从未定义，导致 JS 报错。
+// 功能：V2版增强告警处理（支持处理结果选择、告警历史记录更新、表格行状态同步）
+// ============================================================
+var _alertV2Store = [
+  {type:'设备离线', room:'303 - 亲子间', time:'2026-03-26 00:32:18', duration:'14小时32分', status:'待处理', history:[]},
+  {type:'低电量', room:'305 - 亲子间', time:'2026-03-26 09:15:00', duration:'5小时49分', status:'待处理', history:[
+    {time:'2026-03-26 10:05', action:'系统自动发送低电量提醒', note:''},
+    {time:'2026-03-26 11:30', action:'前台小王更换电池', note:'更换4节南孚电池'}
+  ]},
+  {type:'低电量', room:'202 - 大床房', time:'2026-03-26 06:20:00', duration:'8小时44分', status:'已忽略', history:[]}
+];
+
+function openAlertModalV2(idx) {
+  var existing = document.getElementById('modal-alert-v2');
+  if (existing) existing.remove();
+  var d = _alertV2Store[idx];
+  if (!d) return;
+  var typeIcon = d.type === '设备离线' ? '🔴 设备离线' : '🟡 ' + d.type;
+  var historyHtml = '';
+  if (d.history && d.history.length > 0) {
+    historyHtml = d.history.map(function(h) {
+      return '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px;background:var(--bg);border-radius:6px;font-size:11px;margin-bottom:6px;">' +
+        '<span style="color:var(--text-muted);flex-shrink:0;">' + h.time + '</span>' +
+        '<div><div style="font-weight:600;color:var(--blue);">' + h.action + '</div>' +
+        (h.note ? '<div style="color:var(--text-muted);margin-top:2px;">备注：' + h.note + '</div>' : '') + '</div></div>';
+    }).join('');
+  } else {
+    historyHtml = '<div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--text-muted);">🕐 暂无历史处理记录</div>';
+  }
+  var html = '<div class="modal-overlay" id="modal-alert-v2" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById('modal-alert-v2').remove()">' +
+    '<div class="modal" style="width:540px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">⚠️</div><div><div style="font-size:15px;font-weight:700;">告警处理</div><div style="font-size:11px;color:var(--text-muted);">' + typeIcon + ' · ' + d.room + '</div></div></div>' +
+    '<button onclick="document.getElementById('modal-alert-v2').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">告警类型</div><div style="font-size:13px;font-weight:700;color:var(--red);">' + typeIcon + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">关联房间</div><div style="font-size:13px;font-weight:700;">' + d.room + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">发生时间</div><div style="font-size:13px;">' + d.time + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">持续时长</div><div style="font-size:13px;font-weight:700;color:var(--red);">' + d.duration + '</div></div></div>' +
+    '<div class="form-group"><label class="form-label">处理方式 <span class="required">*</span></label>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+    '<label id="a2-sol-0" onclick="selAlertSol(0)" style="display:flex;align-items:center;gap:8px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;"><div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;" id="a2-sol-dot-0"></div><div><div style="font-size:12px;font-weight:600;">🏠 现场处理</div><div style="font-size:10px;color:var(--text-muted);">前往房间检查设备</div></div></label>' +
+    '<label id="a2-sol-1" onclick="selAlertSol(1)" style="display:flex;align-items:center;gap:8px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;"><div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;" id="a2-sol-dot-1"></div><div><div style="font-size:12px;font-weight:600;">📡 远程重启</div><div style="font-size:10px;color:var(--text-muted);">后台发送重启指令</div></div></label>' +
+    '<label id="a2-sol-2" onclick="selAlertSol(2)" style="display:flex;align-items:center;gap:8px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;"><div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;" id="a2-sol-dot-2"></div><div><div style="font-size:12px;font-weight:600;">🔋 更换电池</div><div style="font-size:10px;color:var(--text-muted);">设备电量不足</div></div></label>' +
+    '<label id="a2-sol-3" onclick="selAlertSol(3)" style="display:flex;align-items:center;gap:8px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;"><div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;" id="a2-sol-dot-3"></div><div><div style="font-size:12px;font-weight:600;">⏭️ 忽略</div><div style="font-size:10px;color:var(--text-muted);">确认设备正常</div></div></label></div></div>' +
+    '<div class="form-group"><label class="form-label">处理结果 <span class="required">*</span></label>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<label id="a2-res-0" onclick="selAlertRes(0)" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;transition:all 0.2s;"><div style="width:14px;height:14px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;" id="a2-res-dot-0"></div><span>✅ 已解决</span></label>' +
+    '<label id="a2-res-1" onclick="selAlertRes(1)" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;transition:all 0.2s;"><div style="width:14px;height:14px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;" id="a2-res-dot-1"></div><span>⚠️ 部分解决</span></label>' +
+    '<label id="a2-res-2" onclick="selAlertRes(2)" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;transition:all 0.2s;"><div style="width:14px;height:14px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;" id="a2-res-dot-2"></div><span>🔃 转工单</span></label>' +
+    '<label id="a2-res-3" onclick="selAlertRes(3)" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;transition:all 0.2s;"><div style="width:14px;height:14px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;" id="a2-res-dot-3"></div><span>⏭️ 已忽略</span></label></div></div>' +
+    '<div class="form-group"><label class="form-label">处理备注</label>' +
+    '<textarea class="form-textarea" id="a2-note" placeholder="请输入处理备注" rows="3"></textarea></div>' +
+    '<div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">' +
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">📜 历史处理记录</div>' + historyHtml + '</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById('modal-alert-v2').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitAlertProcessV2(' + str(idx) + ')">💾 确认处理</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  window._a2SolIdx = 0;
+  window._a2ResIdx = -1;
+  selAlertSol(0);
+}
+
+var _a2SolOptions = ['现场处理','远程重启','更换电池','忽略'];
+var _a2ResOptions = ['已解决','部分解决','转工单','已忽略'];
+
+function selAlertSol(idx) {
+  window._a2SolIdx = idx;
+  for (var i = 0; i < 4; i++) {
+    var label = document.getElementById('a2-sol-' + i);
+    var dot = document.getElementById('a2-sol-dot-' + i);
+    if (i === idx) {
+      label.style.borderColor = 'var(--blue)';
+      label.style.background = 'var(--blue-bg)';
+      dot.style.background = 'var(--blue)';
+      dot.style.borderColor = 'var(--blue)';
+    } else {
+      label.style.borderColor = 'var(--border)';
+      label.style.background = '';
+      dot.style.background = '';
+      dot.style.borderColor = 'var(--border)';
+    }
+  }
+}
+
+function selAlertRes(idx) {
+  window._a2ResIdx = idx;
+  for (var i = 0; i < 4; i++) {
+    var label = document.getElementById('a2-res-' + i);
+    var dot = document.getElementById('a2-res-dot-' + i);
+    if (i === idx) {
+      label.style.borderColor = 'var(--green)';
+      label.style.background = 'var(--green-bg)';
+      dot.style.background = 'var(--green)';
+      dot.style.borderColor = 'var(--green)';
+    } else {
+      label.style.borderColor = 'var(--border)';
+      label.style.background = '';
+      dot.style.background = '';
+      dot.style.borderColor = 'var(--border)';
+    }
+  }
+}
+
+function submitAlertProcessV2(idx) {
+  var solution = _a2SolOptions[window._a2SolIdx] || '现场处理';
+  var resultIdx = window._a2ResIdx;
+  if (resultIdx < 0) { showToast('请选择处理结果', 'error'); return; }
+  var result = _a2ResOptions[resultIdx] || '已解决';
+  var note = document.getElementById('a2-note') ? document.getElementById('a2-note').value.trim() : '';
+  var now = new Date();
+  var timeStr = now.getFullYear() + '-' + ('0'+(now.getMonth()+1)).slice(-2) + '-' + ('0'+now.getDate()).slice(-2) + ' ' + ('0'+now.getHours()).slice(-2) + ':' + ('0'+now.getMinutes()).slice(-2);
+  var d = _alertV2Store[idx];
+  if (d) {
+    d.status = result;
+    d.history = d.history || [];
+    d.history.unshift({time: timeStr, action: '管理员处理：' + solution, note: note});
+    d.duration = '已处理';
+  }
+  if (typeof updateGlobalAlertCount === 'function') updateGlobalAlertCount(-1);
+  if (typeof addNotif === 'function') addNotif('✅', 'var(--green)', 'device', '告警已处理：' + solution + ' · ' + result);
+  var rows = document.querySelectorAll('#alert-table-body tr');
+  if (rows[idx]) {
+    var badge = rows[idx].querySelector('td:nth-child(5) .tbadge');
+    if (badge) {
+      badge.className = 'tbadge ' + (resultIdx === 0 ? 'green' : resultIdx === 1 ? 'orange' : resultIdx === 2 ? 'blue' : 'gray');
+      badge.textContent = result;
+    }
+    rows[idx].dataset.status = 'done';
+  }
+  document.getElementById('modal-alert-v2').remove();
+  showToast('✅ 告警已处理：' + solution + '，结果：' + result, 'success');
+}
+
+// ============================================================
 var alertData = [
   { type: '设备离线', room: '303 - 亲子间', time: '2026-03-26 00:32:18', duration: '14小时32分', status: '待处理', history: [] },
   { type: '低电量', room: '305 - 亲子间', time: '2026-03-26 09:15:00', duration: '5小时49分', status: '待处理', history: [
@@ -29996,7 +30137,7 @@ function submitInvoiceIssue() {
     date: new Date().toISOString().slice(0,10), status: '待处理', type: typeLabel,
     detail: detail, guestName: guestName, room: room, phone: phone, applyTime: applyTime
   };
-  invoiceStore.unshift(newInvoice);
+  _invoiceStore.unshift(newInvoice);
   document.getElementById('modal-invoice-issue').remove();
   showToast('🧾 发票申请已提交，预计1个工作日内开具并发送至 ' + email, 'success');
   renderInvoiceTable();
@@ -37972,6 +38113,45 @@ function submitAddInvoice() {
 // 功能：完整SLA工单表单（工单类型/房间号/优先级/SLA时限/描述/处理人），自动派发+超时升级规则预览。
 var _woTypeOptions = [
   {v:'repair', label:'🔧 设备报修', sla:{urgent:1, high:2, normal:4, low:8}},
+
+// ============================================================
+// 【物联后台 v4.1 BUG2修复】approveInvoice + submitInvoiceEdit
+// 理由：renderInvoiceMgmt 弹窗中「审核通过」「编辑」按钮调用 approveInvoice 和
+//        openInvoiceEditModal/submitInvoiceEdit，但函数定义不完整，导致 JS 报错。
+// ============================================================
+function approveInvoice(invId) {
+  var inv = _invoiceStore.find(function(i){ return i.id === invId; });
+  if (!inv) return;
+  inv.status = '已开票';
+  inv.invoiceNo = 'FP' + String(12890000 + Math.floor(Math.random() * 100)).slice(0, 8);
+  inv.approveTime = new Date().toLocaleString('zh-CN');
+  showToast('✅ 发票 ' + invId + ' 已审核通过，开票号：' + inv.invoiceNo, 'success');
+  renderInvoiceMgmt();
+}
+
+function submitInvoiceEdit() {
+  var invId = document.getElementById('inv-edit-id') ? document.getElementById('inv-edit-id').value : '';
+  var inv = _invoiceStore.find(function(i){ return i.id === invId; });
+  if (!inv) { showToast('发票不存在', 'error'); return; }
+  var company = document.getElementById('edit-inv-company') ? document.getElementById('edit-inv-company').value.trim() : '';
+  var amount = parseFloat(document.getElementById('edit-inv-amount') ? document.getElementById('edit-inv-amount').value : 0);
+  var type = document.getElementById('edit-inv-type') ? document.getElementById('edit-inv-type').value : inv.type;
+  var taxno = document.getElementById('edit-inv-taxno') ? document.getElementById('edit-inv-taxno').value.trim() : '';
+  var email = document.getElementById('edit-inv-email') ? document.getElementById('edit-inv-email').value.trim() : '';
+  if (!company) { showToast('请输入客户名称', 'error'); return; }
+  if (!amount || amount <= 0) { showToast('请输入正确的发票金额', 'error'); return; }
+  inv.company = company;
+  inv.amount = amount;
+  inv.type = type;
+  inv.taxno = taxno;
+  inv.email = email;
+  inv.editTime = new Date().toLocaleString('zh-CN');
+  document.getElementById('modal-invoice-edit') && document.getElementById('modal-invoice-edit').remove();
+  showToast('✅ 发票信息已修改', 'success');
+  renderInvoiceMgmt();
+}
+
+// ============================================================
   {v:'complaint', label:'😤 客户投诉', sla:{urgent:0.5, high:1, normal:2, low:4}},
   {v:'supply', label:'📦 送物服务', sla:{urgent:0.5, high:1, normal:2, low:4}},
   {v:'clean', label:'🧹 清洁需求', sla:{urgent:1, high:2, normal:4, low:8}},
