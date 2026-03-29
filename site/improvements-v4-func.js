@@ -1769,3 +1769,478 @@ function runFirmwareAnalysis() {
     showToast('✅ 分析完成：2台建议升级，1台版本过旧需立即升级', 'success');
   }, 2000);
 }
+
+// ============================================================
+// 【物联后台v4-缺失函数修复】5大断裂功能修复
+// 修复：selectBuildingFloor / renderBuilding3DView / renderBldOccupancyTrend / switchLogView / searchByCardNumber
+// ============================================================
+
+// ============================================================
+// 修复1：selectBuildingFloor（楼层选择 → 刷新房间网格+统计）
+// 理由：楼栋管理页楼层Tab点击调用selectBuildingFloor(3,this)，函数不存在
+// 改进：切换楼层标签，更新房间网格显示，更新楼层统计面板
+// ============================================================
+var _currentFloor = 3;
+var _currentBuilding = 'main';
+var _floorRoomData = {
+  3: [
+    {room:'301',status:'入住',device:'🟢在线',battery:88},
+    {room:'302',status:'空房',device:'🟢在线',battery:72},
+    {room:'303',status:'入住',device:'🟢在线',battery:45},
+    {room:'304',status:'入住',device:'🔴离线',battery:15},
+    {room:'305',status:'空房',device:'🟢在线',battery:92},
+    {room:'306',status:'退房',device:'🟢在线',battery:68},
+    {room:'307',status:'入住',device:'🟢在线',battery:55},
+    {room:'308',status:'空房',device:'🔴离线',battery:30}
+  ],
+  2: [
+    {room:'201',status:'入住',device:'🟢在线',battery:80},
+    {room:'202',status:'入住',device:'🟢在线',battery:65},
+    {room:'203',status:'空房',device:'🟢在线',battery:95},
+    {room:'204',status:'入住',device:'🟢在线',battery:42},
+    {room:'205',status:'退房',device:'🟢在线',battery:78}
+  ],
+  1: [
+    {room:'101',status:'入住',device:'🟢在线',battery:70},
+    {room:'102',status:'入住',device:'🟢在线',battery:55},
+    {room:'103',status:'空房',device:'🟢在线',battery:88}
+  ]
+};
+var _buildingNames = {main:'主楼', east:'东配楼', vip:'贵宾楼'};
+
+function selectBuildingFloor(floor, el) {
+  _currentFloor = floor;
+  _currentBuilding = document.getElementById('bld-selector') ? document.getElementById('bld-selector').value : 'main';
+  // Update floor chip active state
+  document.querySelectorAll('.floor-chip').forEach(function(chip) {
+    chip.classList.remove('active');
+    chip.style.background = 'var(--bg)';
+    chip.style.color = 'var(--text)';
+    chip.style.borderColor = 'var(--border)';
+  });
+  if (el) {
+    el.classList.add('active');
+    el.style.background = 'var(--blue)';
+    el.style.color = 'white';
+    el.style.borderColor = 'var(--blue)';
+  }
+  // Update floor stat label
+  var floorLabel = document.getElementById('floor-stat-label');
+  if (floorLabel) floorLabel.textContent = floor + '层 · ' + (_buildingNames[_currentBuilding] || _currentBuilding);
+  // Update floor stats detail
+  var rooms = _floorRoomData[floor] || [];
+  var occupied = rooms.filter(function(r){ return r.status === '入住'; }).length;
+  var empty = rooms.filter(function(r){ return r.status === '空房'; }).length;
+  var alert = rooms.filter(function(r){ return r.device === '🔴离线'; }).length;
+  var low = rooms.filter(function(r){ return r.battery < 30; }).length;
+  var fsIn = document.getElementById('fs-in');
+  var fsEmpty = document.getElementById('fs-empty');
+  var fsAlert = document.getElementById('fs-alert');
+  var fsLow = document.getElementById('fs-low');
+  if (fsIn) fsIn.textContent = occupied;
+  if (fsEmpty) fsEmpty.textContent = empty;
+  if (fsAlert) fsAlert.textContent = alert;
+  if (fsLow) fsLow.textContent = low;
+  // Update floor-rooms-display grid
+  var grid = document.getElementById('floor-rooms-display');
+  if (grid) {
+    var statusColor = {入住:'var(--blue)', 空房:'var(--green)', 退房:'var(--orange)', 维修:'var(--red)'};
+    var statusBg = {入住:'var(--blue-bg)', 空房:'var(--green-bg)', 退房:'var(--orange-bg)', 维修:'var(--red-bg)'};
+    grid.innerHTML = rooms.map(function(r) {
+      var color = statusColor[r.status] || 'var(--text)';
+      var bg = statusBg[r.status] || 'var(--bg)';
+      return '<div onclick="showRoomDetail(\'' + r.room + '\')" style="padding:10px 8px;background:' + bg + ';border:1px solid ' + color + ';border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;" onmouseover="this.style.transform=\'scale(1.03)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
+        '<div style="font-size:14px;font-weight:700;color:' + color + ';">' + r.room + '</div>' +
+        '<div style="font-size:10px;color:' + color + ';margin-top:2px;">' + r.status + '</div>' +
+        '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + r.device + '</div>' +
+        '<div style="font-size:10px;color:' + (r.battery < 30 ? 'var(--red)' : 'var(--text-muted)') + ';margin-top:2px;">🔋' + r.battery + '%</div></div>';
+    }).join('');
+  }
+  // Update building3D and occupancy trend if on page
+  if (typeof renderBuilding3DView === 'function') renderBuilding3DView();
+  if (typeof renderBldOccupancyTrend === 'function') renderBldOccupancyTrend();
+}
+
+function showRoomDetail(roomNum) {
+  showPage('page-room-detail');
+  // Render room detail for roomNum
+  var modalHtml = '<div class="modal-overlay" id="modal-room-quick-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-room-quick-detail\').remove()">' +
+    '<div class="modal" style="width:560px;max-height:80vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div><div style="font-size:16px;font-weight:700;">📋 房间详情 - ' + roomNum + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">快速查看 · 点击外部关闭</div></div>' +
+    '<button onclick="document.getElementById(\'modal-room-quick-detail\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div>' +
+    '<div style="padding:16px 20px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--blue);">' + roomNum + '</div><div style="font-size:11px;color:var(--text-muted);">房间号</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:14px;font-weight:700;color:var(--green);">入住</div><div style="font-size:11px;color:var(--text-muted);">当前状态</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:14px;font-weight:700;color:var(--orange);">🟢在线</div><div style="font-size:11px;color:var(--text-muted);">设备状态</div></div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);">入住客人</div><div style="font-size:13px;font-weight:600;margin-top:4px;">张三</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);">联系方式</div><div style="font-size:13px;font-weight:600;margin-top:4px;">138****8888</div></div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;margin-bottom:14px;"><div style="font-size:11px;color:var(--text-muted);">入住时间</div><div style="font-size:13px;font-weight:600;margin-top:4px;">2026-03-27 14:00</div></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<button class="action-btn" onclick="document.getElementById(\'modal-room-quick-detail\').remove();showPage(\'page-workorder\');" style="padding:8px 14px;background:var(--blue);color:white;border:none;font-size:12px;">🛠️ 创建工单</button>' +
+    '<button class="action-btn" onclick="document.getElementById(\'modal-room-quick-detail\').remove();openBatchUnlockModal();" style="padding:8px 14px;background:var(--green);color:white;border:none;font-size:12px;">🔓 开锁</button>' +
+    '<button class="action-btn" onclick="document.getElementById(\'modal-room-quick-detail\').remove();" style="padding:8px 14px;background:var(--bg);color:var(--text);border:1px solid var(--border);font-size:12px;">关闭</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// ============================================================
+// 修复2：renderBuilding3DView（楼栋3D楼层可视化渲染）
+// 理由：bld-3d-canvas和bld-3d-floor-tabs有DOM容器但渲染函数缺失
+// 改进：渲染楼层Tab标签 + 房间3D网格（颜色区分入住/空房/告警）
+// ============================================================
+function renderBuilding3DView() {
+  var bldId = document.getElementById('bld-3d-selector') ? document.getElementById('bld-3d-selector').value : 'main';
+  var tabsContainer = document.getElementById('bld-3d-floor-tabs');
+  var canvas = document.getElementById('bld-3d-canvas');
+  var onlineEl = document.getElementById('bld-3d-online');
+  var offlineEl = document.getElementById('bld-3d-offline');
+  var occupancyEl = document.getElementById('bld-3d-occupancy');
+  if (!tabsContainer || !canvas) return;
+  var floors = bldId === 'main' ? [3,2,1] : [2,1];
+  var roomData = {
+    3: [
+      {room:'301',status:'入住'},{room:'302',status:'空房'},{room:'303',status:'入住'},{room:'304',status:'入住'},
+      {room:'305',status:'空房'},{room:'306',status:'退房'}
+    ],
+    2: [
+      {room:'201',status:'入住'},{room:'202',status:'入住'},{room:'203',status:'空房'},
+      {room:'204',status:'入住'},{room:'205',status:'退房'}
+    ],
+    1: [
+      {room:'101',status:'入住'},{room:'102',status:'入住'},{room:'103',status:'空房'}
+    ]
+  };
+  var bldRoomData = roomData;
+  // Render floor tabs
+  tabsContainer.innerHTML = floors.map(function(f) {
+    return '<div onclick="renderBuilding3DFloor(' + f + ')" style="padding:4px 12px;border-radius:6px;font-size:12px;cursor:pointer;background:var(--bg);border:1px solid var(--border);color:var(--text);">' + f + '层</div>';
+  }).join('');
+  // Render first floor rooms
+  renderBuilding3DFloor(floors[0]);
+  // Update stats
+  var allRooms = [];
+  floors.forEach(function(f){ allRooms = allRooms.concat(bldRoomData[f] || []); });
+  var occupied = allRooms.filter(function(r){ return r.status === '入住'; }).length;
+  var online = Math.floor(allRooms.length * 0.85);
+  if (onlineEl) onlineEl.textContent = online;
+  if (offlineEl) onlineEl && (document.getElementById('bld-3d-offline').textContent = allRooms.length - online);
+  if (occupancyEl) occupancyEl.textContent = Math.round(occupied / allRooms.length * 100) + '%';
+  showToast('🏗️ ' + (_buildingNames[bldId] || bldId) + ' 3D视图已加载（共' + allRooms.length + '间）', 'info');
+}
+
+function renderBuilding3DFloor(floor) {
+  var bldId = document.getElementById('bld-3d-selector') ? document.getElementById('bld-3d-selector').value : 'main';
+  var canvas = document.getElementById('bld-3d-canvas');
+  if (!canvas) return;
+  var roomData = {
+    3: [
+      {room:'301',status:'入住'},{room:'302',status:'空房'},{room:'303',status:'入住'},{room:'304',status:'入住'},
+      {room:'305',status:'空房'},{room:'306',status:'退房'},{room:'307',status:'入住'},{room:'308',status:'空房'}
+    ],
+    2: [
+      {room:'201',status:'入住'},{room:'202',status:'入住'},{room:'203',status:'空房'},{room:'204',status:'入住'},{room:'205',status:'退房'}
+    ],
+    1: [
+      {room:'101',status:'入住'},{room:'102',status:'入住'},{room:'103',status:'空房'}
+    ]
+  };
+  var rooms = roomData[floor] || [];
+  var colorMap = {入住:'var(--blue)', 空房:'var(--green)', 退房:'var(--orange)', 告警:'var(--red)', 维修:'var(--red)'};
+  var bgMap = {入住:'var(--blue-bg)', 空房:'var(--green-bg)', 退房:'var(--orange-bg)', 告警:'var(--red-bg)', 维修:'var(--red-bg)'};
+  canvas.innerHTML = rooms.map(function(r) {
+    var c = colorMap[r.status] || 'var(--text)';
+    var bg = bgMap[r.status] || 'var(--bg)';
+    return '<div onclick="showRoomDetail(\'' + r.room + '\')" title="' + r.room + ' - ' + r.status + '" style="padding:12px 6px;background:' + bg + ';border:2px solid ' + c + ';border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.1);" onmouseover="this.style.transform=\'scale(1.05)\';this.style.boxShadow=\'0 4px 12px rgba(0,0,0,0.2)\'" onmouseout="this.style.transform=\'scale(1)\';this.style.boxShadow=\'0 2px 8px rgba(0,0,0,0.1)\'">' +
+      '<div style="font-size:13px;font-weight:700;color:' + c + ';">' + r.room + '</div>' +
+      '<div style="font-size:10px;color:' + c + ';margin-top:2px;">' + r.status + '</div></div>';
+  }).join('');
+  // Update floor tab active state
+  var tabsContainer = document.getElementById('bld-3d-floor-tabs');
+  if (tabsContainer) {
+    var floorMap = {3:'3层', 2:'2层', 1:'1层'};
+    Array.from(tabsContainer.children).forEach(function(tab) {
+      tab.style.background = '';
+      tab.style.color = '';
+      tab.style.borderColor = '';
+      if (tab.textContent.trim() === floorMap[floor]) {
+        tab.style.background = 'var(--blue)';
+        tab.style.color = 'white';
+        tab.style.borderColor = 'var(--blue)';
+      }
+    });
+  }
+}
+
+// ============================================================
+// 修复3：renderBldOccupancyTrend（楼栋入住率趋势图表渲染）
+// 理由：bld-occ-trend-chart有DOM但渲染函数缺失
+// 改进：渲染近7天/14天/30天入住率柱状图 + 统计指标
+// ============================================================
+function renderBldOccupancyTrend() {
+  var chart = document.getElementById('bld-occ-trend-chart');
+  var labels = document.getElementById('bld-occ-trend-labels');
+  var bldId = document.getElementById('bld-occ-bld-select') ? document.getElementById('bld-occ-bld-select').value : 'main';
+  var range = document.getElementById('bld-occ-range') ? document.getElementById('bld-occ-range').value : '7';
+  if (!chart) return;
+  var days = parseInt(range);
+  var data = [];
+  for (var i = days; i >= 0; i--) {
+    var d = new Date();
+    d.setDate(d.getDate() - i);
+    data.push({date: (d.getMonth()+1) + '/' + d.getDate(), value: Math.floor(60 + Math.random() * 30)});
+  }
+  var maxVal = 100;
+  chart.innerHTML = data.map(function(d) {
+    var height = (d.value / maxVal * 100).toFixed(1);
+    var color = d.value >= 80 ? 'var(--green)' : d.value >= 60 ? 'var(--blue)' : 'var(--orange)';
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;">' +
+      '<div style="font-size:9px;font-weight:700;color:' + color + ';margin-bottom:2px;">' + d.value + '%</div>' +
+      '<div style="width:100%;background:' + color + ';border-radius:4px 4px 0 0;height:' + height + '%;min-height:4px;opacity:0.85;" title="' + d.date + ': ' + d.value + '%"></div></div>';
+  }).join('');
+  if (labels) {
+    labels.textContent = data.map(function(d){ return d.date; }).join('  ');
+  }
+  var avgEl = document.getElementById('bld-occ-avg');
+  var avg = Math.round(data.reduce(function(s,d){ return s + d.value; }, 0) / data.length);
+  if (avgEl) avgEl.textContent = avg + '%';
+  showToast('📈 ' + (_buildingNames[bldId] || bldId) + ' 入住率趋势已更新（近' + days + '天）', 'info');
+}
+
+// ============================================================
+// 修复4：switchLogView（开锁记录按卡查/按门查切换）
+// 理由：开锁记录页有按卡查/按门查Tab但函数不存在
+// 改进：切换视图显示，刷新对应列表
+// ============================================================
+var _currentLogView = 'card';
+
+function switchLogView(view, el) {
+  _currentLogView = view;
+  // Update tab active state
+  document.querySelectorAll('.card-tabs .card-tab').forEach(function(t) {
+    t.classList.remove('active');
+    t.style.fontWeight = 'normal';
+    t.style.color = '';
+    t.style.borderBottom = '';
+  });
+  if (el) {
+    el.classList.add('active');
+    el.style.fontWeight = '600';
+    el.style.color = 'var(--blue)';
+    el.style.borderBottom = '2px solid var(--blue)';
+  }
+  // Show/hide views
+  var cardView = document.getElementById('log-view-card');
+  var doorView = document.getElementById('log-view-door');
+  if (view === 'card') {
+    if (cardView) cardView.style.display = '';
+    if (doorView) doorView.style.display = 'none';
+    showToast('📋 已切换至按卡查询视图', 'info');
+  } else {
+    if (cardView) cardView.style.display = 'none';
+    if (doorView) doorView.style.display = '';
+    renderDoorLogView();
+    showToast('🚪 已切换至按门查询视图', 'info');
+  }
+}
+
+function renderDoorLogView() {
+  var doorView = document.getElementById('log-view-door');
+  if (!doorView) return;
+  var doorData = [
+    {room:'301',unlocks:5,last:'10:32:08',method:'📱手机开锁'},
+    {room:'302',unlocks:3,last:'09:15:22',method:'💳客户卡'},
+    {room:'303',unlocks:2,last:'昨日',method:'📱手机开锁'},
+    {room:'304',unlocks:4,last:'09:48:05',method:'📱手机开锁'},
+    {room:'201',unlocks:1,last:'09:12:44',method:'👤员工卡'},
+    {room:'102',unlocks:2,last:'09:30:18',method:'🔑通卡'}
+  ];
+  var html = '<table class="table"><thead><tr><th>房间</th><th>近7日开锁次数</th><th>最后开锁</th><th>开锁方式</th><th>操作</th></tr></thead><tbody>';
+  doorData.forEach(function(d) {
+    html += '<tr><td><span style="font-weight:600;">' + d.room + '</span></td><td><span style="font-weight:700;color:var(--blue);">' + d.unlocks + '次</span></td><td style="font-size:12px;color:var(--text-muted);">' + d.last + '</td><td>' + d.method + '</td><td><button class="action-btn" onclick="showLogDetailModal(\'door\',0)">详情</button></td></tr>';
+  });
+  html += '</tbody></table>';
+  doorView.innerHTML = html;
+}
+
+// ============================================================
+// 修复5：searchByCardNumber + cardNumberSearchPreview（卡号搜索+预览）
+// 理由：开锁记录页有卡号搜索框但函数不存在
+// 改进：实现卡号模糊搜索+搜索建议预览+结果高亮
+// ============================================================
+var _unlockLogData = [
+  {type:'phone',date:'2026-03-26',cardnum:'M13888888888',cardtype:'member',room:'301',time:'10:32:08',person:'张三',result:'成功'},
+  {type:'card',date:'2026-03-26',cardnum:'C2026030101',cardtype:'member',room:'203',time:'10:15:22',person:'李四',result:'成功'},
+  {type:'phone',date:'2026-03-26',cardnum:'M13755555555',cardtype:'member',room:'304',time:'09:48:05',person:'王五',result:'成功'},
+  {type:'master',date:'2026-03-26',cardnum:'MASTER001',cardtype:'master',room:'102',time:'09:30:18',person:'赵飞',result:'成功'},
+  {type:'card',date:'2026-03-26',cardnum:'E001',cardtype:'staff',room:'201',time:'09:12:44',person:'钱七',result:'成功'},
+  {type:'phone',date:'2026-03-25',cardnum:'M13888888888',cardtype:'member',room:'302',time:'14:20:11',person:'张三',result:'成功'},
+  {type:'card',date:'2026-03-25',cardnum:'C2026030202',cardtype:'member',room:'304',time:'11:05:33',person:'孙八',result:'成功'}
+];
+
+function searchByCardNumber() {
+  var cardNumInput = document.getElementById('log-card-number');
+  if (!cardNumInput) return;
+  var keyword = cardNumInput.value.trim();
+  var typeFilter = document.getElementById('log-card-type-filter') ? document.getElementById('log-card-type-filter').value : 'all';
+  if (!keyword) {
+    showToast('🔍 请输入要搜索的卡号', 'warning');
+    return;
+  }
+  var filtered = _unlockLogData.filter(function(r) {
+    var matchCard = r.cardnum.toLowerCase().indexOf(keyword.toLowerCase()) >= 0 || r.person.indexOf(keyword) >= 0;
+    var matchType = typeFilter === 'all' || r.cardtype === typeFilter;
+    return matchCard && matchType;
+  });
+  var countEl = document.getElementById('log-card-result-count');
+  if (countEl) countEl.textContent = filtered.length;
+  var hintEl = document.getElementById('log-card-search-hint');
+  if (hintEl) hintEl.textContent = '共 ' + filtered.length + ' 条记录';
+  // Render filtered results in table
+  var tbody = document.getElementById('log-table-body');
+  if (tbody) {
+    tbody.innerHTML = filtered.map(function(r, i) {
+      var methodMap = {phone:'📱手机开锁', card:'💳客户卡', master:'🔑通卡', remote:'🌐远程开锁'};
+      var methodClass = {phone:'green', card:'blue', master:'orange', remote:'purple'}[r.type] || 'blue';
+      return '<tr data-type="' + r.type + '" data-date="' + r.date + '" data-cardnum="' + r.cardnum + '" data-cardtype="' + r.cardtype + '">' +
+        '<td>' + r.time + '</td><td>' + r.room + '</td>' +
+        '<td><span class="tbadge ' + methodClass + '">' + (methodMap[r.type] || r.type) + '</span></td>' +
+        '<td><span style="font-size:11px;color:var(--blue);font-weight:600;">' + r.cardnum.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') + '</span></td>' +
+        '<td>' + r.person + '</td>' +
+        '<td><button class="action-btn" onclick="showLogDetailModal(\'' + r.type + '\',' + i + ')">详情</button></td></tr>';
+    }).join('');
+  }
+  if (filtered.length === 0) {
+    showToast('🔍 未找到匹配「' + keyword + '」的记录', 'warning');
+  } else {
+    showToast('🔍 找到 ' + filtered.length + ' 条匹配「' + keyword + '」的记录', 'success');
+  }
+  // Hide preview
+  var preview = document.getElementById('log-card-preview');
+  if (preview) preview.style.display = 'none';
+}
+
+function cardNumberSearchPreview(keyword) {
+  if (!keyword || keyword.length < 2) {
+    var preview = document.getElementById('log-card-preview');
+    if (preview) preview.style.display = 'none';
+    return;
+  }
+  // Find matching card numbers for suggestions
+  var suggestions = {};
+  _unlockLogData.forEach(function(r) {
+    if (r.cardnum.toLowerCase().indexOf(keyword.toLowerCase()) >= 0 || r.person.indexOf(keyword) >= 0) {
+      suggestions[r.cardnum] = r.person;
+    }
+  });
+  var suggestionKeys = Object.keys(suggestions).slice(0, 6);
+  if (suggestionKeys.length <= 1) {
+    var preview = document.getElementById('log-card-preview');
+    if (preview) preview.style.display = 'none';
+    return;
+  }
+  var preview = document.getElementById('log-card-preview');
+  var suggestionsEl = document.getElementById('log-card-suggestions');
+  if (preview && suggestionsEl) {
+    suggestionsEl.innerHTML = suggestionKeys.map(function(card) {
+      return '<div onclick="document.getElementById(\'log-card-number\').value=\'' + card + '\';searchByCardNumber();" style="padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;color:var(--text);">' +
+        '<span style="font-weight:600;color:var(--blue);">' + card.substring(0, keyword.length) + '</span>' +
+        '<span style="color:var(--text-muted);">' + card.substring(keyword.length) + '</span>' +
+        '<span style="margin-left:6px;color:var(--text-muted);">' + suggestions[card] + '</span></div>';
+    }).join('');
+    preview.style.display = '';
+  }
+}
+
+// ============================================================
+// 额外修复：openBuildingFloorManage / openRoomTypeManageModal / openBuildingDeviceOverviewPanel
+// 理由：楼栋管理页面按钮调用但函数不存在
+// ============================================================
+
+// 楼层管理弹窗
+function openBuildingFloorManage(bldId) {
+  var bldName = {main:'主楼', east:'东配楼', vip:'贵宾楼'}[bldId] || bldId;
+  var existing = document.getElementById('modal-floor-manage');
+  if (existing) existing.remove();
+  var floorData = bldId === 'main' ? [
+    {floor:3, rooms:8, usage:'客房楼层', status:'active'},
+    {floor:2, rooms:8, usage:'客房楼层', status:'active'},
+    {floor:1, rooms:8, usage:'客房楼层', status:'active'}
+  ] : [
+    {floor:2, rooms:5, usage:'客房楼层', status:'active'},
+    {floor:1, rooms:4, usage:'客房楼层', status:'active'}
+  ];
+  var html = '<div class="modal-overlay" id="modal-floor-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-floor-manage\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:580px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div><div style="font-size:15px;font-weight:700;">🏢 ' + bldName + ' - 楼层管理</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">共 ' + floorData.length + ' 层 · ' + floorData.reduce(function(s,f){ return s+f.rooms; }, 0) + ' 间</div></div>' +
+    '<div style="display:flex;gap:8px;"><button onclick="openFloorAddModal(\'' + bldId + '\')" style="padding:6px 12px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">➕ 新增楼层</button><button onclick="document.getElementById(\'modal-floor-manage\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div></div>' +
+    '<div style="padding:16px 20px;overflow-y:auto;flex:1;">';
+  floorData.forEach(function(f) {
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;">' +
+      '<div style="width:40px;height:40px;background:var(--blue-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--blue);">' + f.floor + '层</div>' +
+      '<div style="flex:1;"><div style="font-size:13px;font-weight:700;">' + f.usage + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + f.rooms + '间</div></div>' +
+      '<span class="tbadge ' + (f.status===\'active\'?\'green\':\'gray\') + '">' + (f.status===\'active\'?\'✅ 启用\':\'❌ 停用\') + '</span>' +
+      '<button class="action-btn small" onclick="openFloorEditModal(' + f.floor + ',\'' + bldId + '\')" style="padding:4px 8px;font-size:11px;">✏️ 编辑</button>' +
+      '<button class="action-btn small" onclick="deleteFloor(' + f.floor + ')" style="padding:4px 8px;font-size:11px;">🗑️ 删除</button></div>';
+  });
+  html += '</div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'modal-floor-manage\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// 房型管理弹窗
+function openRoomTypeManageModal() {
+  var existing = document.getElementById('modal-roomtype-manage');
+  if (existing) existing.remove();
+  var roomTypes = [
+    {name:'大床房', code:'DB', price:299, count:8, status:'active'},
+    {name:'双床房', code:'SB', price:399, count:5, status:'active'},
+    {name:'套房', code:'ST', price:599, count:3, status:'active'},
+    {name:'豪华套房', code:'DL', price:899, count:2, status:'active'}
+  ];
+  var html = '<div class="modal-overlay" id="modal-roomtype-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-roomtype-manage\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:600px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div><div style="font-size:15px;font-weight:700;">🏠 房型管理</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">共 ' + roomTypes.length + ' 种房型 · ' + roomTypes.reduce(function(s,t){ return s+t.count; }, 0) + ' 间</div></div>' +
+    '<div style="display:flex;gap:8px;"><button onclick="openAddRoomTypeModal()" style="padding:6px 12px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">➕ 新增房型</button><button onclick="document.getElementById(\'modal-roomtype-manage\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div></div>' +
+    '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
+    '<table class="table"><thead><tr><th>房型</th><th>代码</th><th>价格</th><th>房间数</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+  roomTypes.forEach(function(t) {
+    html += '<tr><td style="font-weight:700;">' + t.name + '</td><td><span style="font-family:monospace;font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;">' + t.code + '</span></td><td><span style="color:var(--orange);font-weight:700;">¥' + t.price + '</span></td><td>' + t.count + '间</td><td><span class="tbadge ' + (t.status===\'active\'?\'green\':\'gray\') + '">' + (t.status===\'active\'?\'✅ 启用\':\'❌ 停用\') + '</span></td><td><button class="action-btn small" style="padding:4px 8px;font-size:11px;">✏️ 编辑</button></td></tr>';
+  });
+  html += '</tbody></table></div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'modal-roomtype-manage\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// 设备概览面板
+function openBuildingDeviceOverviewPanel(bldId) {
+  var bldName = {main:'主楼', east:'东配楼', vip:'贵宾楼'}[bldId] || bldId;
+  var existing = document.getElementById('modal-device-overview');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-device-overview" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-device-overview\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:560px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div><div style="font-size:15px;font-weight:700;">📡 ' + bldName + ' 设备概览</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">在线设备监控 · 实时状态</div></div>' +
+    '<button onclick="document.getElementById(\'modal-device-overview\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div>' +
+    '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:14px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">14</div><div style="font-size:11px;color:var(--text-muted);">🟢 在线</div></div>' +
+    '<div style="padding:14px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red);">2</div><div style="font-size:11px;color:var(--text-muted);">🔴 离线</div></div>' +
+    '<div style="padding:14px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--orange);">1</div><div style="font-size:11px;color:var(--text-muted);">⚠️ 低电量</div></div></div>' +
+    '<div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--text);">📋 设备列表</div>' +
+    '<div style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">' +
+    '<table class="table" style="font-size:12px;"><thead><tr><th>设备ID</th><th>房间</th><th>状态</th><th>电量</th></tr></thead><tbody>' +
+    '<tr><td>DEV-LK01</td><td>301</td><td><span class="tbadge green">🟢在线</span></td><td>88%</td></tr>' +
+    '<tr><td>DEV-LK02</td><td>302</td><td><span class="tbadge green">🟢在线</span></td><td>72%</td></tr>' +
+    '<tr><td>DEV-LK03</td><td>303</td><td><span class="tbadge gray">🔴离线</span></td><td>15%</td></tr>' +
+    '<tr><td>DEV-LK04</td><td>304</td><td><span class="tbadge green">🟢在线</span></td><td>45%</td></tr>' +
+    '<tr><td>DEV-LK05</td><td>305</td><td><span class="tbadge orange">⚠️低电</span></td><td>22%</td></tr></tbody></table></div></div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'modal-device-overview\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
