@@ -824,3 +824,346 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }, 400);
 });
+
+// ============================================================
+// 【物联后台 v4 第3轮】功能性修复 - 5大缺失函数
+// 1. cancelDeviceConfirm / confirmDeviceAction - 设备操作确认弹窗
+// 2. addCheckoutItem - 退房消费项目添加
+// 3. cancelWorkorderById - 工单作废
+// 4. confirmPointsExchange - 积分兑换确认
+// 5. applyLogFilter - 操作日志筛选
+// ============================================================
+
+// 【改进1】设备操作确认弹窗 - cancelDeviceConfirm / confirmDeviceAction
+// 理由：modal-device-confirm 有关闭按钮调用 cancelDeviceConfirm，确认按钮调用 confirmDeviceAction，但函数不存在
+var _deviceConfirmAction = null;
+var _deviceConfirmTarget = null;
+var _deviceConfirmCountdown = null;
+
+function cancelDeviceConfirm() {
+  if (_deviceConfirmCountdown) {
+    clearInterval(_deviceConfirmCountdown);
+    _deviceConfirmCountdown = null;
+  }
+  var modal = document.getElementById('modal-device-confirm');
+  if (modal) modal.classList.add('hidden');
+  _deviceConfirmAction = null;
+  _deviceConfirmTarget = null;
+}
+
+function confirmDeviceAction() {
+  if (_deviceConfirmCountdown) {
+    clearInterval(_deviceConfirmCountdown);
+    _deviceConfirmCountdown = null;
+  }
+  var modal = document.getElementById('modal-device-confirm');
+  if (modal) modal.classList.add('hidden');
+  if (!_deviceConfirmAction) {
+    showToast('操作类型未知', 'error');
+    return;
+  }
+  var action = _deviceConfirmAction;
+  var target = _deviceConfirmTarget || '';
+  var actionLabels = {unlock:'开锁', restart:'重启', battery_check:'电池检测', sync:'状态同步'};
+  showToast('⚡ ' + (actionLabels[action] || action) + '指令已发送' + (target ? '：' + target : ''), 'success');
+  // Refresh device list if on device page
+  if (typeof refreshDeviceTable === 'function') refreshDeviceTable();
+  _deviceConfirmAction = null;
+  _deviceConfirmTarget = null;
+}
+
+function openDeviceConfirmModal(action, target, msg) {
+  _deviceConfirmAction = action;
+  _deviceConfirmTarget = target || '';
+  var modal = document.getElementById('modal-device-confirm');
+  if (!modal) return;
+  var iconMap = {unlock:'🔓', restart:'🔄', battery_check:'🔋', sync:'🔍'};
+  var msgMap = {unlock:'确认要远程开锁吗？', restart:'确认要重启该设备吗？', battery_check:'确认要进行电池检测吗？', sync:'确认要同步设备状态吗？'};
+  var titleMap = {unlock:'🔓 远程开锁确认', restart:'🔄 重启设备确认', battery_check:'🔋 电池检测确认', sync:'🔍 状态同步确认'};
+  var warnMap = {unlock:'开锁操作将解除门锁锁定，请确认安全', restart:'重启期间设备将短暂离线', battery_check:'电池检测约需10秒', sync:'将立即同步最新状态'};
+  var iconEl = document.getElementById('dev-confirm-icon');
+  var titleEl = document.getElementById('dev-confirm-title');
+  var msgEl = document.getElementById('dev-confirm-msg');
+  var warnEl = document.getElementById('dev-confirm-warn');
+  if (iconEl) iconEl.textContent = iconMap[action] || '⚡';
+  if (titleEl) titleEl.textContent = titleMap[action] || '⚠️ 操作确认';
+  if (msgEl) msgEl.textContent = msg || msgMap[action] || '确认执行此操作？';
+  if (warnEl) warnEl.textContent = warnMap[action] || '';
+  modal.classList.remove('hidden');
+  var countEl = document.getElementById('dev-confirm-countdown');
+  if (countEl) countEl.textContent = '5';
+  var count = 5;
+  if (_deviceConfirmCountdown) clearInterval(_deviceConfirmCountdown);
+  _deviceConfirmCountdown = setInterval(function() {
+    count--;
+    var cEl = document.getElementById('dev-confirm-countdown');
+    if (cEl) cEl.textContent = count;
+    if (count <= 0) {
+      clearInterval(_deviceConfirmCountdown);
+      _deviceConfirmCountdown = null;
+      confirmDeviceAction();
+    }
+  }, 1000);
+}
+
+// 【改进2】退房消费项目添加 - addCheckoutItem
+// 理由：退房弹窗有"+ 添加"按钮调用 addCheckoutItem() 但函数不存在
+var _checkoutItemCount = 0;
+function addCheckoutItem() {
+  _checkoutItemCount++;
+  var container = document.getElementById('co-consumption-items');
+  var noItems = document.getElementById('co-no-items');
+  if (noItems) noItems.style.display = 'none';
+  if (!container) return;
+  var itemHtml = '<div class="co-item-row" id="co-item-' + _checkoutItemCount + '" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;padding:8px;background:var(--bg);border-radius:6px;">' +
+    '<input type="text" class="form-input" id="co-item-name-' + _checkoutItemCount + '" placeholder="项目名称" style="flex:2;padding:5px 8px;font-size:12px;">' +
+    '<input type="number" class="form-input" id="co-item-qty-' + _checkoutItemCount + '" placeholder="数量" value="1" min="1" style="flex:1;padding:5px 8px;font-size:12px;text-align:center;" oninput="updateCheckoutSummary()">' +
+    '<input type="number" class="form-input" id="co-item-price-' + _checkoutItemCount + '" placeholder="单价" value="0" min="0" style="flex:1;padding:5px 8px;font-size:12px;" oninput="updateCheckoutSummary()">' +
+    '<span style="font-size:12px;color:var(--text-muted);white-space:nowrap;" id="co-item-total-' + _checkoutItemCount + '">¥0.00</span>' +
+    '<button onclick="removeCheckoutItem(' + _checkoutItemCount + ')" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--red);padding:2px 4px;">✕</button></div>';
+  container.insertAdjacentHTML('beforeend', itemHtml);
+  // Bind input events
+  ['co-item-qty-' + _checkoutItemCount, 'co-item-price-' + _checkoutItemCount].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateCheckoutSummary);
+  });
+}
+
+function removeCheckoutItem(id) {
+  var el = document.getElementById('co-item-' + id);
+  if (el) el.remove();
+  updateCheckoutSummary();
+}
+
+function getCheckoutItemsTotal() {
+  var total = 0;
+  document.querySelectorAll('[id^="co-item-"]').forEach(function(el) {
+    var id = el.id;
+    if (id.indexOf('qty-') === 0 || id.indexOf('price-') === 0) {
+      var numId = id.replace('co-item-qty-', '').replace('co-item-price-', '');
+      if (id.indexOf('qty-') === 0) {
+        var qty = parseFloat(document.getElementById('co-item-qty-' + numId) ? document.getElementById('co-item-qty-' + numId).value : 0) || 0;
+        var price = parseFloat(document.getElementById('co-item-price-' + numId) ? document.getElementById('co-item-price-' + numId).value : 0) || 0;
+        total += qty * price;
+        var totalEl = document.getElementById('co-item-total-' + numId);
+        if (totalEl) totalEl.textContent = '¥' + (qty * price).toFixed(2);
+      }
+    }
+  });
+  return total;
+}
+
+function updateCheckoutSummary() {
+  var roomFee = parseFloat(document.getElementById('co-room-fee') ? document.getElementById('co-room-fee').textContent.replace(/[^0-9.]/g, '') : 0) || 0;
+  var deposit = parseFloat(document.getElementById('co-deposit-val') ? document.getElementById('co-deposit-val').textContent.replace(/[^0-9.]/g, '') : 0) || 0;
+  var itemTotal = getCheckoutItemsTotal();
+  var total = roomFee + itemTotal;
+  var refund = deposit - total;
+  var consumptionEl = document.getElementById('co-consumption');
+  if (consumptionEl) consumptionEl.textContent = '¥' + itemTotal.toFixed(2);
+  var totalEl = document.getElementById('co-total');
+  if (totalEl) totalEl.textContent = '¥' + total.toFixed(2);
+  var refundEl = document.getElementById('co-refund');
+  if (refundEl) {
+    refundEl.textContent = (refund >= 0 ? '¥' + refund.toFixed(2) : '需补 ¥' + Math.abs(refund).toFixed(2));
+    refundEl.style.color = refund >= 0 ? 'var(--green)' : 'var(--red)';
+  }
+}
+
+// 【改进3】工单作废 - cancelWorkorderById
+// 理由：工单列表"作废"按钮调用 cancelWorkorderById 但函数不存在
+function cancelWorkorderById(woId) {
+  var wo = workorderStore.find(function(w) { return w.id === woId; });
+  if (!wo) {
+    showToast('未找到工单：' + woId, 'error');
+    return;
+  }
+  if (wo.status === '已完成') {
+    showToast('已完成工单无法作废', 'warning');
+    return;
+  }
+  var existing = document.getElementById('modal-wo-cancel');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-wo-cancel" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:420px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
+    '<div style="padding:24px 24px 16px;text-align:center;">' +
+    '<div style="font-size:48px;margin-bottom:12px;">⚠️</div>' +
+    '<div style="font-size:16px;font-weight:700;margin-bottom:8px;">确认作废工单</div>' +
+    '<div style="font-size:13px;color:var(--text-light);line-height:1.6;">确定要作废工单 <strong style="color:var(--red);">' + woId + '</strong> 吗？<br>作废后无法恢复。</div></div>' +
+    '<div style="padding:0 24px 24px;display:flex;gap:10px;justify-content:center;">' +
+    '<button onclick="document.getElementById(\'modal-wo-cancel\').remove()" style="flex:1;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);">取消</button>' +
+    '<button onclick="doCancelWorkorder(\'' + woId + '\')" style="flex:1;padding:10px;background:var(--red);border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:white;">🗑️ 确认作废</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doCancelWorkorder(woId) {
+  document.getElementById('modal-wo-cancel') && document.getElementById('modal-wo-cancel').remove();
+  var idx = workorderStore.findIndex(function(w) { return w.id === woId; });
+  if (idx >= 0) {
+    workorderStore[idx].status = '已取消';
+    workorderStore[idx].cancelTime = new Date().toLocaleString('zh-CN');
+    showToast('🗑️ 工单 ' + woId + ' 已作废', 'success');
+  }
+  if (typeof applyWorkorderSearch === 'function') applyWorkorderSearch();
+  if (typeof renderWorkorderTable === 'function') renderWorkorderTable();
+}
+
+// 【改进4】积分兑换确认 - confirmPointsExchange
+// 理由：积分兑换弹窗有确认按钮调用 confirmPointsExchange 但函数不存在
+var _pendingPointsExchange = null;
+function confirmPointsExchange() {
+  var pwd = document.getElementById('pex-pwd');
+  if (!pwd || !pwd.value) {
+    showToast('请输入登录密码确认兑换', 'error');
+    return;
+  }
+  if (pwd.value.length < 6) {
+    showToast('密码长度不足6位', 'error');
+    return;
+  }
+  if (!_pendingPointsExchange) {
+    showToast('兑换信息异常，请重试', 'error');
+    return;
+  }
+  var info = _pendingPointsExchange;
+  document.getElementById('modal-points-exchange') && document.getElementById('modal-points-exchange').remove();
+  showToast('✅ ' + info.name + ' 积分兑换成功！获得 ' + info.points + ' 积分（-' + info.cost + '余额）', 'success');
+  _pendingPointsExchange = null;
+  // Update member points display if on member page
+  if (typeof renderMemberConsumptionTable === 'function') renderMemberConsumptionTable();
+}
+
+function openPointsExchangeConfirmModal(memberIdx, exchangeInfo) {
+  _pendingPointsExchange = exchangeInfo;
+  var modal = document.getElementById('modal-points-exchange');
+  if (!modal) return;
+  var nameEl = document.getElementById('pex-member-name');
+  var pointsEl = document.getElementById('pex-points');
+  var costEl = document.getElementById('pex-cost');
+  if (nameEl) nameEl.textContent = exchangeInfo.name;
+  if (pointsEl) pointsEl.textContent = '+' + exchangeInfo.points + ' 积分';
+  if (costEl) costEl.textContent = '-' + exchangeInfo.cost + '元余额';
+  modal.classList.remove('hidden');
+  var pwdEl = document.getElementById('pex-pwd');
+  if (pwdEl) pwdEl.value = '';
+}
+
+// 【改进5】操作日志筛选 - applyLogFilter
+// 理由：操作日志页面的筛选按钮调用 applyLogFilter 但函数不存在
+function applyLogFilter() {
+  var tbody = document.getElementById('oplog-table-body');
+  if (!tbody) return;
+  // Trigger the existing filter logic if available
+  if (typeof renderOplogTable === 'function') {
+    renderOplogTable();
+  }
+  // Also filter by date range if available
+  var dateStart = document.getElementById('oplog-date-start') ? document.getElementById('oplog-date-start').value : '';
+  var dateEnd = document.getElementById('oplog-date-end') ? document.getElementById('oplog-date-end').value : '';
+  var rows = tbody.querySelectorAll('tr');
+  var matchCount = 0;
+  rows.forEach(function(row) {
+    var timeCell = row.querySelector('td:first-child');
+    if (!timeCell) return;
+    var rowDate = timeCell.textContent.trim().slice(0, 10);
+    var show = true;
+    if (dateStart && rowDate < dateStart) show = false;
+    if (dateEnd && rowDate > dateEnd) show = false;
+    row.style.display = show ? '' : 'none';
+    if (show) matchCount++;
+  });
+  var countEl = document.getElementById('oplog-count-label');
+  if (countEl) countEl.textContent = '共 ' + matchCount + ' 条记录';
+  showToast('🔍 筛选完成，找到 ' + matchCount + ' 条记录', 'info');
+}
+
+// 【改进6】黑名单管理 - renderBlacklist
+// 理由：黑名单页面加载时 renderBlacklist 未定义
+function renderBlacklist() {
+  var tbody = document.getElementById('bl-table-body');
+  if (!tbody) return;
+  var searchKw = document.getElementById('bl-search') ? document.getElementById('bl-search').value.toLowerCase().trim() : '';
+  var filtered = (window.blacklistStore || []).filter(function(b) {
+    return !searchKw || (b.name + b.phone + b.id).toLowerCase().indexOf(searchKw) >= 0;
+  });
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">暂无黑名单记录</td></tr>';
+    return;
+  }
+  var html = filtered.map(function(b) {
+    return '<tr>' +
+      '<td><input type="checkbox" style="accent-color:var(--blue);"></td>' +
+      '<td><strong>' + b.name + '</strong></td>' +
+      '<td>' + b.phone + '</td>' +
+      '<td>' + (b.idType || '身份证') + '</td>' +
+      '<td><span class="tbadge red">🚫 黑名单</span></td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + (b.addTime || '--') + '</td>' +
+      '<td><button class="action-btn small" onclick="openBlacklistDetail(\'' + b.id + '\')">详情</button> ' +
+      '<button class="action-btn small green" onclick="removeBlacklistEntry(\'' + b.id + '\')">移除</button></td></tr>';
+  }).join('');
+  tbody.innerHTML = html;
+  var countEl = document.getElementById('bl-filter-count');
+  if (countEl) countEl.textContent = '共 ' + filtered.length + ' 条记录';
+}
+
+function removeBlacklistEntry(id) {
+  var idx = (window.blacklistStore || []).findIndex(function(b) { return b.id === id; });
+  if (idx >= 0) {
+    window.blacklistStore.splice(idx, 1);
+    showToast('✅ 已从黑名单移除', 'success');
+    renderBlacklist();
+  }
+}
+
+// ============================================================
+// 【物联后台 v4 第4轮】初始化增强
+// ============================================================
+
+// 初始化黑名单数据
+if (!window.blacklistStore) {
+  window.blacklistStore = [
+    {id:'BL001', name:'测试用户A', phone:'138****1111', idType:'身份证', addTime:'2026-03-20', reason:'恶意破坏公物'},
+    {id:'BL002', name:'测试用户B', phone:'139****2222', idType:'身份证', addTime:'2026-03-18', reason:'多次投诉骚扰'}
+  ];
+}
+
+// 初始化告警数据
+if (!window.alertData) {
+  window.alertData = [
+    {type:'🔋 低电量告警', room:'305室', detail:'电池电量低于20%', time:'2026-03-29 08:30', status:'待处理'},
+    {type:'📶 设备离线', room:'203室', detail:'设备网络中断超过30分钟', time:'2026-03-29 07:15', status:'待处理'},
+    {type:'🔓 门锁异常', room:'301室', detail:'门锁尝试次数异常', time:'2026-03-28 22:00', status:'已处理'}
+  ];
+}
+
+// 初始化工单Store
+if (!window.workorderStore) {
+  window.workorderStore = [
+    {id:'WO-2026032901', type:'repair', room:'305', guest:'张三', content:'房间门锁故障', priority:'urgent', status:'待接受', createTime:'2026-03-29 10:32', handler:'', doneTime:''},
+    {id:'WO-2026032902', type:'delivery', room:'203', guest:'李四', content:'需要送物服务', priority:'normal', status:'处理中', createTime:'2026-03-29 09:20', handler:'前台小王', doneTime:''},
+    {id:'WO-2026032801', type:'complaint', room:'301', guest:'王五', content:'房间空调噪音过大', priority:'high', status:'已完成', createTime:'2026-03-28 14:00', handler:'维修员老张', doneTime:'2026-03-28 16:30'}
+  ];
+}
+
+// Hook showPage for alert detail button injection
+(function() {
+  if (typeof showPage === 'function') {
+    var _originalShowPage = showPage;
+    showPage = function(pageName) {
+      _originalShowPage(pageName);
+      if (pageName === 'alert') {
+        setTimeout(function() {
+          var tbody = document.getElementById('alert-table-body');
+          if (tbody && tbody.querySelectorAll('tr').length > 0) {
+            if (typeof injectAlertDetailButton === 'function') injectAlertDetailButton();
+          }
+        }, 300);
+      }
+      if (pageName === 'blacklist') {
+        setTimeout(function() {
+          if (typeof renderBlacklist === 'function') renderBlacklist();
+        }, 200);
+      }
+    };
+  }
+})();
