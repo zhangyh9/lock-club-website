@@ -5278,7 +5278,13 @@ setInterval(function() {
     ];
     function openMemberConsumptionHistory(idx) {
       currentMemberConsumptionIdx = idx;
-      var m = memberBalanceData[idx] || { name: '未知', balance: 0, level: '普通', phone: '--' };
+      // 【v4修复】根据姓名/手机号匹配，确保 _memberStore 和 memberBalanceData 数据一致
+      var mem = _memberStore[idx];
+      var m = { name: '未知', balance: 0, level: '普通', phone: '--' };
+      if (mem) {
+        var bd = memberBalanceData.find(function(x){ return x.name === mem.name || x.phone === mem.phone; });
+        if (bd) { m = bd; } else { m.name = mem.name; m.phone = mem.phone; m.level = mem.level; m.balance = mem.points || 0; }
+      }
       var old = document.getElementById('modal-mbr-consumption');
       if (old) old.remove();
       var html = '<div class="hidden modal-overlay" id="modal-mbr-consumption" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-mbr-consumption\').remove()">' +
@@ -5383,7 +5389,13 @@ setInterval(function() {
 
     function openMemberRechargeModalV3(idx) {
       currentRechargeMemberIdx = idx;
-      var m = memberBalanceData[idx];
+      // 【v4修复】根据姓名/手机号匹配，确保 _memberStore 和 memberBalanceData 数据一致
+      var mem = _memberStore[idx];
+      var m = { name: '未知', balance: 0, level: '普通', phone: '--' };
+      if (mem) {
+        var bd = memberBalanceData.find(function(x){ return x.name === mem.name || x.phone === mem.phone; });
+        if (bd) { m = bd; } else { m.name = mem.name; m.phone = mem.phone; m.level = mem.level; m.balance = mem.points || 0; }
+      }
       document.getElementById('mrc-member-name').textContent = m.name;
       document.getElementById('mrc-member-info').textContent = m.name + ' · ' + m.level + '会员';
       document.getElementById('mrc-member-phone').textContent = m.phone;
@@ -5446,6 +5458,9 @@ setInterval(function() {
       var actual = currentRechargeAmount + bonus;
       var m = memberBalanceData[currentRechargeMemberIdx];
       m.balance += actual;
+      // 【v4修复】充值后同步 _memberStore（解决会员列表余额不刷新问题）
+      var idx = _memberStore.findIndex(function(x){ return x.name === m.name; });
+      if (idx !== -1) _memberStore[idx].points = m.balance;
       document.getElementById('mrc-current-balance').textContent = '¥' + m.balance;
       // 【改进3-v3】生成充值流水号
       var now = new Date();
@@ -28501,6 +28516,67 @@ function deleteMember(idx) {
   if (tbody) renderMemberTable();
 }
 
+// ========== 【v4修复】会员详情弹窗 ==========
+function openMemberDetail(idx) {
+  var m = _memberStore[idx];
+  if (!m) return;
+  var existing = document.getElementById('modal-member-detail');
+  if (existing) existing.remove();
+  var levelColors = {'金卡':'var(--purple)', '银卡':'var(--orange)', 'VIP':'var(--green)', '普通':'var(--text-muted)'};
+  var levelColor = levelColors[m.level] || 'var(--text)';
+  var html = '<div class="modal-overlay" id="modal-member-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-detail\').remove()">' +
+    '<div class="modal" style="width:480px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">👑</div><div><div style="font-size:15px;font-weight:700;">会员详情</div><div style="font-size:11px;color:var(--text-muted);">' + m.level + '会员 · ' + m.phone + '</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-member-detail\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">当前余额</div><div style="font-size:22px;font-weight:700;color:var(--blue);">¥' + (m.points || 0) + '</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">累计消费</div><div style="font-size:22px;font-weight:700;color:var(--orange);">¥--</div></div></div>' +
+    '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:8px 0;">会员编号：MEM' + String(10001 + idx).padStart(5, '0') + ' · 入会时间：--</div>' +
+    '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">' +
+    '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">操作</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<button class="action-btn small" onclick="document.getElementById(\'modal-member-detail\').remove();openEditMemberModal(' + idx + ');" style="padding:5px 12px;">✏️ 编辑</button>' +
+    '<button class="action-btn small" onclick="document.getElementById(\'modal-member-detail\').remove();openMemberRechargeModalV3(' + idx + ');" style="padding:5px 12px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">💳 充值</button>' +
+    '<button class="action-btn small" onclick="document.getElementById(\'modal-member-detail\').remove();openMemberConsumptionHistory(' + idx + ');" style="padding:5px 12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📋 消费记录</button></div></div></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-detail\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// ========== 【v4修复】会员表格渲染函数（deleteMember/editMember/deleteMember 后调用） ==========
+function renderMemberTable() {
+  var tbody = document.getElementById('member-table-body');
+  if (!tbody) return;
+  var searchKw = '';
+  var inp = document.getElementById('member-search');
+  if (inp) searchKw = inp.value.trim().toLowerCase();
+  var filtered = _memberStore.filter(function(m) {
+    if (!searchKw) return true;
+    return (m.name && m.name.toLowerCase().indexOf(searchKw) > -1) ||
+           (m.phone && m.phone.indexOf(searchKw) > -1);
+  });
+  var levelBadge = {普通:'普通', 银卡:'🥈 银卡', 金卡:'🥇 金卡', VIP:'💎 VIP'};
+  var levelStyle = {普通:'background:var(--gray-bg);color:var(--gray)', 银卡:'background:var(--orange-bg);color:var(--orange)', 金卡:'background:var(--purple-bg);color:var(--purple)', VIP:'background:var(--green-bg);color:var(--green)'};
+  var html = filtered.map(function(m, i) {
+    var idx = _memberStore.indexOf(m);
+    var badge = levelBadge[m.level] || m.level;
+    var style = levelStyle[m.level] || '';
+    return '<tr>' +
+      '<td><span style="font-weight:600;">' + (m.name || '--') + '</span></td>' +
+      '<td>' + (m.phone || '--') + '</td>' +
+      '<td>--</td>' +
+      '<td><span class="tbadge" style="' + style + ';">' + badge + '</span></td>' +
+      '<td><span class="tbadge blue">--晚</span></td>' +
+      '<td style="font-weight:600;">¥--</td>' +
+      '<td>--</td>' +
+      '<td><button class="action-btn small" onclick="openMemberDetail(' + idx + ')">详情</button> <button class="action-btn small" onclick="openEditMemberModal(' + idx + ')">编辑</button> <button class="action-btn small" onclick="openMemberRechargeModalV3(' + idx + ')" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small" onclick="openMemberConsumptionHistory(' + idx + ')" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">消费记录</button> <button class="action-btn small red" onclick="deleteMember(' + idx + ')">删除</button></td>' +
+      '</tr>';
+  }).join('');
+  tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">暂无会员数据</td></tr>';
+}
+
 // ========== 改进2: 会员编辑 ==========
 function openEditMemberModal(idx) {
   var m = _memberStore[idx];
@@ -29128,16 +29204,25 @@ function submitHandoverConfirm() {
 // ======= 【物联后台 v4 改进1】rdQuickSetStatus - 房间详情页快速设置房间状态 =======
 // 理由：房间详情页快速操作面板有"设为空房/入住/维修/停用/脏房"按钮但函数未定义
 // 业务逻辑：根据按钮快速修改房间状态，包含状态确认Toast+状态标签变色+首页房间卡片同步刷新
+// 【v4修复】当前房间详情页正在查看的房间号（房间卡片点击时设置）
+var _currentRoomDetailNum = '301';
+function setCurrentRoomDetail(num) { _currentRoomDetailNum = num; }
+
 function rdQuickSetStatus(status) {
-  var roomNum = document.getElementById('rd-page-title') ? document.getElementById('rd-page-title').textContent.replace('🚪 房间详情 - ', '') : '301';
+  var roomNum = _currentRoomDetailNum || '301';
   var statusMap = {
-    '空房': {label:'空房', color:'var(--green)', bg:'var(--green-bg)', badge:'badge-empty'},
-    '入住': {label:'入住', color:'var(--blue)', bg:'var(--blue-bg)', badge:'badge-in'},
-    '维修': {label:'维修', color:'var(--orange)', bg:'var(--orange-bg)', badge:'badge-low'},
-    '停用': {label:'停用', color:'var(--red)', bg:'var(--red-bg)', badge:'badge-alert'},
-    '脏房': {label:'脏房', color:'#b37800', bg:'#fffbe6', badge:'badge-low'}
+    '空房': {label:'空房', color:'var(--green)', bg:'var(--green-bg)', badge:'badge-empty', domStatus:'empty'},
+    '入住': {label:'入住', color:'var(--blue)', bg:'var(--blue-bg)', badge:'badge-in', domStatus:'in'},
+    '维修': {label:'维修', color:'var(--orange)', bg:'var(--orange-bg)', badge:'badge-low', domStatus:'maintenance'},
+    '停用': {label:'停用', color:'var(--red)', bg:'var(--red-bg)', badge:'badge-alert', domStatus:'alert'},
+    '脏房': {label:'脏房', color:'#b37800', bg:'#fffbe6', badge:'badge-low', domStatus:'dirty'}
   };
   var info = statusMap[status] || statusMap['空房'];
+  // 【v4修复】同步更新 _homeRoomData 数据源（保证刷新后状态不丢失）
+  var roomIdx = _homeRoomData.findIndex(function(r){ return r.num === roomNum; });
+  if (roomIdx !== -1) {
+    _homeRoomData[roomIdx].status = info.domStatus;
+  }
   // Update status label in room detail page
   var statusEl = document.querySelector('#page-room-detail .detail-card-title') || document.querySelector('#room-tab-info');
   if (statusEl) {
@@ -29160,7 +29245,7 @@ function rdQuickSetStatus(status) {
       badge.style.background = info.bg;
       badge.style.color = info.color;
     }
-    homeCard.setAttribute('data-status', status === '入住' ? 'in' : status === '空房' ? 'empty' : status === '维修' ? 'maintenance' : status === '停用' ? 'alert' : 'dirty');
+    homeCard.setAttribute('data-status', info.domStatus);
     homeCard.style.borderColor = info.color;
     homeCard.style.background = info.bg;
   }
