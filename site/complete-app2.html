@@ -789,6 +789,23 @@ function exportDeviceList() {
     {uuid:'DEV-LK15-103', room:'103', model:'领握LH-807', battery:48, signal:'-66dBm', status:'在线', lastSync:'今天 10:05'},
     {uuid:'DEV-LK16-104', room:'104', model:'领握LH-807', battery:20, signal:'-72dBm', status:'在线(低电量)', lastSync:'今天 09:40'}
   ];
+
+  // 【v4修复】告警数据源 - 供openAlertDetailFullModal使用
+  var alertData = [
+    {type:'设备离线', room:'303 - 亲子间', duration:'10小时+', time:'2026-03-26 11:05', status:'待处理', detail:'最后同步 2026-03-26 11:05:36', history:[]},
+    {type:'低电量', room:'305 - 亲子间', duration:'2小时', time:'2026-03-29 08:40', status:'待处理', detail:'当前电量28%', history:[]},
+    {type:'低电量', room:'202 - 大床房', duration:'5小时', time:'2026-03-29 05:30', status:'已忽略', detail:'当前电量35%', history:[{time:'03-29 05:35',action:'已忽略',note:'确认为正常波动'}]},
+    {type:'设备离线', room:'304 - 亲子间', duration:'已恢复', time:'昨天 15:20', status:'已处理', detail:'设备恢复在线', history:[{time:'03-28 15:25',action:'设备重启',note:'远程重启后恢复'}]}
+  ];
+
+  // 【v4修复】发票数据源 - 供printInvoice使用
+  var invoiceStore = [
+    {id:'INV-2026032701', company:'张三', tax:'--', type:'普通发票', amount:368, date:'2026-03-27', status:'已完成', email:'zhangsan@email.com'},
+    {id:'INV-2026032702', company:'李四', tax:'91330000MA1234567X', type:'增值税专用', amount:1280, date:'2026-03-27', status:'待处理', email:'lisi@company.com'},
+    {id:'INV-2026032703', company:'王五', tax:'--', type:'电子发票', amount:296, date:'2026-03-27', status:'开具中', email:'wangwu@email.com'},
+    {id:'INV-2026032601', company:'赵六', tax:'--', type:'普通发票', amount:520, date:'2026-03-26', status:'已完成', email:'zhaoliu@email.com'},
+    {id:'INV-2026032501', company:'钱七', tax:'91330000MA7654321Y', type:'增值税专用', amount:880, date:'2026-03-25', status:'已完成', email:'qianqi@company.com'}
+  ];
   var csv = '\uFEFF设备UUID,房间号,设备型号,电量,信号强度,在线状态,最后同步时间\n';
   deviceData.forEach(function(d) {
     csv += d.uuid + ',' + d.room + ',' + d.model + ',' + d.battery + '%,' + d.signal + ',' + d.status + ',' + d.lastSync + '\n';
@@ -24502,6 +24519,218 @@ function printInvoice(invId) {
     '<div class="inv-item"><span>电子邮箱：</span><span>' + (inv.email || '--') + '</span></div>' +
     '<div class="inv-item"><span>收 款 人：</span><span>锁帮物联后台系统</span></div>' +
     '<div class="inv-item"><span>开 票 人：</span><span>系统自动开票</span></div></div></div>' +
-    '<div class="inv-footer">本发票由锁帮智慧酒店管理系统自动开具 · 如有疑问请联系客服<br>发票查询官网：https://inv.lockclub.cn · 客服电话：400-888-8888</div>
+    '<div class="inv-footer">本发票由锁帮智慧酒店管理系统自动开具 · 如有疑问请联系客服<br>发票查询官网：https://inv.lockclub.cn · 客服电话：400-888-8888</div></body></html>';
+  var printWindow = window.open('', '_blank', 'width=800,height=900,scrollbars=yes');
+  if (!printWindow) { showToast('请允许弹出窗口以打印发票', 'warning'); return; }
+  printWindow.document.write(printContent);
+  printWindow.document.close();
+  showToast('🖨️ 打印窗口已打开，请执行打印', 'success');
+}
+
+// ============================================================
+// 【v4修复】缺失的告警处理函数
+// openAlertModalV2和openAlertModal被HTML按钮调用但函数不存在，创建简化版处理弹窗
+// ============================================================
+function openAlertModalV2(idx) {
+  var d = alertData[idx];
+  if (!d) { showToast('未找到告警记录', 'error'); return; }
+  var m = document.getElementById('modal-alert-detail-full');
+  if (m) m.remove();
+  openAlertDetailFullModal(idx);
+}
+
+function openAlertModal(idx) {
+  openAlertModalV2(idx);
+}
+
+// ============================================================
+// 【v4修复】缺失的发票CRUD函数
+// openInvoiceCreateModal/openInvoiceDetailModal/openInvoiceEditModal被调用但函数不存在
+// ============================================================
+function openInvoiceCreateModal() {
+  var m = document.getElementById('modal-invoice-create');
+  if (m) { m.classList.remove('hidden'); return; }
+  showToast('请到发票管理页面使用开具发票功能', 'info');
+}
+
+function openInvoiceDetailModal(invId) {
+  var inv = invoiceStore.find(function(i){ return i.id === invId; });
+  if (!inv) { showToast('未找到发票记录', 'error'); return; }
+  var m = document.getElementById('modal-invoice-detail');
+  if (!m) { showToast('发票详情弹窗未定义', 'error'); return; }
+  // 填充详情数据到DOM元素
+  var idEl = document.getElementById('invd-id');
+  if (idEl) idEl.textContent = inv.id;
+  var amountEl = document.getElementById('invd-amount');
+  if (amountEl) amountEl.textContent = '¥' + inv.amount;
+  var statusEl = document.getElementById('invd-status');
+  if (statusEl) { statusEl.textContent = inv.status; statusEl.style.color = inv.status === '已完成' ? 'var(--green)' : 'var(--orange)'; }
+  var nameEl = document.getElementById('invd-name');
+  if (nameEl) nameEl.textContent = inv.company;
+  var phoneEl = document.getElementById('invd-phone');
+  if (phoneEl) phoneEl.textContent = inv.phone || '--';
+  var roomEl = document.getElementById('invd-room');
+  if (roomEl) roomEl.textContent = inv.room || '--';
+  var typeEl = document.getElementById('invd-type');
+  if (typeEl) typeEl.textContent = inv.type || '普通发票';
+  var titleEl = document.getElementById('invd-title');
+  if (titleEl) titleEl.textContent = inv.company;
+  var taxEl = document.getElementById('invd-tax');
+  if (taxEl) taxEl.textContent = inv.tax || '--';
+  var timeEl = document.getElementById('invd-time');
+  if (timeEl) timeEl.textContent = inv.date;
+  var operatorEl = document.getElementById('invd-operator');
+  if (operatorEl) operatorEl.textContent = inv.operator || '系统开票';
+  m.classList.remove('hidden');
+}
+
+function openInvoiceEditModal(invId) {
+  showToast('发票编辑功能：ID ' + invId + '，请在开具发票弹窗中修改', 'info');
+}
+
+// ============================================================
+// 【v4修复】缺失的saveConfigTab函数
+// 系统配置Tab保存按钮调用但函数不存在
+// ============================================================
+function saveConfigTab(tab) {
+  var labels = {basic:'基本配置', notify:'通知配置', device:'设备阈值', security:'安全配置', backup:'数据备份', greeting:'语音迎宾', roles:'角色权限', building:'楼栋管理'};
+  var label = labels[tab] || '配置';
+  if (tab === 'basic') {
+    var hotelName = document.getElementById('cfg-hotel-name');
+    if (hotelName && !hotelName.value.trim()) { showToast('请填写酒店名称', 'error'); return; }
+  }
+  if (typeof applyConfigToSystem === 'function') applyConfigToSystem();
+  showToast('💾 ' + label + ' 已保存（同步至系统中）', 'success');
+  var now = new Date().toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit'});
+  var lastSaved = document.getElementById('cfg-last-saved');
+  if (lastSaved) lastSaved.textContent = '上次保存：' + now;
+  if (typeof addNotif === 'function') addNotif('💾', 'var(--green)', 'config', label + ' 已保存于 ' + now);
+}
+
+// ============================================================
+// 【v4修复】缺失的validatePhone和deleteKey函数
+// ============================================================
+function validatePhone(phone) {
+  return /^1[3-9]\d{9}$/.test((phone || '').replace(/\s/g, ''));
+}
+
+function deleteKey(keyId) {
+  openDeleteKeyModal(keyId);
+}
+
+function openDeleteKeyModal(keyId) {
+  var existing = document.getElementById('modal-delete-key');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-delete-key" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-delete-key\').remove()">' +
+    '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
+    '<div style="font-size:32px;">🗑️</div><div><div style="font-size:15px;font-weight:700;">确认删除钥匙</div><div style="font-size:12px;color:var(--text-muted);">钥匙删除后无法恢复</div></div></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;font-size:13px;color:var(--red);margin-bottom:16px;">' +
+    '⚠️ 确定要删除钥匙 <strong>' + keyId + '</strong> 吗？此操作不可撤销。</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'modal-delete-key\').remove()" class="modal-btn secondary" style="padding:8px 20px;">取消</button>' +
+    '<button onclick="confirmDeleteKey(\'' + keyId + '\')" class="modal-btn" style="background:var(--red);color:white;border:none;padding:8px 20px;">🗑️ 确认删除</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function confirmDeleteKey(keyId) {
+  document.getElementById('modal-delete-key') && document.getElementById('modal-delete-key').remove();
+  showToast('🗑️ 钥匙 ' + keyId + ' 已删除', 'success');
+  if (typeof addNotif === 'function') addNotif('🗑️', 'var(--red)', 'key', '钥匙 ' + keyId + ' 已删除');
+}
+
+// ============================================================
+// 【v4修复】操作日志关键词搜索
+// ============================================================
+function searchOplogByKeyword(keyword) {
+  if (!keyword || !keyword.trim()) { showToast('请输入搜索关键词', 'info'); return; }
+  var kw = keyword.trim().toLowerCase();
+  var tbody = document.getElementById('oplog-table-body');
+  if (!tbody) return;
+  var rows = tbody.querySelectorAll('tr');
+  var matchCount = 0;
+  rows.forEach(function(row) {
+    var text = row.textContent.toLowerCase();
+    row.style.display = text.indexOf(kw) >= 0 ? '' : 'none';
+    if (text.indexOf(kw) >= 0) matchCount++;
+  });
+  var countEl = document.getElementById('oplog-count-label');
+  if (countEl) countEl.textContent = '匹配 ' + matchCount + ' 条记录';
+  showToast('🔍 找到 ' + matchCount + ' 条匹配记录', 'info');
+}
+
+function clearOplogSearch() {
+  var input = document.getElementById('oplog-keyword-search');
+  if (input) input.value = '';
+  var tbody = document.getElementById('oplog-table-body');
+  if (!tbody) return;
+  tbody.querySelectorAll('tr').forEach(function(r){ r.style.display = ''; });
+  var total = tbody.querySelectorAll('tr').length;
+  var countEl = document.getElementById('oplog-count-label');
+  if (countEl) countEl.textContent = '共 ' + total + ' 条记录';
+  showToast('已清除搜索筛选', 'info');
+}
+
+// ============================================================
+// 【v4修复】页面初始化时增强UI：告警列表详情按钮、工单完成按钮
+// ============================================================
+function enhanceAlertDetailButton() {
+  var alertPage = document.getElementById('page-alert');
+  if (!alertPage) return;
+  var rows = alertPage.querySelectorAll('#alert-table-body tr');
+  rows.forEach(function(row, i) {
+    var cell = row.querySelector('td:last-child');
+    if (!cell) return;
+    if (cell.textContent.indexOf('详情') >= 0) return;
+    var detailBtn = document.createElement('button');
+    detailBtn.className = 'action-btn small';
+    detailBtn.style.cssText = 'padding:3px 8px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);margin-right:4px;';
+    detailBtn.textContent = '详情';
+    detailBtn.onclick = function(e) { e.stopPropagation(); openAlertDetailFullModal(i); };
+    cell.insertBefore(detailBtn, cell.firstChild);
+  });
+}
+
+function enhanceWorkorderCompleteButton() {
+  var woPage = document.getElementById('page-workorder');
+  if (!woPage) return;
+  var rows = woPage.querySelectorAll('#workorder-table-body tr');
+  rows.forEach(function(row, i) {
+    var statusCell = row.querySelector('td:nth-child(6)');
+    if (!statusCell) return;
+    var isPending = statusCell.textContent.indexOf('待接受') >= 0 || statusCell.textContent.indexOf('处理中') >= 0;
+    if (!isPending) return;
+    var actionCell = row.querySelector('td:last-child');
+    if (!actionCell || actionCell.textContent.indexOf('完成') >= 0) return;
+    var completeBtn = document.createElement('button');
+    completeBtn.className = 'action-btn small';
+    completeBtn.style.cssText = 'padding:3px 8px;font-size:11px;background:var(--green-bg);color:var(--green);border-color:var(--green);margin-right:4px;';
+    completeBtn.textContent = '完成';
+    completeBtn.onclick = function(e) { e.stopPropagation(); openWorkorderCompleteModal(i); };
+    actionCell.insertBefore(completeBtn, actionCell.firstChild);
+  });
+}
+
+// 页面加载后增强UI
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    enhanceAlertDetailButton();
+    enhanceWorkorderCompleteButton();
+    // 增强操作日志搜索UI
+    var searchContainer = document.querySelector('#cfg-content-oplog [style*="flex-wrap"], #cfg-content-oplog .card-body');
+    if (searchContainer && !document.getElementById('oplog-keyword-search')) {
+      var searchBox = document.createElement('div');
+      searchBox.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:10px;';
+      searchBox.innerHTML = '<input type="text" id="oplog-keyword-search" placeholder="🔍 搜索日志内容..." ' +
+        'style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:160px;" ' +
+        'onkeydown="if(event.key===\'Enter\')searchOplogByKeyword(this.value)">' +
+        '<button class="action-btn small" onclick="searchOplogByKeyword(document.getElementById(\'oplog-keyword-search\').value)" ' +
+        'style="padding:5px 10px;font-size:11px;">搜索</button>' +
+        '<button class="action-btn small" onclick="clearOplogSearch()" style="padding:5px 10px;font-size:11px;background:var(--bg);color:var(--text-muted);">清除</button>';
+      searchContainer.insertBefore(searchBox, searchContainer.firstChild);
+    }
+  }, 800);
+});
 </script>
 </body></html>
