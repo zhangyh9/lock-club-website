@@ -1103,7 +1103,7 @@ function showToast(msg, type) {
     <div class="menu-item" onclick="openInvoiceManagementModal()" style="color:var(--blue);"><span class="icon">📄</span><span>发票管理</span></div>
     <div class="menu-item" onclick="openStaffScheduleModal()" style="color:var(--purple);"><span class="icon">📅</span><span>排班管理</span></div>
     <div class="menu-item" onclick="openSatisfactionCenterModal()" style="color:var(--green);"><span class="icon">⭐</span><span>服务评价</span></div>
-    <div class="menu-item" onclick="openEnergyDetailPage()" style="color:var(--blue);"><span class="icon">⚡</span><span>能耗分析</span></div>
+    <div class="menu-item" onclick="typeof openEnergyDetailPageEnhanced !== 'undefined' ? openEnergyDetailPageEnhanced() : openEnergyDetailPage()" style="color:var(--blue);"><span class="icon">⚡</span><span>能耗分析</span></div>
     <div class="menu-item" onclick="openPointsMallPage()" style="color:var(--orange);"><span class="icon">🎁</span><span>积分商城</span></div>
     <!-- 【改进v3-新】键盘快捷键提示（悬浮在左侧底部） -->
     <div style="position:fixed;bottom:12px;left:12px;font-size:10px;color:var(--text-muted);z-index:100;background:var(--white);border:1px solid var(--border);border-radius:8px;padding:8px 10px;line-height:1.8;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
@@ -10834,7 +10834,7 @@ function openEditMemberLevelModalV2(idx) {
       showToast('📋 房间 ' + room + ' 清洁详情：退房时间14:05，清洁开始时间14:32，当前状态清洁中...', 'info');
     }
     function openHousekeepingTaskModal() {
-      showToast('+ 打开清洁任务分配表单...', 'info');
+      openHKTaskAddModal();
     }
     function openBulkAssignModal() {
       showToast('🔄 批量分配清洁任务...', 'info');
@@ -27684,7 +27684,7 @@ function openAlertModalV2(idx) {
     '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">📜 历史处理记录</div>' + historyHtml + '</div></div>' +
     '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
     '<button class="modal-btn secondary" onclick="document.getElementById('modal-alert-v2').remove()">取消</button>' +
-    '<button class="modal-btn primary" onclick="submitAlertProcessV2(' + str(idx) + ')">💾 确认处理</button></div></div></div>';
+    '<button class="modal-btn primary" onclick="submitAlertProcessV2(' + String(idx) + ')">💾 确认处理</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
   window._a2SolIdx = 0;
   window._a2ResIdx = -1;
@@ -28704,6 +28704,348 @@ var recordsStore = [
   {id:'rec-006', type:'out', name:'孙八', phone:'134****2222', room:'205', roomType:'大床房', method:'客户卡', time:'昨天 12:00', status:'已退房', operator:'前台-周敏'}
 ];
 var currentEditingRecordIdx = null;
+
+// ======= 【物联后台v4 改进1】工单搜索/筛选/重置功能 =======
+// 理由：工单页面的搜索框和筛选下拉调用 applyWorkorderSearch()，但该函数缺失
+// 功能：多条件筛选工单（关键词/类型/状态/优先级），重置恢复默认，实时更新表格
+function applyWorkorderSearch() {
+  var tbody = document.getElementById('workorder-table-body');
+  if (!tbody) return;
+  var keyword = (document.getElementById('wo-search-input') || {value:''}).value.toLowerCase().trim();
+  var typeFilter = (document.getElementById('wo-type-filter') || {value:'all'}).value;
+  var statusFilter = (document.getElementById('wo-status-filter') || {value:'all'}).value;
+  var priorityFilter = (document.getElementById('wo-priority-filter') || {value:'all'}).value;
+  var rows = tbody.querySelectorAll('tr');
+  var matchCount = 0;
+  rows.forEach(function(row) {
+    if (row.querySelector('[data-wo-id]') === null) return; // skip non-data rows
+    var woId = (row.querySelector('td:nth-child(2)') || {textContent:''}).textContent.toLowerCase();
+    var room = (row.querySelector('td:nth-child(4)') || {textContent:''}).textContent.toLowerCase();
+    var title = (row.querySelector('td:nth-child(5)') || {textContent:''}).textContent.toLowerCase();
+    var typeText = (row.querySelector('td:nth-child(3)') || {textContent:''}).textContent;
+    var statusText = (row.querySelector('td:nth-child(9)') || {textContent:''}).textContent;
+    var priorityText = (row.querySelector('td:nth-child(7)') || {textContent:''}).textContent;
+    var typeMatch = typeFilter === 'all' || typeText.includes(typeFilter);
+    var statusMatch = statusFilter === 'all' ||
+      (statusFilter === 'pending' && statusText.includes('待')) ||
+      (statusFilter === 'processing' && statusText.includes('处理')) ||
+      (statusFilter === 'done' && (statusText.includes('完成') || statusText.includes('已作废')));
+    var priorityMatch = priorityFilter === 'all' ||
+      (priorityFilter === 'urgent' && priorityText.includes('紧急')) ||
+      (priorityFilter === 'high' && priorityText.includes('高')) ||
+      (priorityFilter === 'normal' && priorityText.includes('普通')) ||
+      (priorityFilter === 'low' && priorityText.includes('低')) ||
+      (priorityFilter === 'overdue' && statusText.includes('待') && (typeText.includes('紧急') || typeText.includes('高')));
+    var keywordMatch = !keyword || woId.includes(keyword) || room.includes(keyword) || title.includes(keyword);
+    var show = typeMatch && statusMatch && priorityMatch && keywordMatch;
+    row.style.display = show ? '' : 'none';
+    if (show) matchCount++;
+  });
+  var infoEl = document.getElementById('wo-filter-info');
+  if (infoEl) {
+    infoEl.textContent = '共 ' + matchCount + ' 条';
+  }
+}
+
+function resetWorkorderSearch() {
+  var si = document.getElementById('wo-search-input');
+  var tf = document.getElementById('wo-type-filter');
+  var sf = document.getElementById('wo-status-filter');
+  var pf = document.getElementById('wo-priority-filter');
+  if (si) si.value = '';
+  if (tf) tf.value = 'all';
+  if (sf) sf.value = 'all';
+  if (pf) pf.value = 'all';
+  // Restore all rows
+  var tbody = document.getElementById('workorder-table-body');
+  if (tbody) tbody.querySelectorAll('tr').forEach(function(r){ r.style.display = ''; });
+  var infoEl = document.getElementById('wo-filter-info');
+  if (infoEl) infoEl.textContent = '共 ' + (tbody ? tbody.querySelectorAll('tr').length : 0) + ' 条';
+  showToast('🔄 工单筛选已重置', 'info');
+}
+
+// ======= 【物联后台v4 改进2】办理记录搜索/筛选/重置功能 =======
+// 理由：办理记录页面有搜索框和筛选下拉，applyRecordFilter/resetRecordFilter 函数缺失
+// 功能：多条件筛选记录（关键词/类型/状态），重置恢复默认，实时更新计数
+function applyRecordFilter() {
+  var tbody = document.getElementById('records-table-body');
+  if (!tbody) return;
+  var keyword = (document.getElementById('record-search-input') || {value:''}).value.toLowerCase().trim();
+  var typeFilter = (document.getElementById('record-type-filter') || {value:'all'}).value;
+  var statusFilter = (document.getElementById('record-status-filter') || {value:'all'}).value;
+  var rows = tbody.querySelectorAll('tr');
+  var matchCount = 0;
+  rows.forEach(function(row) {
+    var cells = row.querySelectorAll('td');
+    if (cells.length < 6) { row.style.display = ''; matchCount++; return; }
+    var name = (cells[2] || {textContent:''}).textContent.toLowerCase();
+    var phone = (cells[5] || {textContent:''}).textContent.toLowerCase();
+    var room = (cells[3] || {textContent:''}).textContent.toLowerCase();
+    var typeText = (cells[1] || {textContent:''}).textContent;
+    var statusText = (cells[7] || {textContent:''}).textContent;
+    var typeMatch = typeFilter === 'all' || typeText.includes(typeFilter === 'in' ? '入住' : typeFilter === 'out' ? '退房' : typeFilter === 'change' ? '换房' : typeFilter === 'cancel' ? '取消' : '');
+    var statusMatch = statusFilter === 'all' ||
+      (statusFilter === 'active' && statusText.includes('入住')) ||
+      (statusFilter === 'done' && (statusText.includes('退房') || statusText.includes('换房'))) ||
+      (statusFilter === 'cancelled' && statusText.includes('取消'));
+    var keywordMatch = !keyword || name.includes(keyword) || phone.includes(keyword) || room.includes(keyword);
+    var show = typeMatch && statusMatch && keywordMatch;
+    row.style.display = show ? '' : 'none';
+    if (show) matchCount++;
+  });
+  var cntEl = document.getElementById('record-filter-count');
+  if (cntEl) cntEl.textContent = '共 ' + matchCount + ' 条';
+  var pgnEl = document.getElementById('records-pagination-info');
+  if (pgnEl) pgnEl.textContent = '筛选结果：' + matchCount + ' 条';
+}
+
+function resetRecordFilter() {
+  var si = document.getElementById('record-search-input');
+  var tf = document.getElementById('record-type-filter');
+  var sf = document.getElementById('record-status-filter');
+  if (si) si.value = '';
+  if (tf) tf.value = 'all';
+  if (sf) sf.value = 'all';
+  var tbody = document.getElementById('records-table-body');
+  if (tbody) tbody.querySelectorAll('tr').forEach(function(r){ r.style.display = ''; });
+  var cntEl = document.getElementById('record-filter-count');
+  var pgnEl = document.getElementById('records-pagination-info');
+  var total = tbody ? tbody.querySelectorAll('tr').length : 0;
+  if (cntEl) cntEl.textContent = '共 ' + total + ' 条';
+  if (pgnEl) pgnEl.textContent = '第 1 / 1 页，共 ' + total + ' 条';
+  showToast('🔄 记录筛选已重置', 'info');
+}
+
+// ======= 【物联后台v4 改进3】客房清洁任务新增/编辑/删除完整CRUD闭环 =======
+// 理由：清洁管理只有静态表格，缺少新增清洁任务、编辑任务信息的完整CRUD闭环
+// 功能：任务新增弹窗 + 表格内直接编辑保洁员 + 删除任务 + 标记完成/开始清洁
+var hkTaskStore = [
+  {id:'hkt-001', room:'301', type:'亲子间', status:'dirty', priority:'urgent', staff:'李丽', duration:45, createTime:'今天 14:05', notes:'客户投诉优先'},
+  {id:'hkt-002', room:'302', type:'亲子间', status:'dirty', priority:'normal', staff:'王芳', duration:35, createTime:'今天 14:10', notes:''},
+  {id:'hkt-003', room:'201', type:'大床房', status:'cleaning', priority:'normal', staff:'张梅', duration:35, createTime:'今天 13:30', notes:'进行中22分钟'},
+  {id:'hkt-004', room:'203', type:'大床房', status:'maintain', priority:'urgent', staff:'', duration:120, createTime:'今天 11:00', notes:'空调故障待修'},
+  {id:'hkt-005', room:'305', type:'亲子间', status:'clean', priority:'low', staff:'刘婷', duration:40, createTime:'昨天', notes:'已完成'}
+];
+
+function openHKTaskAddModal() {
+  var existing = document.getElementById('modal-hk-task-add');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-hk-task-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-hk-task-add\').remove()">' +
+    '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">➕ 新增清洁任务</div>' +
+    '<button onclick="document.getElementById(\'modal-hk-task-add\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">' +
+    '<div class="form-group"><label class="form-label">房间号 <span class="required">*</span></label><select class="form-select" id="hkat-room"><option value="">请选择</option><option value="301">301室</option><option value="302">302室</option><option value="303">303室</option><option value="304">304室</option><option value="305">305室</option><option value="201">201室</option><option value="202">202室</option><option value="203">203室</option></select></div>' +
+    '<div class="form-group"><label class="form-label">保洁员</label><select class="form-select" id="hkat-staff"><option value="">未分配</option><option value="李丽">李丽</option><option value="王芳">王芳</option><option value="张梅">张梅</option><option value="刘婷">刘婷</option></select></div>' +
+    '<div class="form-group"><label class="form-label">优先级</label><select class="form-select" id="hkat-priority"><option value="normal">⚡ 普通</option><option value="urgent">🚨 紧急</option><option value="low">🔽 低</option></select></div>' +
+    '<div class="form-group"><label class="form-label">房型</label><select class="form-select" id="hkat-type"><option value="亲子间">亲子间</option><option value="大床房">大床房</option><option value="标准间">标准间</option><option value="套房">套房</option></select></div></div>' +
+    '<div class="form-group"><label class="form-label">备注</label><textarea class="form-textarea" id="hkat-notes" placeholder="特殊清洁要求..." style="min-height:60px;resize:vertical;width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:13px;"></textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-hk-task-add\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitHKTaskAdd()" style="background:var(--blue);color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;">💾 创建任务</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitHKTaskAdd() {
+  var room = document.getElementById('hkat-room').value;
+  var staff = document.getElementById('hkat-staff').value;
+  var priority = document.getElementById('hkat-priority').value;
+  var type = document.getElementById('hkat-type').value;
+  var notes = (document.getElementById('hkat-notes') || {value:''}).value.trim();
+  if (!room) { showToast('请选择房间号', 'error'); return; }
+  var now = new Date();
+  var timeStr = '今天 ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  hkTaskStore.unshift({
+    id: 'hkt-' + Date.now(),
+    room: room, type: type, status: 'dirty', priority: priority,
+    staff: staff, duration: 40, createTime: timeStr, notes: notes
+  });
+  document.getElementById('modal-hk-task-add').remove();
+  showToast('✅ 清洁任务已创建，房间 ' + room + ' 已加入清洁队列', 'success');
+  refreshHousekeepingTaskTable();
+}
+
+function refreshHousekeepingTaskTable() {
+  var tbody = document.getElementById('hk-task-body');
+  if (!tbody) return;
+  var statusBadge = {
+    dirty:{label:'🧹 待清洁', cls:'orange'},
+    cleaning:{label:'🧽 清洁中', cls:'blue'},
+    clean:{label:'✅ 已清洁', cls:'green'},
+    maintain:{label:'🔧 维修中', cls:'red'}
+  };
+  var priorityBadge = {
+    urgent:{label:'🚨 紧急', cls:'red'},
+    normal:{label:'⚡ 普通', cls:'orange'},
+    low:{label:'🔽 低', cls:'gray'}
+  };
+  var staffOptions = ['李丽','王芳','张梅','刘婷',''];
+  var staffHtml = function(cur) {
+    return staffOptions.filter(function(s){return true;}).map(function(s) {
+      return '<option value="'+s+'"'+(cur===s?' selected':'')+'>'+(s||'未分配')+'</option>';
+    }).join('');
+  };
+  tbody.innerHTML = hkTaskStore.map(function(t, idx) {
+    var st = statusBadge[t.status] || statusBadge.dirty;
+    var pt = priorityBadge[t.priority] || priorityBadge.normal;
+    var actionBtns = '';
+    if (t.status === 'dirty') {
+      actionBtns = '<button class="action-btn small" onclick="hkStartTask('+idx+')" style="background:var(--blue);color:white;border:none;font-size:11px;padding:3px 8px;border-radius:4px;">开始清洁</button>';
+    } else if (t.status === 'cleaning' || t.status === 'maintain') {
+      actionBtns = '<button class="action-btn small" onclick="hkCompleteTask('+idx+')" style="background:var(--green);color:white;border:none;font-size:11px;padding:3px 8px;border-radius:4px;">完成</button>';
+    } else {
+      actionBtns = '<span style="font-size:11px;color:var(--green);">✅ 完成</span>';
+    }
+    return '<tr>' +
+      '<td><strong>'+t.room+'</strong></td>' +
+      '<td style="font-size:12px;">'+t.type+'</td>' +
+      '<td><span class="tbadge" style="background:var(--'+st.cls+'-bg);color:var(--'+st.cls+');">'+st.label+'</span></td>' +
+      '<td><span class="tbadge" style="background:var(--'+pt.cls+'-bg);color:var(--'+pt.cls+');">'+pt.label+'</span></td>' +
+      '<td><select class="form-select" style="padding:4px 6px;font-size:12px;width:95px;" onchange="hkUpdateStaff('+idx+',this.value)"><option value="">未分配</option>'+
+      ['李丽','王芳','张梅','刘婷'].map(function(s){return '<option value="'+s+'"'+(t.staff===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>' +
+      '<td style="font-size:12px;">约'+t.duration+'分钟</td>' +
+      '<td style="font-size:12px;color:var(--text-muted);">'+(t.notes||'--')+'</td>' +
+      '<td>'+actionBtns+' <button class="action-btn small red" onclick="hkDeleteTask('+idx+')" style="font-size:11px;padding:3px 8px;">删除</button></td>' +
+      '</tr>';
+  }).join('');
+  if (hkTaskStore.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted);">暂无清洁任务</td></tr>';
+  }
+  // Update stat cards
+  var dirty = hkTaskStore.filter(function(t){return t.status==='dirty';}).length;
+  var cleaning = hkTaskStore.filter(function(t){return t.status==='cleaning'||t.status==='maintain';}).length;
+  var clean = hkTaskStore.filter(function(t){return t.status==='clean';}).length;
+  var dirtyEl = document.getElementById('hk-dirty-count'); if (dirtyEl) dirtyEl.textContent = dirty;
+  var cleaningEl = document.getElementById('hk-cleaning-count'); if (cleaningEl) cleaningEl.textContent = cleaning;
+  var cleanEl = document.getElementById('hk-clean-count'); if (cleanEl) cleanEl.textContent = clean;
+}
+
+function hkStartTask(idx) {
+  hkTaskStore[idx].status = 'cleaning';
+  showToast('🧽 房间 '+hkTaskStore[idx].room+' 已开始清洁', 'success');
+  refreshHousekeepingTaskTable();
+}
+
+function hkCompleteTask(idx) {
+  var t = hkTaskStore[idx];
+  t.status = 'clean';
+  t.notes = (t.notes ? t.notes + ' | ' : '') + '已完成';
+  showToast('✅ 房间 '+t.room+' 清洁完成，已可入住', 'success');
+  refreshHousekeepingTaskTable();
+}
+
+function hkUpdateStaff(idx, staff) {
+  hkTaskStore[idx].staff = staff;
+  showToast('👤 保洁员已更新为：'+(staff||'未分配'), 'info');
+}
+
+function hkDeleteTask(idx) {
+  var t = hkTaskStore[idx];
+  if (!confirm('确定删除房间 '+t.room+' 的清洁任务吗？')) return;
+  hkTaskStore.splice(idx, 1);
+  showToast('🗑️ 清洁任务已删除', 'warning');
+  refreshHousekeepingTaskTable();
+}
+
+// ======= 【物联后台v4 改进4】工单作废后重新打开功能 =======
+// 理由：工单作废后无法恢复，部分误操作工单需要支持重新打开
+// 功能：在工单详情和列表中支持"重新打开"已作废工单
+function reopenWorkorderById(woId) {
+  var idx = workorderData.findIndex(function(w){ return w.id === woId; });
+  if (idx === -1) { showToast('工单不存在', 'error'); return; }
+  if (!confirm('确定要重新打开工单 '+woId+' 吗？工单将恢复为待接受状态。')) return;
+  workorderData[idx].status = 'pending';
+  workorderData[idx].statusLabel = '⏳ 待接受';
+  showToast('↩️ 工单 '+woId+' 已重新打开', 'success');
+  // Update table row
+  var row = document.querySelector('[data-wo-id="'+woId+'"]');
+  if (row) {
+    row.setAttribute('data-status', 'pending');
+    var statusCell = row.querySelector('td:nth-child(9)');
+    if (statusCell) statusCell.innerHTML = '<span class="tbadge orange">待接受</span>';
+    var actionCell = row.querySelector('td:last-child');
+    if (actionCell) {
+      actionCell.innerHTML = '<button class="action-btn" onclick="openWorkorderDetailAndUpdate(\''+woId+'\')">处理</button> <button class="action-btn small" onclick="openWorkorderTransferModal(\''+woId+'\')" style="padding:2px 6px;font-size:10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">移交</button> <button class="action-btn small red" onclick="cancelWorkorderById(\''+woId+'\')" style="padding:2px 6px;font-size:10px;">作废</button>';
+    }
+  }
+  var detailModal = document.getElementById('modal-wo-detail-update');
+  if (detailModal) detailModal.remove();
+}
+
+// ======= 【物联后台v4 改进5】设备批量操作进度反馈 =======
+// 理由：批量设备控制操作没有进度反馈，用户不知道操作是否在进行中
+// 功能：批量操作时显示进度弹窗，操作完成后显示成功/失败统计
+function openBatchProgressModal(opName, total) {
+  var existing = document.getElementById('modal-batch-progress');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-batch-progress" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999999;">' +
+    '<div class="modal" style="width:380px;background:white;border-radius:12px;padding:24px;text-align:center;">' +
+    '<div style="font-size:36px;margin-bottom:12px;">⚡</div>' +
+    '<div style="font-size:16px;font-weight:700;margin-bottom:8px;">正在执行 '+opName+'</div>' +
+    '<div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">正在向 <strong id="bpm-count">0</strong> / '+total+' 个设备发送指令...</div>' +
+    '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:16px;">' +
+    '<div id="bpm-bar" style="height:100%;width:0%;background:var(--blue);border-radius:4px;transition:width 0.3s;"></div></div>' +
+    '<div style="font-size:12px;color:var(--text-muted);" id="bpm-status">准备中...</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function updateBatchProgress(current, total) {
+  var bar = document.getElementById('bpm-bar');
+  var cnt = document.getElementById('bpm-count');
+  var st = document.getElementById('bpm-status');
+  if (bar) bar.style.width = Math.round((current/total)*100)+'%';
+  if (cnt) cnt.textContent = current;
+  if (st) st.textContent = '已处理 '+current+' / '+total+' 个设备';
+}
+
+function closeBatchProgress() {
+  var m = document.getElementById('modal-batch-progress');
+  if (m) m.remove();
+}
+
+function showBatchResult(success, failed, opName) {
+  var m = document.getElementById('modal-batch-progress');
+  if (m) m.remove();
+  var html = '<div class="modal-overlay" id="modal-batch-result" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-result\').remove()">' +
+    '<div class="modal" style="width:380px;background:white;border-radius:12px;padding:24px;text-align:center;">' +
+    '<div style="font-size:48px;margin-bottom:12px;">'+(failed===0?'🎉':'⚠️')+'</div>' +
+    '<div style="font-size:16px;font-weight:700;margin-bottom:8px;">'+opName+' 执行完成</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0;">' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;"><div style="font-size:24px;font-weight:700;color:var(--green);">'+success+'</div><div style="font-size:11px;color:var(--green);">成功</div></div>' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;"><div style="font-size:24px;font-weight:700;color:var(--red);">'+failed+'</div><div style="font-size:11px;color:var(--red);">失败</div></div></div>' +
+    '<button class="modal-btn primary" onclick="document.getElementById(\'modal-batch-result\').remove()" style="background:var(--blue);color:white;border:none;padding:10px 32px;border-radius:8px;cursor:pointer;">知道了</button></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// Hook batch execution to show progress
+var _origExecuteBatchControl = null;
+try { _origExecuteBatchControl = executeBatchControl; } catch(e){}
+function executeBatchControl() {
+  var opNames = {unlock:'批量开锁', sync:'状态同步', power:'通断电控制', restart:'批量重启', battery:'换电池提醒', freeze:'冻结权限'};
+  var opName = opNames[batchSelectedOp] || batchSelectedOp;
+  if (batchSelectedDevices.length === 0) { showToast('请先选择要操作的设备', 'warning'); return; }
+  if (!batchSelectedOp) { showToast('请选择操作类型', 'warning'); return; }
+  openBatchProgressModal(opName, batchSelectedDevices.length);
+  var success = 0, failed = 0;
+  var delay = 0;
+  batchSelectedDevices.forEach(function(uuid, i) {
+    delay += 300;
+    setTimeout(function() {
+      var ok = Math.random() > 0.1; // simulate 90% success rate
+      if (ok) success++; else failed++;
+      updateBatchProgress(i+1, batchSelectedDevices.length);
+      if (i === batchSelectedDevices.length - 1) {
+        setTimeout(function() {
+          showBatchResult(success, failed, opName);
+          if (failed === 0) showToast('✅ '+opName+'完成：'+success+'个设备全部成功', 'success');
+          else showToast('⚠️ '+opName+'完成：'+success+'成功，'+failed+'个失败', 'warning');
+        }, 500);
+      }
+    }, delay);
+  });
+}
 
 function openAddRecordModal() {
   currentEditingRecordIdx = null;
