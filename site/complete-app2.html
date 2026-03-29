@@ -17272,11 +17272,27 @@ function renderFloorList() {
   html += '<button class="action-btn" onclick="openFloorAddModal(\'main\')" style="width:100%;margin-top:8px;padding:8px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);font-size:12px;">➕ 新增楼层</button>';
   el.innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">暂无楼层数据</div>';
 }
-function deleteFloor(floorNum) {
-  if (!confirm('确定删除 ' + floorNum + ' 层？')) return;
+function openDeleteFloorConfirm(floorNum) {
+  var existing = document.getElementById('modal-floor-delete-confirm');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-floor-delete-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-delete-confirm\').remove()">' +
+    '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
+    '<div style="width:44px;height:44px;background:var(--red-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">🗑️</div>' +
+    '<div><div style="font-size:15px;font-weight:700;">确认删除楼层</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">楼层号：' + floorNum + '层<br>删除后该楼层下所有房间数据将一并清除</div></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-floor-delete-confirm\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmFloorDelete(' + floorNum + ')" style="background:var(--red);color:white;border:none;">🗑️ 确认删除</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function confirmFloorDelete(floorNum) {
   floorStore = floorStore.filter(function(f) { return f.floor !== floorNum; });
-  showToast('楼层 ' + floorNum + ' 已删除', 'info');
+  document.getElementById('modal-floor-delete-confirm') && document.getElementById('modal-floor-delete-confirm').remove();
+  showToast('🗑️ ' + floorNum + '层已删除', 'success');
   renderFloorList();
+}
+function deleteFloor(floorNum) {
+  openDeleteFloorConfirm(floorNum);
 }
 function openAddFloorModal() {
   document.getElementById('floor-num').value = '';
@@ -26982,14 +26998,32 @@ function submitBuildingCRUD(id) {
   if (typeof renderBuildingList === 'function') renderBuildingList();
 }
 
-function confirmDeleteBuilding(id) {
+function openDeleteBuildingConfirm(id) {
   var b = buildingData.find(function(b){ return b.id === id; });
   if (!b) return;
-  if (!confirm('⚠️ 确认删除楼栋 "' + b.name + '"？\n\n注意：此操作不可逆，楼栋下所有房间数据将一并删除！')) return;
-  buildingData = buildingData.filter(function(b){ return b.id !== id; });
+  var existing = document.getElementById('modal-building-delete-confirm');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-building-delete-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-building-delete-confirm\').remove()">' +
+    '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
+    '<div style="width:44px;height:44px;background:var(--red-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">🗑️</div>' +
+    '<div><div style="font-size:15px;font-weight:700;">确认删除楼栋</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">楼栋名称：' + b.name + '<br>楼层：' + b.floors + '层 · 房间：' + b.rooms + '间<br>⚠️ 此操作不可逆，所有房间数据将一并清除</div></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-building-delete-confirm\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmBuildingDelete(\'' + id + '\')" style="background:var(--red);color:white;border:none;">🗑️ 确认删除</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function confirmBuildingDelete(id) {
+  var b = buildingData.find(function(b){ return b.id === id; });
+  if (!b) return;
+  buildingData = buildingData.filter(function(bb){ return bb.id !== id; });
+  document.getElementById('modal-building-delete-confirm') && document.getElementById('modal-building-delete-confirm').remove();
   document.getElementById('modal-building-crud') && document.getElementById('modal-building-crud').remove();
   showToast('🗑️ 楼栋 "' + b.name + '" 已删除', 'success');
   if (typeof renderBuildingList === 'function') renderBuildingList();
+}
+function confirmDeleteBuilding(id) {
+  openDeleteBuildingConfirm(id);
 }
 
 function renderBuildingList() {
@@ -27211,5 +27245,70 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 });
+
+// ============================================================
+// 【物联后台v4-改进1】房间CRUD删除闭环（修复缺失的deleteRoom函数）
+// 理由：楼栋管理页面deleteRoom('301')调用无函数定义，缺少二次确认弹窗
+// ============================================================
+function openDeleteRoomConfirm(roomNum) {
+  var existing = document.getElementById('modal-room-delete-confirm');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-room-delete-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-room-delete-confirm\').remove()">' +
+    '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
+    '<div style="width:44px;height:44px;background:var(--red-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">🗑️</div>' +
+    '<div><div style="font-size:15px;font-weight:700;">确认删除房间</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">房间号：' + roomNum + '室<br>删除后该房间所有设备绑定数据将一并清除</div></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-room-delete-confirm\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="confirmRoomDelete(\'' + roomNum + '\')" style="background:var(--red);color:white;border:none;">🗑️ 确认删除</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function confirmRoomDelete(roomNum) {
+  // 从DOM表格中移除该行（演示数据）
+  var rows = document.querySelectorAll('#bld-room-body tr');
+  rows.forEach(function(row) {
+    var cell = row.querySelector('td:first-child span');
+    if (cell && cell.textContent.trim() === roomNum) {
+      row.remove();
+    }
+  });
+  document.getElementById('modal-room-delete-confirm') && document.getElementById('modal-room-delete-confirm').remove();
+  showToast('🗑️ 房间 ' + roomNum + ' 已删除', 'success');
+}
+function deleteRoom(roomNum) {
+  openDeleteRoomConfirm(roomNum);
+}
+
+// ============================================================
+// 【物联后台v4-改进2】设备CRUD删除入口（统一deleteDevice调用）
+// 理由：设备编辑弹窗deleteDeviceConfirm由详情触发，需提供统一入口
+// ============================================================
+function deleteDevice(uuid) {
+  deleteDeviceConfirm(uuid);
+}
+
+// ============================================================
+// 【物联后台v4-改进3】设备管理分组标签状态高亮（filterDeviceByGroup）
+// 理由：切换分组标签时高亮状态丢失，需在切换后同步UI高亮
+// ============================================================
+function switchDeviceGroupTab(group, el) {
+  _deviceGroupFilter = group;
+  _devicePage = 1;
+  document.querySelectorAll('.dg-tag-btn').forEach(function(b) {
+    b.classList.remove('active');
+    b.style.background = 'var(--bg)';
+    b.style.color = 'var(--text)';
+    b.style.fontWeight = 'normal';
+    b.style.borderColor = 'var(--border)';
+  });
+  if (el) {
+    el.classList.add('active');
+    el.style.background = 'var(--blue-bg)';
+    el.style.color = 'var(--blue)';
+    el.style.fontWeight = '600';
+    el.style.borderColor = 'var(--blue)';
+  }
+  renderDeviceFilteredTable();
+}
 </script>
 </body></html>
