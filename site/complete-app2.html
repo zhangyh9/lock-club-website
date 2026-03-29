@@ -24363,8 +24363,8 @@ var _workorderCompleteIdx = null;
 
 function openWorkorderCompleteModal(idx) {
   _workorderCompleteIdx = idx;
-  var w = window._workorderList ? window._workorderList[idx] : null;
-  if (!w) return;
+  var w = (typeof workorderSLAStore !== 'undefined') ? workorderSLAStore[idx] : null;
+  if (!w) { showToast('未找到该工单记录', 'error'); return; }
   var existing = document.getElementById('modal-wo-complete');
   if (existing) existing.remove();
   var html = '<div class="modal-overlay" id="modal-wo-complete" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-complete\').remove()">' +
@@ -24421,7 +24421,7 @@ function submitWorkorderComplete() {
   if (note) toastMsg += '：' + note.substring(0, 20);
   document.getElementById('modal-wo-complete') && document.getElementById('modal-wo-complete').remove();
   showToast(toastMsg, statusVal === 'failed' ? 'warning' : 'success');
-  if (typeof renderWorkorderList === 'function') renderWorkorderList();
+  if (typeof renderWorkorderSLATable === 'function') renderWorkorderSLATable();
 }
 
 // ============================================================
