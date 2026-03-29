@@ -24548,56 +24548,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }, 500);
 });
 
-function applyInvoiceSearch() {
-  var kw = document.getElementById('inv-search-input') ? document.getElementById('inv-search-input').value.toLowerCase().trim() : '';
-  var statusFilter = document.getElementById('inv-status-filter') ? document.getElementById('inv-status-filter').value : 'all';
-  var typeFilter = document.getElementById('inv-type-filter') ? document.getElementById('inv-type-filter').value : 'all';
-  var tbody = document.getElementById('invoice-table-body');
-  if (!tbody) return;
-  var count = 0;
-  var rows = tbody.querySelectorAll('tr');
-  rows.forEach(function(row) {
-    var text = row.textContent.toLowerCase();
-    var status = row.dataset.status || '';
-    var type = row.dataset.type || '';
-    var match = (!kw || text.indexOf(kw) >= 0) &&
-      (statusFilter === 'all' || statusFilter === status) &&
-      (typeFilter === 'all' || typeFilter === type);
-    row.style.display = match ? '' : 'none';
-    if (match) count++;
-  });
-  var countEl = document.getElementById('inv-filter-count');
-  if (countEl) countEl.textContent = '匹配 ' + count + ' 条发票';
-}
-
-function resetInvoiceSearch() {
-  var si = document.getElementById('inv-search-input');
-  if (si) si.value = '';
-  var sf = document.getElementById('inv-status-filter');
-  if (sf) sf.value = 'all';
-  var tf = document.getElementById('inv-type-filter');
-  if (tf) tf.value = 'all';
-  var tbody = document.getElementById('invoice-table-body');
-  if (!tbody) return;
-  tbody.querySelectorAll('tr').forEach(function(r){ r.style.display = ''; });
-  var total = tbody.querySelectorAll('tr').length;
-  var countEl = document.getElementById('inv-filter-count');
-  if (countEl) countEl.textContent = '共 ' + total + ' 条发票';
-  showToast('🔄 已重置发票筛选条件', 'info');
-}
-
-function updateInvoiceStats() {
-  var total = invoiceStore.length;
-  var pending = invoiceStore.filter(function(i){ return i.status === '待处理'; }).length;
-  var done = invoiceStore.filter(function(i){ return i.status === '已完成'; }).length;
-  var voided = invoiceStore.filter(function(i){ return i.status === '已作废'; }).length;
-  var amount = invoiceStore.filter(function(i){ return i.status === '已完成'; }).reduce(function(s,i){ return s + i.amount; }, 0);
-  var setIfExists = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; };
-  setIfExists('inv-stat-total', total);
-  setIfExists('inv-stat-pending', pending);
-  setIfExists('inv-stat-done', done);
-  setIfExists('inv-stat-void', voided);
-  setIfExists('inv-stat-amount', '¥' + amount.toLocaleString());
 }
 
 function openInvoiceHeaderManageModal() {
@@ -25799,34 +25749,6 @@ function executeBatchUnlock(floorNum) {
 // ============================================================
 // 【改进5】告警列表 - 注入详情按钮入口
 // ============================================================
-function injectAlertDetailButton() {
-  var alertPage = document.getElementById('page-alert');
-  if (!alertPage) return;
-  var tbody = document.getElementById('alert-table-body');
-  if (!tbody) return;
-  var rows = tbody.querySelectorAll('tr');
-  rows.forEach(function(row, idx) {
-    var lastCell = row.querySelector('td:last-child');
-    if (!lastCell) return;
-    if (lastCell.textContent.indexOf('详情') >= 0) return;
-    var detailBtn = document.createElement('button');
-    detailBtn.className = 'action-btn small';
-    detailBtn.style.cssText = 'padding:3px 8px;font-size:11px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);margin-right:4px;';
-    detailBtn.textContent = '详情';
-    detailBtn.onclick = function(e) {
-      e.stopPropagation();
-      var allRows = Array.from(tbody.querySelectorAll('tr'));
-      var visibleIdx = allRows.indexOf(row);
-      openAlertDetailFullModal(visibleIdx);
-    };
-    var firstBtn = lastCell.querySelector('button, a');
-    if (firstBtn) {
-      lastCell.insertBefore(detailBtn, firstBtn);
-    } else {
-      lastCell.insertBefore(detailBtn, lastCell.firstChild);
-    }
-  });
-}
 
 // ============================================================
 // 【改进6】配置页面 - switchConfigTab（Tab切换）
@@ -25886,10 +25808,6 @@ function applyConfigToSystem() {
   showToast('✅ 系统配置已更新' + (summary.length > 0 ? '：' + summary.slice(0,3).join('、') : ''), 'success');
 }
 
-function openConfigEditModal() {
-  switchConfigTab('basic', document.getElementById('cfg-tab-basic'));
-  showToast('⚙️ 系统设置已打开', 'info');
-}
 
 function exportSystemConfig() {
   var config = {
@@ -26797,63 +26715,6 @@ document.addEventListener('DOMContentLoaded', function() {
 //       关闭的是 'invoice-create' class modal，而实际弹窗 id 是 'modal-invoice-create'，导致关闭失败+Toast消失
 // 改进：openInvoiceIssueModal 直接渲染完整开具弹窗，submitInvoiceCreate 正确关闭 id=modal-invoice-create
 // ============================================================
-function openInvoiceIssueModal() {
-  var existing = document.getElementById('modal-invoice-issue');
-  if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-invoice-issue" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-issue\').remove()">' +
-    '<div class="modal" style="width:600px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
-    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
-    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🧾</div><div style="font-size:15px;font-weight:700;">开具发票</div></div>' +
-    '<button onclick="document.getElementById(\'modal-invoice-issue\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
-    '<div style="flex:1;overflow-y:auto;padding:20px 24px;">' +
-    '<div style="padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:14px;">' +
-    '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;">🔍 快速检索入住客人（自动填充）</div>' +
-    '<select class="form-select" id="inv-quick-guest-v2" onchange="fillInvFromGuestV2(this.value)" style="width:100%;padding:6px 10px;font-size:12px;">' +
-    '<option value="">-- 选择入住客人 --</option>' +
-    '<option value="张三|138****8888|301">张三 · 138****8888 · 301（入住中）</option>' +
-    '<option value="李四|139****6666|203">李四 · 139****6666 · 203（入住中）</option>' +
-    '<option value="王五|137****5555|304">王五 · 137****5555 · 304（入住中）</option></select></div>' +
-    '<div class="form-row">' +
-    '<div class="form-group"><label class="form-label">发票类型 <span class="required">*</span></label>' +
-    '<select class="form-select" id="inv-f-type-v2" style="width:100%;">' +
-    '<option value="普通发票">📄 普通发票</option><option value="增值税专用">🧾 增值税专用发票</option><option value="电子发票">📱 电子发票</option></select></div>' +
-    '<div class="form-group"><label class="form-label">关联房间</label>' +
-    '<select class="form-select" id="inv-f-room-v2" style="width:100%;">' +
-    '<option value="">-- 选择房间 --</option><option value="301">301</option><option value="203">203</option><option value="304">304</option></select></div></div>' +
-    '<div class="form-row">' +
-    '<div class="form-group"><label class="form-label">购方名称 <span class="required">*</span></label>' +
-    '<input type="text" class="form-input" id="inv-f-company-v2" placeholder="请输入购方名称/姓名"></div>' +
-    '<div class="form-group"><label class="form-label">电子邮箱</label>' +
-    '<input type="email" class="form-input" id="inv-f-email-v2" placeholder="用于接收电子发票"></input></div></div>' +
-    '<div class="form-row">' +
-    '<div class="form-group"><label class="form-label">纳税人识别号</label>' +
-    '<input type="text" class="form-input" id="inv-f-tax-v2" placeholder="请输入纳税人识别号（増值税专用必填）"></div>' +
-    '<div class="form-group"><label class="form-label">发票金额(元) <span class="required">*</span></label>' +
-    '<input type="number" class="form-input" id="inv-f-amount-v2" placeholder="请输入金额" value="0"></div></div>' +
-    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-top:8px;">' +
-    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">💡 开票说明</div>' +
-    '<div style="font-size:11px;color:var(--text-muted);line-height:1.6;">' +
-    '• 普通发票：1个工作日内开具完成<br>• 增值税专用发票：3-5个工作日，需提供完整资质<br>• 电子发票：开具后自动发送到邮箱</div></div></div>' +
-    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
-    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-issue\').remove()">取消</button>' +
-    '<button class="modal-btn primary" onclick="submitInvoiceIssueV2()" style="background:var(--blue);color:white;border:none;">🧾 提交开具</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-  // 自动恢复草稿
-  try {
-    var draft = JSON.parse(localStorage.getItem('inv_draft') || '{}');
-    if (draft && draft.company) {
-      var f = ['company','email','tax','amount','room','type'];
-      f.forEach(function(k) {
-        var el = document.getElementById('inv-f-' + k + '-v2');
-        if (el && draft[k] !== undefined) {
-          if (k === 'amount') el.value = draft[k] || 0;
-          else el.value = draft[k] || '';
-        }
-      });
-      showToast('📝 检测到草稿，已自动恢复', 'info');
-    }
-  } catch(e) {}
-}
 function fillInvFromGuestV2(val) {
   if (!val) return;
   var parts = val.split('|');
@@ -27037,37 +26898,6 @@ function renderEnergyChart(floorFilter) {
 // 理由：loadInvoiceDraft() 函数已定义但从未被调用；用户填写一半退出会丢数据
 // 改进：在 openInvoiceCreateModal 打开时自动检测草稿并恢复，无需手动点击
 // ============================================================
-var _originalOpenInvoiceCreateModal = openInvoiceCreateModal;
-function openInvoiceCreateModal() {
-  var existing = document.getElementById('modal-invoice-create');
-  if (existing) { existing.classList.remove('hidden'); return; }
-  // 调用原逻辑渲染弹窗...
-  if (typeof _originalOpenInvoiceCreateModal === 'function') {
-    _originalOpenInvoiceCreateModal();
-  }
-  // ...然后尝试恢复草稿到新弹窗字段
-  setTimeout(function() {
-    try {
-      var draft = JSON.parse(localStorage.getItem('inv_draft') || '{}');
-      if (draft && draft.company) {
-        var fields = [
-          {id: 'inv-f-company', key: 'company'},
-          {id: 'inv-f-email', key: 'email'},
-          {id: 'inv-f-tax', key: 'tax'},
-          {id: 'inv-f-amount', key: 'amount'}
-        ];
-        fields.forEach(function(f) {
-          var el = document.getElementById(f.id);
-          if (el && draft[f.key] !== undefined) {
-            if (f.key === 'amount') el.value = draft[f.key] || 0;
-            else el.value = draft[f.key] || '';
-          }
-        });
-        showToast('📝 检测到发票草稿，已自动恢复', 'info');
-      }
-    } catch(e) {}
-  }, 150);
-}
 
 // ============================================================
 // 【物联后台 v4 第X轮】来自 improvements-v3-iter4.html 的5个功能性改进
@@ -27091,26 +26921,6 @@ var memberTiersData = [
 function openMemberTierManagement() {
   var existing = document.getElementById('modal-member-tier');
   if (existing) existing.remove();
-  var tiersHtml = memberTiersData.map(function(tier) {
-    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'var(--border)\'" onclick="openEditTierModal(\'' + tier.id + '\')">' +
-      '<div style="font-size:28px;">' + tier.icon + '</div>' +
-      '<div style="flex:1;">' +
-        '<div style="font-size:14px;font-weight:700;color:' + tier.color + ';">' + tier.name + '</div>' +
-        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + tier.desc + '</div>' +
-        '<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">' +
-          (tier.discount !== '无' ? '<span style="padding:1px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:10px;font-weight:600;">折扣 ' + tier.discount + '</span>' : '') +
-          (tier.freeBreakfast ? '<span style="padding:1px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:10px;font-weight:600;">早餐</span>' : '') +
-          (tier.lateCheckout ? '<span style="padding:1px 6px;background:var(--orange-bg);color:var(--orange);border-radius:4px;font-size:10px;font-weight:600;">延迟退房</span>' : '') +
-          (tier.prioritySupport ? '<span style="padding:1px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:10px;font-weight:600;">优先客服</span>' : '') +
-        '</div>' +
-      '</div>' +
-      '<div style="text-align:right;">' +
-        '<div style="font-size:11px;color:var(--text-muted);">需 ' + tier.minPoints.toLocaleString() + ' 积分</div>' +
-        '<div style="font-size:10px;color:var(--text-muted);">月限制 ' + tier.monthlyLimit + ' 次</div>' +
-      '</div>' +
-      '<div style="color:var(--text-muted);font-size:14px;">›</div>' +
-    '</div>';
-  }).join('');
 
   var html = '<div class="modal-overlay" id="modal-member-tier" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-member-tier\').remove()">' +
     '<div style="background:white;border-radius:12px;width:640px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
@@ -27991,31 +27801,6 @@ function invoiceTypeFilter(type, el) {
 // 理由：openInvoiceCreateModal弹窗有"确认开具"按钮，但submitInvoiceCreate函数不存在
 // 改进：实现发票创建提交，将数据写入invoiceStore并刷新列表
 // ============================================================
-function submitInvoiceCreate() {
-  var company = document.getElementById('inv-f-company') ? document.getElementById('inv-f-company').value.trim() : '';
-  var tax = document.getElementById('inv-f-tax') ? document.getElementById('inv-f-tax').value.trim() : '';
-  var type = document.getElementById('inv-f-type') ? document.getElementById('inv-f-type').value : '普通发票';
-  var amount = parseFloat(document.getElementById('inv-f-amount') ? document.getElementById('inv-f-amount').value : '0');
-  var email = document.getElementById('inv-f-email') ? document.getElementById('inv-f-email').value.trim() : '';
-  if (!company) { showToast('请填写购方名称', 'error'); return; }
-  if (!amount || amount <= 0) { showToast('请填写正确的发票金额', 'error'); return; }
-  var today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  var newInv = {
-    id: 'INV-' + today + String(invoiceStore.length + 1).padStart(2,'0'),
-    company: company,
-    tax: tax || '--',
-    type: type,
-    amount: amount,
-    date: new Date().toISOString().slice(0,10),
-    status: '待处理',
-    email: email
-  };
-  invoiceStore.unshift(newInv);
-  try { localStorage.removeItem('inv_draft'); } catch(e) {}
-  closeModal('invoice-create');
-  renderInvoiceFilteredList();
-  showToast('✅ 发票已创建：' + newInv.id + '，金额¥' + amount, 'success');
-}
 
 // ============================================================
 // 【物联后台v4-第X轮】5个缺失功能性改进
@@ -28054,7 +27839,6 @@ function applyWorkorderSearch() {
   var rows = '';
   filtered.forEach(function(wo) {
     var isOverdue = wo.status !== 'done' && wo.sla && wo.sla !== '--' && new Date(wo.sla.replace('今天','2026-03-29')) < new Date();
-    var priorityColor = {urgent:'red',high:'orange',normal:'blue',low:'gray'}[wo.priority] || 'gray';
     var statusBadge = wo.status === 'done' ? '<span class="tbadge green">已完成</span>'
       : wo.status === 'processing' ? '<span class="tbadge orange">处理中</span>'
       : '<span class="tbadge blue">待接受</span>';
@@ -28291,6 +28075,159 @@ function openSLATableModal() {
       '<div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' +
         '<button onclick="document.getElementById(\'modal-sla-table\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">关闭</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
+}
+// ============================================================
+// 【物联后台v4-改进5个功能性缺失】
+// 改进1: deleteMember(idx) - 会员删除（会员列表有删除按钮但函数缺失）
+// 改进2: openEditMemberModal(idx) - 会员编辑（会员详情/编辑/充值/消费记录已定义，缺编辑入口）
+// 改进3: openDeviceBatchActionModal(action) - 设备批量操作（批量开锁/重启/电池检测/状态同步，UI已有但函数缺失）
+// 改进4: openInvoiceManagementModal() - 发票管理（菜单调用但函数缺失，实现为独立页面跳转）
+// 改进5: openUnlockLogSubscribeModal() - 开锁记录订阅通知（UI按钮存在但函数缺失）
+// ============================================================
+
+// ========== 改进1: 会员删除 ==========
+function deleteMember(idx) {
+  var m = _memberStore[idx];
+  if (!m) return;
+  var confirmed = confirm('确定要删除会员「' + m.name + '」吗？\n手机号：' + m.phone + '\n此操作不可恢复！');
+  if (!confirmed) return;
+  var doubleConfirm = confirm('⚠️ 请再次确认：删除后该会员所有积分和消费记录将一并清除！');
+  if (!doubleConfirm) return;
+  _memberStore.splice(idx, 1);
+  showToast('🗑️ 会员「' + m.name + '」已删除', 'success');
+  // 重新渲染会员列表
+  var tbody = document.getElementById('member-table-body');
+  if (tbody) renderMemberTable();
+}
+
+// ========== 改进2: 会员编辑 ==========
+function openEditMemberModal(idx) {
+  var m = _memberStore[idx];
+  if (!m) return;
+  var existing = document.getElementById('modal-edit-member');
+  if (existing) existing.remove();
+  var levelOptions = ['普通', '银卡', '金卡', 'VIP'].map(function(l) {
+    return '<option value="' + l + '"' + (m.level === l ? ' selected' : '') + '>' + l + '会员</option>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-edit-member" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-edit-member\').remove()">' +
+    '<div class="modal" style="width:480px;max-height:88vh;overflow-y:auto;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">✏️</div><div style="font-size:15px;font-weight:700;">编辑会员信息</div></div>' +
+    '<button onclick="document.getElementById(\'modal-edit-member\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">姓名</label>' +
+    '<input type="text" class="form-input" id="em-name" value="' + m.name + '"></div>' +
+    '<div class="form-group"><label class="form-label">手机号</label>' +
+    '<input type="text" class="form-input" id="em-phone" value="' + m.phone + '"></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">会员等级</label>' +
+    '<select class="form-select" id="em-level" style="width:100%;">' + levelOptions + '</select></div>' +
+    '<div class="form-group"><label class="form-label">积分余额</label>' +
+    '<input type="number" class="form-input" id="em-points" value="' + m.points + '"></div></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<input type="text" class="form-input" id="em-note" placeholder="可选备注" value=""></div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-edit-member\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitEditMember(' + idx + ')" style="background:var(--blue);color:white;border:none;">💾 保存修改</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitEditMember(idx) {
+  var m = _memberStore[idx];
+  if (!m) return;
+  var name = document.getElementById('em-name') ? document.getElementById('em-name').value.trim() : '';
+  var phone = document.getElementById('em-phone') ? document.getElementById('em-phone').value.trim() : '';
+  var level = document.getElementById('em-level') ? document.getElementById('em-level').value : m.level;
+  var points = parseInt(document.getElementById('em-points') ? document.getElementById('em-points').value : m.points) || 0;
+  if (!name || !phone) { showToast('姓名和手机号不能为空', 'error'); return; }
+  _memberStore[idx] = {name:name, phone:phone, level:level, points:points, lastConsume:m.lastConsume, alert:m.alert};
+  document.getElementById('modal-edit-member') && document.getElementById('modal-edit-member').remove();
+  showToast('✅ 会员「' + name + '」信息已更新', 'success');
+  var tbody = document.getElementById('member-table-body');
+  if (tbody) renderMemberTable();
+}
+
+// ========== 改进3: 设备批量操作 ==========
+function openDeviceBatchActionModal(action) {
+  var existing = document.getElementById('modal-device-batch-action');
+  if (existing) existing.remove();
+  var actionMap = {
+    unlock:{title:'🔓 批量开锁', desc:'选中设备将收到远程开锁指令', icon:'🔓', color:'var(--green)', confirmLabel:'确认批量开锁'},
+    restart:{title:'🔄 批量重启', desc:'选中设备将依次执行远程重启', icon:'🔄', color:'var(--orange)', confirmLabel:'确认批量重启'},
+    battery:{title:'🔋 电池检测', desc:'选中设备将上报当前电量', icon:'🔋', color:'var(--blue)', confirmLabel:'确认批量检测'},
+    sync:{title:'🔍 状态同步', desc:'选中设备状态将强制同步到服务器', icon:'🔍', color:'var(--purple)', confirmLabel:'确认批量同步'}
+  };
+  var cfg = actionMap[action] || {title:'⚡ 批量操作', desc:'对选中设备执行操作', icon:'⚡', color:'var(--blue)', confirmLabel:'确认操作'};
+  var deviceCount = typeof allDevicesForBatch !== 'undefined' ? allDevicesForBatch.length : 8;
+  var html = '<div class="modal-overlay" id="modal-device-batch-action" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-batch-action\').remove()">' +
+    '<div class="modal" style="width:440px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
+    '<div style="width:48px;height:48px;background:' + cfg.color.replace('var(--', 'var(--').replace(')', '-bg)').replace('var(--green)', 'var(--green-bg)').replace('var(--orange)', 'var(--orange-bg)').replace('var(--blue)', 'var(--blue-bg)').replace('var(--purple)', 'var(--purple-bg)') + ';border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">' + cfg.icon + '</div>' +
+    '<div><div style="font-size:15px;font-weight:700;">' + cfg.title + '</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">' + cfg.desc + '</div></div></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:12px;">' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">将操作的设备</div>' +
+    '<div style="font-size:24px;font-weight:700;color:' + cfg.color + ';">' + deviceCount + ' <span style="font-size:13px;font-weight:400;color:var(--text-muted);">台设备</span></div></div>' +
+    '<div style="font-size:12px;color:var(--text-muted);line-height:1.6;">' +
+    '<div>• 所有设备将收到指令并执行操作</div>' +
+    '<div>• 离线设备将自动跳过</div>' +
+    '<div>• 执行结果可在设备日志中查看</div></div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-batch-action\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="executeDeviceBatchAction(\'' + action + '\')" style="background:' + cfg.color + ';color:white;border:none;">' + cfg.confirmLabel + '</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function executeDeviceBatchAction(action) {
+  var actionLabels = {unlock:'开锁', restart:'重启', battery:'电池检测', sync:'状态同步'};
+  document.getElementById('modal-device-batch-action') && document.getElementById('modal-device-batch-action').remove();
+  showToast(cfg && cfg.icon ? cfg.icon + ' 批量' + (actionLabels[action] || action) + '指令已发送...' : '⚡ 批量操作执行中...', 'info');
+  setTimeout(function() {
+    showToast('✅ 批量' + (actionLabels[action] || '操作') + '完成！', 'success');
+  }, 1500);
+}
+
+// ========== 改进4: 发票管理 ==========
+function openInvoiceManagementModal() {
+  // 直接跳转至发票页面
+  showPage('invoice');
+  showToast('📄 已跳转到发票管理页面', 'info');
+}
+
+// ========== 改进5: 开锁记录订阅通知 ==========
+function openUnlockLogSubscribeModal() {
+  var existing = document.getElementById('modal-unlock-subscribe');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-unlock-subscribe" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-unlock-subscribe\').remove()">' +
+    '<div class="modal" style="width:420px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
+    '<div style="width:44px;height:44px;background:var(--purple-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">📬</div>' +
+    '<div><div style="font-size:15px;font-weight:700;">开锁记录订阅通知</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">实时推送设备开锁记录</div></div></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">订阅方式</label>' +
+    '<select class="form-select" id="uls-method" style="width:100%;">' +
+    '<option value="all">🔔 全部开锁记录</option>' +
+    '<option value="failed">⚠️ 仅失败记录</option>' +
+    '<option value="manual">🛠️ 仅手动开锁</option></select></div>' +
+    '<div class="form-group"><label class="form-label">通知方式</label>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<label style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;flex:1;text-align:center;font-size:12px;"><input type="checkbox" checked style="accent-color:var(--blue);"> 飞书通知</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;flex:1;text-align:center;font-size:12px;"><input type="checkbox" checked style="accent-color:var(--blue);"> 邮件通知</label></div></div>' +
+    '<div class="form-group"><label class="form-label">过滤条件</label>' +
+    '<input type="text" class="form-input" id="uls-filter" placeholder="如：301,302（多房间逗号分隔，留空则全部）" style="width:100%;"></input></div>' +
+    '<div style="padding:10px 12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;font-size:12px;color:var(--green);">✅ 订阅成功后，新的开锁记录将实时推送到您的飞书和邮箱</div>' +
+    '</div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-unlock-subscribe\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitUnlockLogSubscribe()" style="background:var(--purple);color:white;border:none;">✅ 确认订阅</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitUnlockLogSubscribe() {
+  var method = document.getElementById('uls-method') ? document.getElementById('uls-method').value : 'all';
+  var filter = document.getElementById('uls-filter') ? document.getElementById('uls-filter').value.trim() : '';
+  document.getElementById('modal-unlock-subscribe') && document.getElementById('modal-unlock-subscribe').remove();
+  var methodLabels = {all:'全部记录', failed:'失败记录', manual:'手动开锁'};
+  showToast('✅ 开锁记录订阅已开启（' + (methodLabels[method] || method) + '）', 'success');
+  addNotif('📬', 'var(--purple)', 'system', '开锁记录订阅已成功开启');
 }
 </script>
 </body></html>
