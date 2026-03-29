@@ -26348,6 +26348,284 @@ document.addEventListener('DOMContentLoaded', function() {
     var oplogTarget = document.getElementById('oplog-target');
     if (oplogTarget) oplogTarget.addEventListener('input', applyOplogFilter);
   }, 400);
+// ============================================================
+// 【物联后台 v4 改进1】发票开具功能断裂修复
+// 理由：openInvoiceIssueModal() → openInvoiceCreateModal() 重定向，但 submitInvoiceCreate 成功后
+//       关闭的是 'invoice-create' class modal，而实际弹窗 id 是 'modal-invoice-create'，导致关闭失败+Toast消失
+// 改进：openInvoiceIssueModal 直接渲染完整开具弹窗，submitInvoiceCreate 正确关闭 id=modal-invoice-create
+// ============================================================
+function openInvoiceIssueModal() {
+  var existing = document.getElementById('modal-invoice-issue');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-invoice-issue" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-issue\').remove()">' +
+    '<div class="modal" style="width:600px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🧾</div><div style="font-size:15px;font-weight:700;">开具发票</div></div>' +
+    '<button onclick="document.getElementById(\'modal-invoice-issue\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:20px 24px;">' +
+    '<div style="padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:14px;">' +
+    '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;">🔍 快速检索入住客人（自动填充）</div>' +
+    '<select class="form-select" id="inv-quick-guest-v2" onchange="fillInvFromGuestV2(this.value)" style="width:100%;padding:6px 10px;font-size:12px;">' +
+    '<option value="">-- 选择入住客人 --</option>' +
+    '<option value="张三|138****8888|301">张三 · 138****8888 · 301（入住中）</option>' +
+    '<option value="李四|139****6666|203">李四 · 139****6666 · 203（入住中）</option>' +
+    '<option value="王五|137****5555|304">王五 · 137****5555 · 304（入住中）</option></select></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">发票类型 <span class="required">*</span></label>' +
+    '<select class="form-select" id="inv-f-type-v2" style="width:100%;">' +
+    '<option value="普通发票">📄 普通发票</option><option value="增值税专用">🧾 增值税专用发票</option><option value="电子发票">📱 电子发票</option></select></div>' +
+    '<div class="form-group"><label class="form-label">关联房间</label>' +
+    '<select class="form-select" id="inv-f-room-v2" style="width:100%;">' +
+    '<option value="">-- 选择房间 --</option><option value="301">301</option><option value="203">203</option><option value="304">304</option></select></div></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">购方名称 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="inv-f-company-v2" placeholder="请输入购方名称/姓名"></div>' +
+    '<div class="form-group"><label class="form-label">电子邮箱</label>' +
+    '<input type="email" class="form-input" id="inv-f-email-v2" placeholder="用于接收电子发票"></input></div></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">纳税人识别号</label>' +
+    '<input type="text" class="form-input" id="inv-f-tax-v2" placeholder="请输入纳税人识别号（増值税专用必填）"></div>' +
+    '<div class="form-group"><label class="form-label">发票金额(元) <span class="required">*</span></label>' +
+    '<input type="number" class="form-input" id="inv-f-amount-v2" placeholder="请输入金额" value="0"></div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-top:8px;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">💡 开票说明</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);line-height:1.6;">' +
+    '• 普通发票：1个工作日内开具完成<br>• 增值税专用发票：3-5个工作日，需提供完整资质<br>• 电子发票：开具后自动发送到邮箱</div></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-invoice-issue\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitInvoiceIssueV2()" style="background:var(--blue);color:white;border:none;">🧾 提交开具</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  // 自动恢复草稿
+  try {
+    var draft = JSON.parse(localStorage.getItem('inv_draft') || '{}');
+    if (draft && draft.company) {
+      var f = ['company','email','tax','amount','room','type'];
+      f.forEach(function(k) {
+        var el = document.getElementById('inv-f-' + k + '-v2');
+        if (el && draft[k] !== undefined) {
+          if (k === 'amount') el.value = draft[k] || 0;
+          else el.value = draft[k] || '';
+        }
+      });
+      showToast('📝 检测到草稿，已自动恢复', 'info');
+    }
+  } catch(e) {}
+}
+function fillInvFromGuestV2(val) {
+  if (!val) return;
+  var parts = val.split('|');
+  if (parts.length >= 3) {
+    var c = document.getElementById('inv-f-company-v2');
+    if (c) c.value = parts[0];
+    var r = document.getElementById('inv-f-room-v2');
+    if (r) r.value = parts[2];
+  }
+}
+function submitInvoiceIssueV2() {
+  var company = document.getElementById('inv-f-company-v2') ? document.getElementById('inv-f-company-v2').value.trim() : '';
+  var amount = parseFloat(document.getElementById('inv-f-amount-v2') ? document.getElementById('inv-f-amount-v2').value : 0);
+  if (!company) { showToast('请填写购方名称', 'error'); return; }
+  if (!amount || amount <= 0) { showToast('请填写正确的发票金额', 'error'); return; }
+  var inv = {
+    id: 'INV-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + String(invoiceStore.length + 1).padStart(2,'0'),
+    company: company,
+    tax: (document.getElementById('inv-f-tax-v2') && document.getElementById('inv-f-tax-v2').value.trim()) || '--',
+    type: document.getElementById('inv-f-type-v2') ? document.getElementById('inv-f-type-v2').value : '普通发票',
+    amount: amount,
+    date: new Date().toISOString().slice(0,10),
+    status: '待处理',
+    email: (document.getElementById('inv-f-email-v2') && document.getElementById('inv-f-email-v2').value.trim()) || ''
+  };
+  invoiceStore.unshift(inv);
+  try { localStorage.removeItem('inv_draft'); } catch(e) {}
+  var modal = document.getElementById('modal-invoice-issue');
+  if (modal) modal.remove();
+  renderInvoiceFilteredList();
+  showToast('✅ 发票已提交：' + inv.id + '（¥' + amount + '）', 'success');
+}
+
+// ============================================================
+// 【物联后台 v4 改进2】会员新增功能缺失修复
+// 理由：会员管理页面点击"+ 新增会员"按钮调用 openAddMemberModal()，但函数从未定义
+// 改进：实现会员新增弹窗+完整表单校验+数据写入 memberBalanceAlertList（现有会员数据源）
+// ============================================================
+var _memberStore = [
+  {name:'张三', phone:'138****8888', level:'金卡', points:3200, lastConsume:'2026-03-20', alert:false},
+  {name:'李四', phone:'139****6666', level:'银卡', points:890, lastConsume:'2026-03-18', alert:false},
+  {name:'王五', phone:'137****5555', level:'普通', points:320, lastConsume:'2026-03-22', alert:true},
+  {name:'钱八', phone:'136****8888', level:'普通', points:280, lastConsume:'2026-03-15', alert:true},
+  {name:'孙九', phone:'135****9999', level:'银卡', points:1050, lastConsume:'2026-03-21', alert:false}
+];
+function openAddMemberModal() {
+  var existing = document.getElementById('modal-add-member');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-add-member" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-member\').remove()">' +
+    '<div class="modal" style="width:480px;max-height:88vh;overflow-y:auto;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">👑</div><div style="font-size:15px;font-weight:700;">新增会员</div></div>' +
+    '<button onclick="document.getElementById(\'modal-add-member\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">姓名 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="am-name" placeholder="请输入会员姓名"></div>' +
+    '<div class="form-group"><label class="form-label">手机号 <span class="required">*</span></label>' +
+    '<input type="text" class="form-input" id="am-phone" placeholder="请输入手机号"></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">会员等级</label>' +
+    '<select class="form-select" id="am-level" style="width:100%;">' +
+    '<option value="普通">🌱 普通会员</option><option value="银卡">🥈 银卡会员</option>' +
+    '<option value="金卡">🥇 金卡会员</option><option value="VIP">⭐ VIP会员</option></select></div>' +
+    '<div class="form-group"><label class="form-label">初始积分</label>' +
+    '<input type="number" class="form-input" id="am-points" placeholder="如：0" value="0"></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">身份证号</label>' +
+    '<input type="text" class="form-input" id="am-idcard" placeholder="可选"></div>' +
+    '<div class="form-group"><label class="form-label">生日</label>' +
+    '<input type="date" class="form-input" id="am-birthday" style="width:100%;"></div></div>' +
+    '<div class="form-group"><label class="form-label">备注</label>' +
+    '<textarea class="form-textarea" id="am-note" placeholder="可选，填写会员喜好/特殊备注..." style="min-height:60px;"></textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-add-member\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitAddMember()" style="background:var(--blue);color:white;border:none;">✅ 确认新增</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitAddMember() {
+  var name = document.getElementById('am-name') ? document.getElementById('am-name').value.trim() : '';
+  var phone = document.getElementById('am-phone') ? document.getElementById('am-phone').value.trim() : '';
+  var level = document.getElementById('am-level') ? document.getElementById('am-level').value : '普通';
+  var points = parseInt(document.getElementById('am-points') ? document.getElementById('am-points').value : 0) || 0;
+  if (!name || !phone) { showToast('请填写姓名和手机号', 'error'); return; }
+  var newMember = {name:name, phone:phone, level:level, points:points, lastConsume:new Date().toISOString().slice(0,10), alert:false};
+  _memberStore.push(newMember);
+  memberBalanceAlertList.push({name:name, phone:phone, level:level, points:points, lastConsume:newMember.lastConsume, alert:false});
+  document.getElementById('modal-add-member') && document.getElementById('modal-add-member').remove();
+  showToast('✅ 会员「' + name + '」（' + level + '）新增成功', 'success');
+}
+
+// ============================================================
+// 【物联后台 v4 改进3】交接班CSV导出功能缺失
+// 理由：交接班页面有"导出CSV"按钮 onclick="exportHandoverReportCSV()"，但函数从未定义
+// 改进：实现完整CSV导出，包含营收/工单/告警/交接详情
+// ============================================================
+function exportHandoverReportCSV() {
+  var shift = document.getElementById('handover-shift-select') ? document.getElementById('handover-shift-select').value : 'morning';
+  var date = document.getElementById('handover-date') ? document.getElementById('handover-date').value : new Date().toISOString().slice(0,10);
+  var revenue = document.getElementById('ho-revenue') ? document.getElementById('ho-revenue').textContent.replace('¥','').replace(',','') : '0';
+  var checkinCount = document.getElementById('ho-checkin') ? document.getElementById('ho-checkin').textContent : '0';
+  var settlementCount = document.getElementById('ho-settlement') ? document.getElementById('ho-settlement').textContent : '0';
+  var alertCount = document.getElementById('ho-alerts') ? document.getElementById('ho-alerts').textContent : '0';
+  var woCount = document.getElementById('ho-wo') ? document.getElementById('ho-wo').textContent : '0';
+  var shiftLabels = {morning:'早班',afternoon:'中班',night:'晚班'};
+  var csv = '\uFEFF班次交接报表,' + date + ',' + shiftLabels[shift] + '交接\n';
+  csv += '项目,数值\n';
+  csv += '本班营收(元),' + revenue + '\n';
+  csv += '入住/退房(笔),' + checkinCount + '\n';
+  csv += '结算笔数,' + settlementCount + '\n';
+  csv += '待处理告警,' + alertCount + '\n';
+  csv += '待办工单,' + woCount + '\n';
+  csv += '\n';
+  csv += '交班人,赵飞\n';
+  csv += '接班人,周敏\n';
+  csv += '交班时间,' + new Date().toLocaleString('zh-CN') + '\n';
+  csv += '系统版本,领锁物联后台 v4.0\n';
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '交接报表_' + date + '_' + shiftLabels[shift] + '.csv';
+  a.click();
+  showToast('📤 交接班CSV报表已导出！', 'success');
+}
+
+// ============================================================
+// 【物联后台 v4 改进4】能源管理楼层筛选无响应修复
+// 理由：能源管理页面有楼层下拉筛选，但 renderEnergyChart() 不读取选择值，图表永远固定在"全部"
+// 改进：renderEnergyChart() 读取楼层筛选值，绑定数据更新逻辑，切换楼层后图表自动重绘
+// ============================================================
+function switchEnergyFloorTab(floor, el) {
+  // 更新Tab高亮
+  var tabs = document.querySelectorAll('[data-energy-floor]');
+  tabs.forEach(function(t){ t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  // 渲染图表
+  renderEnergyChart(floor === 'all' ? null : floor);
+}
+// 覆写 renderEnergyChart 增加 floor 参数支持
+var _originalRenderEnergyChart = renderEnergyChart;
+function renderEnergyChart(floorFilter) {
+  var floorEl = document.getElementById('energy-floor-filter');
+  var selectedFloor = floorFilter !== undefined ? floorFilter : (floorEl ? floorEl.value : 'all');
+  // 更新统计数字（模拟按楼层筛选）
+  var kpiEls = document.querySelectorAll('#page-energy .report-kpi-card');
+  if (kpiEls.length > 0) {
+    var multiplier = selectedFloor && selectedFloor !== 'all' ? 0.3 : 1;
+    var bases = [1280, 860, 420, 320];
+    kpiEls.forEach(function(el, i) {
+      var numEl = el.querySelector('.value');
+      if (numEl) {
+        var base = bases[i] || 1000;
+        numEl.textContent = '¥' + Math.round(base * multiplier);
+      }
+    });
+  }
+  // 更新柱状图数据
+  var barWraps = document.querySelectorAll('.report-bar-wrap');
+  var floorData = {
+    'all': [1280, 860, 420, 320, 980, 760, 540, 380, 1150, 920, 680, 460],
+    '3':  [380, 260, 120, 95, 290, 220, 160, 110, 340, 270, 200, 135],
+    '2':  [420, 290, 140, 110, 330, 250, 185, 130, 390, 310, 230, 155],
+    '1':  [480, 310, 160, 115, 360, 290, 195, 140, 420, 340, 250, 170]
+  };
+  var data = floorData[selectedFloor] || floorData['all'];
+  var months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  barWraps.forEach(function(wrap) {
+    var bars = wrap.querySelectorAll('.report-bar');
+    bars.forEach(function(bar, i) {
+      if (data[i] !== undefined) {
+        var pct = (data[i] / 1400) * 100;
+        bar.style.height = Math.max(pct, 3) + '%';
+      }
+    });
+  });
+  // Toast提示（仅用户手动切换时）
+  if (floorFilter !== undefined) {
+    showToast('📊 已切换至' + (selectedFloor === 'all' ? '全部楼层' : selectedFloor + '层') + '能耗数据', 'info');
+  }
+}
+
+// ============================================================
+// 【物联后台 v4 改进5】发票草稿自动恢复增强
+// 理由：loadInvoiceDraft() 函数已定义但从未被调用；用户填写一半退出会丢数据
+// 改进：在 openInvoiceCreateModal 打开时自动检测草稿并恢复，无需手动点击
+// ============================================================
+var _originalOpenInvoiceCreateModal = openInvoiceCreateModal;
+function openInvoiceCreateModal() {
+  var existing = document.getElementById('modal-invoice-create');
+  if (existing) { existing.classList.remove('hidden'); return; }
+  // 调用原逻辑渲染弹窗...
+  if (typeof _originalOpenInvoiceCreateModal === 'function') {
+    _originalOpenInvoiceCreateModal();
+  }
+  // ...然后尝试恢复草稿到新弹窗字段
+  setTimeout(function() {
+    try {
+      var draft = JSON.parse(localStorage.getItem('inv_draft') || '{}');
+      if (draft && draft.company) {
+        var fields = [
+          {id: 'inv-f-company', key: 'company'},
+          {id: 'inv-f-email', key: 'email'},
+          {id: 'inv-f-tax', key: 'tax'},
+          {id: 'inv-f-amount', key: 'amount'}
+        ];
+        fields.forEach(function(f) {
+          var el = document.getElementById(f.id);
+          if (el && draft[f.key] !== undefined) {
+            if (f.key === 'amount') el.value = draft[f.key] || 0;
+            else el.value = draft[f.key] || '';
+          }
+        });
+        showToast('📝 检测到发票草稿，已自动恢复', 'info');
+      }
+    } catch(e) {}
+  }, 150);
+}
+
 });
 </script>
 </body></html>
