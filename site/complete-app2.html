@@ -1253,7 +1253,7 @@ function showToast(msg, type) {
         </div>
       </div>
     </div>
-id="page-dashboard" class="page">
+    <div id="page-dashboard" class="page">
       <div class="page-header">
         <div class="page-title">📊 看板统计</div>
       </div>
@@ -16070,6 +16070,15 @@ function filterStaffList() {
 var _currentWoProcessIdx = null;
 var _woSatisfaction = 0;
 var _woList = [
+  {id:'WO-2026032801',type:'complaint',room:'301',customer:'张三',phone:'138****0001',desc:'房间空调噪音过大，无法休息',priority:'high',status:'pending',assign:'未分配',create:'今天 10:32',sla:'今天 11:30',satisfaction:0},
+  {id:'WO-2026032501',type:'delivery',room:'205',customer:'孙九',phone:'139****0002',desc:'需要加一床被子',priority:'normal',status:'cancelled',assign:'--',create:'03-25 09:00',sla:'--',satisfaction:0},
+  {id:'WO-2026032802',type:'delivery',room:'203',customer:'李四',phone:'137****0003',desc:'需要添加矿泉水x2',priority:'normal',status:'pending',assign:'未分配',create:'今天 10:15',sla:'今天 12:00',satisfaction:0},
+  {id:'WO-2026032803',type:'invoice',room:'201',customer:'王五',phone:'136****0004',desc:'需要开具增值税普通发票，金额约2000元',priority:'low',status:'pending',assign:'未分配',create:'今天 09:48',sla:'今天 14:00',satisfaction:0},
+  {id:'WO-2026032701',type:'delivery',room:'304',customer:'钱七',phone:'136****4444',desc:'需要浴巾一套，指尖陀螺',priority:'normal',status:'processing',assign:'周敏',create:'昨天 18:20',sla:'--',satisfaction:0},
+  {id:'WO-2026032702',type:'complaint',room:'202',customer:'赵六',phone:'135****0005',desc:'热水器故障，无热水供应',priority:'high',status:'processing',assign:'赵飞',create:'昨天 17:05',sla:'--',satisfaction:0},
+  {id:'WO-2026032601',type:'repair',room:'305',customer:'孙九',phone:'139****0006',desc:'门锁信号不稳定，偶发开锁失败',priority:'high',status:'processing',assign:'王工',create:'03-26 15:30',sla:'--',satisfaction:0},
+  {id:'WO-2026032602',type:'praise',room:'303',customer:'周八',phone:'138****0007',desc:'服务态度好，点赞！',priority:'low',status:'done',assign:'赵飞',create:'03-26 14:30',sla:'--',satisfaction:5},
+  {id:'WO-2026032603',type:'delivery',room:'206',customer:'吴十',phone:'137****0008',desc:'加一床被子',priority:'normal',status:'done',assign:'郑强',create:'03-26 11:20',sla:'--',satisfaction:5},
   {id:'WO2026032701',type:'complaint',room:'305',customer:'李四',phone:'139****6666',desc:'房间热水不稳定，洗澡时忽冷忽热，影响入住体验',priority:'urgent',status:'pending',assign:'赵飞',create:'今天 09:30',sla:'今天 11:30',satisfaction:0},
   {id:'WO2026032702',type:'repair',room:'201',customer:'王五',phone:'137****9012',desc:'空调出风口有异响',priority:'high',status:'processing',assign:'王工',create:'今天 08:15',sla:'今天 14:00',satisfaction:0},
   {id:'WO2026032703',type:'delivery',room:'304',customer:'钱七',phone:'136****4444',desc:'需要加送两瓶矿泉水',priority:'normal',status:'pending',assign:'郑强',create:'今天 10:00',sla:'今天 12:00',satisfaction:0},
@@ -16086,7 +16095,7 @@ function getWoPriorityLabel(p) {
   return map[p] || p;
 }
 function getWoStatusLabel(s) {
-  var map = {pending:'⏳ 待接受',processing:'🔄 处理中',done:'✅ 已完成'};
+  var map = {pending:'⏳ 待接受',processing:'🔄 处理中',done:'✅ 已完成',cancelled:'❌ 已作废'};
   return map[s] || s;
 }
 
@@ -16140,33 +16149,109 @@ function submitWorkorderProcessV2() {
   _currentWoProcessIdx = null;
 }
 
+// 【v4-第X轮-改进1】renderWorkorderTable修复：支持Tab状态过滤+使用buildWorkorderRowHtml完整渲染
 function renderWorkorderTable() {
   var tbody = document.getElementById('workorder-table-body');
   if (!tbody) return;
+  var tab = _woCurrentTab || 'all';
+  var filtered = tab === 'all' ? _woList : _woList.filter(function(wo) {
+    if (tab === 'overdue') return wo.status !== 'done' && wo.sla && wo.sla !== '--' && new Date(wo.sla.replace('今天','2026-03-29')) < new Date();
+    return wo.status === tab;
+  });
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px;">暂无工单数据</td></tr>';
+    return;
+  }
   var rows = '';
-  _woList.forEach(function(wo, i) {
-    var isOverdue = wo.status !== 'done' && wo.sla && wo.sla !== '--' && new Date(wo.sla.replace('今天','2026-03-29')) < new Date();
-    var priorityColor = {urgent:'red',high:'orange',normal:'blue',low:'gray'}[wo.priority] || 'gray';
-    var statusBadge = wo.status === 'done' ? '<span class="tbadge green">已完成</span>'
-      : wo.status === 'processing' ? '<span class="tbadge orange">处理中</span>'
-      : '<span class="tbadge blue">待接受</span>';
-    var actionBtn = wo.status === 'done'
-      ? '<button class="action-btn small" onclick="openProcessWorkorderModal(' + i + ')">查看</button>'
-      : '<button class="action-btn small" onclick="openProcessWorkorderModal(' + i + ')">处理</button>';
-    rows += '<tr' + (isOverdue ? ' style="background:var(--red-bg);"' : '') + '>' +
-      '<td style="font-size:11px;font-family:monospace;">' + wo.id + '</td>' +
-      '<td>' + getWoTypeLabel(wo.type) + '</td>' +
-      '<td>' + wo.room + '</td>' +
-      '<td><div style="font-weight:600;">' + wo.customer + '</div><div style="font-size:10px;color:var(--text-muted);">' + wo.phone + '</div></td>' +
-      '<td><span class="tbadge ' + priorityColor + '">' + getWoPriorityLabel(wo.priority) + '</span></td>' +
-      '<td>' + statusBadge + '</td>' +
-      '<td>' + (wo.assign || '--') + '</td>' +
-      '<td style="font-size:11px;">' + wo.create + '</td>' +
-      '<td style="font-size:11px;color:' + (isOverdue ? 'var(--red)' : 'var(--text-muted)') + ';">' + (wo.sla || '--') + (isOverdue ? ' ⚠️' : '') + '</td>' +
-      '<td>' + actionBtn + '</td>' +
-    '</tr>';
+  filtered.forEach(function(wo, i) {
+    rows += buildWorkorderRowHtml(wo, _woList.indexOf(wo));
   });
   tbody.innerHTML = rows;
+  // 更新Tab统计数字
+  var tabMap = {all: _woList.length, pending: _woList.filter(function(w){return w.status==='pending'}).length, processing: _woList.filter(function(w){return w.status==='processing'}).length, done: _woList.filter(function(w){return w.status==='done'}).length};
+  var labels = ['全部 ' + (tabMap.all || 0), '待接受 ' + (tabMap.pending || 0), '处理中 ' + (tabMap.processing || 0), '已完成 ' + (tabMap.done || 0)];
+  var tabs = ['all','pending','processing','done'];
+  document.querySelectorAll('#page-workorder .card-tabs .card-tab').forEach(function(el, i) {
+    if (tabs[i]) el.textContent = labels[i] || '';
+    if (tabs[i] === tab) {
+      el.classList.add('active');
+      el.style.background = 'var(--blue)';
+      el.style.color = 'white';
+    } else {
+      el.classList.remove('active');
+      el.style.background = '';
+      el.style.color = '';
+    }
+  });
+}
+
+// 【v4-第X轮-改进2+4】cancelWorkorderById / reopenWorkorderById / toggleWorkorderRow / toggleAllWorkorderSelect / batchAcceptWorkorders / batchCloseWorkorders
+function cancelWorkorderById(woId) {
+  if (!confirm('确定要作废工单 ' + woId + ' 吗？')) return;
+  var wo = _woList.find(function(w){return w.id === woId || w.id === woId});
+  if (!wo) { showToast('工单不存在', 'error'); return; }
+  wo.status = 'cancelled';
+  wo.assign = '--';
+  showToast('工单 ' + woId + ' 已作废', 'success');
+  renderWorkorderTable();
+}
+function reopenWorkorderById(woId) {
+  var wo = _woList.find(function(w){return w.id === woId});
+  if (!wo) { showToast('工单不存在', 'error'); return; }
+  wo.status = 'pending';
+  wo.assign = '未分配';
+  showToast('工单 ' + woId + ' 已重新打开', 'success');
+  renderWorkorderTable();
+}
+var _woSelectedIds = [];
+function toggleWorkorderRow(cb, woId) {
+  if (cb.checked) {
+    if (_woSelectedIds.indexOf(woId) < 0) _woSelectedIds.push(woId);
+  } else {
+    _woSelectedIds = _woSelectedIds.filter(function(id){return id !== woId});
+  }
+  updateBatchWorkorderButtons();
+}
+function toggleAllWorkorderSelect(checked) {
+  if (checked) {
+    _woSelectedIds = _woList.filter(function(w){return w.status!=='done'&&w.status!=='cancelled'}).map(function(w){return w.id});
+  } else {
+    _woSelectedIds = [];
+  }
+  document.querySelectorAll('.wo-row-check').forEach(function(cb){ cb.checked = checked; });
+  updateBatchWorkorderButtons();
+}
+function updateBatchWorkorderButtons() {
+  var acceptBtn = document.getElementById('wo-batch-accept-btn');
+  var closeBtn = document.getElementById('wo-batch-close-btn');
+  var countEl = document.getElementById('wo-batch-count');
+  var count = _woSelectedIds.length;
+  if (countEl) countEl.textContent = count;
+  if (acceptBtn) acceptBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+  if (closeBtn) closeBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+}
+function batchAcceptWorkorders() {
+  if (_woSelectedIds.length === 0) { showToast('请先选择要接受的工单', 'error'); return; }
+  var count = 0;
+  _woSelectedIds.forEach(function(id) {
+    var wo = _woList.find(function(w){return w.id === id});
+    if (wo && wo.status === 'pending') { wo.status = 'processing'; wo.assign = '当前员工'; count++; }
+  });
+  showToast('成功接受 ' + count + ' 条工单', 'success');
+  _woSelectedIds = [];
+  renderWorkorderTable();
+}
+function batchCloseWorkorders() {
+  if (_woSelectedIds.length === 0) { showToast('请先选择要关闭的工单', 'error'); return; }
+  if (!confirm('确定要关闭选中的 ' + _woSelectedIds.length + ' 条工单吗？')) return;
+  var count = 0;
+  _woSelectedIds.forEach(function(id) {
+    var wo = _woList.find(function(w){return w.id === id});
+    if (wo && wo.status !== 'done') { wo.status = 'cancelled'; count++; }
+  });
+  showToast('已关闭 ' + count + ' 条工单', 'success');
+  _woSelectedIds = [];
+  renderWorkorderTable();
 }
 
 // ====== 【改进3】会员积分兑换功能 ======
@@ -17622,7 +17707,7 @@ function openAnnouncementPublishModal() {
   var historyRows = '';
   _announcements.forEach(function(a) {
     var typeBadge = {notice:'blue',repair:'orange',event:'green',urgent:'red'}[a.type] || 'gray';
-    var typeLabel = {notice:'📢 通知',repair:'🔧 维护',event:'🎉 活动',urgent:'🚨 紧急'}[a.type] || '📋 其他'};
+    var typeLabel = {notice:'📢 通知',repair:'🔧 维护',event:'🎉 活动',urgent:'🚨 紧急'}[a.type] || '📋 其他'};;
     historyRows += '<tr>' +
       '<td><span style="font-size:11px;color:var(--text-muted);">' + a.id + '</span></td>' +
       '<td><div style="font-weight:600;font-size:13px;">' + a.title + '</div><div style="font-size:11px;color:var(--text-muted);">' + a.content.substring(0,30) + '...</div></td>' +
@@ -28017,14 +28102,20 @@ function exportMemberRechargeHistory() {
 // 改进：实现工单Tab切换（全部/待接受/处理中/已完成/已超时），带筛选状态同步
 // ============================================================
 var _woCurrentTab = 'all';
+// 【v4-第X轮-改进5】filterWorkorder（桥接）+ switchWorkorderTab完整实现
+function filterWorkorder(tab, el) {
+  switchWorkorderTab(tab, el);
+}
+
+// 【v4-第X轮-改进5】switchWorkorderTab完整实现：Tab切换+状态过滤+统计更新
 function switchWorkorderTab(tab, el) {
   _woCurrentTab = tab;
   // 更新Tab高亮
-  document.querySelectorAll('#page-workorder .wo-tab-btn').forEach(function(b) {
+  document.querySelectorAll('#page-workorder .card-tabs .card-tab').forEach(function(b) {
     b.classList.remove('active');
-    b.style.background = 'var(--bg)';
-    b.style.color = 'var(--text)';
-    b.style.fontWeight = 'normal';
+    b.style.background = '';
+    b.style.color = '';
+    b.style.fontWeight = '';
   });
   if (el) {
     el.classList.add('active');
@@ -28032,10 +28123,7 @@ function switchWorkorderTab(tab, el) {
     el.style.color = 'white';
     el.style.fontWeight = '700';
   }
-  // 更新统计数字
-  var statEls = document.querySelectorAll('#page-workorder .stats-row .stat-card');
-  var tabColors = {all:'blue', pending:'orange', processing:'purple', done:'green', overdue:'red'};
-  // 渲染筛选后的表格
+  // 重新渲染表格（带上当前tab过滤）
   renderWorkorderTable();
   var msgMap = {all:'全部工单', pending:'待接受工单', processing:'处理中工单', done:'已完成工单', overdue:'超时工单'};
   showToast('📋 已切换至：' + (msgMap[tab] || tab), 'info');
