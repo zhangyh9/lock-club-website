@@ -24259,6 +24259,228 @@ document.addEventListener('DOMContentLoaded', function() {
   }, 400);
 });
 
+// ============================================================
+// 【物联后台v4-第X轮】5个功能性改进注入
+// 改进1: openBatchCheckinModal 弹窗打开函数缺失
+// 改进2: submitBatchCheckin 批量入住提交函数缺失
+// 改进3: submitBatchClean 批量清洁提交函数缺失
+// 改进4: openBatchCleanModal 批量清洁弹窗打开函数缺失
+// 改进5: 开锁记录高级筛选按钮未注入到页面工具栏
+// ============================================================
+
+// 【改进1】批量入住弹窗打开函数
+function openBatchCheckinModal() {
+  var modal = document.getElementById('modal-batch-checkin');
+  if (modal) {
+    modal.classList.remove('hidden');
+    // Initialize room grid if empty
+    var grid = document.getElementById('bci-room-grid');
+    if (grid && !grid.innerHTML.trim()) {
+      renderBciRoomGrid();
+    }
+    // Reset step to 1
+    goBciStep1();
+  }
+}
+
+// 渲染批量入住房间网格
+function renderBciRoomGrid() {
+  var grid = document.getElementById('bci-room-grid');
+  if (!grid) return;
+  window._bciSelectedRooms = window._bciSelectedRooms || [];
+  var emptyRooms = [
+    {num:'301', type:'亲子间'}, {num:'302', type:'亲子间'}, {num:'303', type:'标准间'},
+    {num:'201', type:'大床房'}, {num:'202', type:'大床房'}, {num:'203', type:'标准间'},
+    {num:'101', type:'标准间'}, {num:'102', type:'标准间'}, {num:'103', type:'大床房'},
+  ];
+  grid.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">' +
+    emptyRooms.map(function(r) {
+      var selected = window._bciSelectedRooms.indexOf(r.num) >= 0;
+      return '<div onclick="toggleBciRoom(\'' + r.num + '\',this)" ' +
+        'style="padding:10px;border-radius:8px;cursor:pointer;font-size:12px;text-align:center;' +
+        'border:2px solid ' + (selected ? 'var(--blue)' : 'var(--border)') + ';' +
+        'background:' + (selected ? 'var(--blue-bg)' : 'var(--white)') + ';' +
+        'color:' + (selected ? 'var(--blue)' : 'var(--text)') + ';' +
+        'font-weight:' + (selected ? '700' : '400') + ';">' +
+        '<div style="font-size:14px;font-weight:700;">' + r.num + '</div>' +
+        '<div style="font-size:10px;color:var(--text-muted);">' + r.type + '</div>' +
+        '<div style="font-size:10px;margin-top:4px;">' + (selected ? '✅ 已选' : '点击选择') + '</div></div>';
+    }).join('') + '</div>';
+}
+
+// 切换批量入住房间选中状态
+function toggleBciRoom(roomNum, el) {
+  window._bciSelectedRooms = window._bciSelectedRooms || [];
+  var idx = window._bciSelectedRooms.indexOf(roomNum);
+  if (idx >= 0) {
+    window._bciSelectedRooms.splice(idx, 1);
+  } else {
+    window._bciSelectedRooms.push(roomNum);
+  }
+  renderBciRoomGrid();
+  updateBciSelectedList();
+}
+
+// 更新已选房间列表显示
+function updateBciSelectedList() {
+  var list = document.getElementById('bci-selected-list');
+  var count = document.getElementById('bci-selected-count');
+  var tip = document.getElementById('bci-selected-tip');
+  var rooms = window._bciSelectedRooms || [];
+  if (count) count.textContent = rooms.length;
+  if (list) {
+    list.innerHTML = rooms.length === 0 ? '<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:10px;">未选择房间</div>' :
+      rooms.map(function(r) {
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border);font-size:12px;">' +
+          '<span style="font-weight:700;">' + r + '</span>' +
+          '<span style="color:var(--red);cursor:pointer;" onclick="toggleBciRoom(\'' + r + '\')">✕</span></div>';
+      }).join('');
+  }
+  if (tip) tip.textContent = rooms.length === 0 ? '点击上方房间即可选中' : '已选 ' + rooms.length + ' 间房，点击可取消';
+  var nextBtn = document.getElementById('bci-next-btn');
+  if (nextBtn) nextBtn.disabled = rooms.length === 0;
+}
+
+// 批量入住步骤切换
+function goBciStep1() {
+  document.getElementById('bci-step1') && (document.getElementById('bci-step1').style.display = '');
+  document.getElementById('bci-step2') && (document.getElementById('bci-step2').style.display = 'none');
+  document.getElementById('bci-step3') && (document.getElementById('bci-step3').style.display = 'none');
+  updateBciStepIndicator(1);
+}
+
+function goBciStep2() {
+  var rooms = window._bciSelectedRooms || [];
+  if (rooms.length === 0) { showToast('请至少选择一个房间', 'error'); return; }
+  document.getElementById('bci-step1') && (document.getElementById('bci-step1').style.display = 'none');
+  document.getElementById('bci-step2') && (document.getElementById('bci-step2').style.display = '');
+  document.getElementById('bci-step3') && (document.getElementById('bci-step3').style.display = 'none');
+  // Update summary
+  var summary = document.getElementById('bci-room-summary');
+  if (summary) summary.textContent = rooms.join('、');
+  updateBciStepIndicator(2);
+}
+
+function goBciStep3() {
+  var name = document.getElementById('bci-guest-name');
+  var phone = document.getElementById('bci-guest-phone');
+  if (!name || !name.value.trim()) { showToast('请填写入住人姓名', 'error'); return; }
+  if (!phone || !phone.value.trim()) { showToast('请填写手机号', 'error'); return; }
+  document.getElementById('bci-step1') && (document.getElementById('bci-step1').style.display = 'none');
+  document.getElementById('bci-step2') && (document.getElementById('bci-step2').style.display = 'none');
+  document.getElementById('bci-step3') && (document.getElementById('bci-step3').style.display = '');
+  // Update confirm preview
+  var rooms = window._bciSelectedRooms || [];
+  var count = rooms.length;
+  var deposit = parseInt(document.getElementById('bci-deposit') ? document.getElementById('bci-deposit').value : 100) || 100;
+  var nameVal = name.value.trim();
+  var phoneVal = phone.value.trim();
+  var confirmRooms = document.getElementById('bci-confirm-rooms');
+  var confirmName = document.getElementById('bci-confirm-name');
+  var confirmPhone = document.getElementById('bci-confirm-phone');
+  var confirmCount = document.getElementById('bci-confirm-count');
+  var confirmDeposit = document.getElementById('bci-confirm-deposit');
+  var confirmTotal = document.getElementById('bci-confirm-total');
+  if (confirmRooms) confirmRooms.textContent = rooms.join('、');
+  if (confirmName) confirmName.textContent = nameVal;
+  if (confirmPhone) confirmPhone.textContent = phoneVal;
+  if (confirmCount) confirmCount.textContent = count;
+  if (confirmDeposit) confirmDeposit.textContent = '¥' + deposit;
+  if (confirmTotal) confirmTotal.textContent = '¥' + (deposit * count);
+  updateBciStepIndicator(3);
+}
+
+function updateBciStepIndicator(step) {
+  var labels = ['选择房间', '填写信息', '确认提交'];
+  var label = document.getElementById('bci-step-label');
+  if (label) label.textContent = 'Step ' + step + '：' + labels[step - 1];
+  for (var i = 1; i <= 3; i++) {
+    var ind = document.getElementById('bci-step-ind-' + i);
+    if (ind) ind.style.background = i <= step ? 'var(--blue)' : 'var(--border)';
+    var bar = document.getElementById('bci-step-bar-' + (i + 1));
+    if (bar) bar.style.background = i < step ? 'var(--blue)' : 'var(--border)';
+  }
+}
+
+// 【改进2】批量入住提交函数
+function submitBatchCheckin() {
+  var name = document.getElementById('bci-guest-name');
+  var phone = document.getElementById('bci-guest-phone');
+  var deposit = document.getElementById('bci-deposit');
+  if (!name || !name.value.trim()) { showToast('请填写入住人姓名', 'error'); return; }
+  if (!phone || !phone.value.trim()) { showToast('请填写手机号', 'error'); return; }
+  var rooms = window._bciSelectedRooms || [];
+  if (rooms.length === 0) { showToast('请至少选择一个房间', 'error'); return; }
+  var count = rooms.length;
+  var nameVal = name.value.trim();
+  var depositVal = parseInt(deposit ? deposit.value : 100) || 100;
+  // Add to record list
+  rooms.forEach(function(room) {
+    var now = new Date();
+    var dateStr = (now.getMonth() + 1) + '-' + now.getDate() + ' ' + now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+    _recordList.unshift({
+      id: _recordList.length + 1,
+      type: '入住',
+      name: nameVal,
+      room: room,
+      roomType: '',
+      phone: phone.value.trim(),
+      time: dateStr,
+      status: 'active',
+      deposit: depositVal
+    });
+  });
+  closeModal('batch-checkin');
+  window._bciSelectedRooms = [];
+  showToast('🏨 批量入住成功：' + count + '间房（' + nameVal + '）', 'success');
+  if (typeof renderRecordTable === 'function') renderRecordTable();
+}
+
+// 【改进3】批量清洁提交函数
+function submitBatchClean() {
+  var checks = document.querySelectorAll('#modal-batch-clean input[type="checkbox"]:checked');
+  if (checks.length === 0) { showToast('请至少选择一个房间', 'error'); return; }
+  var note = document.getElementById('clean-note');
+  var count = checks.length;
+  var noteVal = note ? note.value.trim() : '';
+  closeModal('batch-clean');
+  showToast('🧹 清洁任务已下发：' + count + '间房' + (noteVal ? '，备注：' + noteVal : ''), 'success');
+}
+
+// 【改进4】批量清洁弹窗打开函数
+function openBatchCleanModal() {
+  var modal = document.getElementById('modal-batch-clean');
+  if (modal) modal.classList.remove('hidden');
+}
+
+// 【改进5】开锁记录高级筛选按钮注入（注入到开锁记录页面工具栏）
+function injectUnlockAdvancedFilterButton() {
+  var pageLog = document.getElementById('page-log');
+  if (!pageLog) return;
+  var filterBar = pageLog.querySelector('.card-body');
+  if (!filterBar) return;
+  // Check if already injected
+  if (filterBar.querySelector('[onclick="openUnlockLogAdvancedFilter()"]')) return;
+  var btn = document.createElement('button');
+  btn.className = 'action-btn small';
+  btn.style.cssText = 'padding:6px 12px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);';
+  btn.textContent = '🔍 高级筛选';
+  btn.onclick = function() { openUnlockLogAdvancedFilter && openUnlockLogAdvancedFilter(); };
+  var lastBtn = filterBar.querySelector('.action-btn[onclick*="resetLogFilter"]');
+  if (lastBtn && lastBtn.parentNode) {
+    lastBtn.parentNode.insertBefore(btn, lastBtn.nextSibling);
+  } else {
+    filterBar.appendChild(btn);
+  }
+}
+
+// 在页面切换到开锁记录时注入高级筛选按钮
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    injectUnlockAdvancedFilterButton();
+  }, 1200);
+});
+
 // 【v4改进4】批量退房完整功能
 function openBatchCheckoutModal() {
   var existing = document.getElementById('modal-batch-checkout');
