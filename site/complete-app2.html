@@ -23296,4 +23296,214 @@ function printInvoice(invId) {
   </div>
 </div>
 
+<script>
+// ============================================================
+// 【物联后台 v4 改进-缺失函数1】设备登记注册弹窗
+// 理由：按钮 onclick="openDeviceRegisterModal()" 存在但函数缺失
+// 改进：完整设备登记表单（类型→型号→UUID→楼栋楼层→房间绑定→备注）
+// ============================================================
+function openDeviceRegisterModal() {
+  var existing = document.getElementById('modal-device-register');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-device-register" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-register\').remove()">' +
+    '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📱</div><div><div style="font-size:15px;font-weight:700;">设备登记注册</div><div style="font-size:11px;color:var(--text-muted);">新增硬件设备并绑定到房间</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-device-register\').remove();" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
+    '<div class="form-group"><label class="form-label">设备类型 <span class="required">*</span></label>' +
+    '<select class="form-select" id="dr-type" style="width:100%;" onchange="updateDeviceModelOptions()">' +
+      '<option value="">请选择设备类型</option><option value="lock">🔐 智能门锁</option><option value="controller">🎛️ 空调控制器</option>' +
+      '<option value="meter">📊 电表/水表</option><option value="sensor">🌡️ 环境传感器</option><option value="camera">📹 监控摄像头</option></select></div>' +
+    '<div class="form-group"><label class="form-label">设备型号 <span class="required">*</span></label>' +
+    '<select class="form-select" id="dr-model" style="width:100%;"><option value="">请先选择设备类型</option></select></div></div>' +
+    '<div class="form-group"><label class="form-label">设备UUID/序列号 <span class="required">*</span></label>' +
+    '<div style="display:flex;gap:8px;"><input type="text" class="form-input" id="dr-uuid" placeholder="请输入或扫描设备UUID" style="flex:1;">' +
+    '<button onclick="document.getElementById(\'dr-uuid\').value=\'WXYZ-\'+String(Date.now()).slice(-6)" style="padding:8px 12px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);border-radius:6px;cursor:pointer;font-size:12px;">📷 扫描</button>' +
+    '<button onclick="document.getElementById(\'dr-uuid\').value=\'WXYZ-\'+String(Date.now()).slice(-6)" style="padding:8px 12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:6px;cursor:pointer;font-size:12px;">🎲 自动生成</button></div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
+    '<div class="form-group"><label class="form-label">所属楼栋 <span class="required">*</span></label>' +
+    '<select class="form-select" id="dr-building" style="width:100%;"><option value="">请选择楼栋</option><option value="MAIN">🏢 主楼</option><option value="EAST">🏢 东配楼</option></select></div>' +
+    '<div class="form-group"><label class="form-label">所属楼层 <span class="required">*</span></label>' +
+    '<select class="form-select" id="dr-floor" style="width:100%;"><option value="">请选择楼层</option><option value="1">1层</option><option value="2">2层</option><option value="3">3层</option></select></div></div>' +
+    '<div class="form-group"><label class="form-label">绑定房间 <span class="required">*</span></label>' +
+    '<select class="form-select" id="dr-room" style="width:100%;"><option value="">请选择房间</option>' +
+      '<option value="101">101室</option><option value="102">102室</option><option value="201">201室</option><option value="202">202室</option>' +
+      '<option value="301">301室</option><option value="302">302室</option><option value="401">401室</option><option value="402">402室</option></select></div>' +
+    '<div class="form-group"><label class="form-label">安装位置备注</label>' +
+    '<input type="text" class="form-input" id="dr-location" placeholder="如：主入户门内侧、走廊尽头"></div>' +
+    '<div class="form-group"><label class="form-label">设备备注</label>' +
+    '<textarea class="form-textarea" id="dr-note" placeholder="可选，填写设备特殊说明..." style="min-height:50px;"></textarea></div></div>' +
+    '<div style="padding:14px 24px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-register\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="submitDeviceRegister()" style="background:var(--green);color:white;border:none;">✅ 确认注册</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function updateDeviceModelOptions() {
+  var type = document.getElementById('dr-type') ? document.getElementById('dr-type').value : '';
+  var modelSelect = document.getElementById('dr-model');
+  if (!modelSelect) return;
+  var models = {
+    'lock': [{v:'LK-A1',n:'A1标准版'},{v:'LK-A1P',n:'A1 Pro版'},{v:'LK-B2',n:'B2高端版'},{v:'LK-C3',n:'C3旗舰版'}],
+    'controller': [{v:'AC-01',n:'AC-01通用'},{v:'AC-02',n:'AC-02智能'},{v:'AC-03',n:'AC-03节能版'}],
+    'meter': [{v:'MT-E1',n:'E1电表'},{v:'MT-W1',n:'W1水表'},{v:'MT-EW2',n:'EW2电水双用'}],
+    'sensor': [{v:'SN-T1',n:'T1温湿度'},{v:'SN-T2',n:'T2烟感'},{v:'SN-T3',n:'T3门磁'}],
+    'camera': [{v:'CM-H1',n:'H1室内'},{v:'CM-H2',n:'H2室外'},{v:'CM-H3',n:'H3全景'}]
+  };
+  var opts = models[type] || [];
+  modelSelect.innerHTML = '<option value="">请选择型号</option>' + opts.map(function(m){ return '<option value="'+m.v+'">'+m.n+' ('+m.v+')</option>'; }).join('');
+}
+
+function submitDeviceRegister() {
+  var type = document.getElementById('dr-type') ? document.getElementById('dr-type').value : '';
+  var model = document.getElementById('dr-model') ? document.getElementById('dr-model').value : '';
+  var uuid = document.getElementById('dr-uuid') ? document.getElementById('dr-uuid').value.trim() : '';
+  var building = document.getElementById('dr-building') ? document.getElementById('dr-building').value : '';
+  var floor = document.getElementById('dr-floor') ? document.getElementById('dr-floor').value : '';
+  var room = document.getElementById('dr-room') ? document.getElementById('dr-room').value : '';
+  var location = document.getElementById('dr-location') ? document.getElementById('dr-location').value.trim() : '';
+  var note = document.getElementById('dr-note') ? document.getElementById('dr-note').value.trim() : '';
+  if (!type || !model || !uuid || !building || !floor || !room) {
+    showToast('请填写所有必填项', 'error'); return;
+  }
+  var typeName = {lock:'智能门锁',controller:'空调控制器',meter:'电表/水表',sensor:'环境传感器',camera:'监控摄像头'}[type] || type;
+  var buildingName = {MAIN:'主楼',EAST:'东配楼'}[building] || building;
+  var newDevice = {
+    id: uuid,
+    type: typeName,
+    model: model,
+    building: buildingName,
+    floor: floor + '层',
+    room: room + '室',
+    status: '在线',
+    battery: Math.floor(60 + Math.random() * 40),
+    signal: ['强','中','弱'][Math.floor(Math.random()*3)],
+    lastSync: new Date().toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\//g,'-'),
+    version: 'v1.2.3'
+  };
+  if (typeof deviceList !== 'undefined' && deviceList.unshift) deviceList.unshift(newDevice);
+  if (typeof renderDeviceList === 'function') renderDeviceList();
+  if (typeof updateDeviceStats === 'function') updateDeviceStats();
+  document.getElementById('modal-device-register') && document.getElementById('modal-device-register').remove();
+  showToast('✅ 设备 ' + uuid + ' 登记成功，已绑定至' + buildingName + floor + '层' + room + '室', 'success');
+}
+
+// ============================================================
+// 【物联后台 v4 改进-缺失函数2】交接班完整流程弹窗
+// 理由：按钮 onclick="openFullShiftHandoverModal()" 存在但函数缺失
+// 改进：三步骤向导（交接人确认→数据核对→签字确认），含营收统计、房态、待办、签字、打印
+// ============================================================
+function openFullShiftHandoverModal() {
+  var existing = document.getElementById('modal-full-shift-handover');
+  if (existing) existing.remove();
+  var now = new Date().toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\//g,'-');
+  var shiftOptions = ['早班 (06:00-14:00)', '中班 (14:00-22:00)', '晚班 (22:00-06:00)'];
+  var html = '<div class="modal-overlay" id="modal-full-shift-handover" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    '<div class="modal" style="width:600px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📨</div><div><div style="font-size:15px;font-weight:700;">交接班完整流程</div><div style="font-size:11px;color:var(--text-muted);">' + now + '</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-full-shift-handover\').remove();" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    // 步骤指示器
+    '<div style="display:flex;align-items:center;margin-bottom:20px;gap:4px;">' +
+    '<div id="shift-step-1" style="flex:1;padding:8px;background:var(--blue);color:white;border-radius:6px;text-align:center;font-size:12px;font-weight:600;">① 交接人确认</div>' +
+    '<div style="width:20px;height:2px;background:var(--border);"></div>' +
+    '<div id="shift-step-2" style="flex:1;padding:8px;background:var(--bg);color:var(--text-muted);border-radius:6px;text-align:center;font-size:12px;font-weight:600;">② 数据核对</div>' +
+    '<div style="width:20px;height:2px;background:var(--border);"></div>' +
+    '<div id="shift-step-3" style="flex:1;padding:8px;background:var(--bg);color:var(--text-muted);border-radius:6px;text-align:center;font-size:12px;font-weight:600;">③ 签字确认</div></div>' +
+    // Step 1: 交接人确认
+    '<div id="shift-panel-1">' +
+    '<div class="form-group"><label class="form-label">交班人 <span class="required">*</span></label>' +
+    '<select class="form-select" id="shift-out-name" style="width:100%;"><option value="">请选择交班人</option><option value="张三">张三（管理员）</option><option value="李四">李四（前台）</option><option value="王五">王五（客房）</option></select></div>' +
+    '<div class="form-group"><label class="form-label">接班人 <span class="required">*</span></label>' +
+    '<select class="form-select" id="shift-in-name" style="width:100%;"><option value="">请选择接班人</option><option value="李四">李四（前台）</option><option value="张三">张三（管理员）</option><option value="赵六">赵六（夜班）</option></select></div>' +
+    '<div class="form-group"><label class="form-label">交接班次</label>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">' +
+    shiftOptions.map(function(s,i){ return '<label id="shift-time-'+i+'" onclick="this.style.background=\'var(--blue-bg)\';this.style.borderColor=\'var(--blue)\';for(var j=0;j<3;j++)if(j!=='+i+'){var l=document.getElementById(\'shift-time-\'+j);if(l){l.style.background=\'\';l.style.borderColor=\'var(--border)\';}}this.querySelector(\'input\').checked=true;" style="padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;font-size:12px;">' +
+      '<input type="radio" name="shift-time" value="'+s+'" style="display:none;">'+s.split(' ')[0]+'<br><span style="font-size:10px;color:var(--text-muted);">'+s.split(' ')[1]+'</span></label>'; }).join('') + '</div></div>' +
+    '<div style="padding:16px 0 4px;"><button class="modal-btn" onclick="goShiftStep(2)" style="width:100%;background:var(--blue);color:white;border:none;padding:12px;">下一步：数据核对 →</button></div></div>' +
+    // Step 2: 数据核对
+    '<div id="shift-panel-2" style="display:none;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">' +
+    '<div style="padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--green);margin-bottom:4px;">本班营收</div><div style="font-size:20px;font-weight:700;color:var(--green);">¥2,847</div></div>' +
+    '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--blue);margin-bottom:4px;">入住率</div><div style="font-size:20px;font-weight:700;color:var(--blue);">78%</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--orange);margin-bottom:4px;">待处理工单</div><div style="font-size:20px;font-weight:700;color:var(--orange);">3</div></div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:14px;font-size:12px;">' +
+    '<div style="font-weight:600;margin-bottom:8px;">📋 房态变化</div>' +
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;">' +
+    '<span>🟢 新入住：<strong>2间</strong>（301、202）</span>' +
+    '<span>🔴 退房：<strong>1间</strong>（102）</span>' +
+    '<span>🟡 换房：<strong>1间</strong>（201→301）</span></div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:14px;font-size:12px;">' +
+    '<div style="font-weight:600;margin-bottom:8px;">⚠️ 待办交接事项</div>' +
+    '<div style="display:flex;flex-direction:column;gap:4px;">' +
+    '<span>• 301室客人反馈空调噪音，已报修待处理</span>' +
+    '<span>• 2层走廊灯1盏需更换（已申领配件）</span>' +
+    '<span>• 明早有工程队来修电梯，提前开门</span></div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:14px;font-size:12px;">' +
+    '<div style="font-weight:600;margin-bottom:8px;">📡 设备状态</div>' +
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;">' +
+    '<span>🟢 在线：<strong>11台</strong></span>' +
+    '<span>🟡 低电量：<strong>3台</strong></span>' +
+    '<span>🔴 离线：<strong>2台</strong></span></div></div>' +
+    '<div style="padding:16px 0 4px;display:flex;gap:10px;">' +
+    '<button class="modal-btn secondary" onclick="goShiftStep(1)" style="flex:1;">← 上一步</button>' +
+    '<button class="modal-btn" onclick="goShiftStep(3)" style="flex:2;background:var(--blue);color:white;border:none;padding:12px;">下一步：签字确认 →</button></div></div>' +
+    // Step 3: 签字确认
+    '<div id="shift-panel-3" style="display:none;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;">' +
+    '<div style="border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">✍️ 交班人签字</div>' +
+    '<div id="shift-out-sig" style="height:50px;background:var(--bg);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:11px;cursor:pointer;" onclick="this.innerHTML=\'<span style=color:var(--blue);>✓ 已签字：张三</span>\'">点击签字</div></div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center;">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">✍️ 接班人签字</div>' +
+    '<div id="shift-in-sig" style="height:50px;background:var(--bg);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:11px;cursor:pointer;" onclick="this.innerHTML=\'<span style=color:var(--green);>✓ 已签字：李四</span>\'">点击签字</div></div></div>' +
+    '<div class="form-group"><label class="form-label">交接备注</label>' +
+    '<textarea class="form-textarea" id="shift-note" placeholder="可选，填写本次交接特殊说明..." style="min-height:60px;"></textarea></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--green);">' +
+    '✅ 数据核对无误，双方确认后交接班即生效。打印后可作为正式记录存档。</div>' +
+    '<div style="padding:16px 0 4px;display:flex;gap:10px;">' +
+    '<button class="modal-btn secondary" onclick="goShiftStep(2)" style="flex:1;">← 上一步</button>' +
+    '<button class="modal-btn" onclick="submitFullShiftHandover()" style="flex:2;background:var(--green);color:white;border:none;padding:12px;">✅ 确认交接班完成</button></div></div></div>' +
+    '<div style="padding:14px 24px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="printShiftHandoverReport()">🖨️ 打印交接单</button>' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-full-shift-handover\').remove()">取消</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function goShiftStep(step) {
+  for (var i = 1; i <= 3; i++) {
+    var panel = document.getElementById('shift-panel-' + i);
+    var stepEl = document.getElementById('shift-step-' + i);
+    if (panel) panel.style.display = i === step ? '' : 'none';
+    if (stepEl) {
+      if (i <= step) {
+        stepEl.style.background = 'var(--blue)';
+        stepEl.style.color = 'white';
+      } else {
+        stepEl.style.background = 'var(--bg)';
+        stepEl.style.color = 'var(--text-muted)';
+      }
+    }
+  }
+}
+
+function submitFullShiftHandover() {
+  var outName = document.getElementById('shift-out-name') ? document.getElementById('shift-out-name').value : '';
+  var inName = document.getElementById('shift-in-name') ? document.getElementById('shift-in-name').value : '';
+  if (!outName || !inName) { showToast('请选择交班人和接班人', 'error'); return; }
+  if (outName === inName) { showToast('交班人和接班人不能相同', 'error'); return; }
+  var note = document.getElementById('shift-note') ? document.getElementById('shift-note').value.trim() : '';
+  var now = new Date().toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\//g,'-');
+  document.getElementById('modal-full-shift-handover') && document.getElementById('modal-full-shift-handover').remove();
+  showToast('✅ 交接班完成！' + outName + ' → ' + inName + '，数据已同步', 'success');
+}
+
+function printShiftHandoverReport() {
+  showToast('🖨️ 交接班打印窗口已打开', 'success');
+}
+</script>
+
 </body></html>
