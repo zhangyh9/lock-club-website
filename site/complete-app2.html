@@ -25582,6 +25582,727 @@ function renderOplogTable() {
 function applyOplogFilter() { renderOplogTable(); }
 
 // ============================================================
+// 【物联后台 v4 第X轮】5个缺失菜单弹窗完整实现
+// 解决：夜审报表/押金管理/排班管理/服务评价/积分商城 菜单点击无反应
+// ============================================================
+
+// -------- 缺失函数1：夜审报表完整弹窗 --------
+var _nightAuditData = [
+  {date:'2026-03-28', auditor:'前台小王', income:3680, expense:1240, net:2440, rooms:12, checkins:3, checkouts:2, notes:'正常'},
+  {date:'2026-03-27', auditor:'前台小李', income:4120, expense:980, net:3140, rooms:14, checkins:4, checkouts:1, notes:'正常'},
+  {date:'2026-03-26', auditor:'前台小王', income:2960, expense:1560, net:1400, rooms:10, checkins:2, checkouts:3, notes:'空调维修费¥600'},
+  {date:'2026-03-25', auditor:'前台小李', income:5200, expense:1100, net:4100, rooms:16, checkins:5, checkouts:2, notes:'正常'},
+  {date:'2026-03-24', auditor:'前台小王', income:3880, expense:890, net:2990, rooms:13, checkins:3, checkouts:4, notes:'正常'}
+];
+var _nightAuditEditIdx = null;
+
+function openNightAuditFullModal() {
+  var existing = document.getElementById('modal-night-audit');
+  if (existing) existing.remove();
+  var rows = _nightAuditData.map(function(n, i) {
+    return '<tr onclick="openNightAuditDetail(' + i + ')" style="cursor:pointer;">' +
+      '<td style="font-size:12px;font-weight:600;">' + n.date + '</td>' +
+      '<td><span style="font-size:12px;font-weight:600;">' + n.auditor + '</span></td>' +
+      '<td><span style="font-weight:600;color:var(--green);">¥' + n.income.toLocaleString() + '</span></td>' +
+      '<td><span style="font-weight:600;color:var(--red);">¥' + n.expense.toLocaleString() + '</span></td>' +
+      '<td><span style="font-weight:600;color:var(--blue);">¥' + n.net.toLocaleString() + '</span></td>' +
+      '<td><span class="tbadge blue">' + n.rooms + '间</span></td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + n.notes + '</td>' +
+      '<td><button class="action-btn small" onclick="event.stopPropagation();openNightAuditDetail(' + i + ')">详情</button></td></tr>';
+  }).join('');
+  var totalIncome = _nightAuditData.reduce(function(s,n){ return s + n.income; }, 0);
+  var totalExpense = _nightAuditData.reduce(function(s,n){ return s + n.expense; }, 0);
+  var totalNet = _nightAuditData.reduce(function(s,n){ return s + n.net; }, 0);
+  var html = '<div class="modal-overlay" id="modal-night-audit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:820px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🌙</div><div><div style="font-size:15px;font-weight:700;">夜审报表</div><div style="font-size:11px;color:var(--text-muted);">每日运营数据核对与结算</div></div></div>' +
+    '<div style="display:flex;gap:8px;align-items:center;">' +
+    '<span style="font-size:12px;color:var(--text-muted);">总收入</span><span style="font-size:14px;font-weight:700;color:var(--green);">¥' + totalIncome.toLocaleString() + '</span>' +
+    '<span style="font-size:12px;color:var(--text-muted);margin-left:8px;">总支出</span><span style="font-size:14px;font-weight:700;color:var(--red);">¥' + totalExpense.toLocaleString() + '</span>' +
+    '<span style="font-size:12px;color:var(--text-muted);margin-left:8px;">净利润</span><span style="font-size:14px;font-weight:700;color:var(--blue);">¥' + totalNet.toLocaleString() + '</span>' +
+    '</div>' +
+    '<button onclick="document.getElementById(\'modal-night-audit\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-shrink:0;background:var(--bg);">' +
+    '<div style="font-size:12px;color:var(--text-muted);">快速日期筛选：</div>' +
+    '<button class="card-tab active" onclick="filterNightAuditByDate(this, \'\')" style="padding:4px 10px;background:var(--blue);color:white;border:none;">全部</button>' +
+    '<button class="card-tab" onclick="filterNightAuditByDate(this, \'2026-03-28\')" style="padding:4px 10px;background:var(--bg);border:1px solid var(--border);">昨天</button>' +
+    '<button class="card-tab" onclick="filterNightAuditByDate(this, \'2026-03-27\')" style="padding:4px 10px;background:var(--bg);border:1px solid var(--border);">03-27</button>' +
+    '<div style="flex:1;"></div>' +
+    '<button class="action-btn" onclick="exportNightAuditCSV()" style="padding:6px 14px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出报表</button>' +
+    '<button class="action-btn primary" onclick="openNightAuditCreateModal()" style="padding:6px 14px;background:var(--blue);color:white;border:none;">+ 新增夜审</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 24px;">' +
+    '<table class="table" style="margin-top:12px;"><thead><tr>' +
+    '<th>日期</th><th>审核人</th><th>收入</th><th>支出</th><th>净利润</th><th>入住房间</th><th>备注</th><th>操作</th></tr></thead>' +
+    '<tbody id="na-table-body">' + rows + '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-night-audit\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function filterNightAuditByDate(el, date) {
+  document.querySelectorAll('#modal-night-audit .card-tab').forEach(function(t){ t.classList.remove('active'); t.style.background='var(--bg)'; t.style.border='1px solid var(--border)'; t.style.color='var(--text)'; });
+  el.classList.add('active');
+  el.style.background = 'var(--blue)';
+  el.style.color = 'white';
+  el.style.border = 'none';
+  var tbody = document.getElementById('na-table-body');
+  if (!tbody) return;
+  var filtered = date ? _nightAuditData.filter(function(n){ return n.date === date; }) : _nightAuditData;
+  var rows = filtered.map(function(n, i) {
+    var realIdx = _nightAuditData.indexOf(n);
+    return '<tr onclick="openNightAuditDetail(' + realIdx + ')" style="cursor:pointer;">' +
+      '<td style="font-size:12px;font-weight:600;">' + n.date + '</td>' +
+      '<td><span style="font-size:12px;font-weight:600;">' + n.auditor + '</span></td>' +
+      '<td><span style="font-weight:600;color:var(--green);">¥' + n.income.toLocaleString() + '</span></td>' +
+      '<td><span style="font-weight:600;color:var(--red);">¥' + n.expense.toLocaleString() + '</span></td>' +
+      '<td><span style="font-weight:600;color:var(--blue);">¥' + n.net.toLocaleString() + '</span></td>' +
+      '<td><span class="tbadge blue">' + n.rooms + '间</span></td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + n.notes + '</td>' +
+      '<td><button class="action-btn small" onclick="event.stopPropagation();openNightAuditDetail(' + realIdx + ')">详情</button></td></tr>';
+  }).join('');
+  tbody.innerHTML = rows || '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">暂无记录</td></tr>';
+}
+
+function openNightAuditDetail(idx) {
+  var n = _nightAuditData[idx];
+  if (!n) return;
+  var existing = document.getElementById('modal-na-detail');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-na-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:500px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:24px;">🌙</div><div style="font-size:15px;font-weight:700;">夜审详情 - ' + n.date + '</div></div>' +
+    '<button onclick="document.getElementById(\'modal-na-detail\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">审核人</div><div style="font-size:14px;font-weight:700;color:var(--blue);">' + n.auditor + '</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">总收入</div><div style="font-size:18px;font-weight:700;color:var(--green);">¥' + n.income.toLocaleString() + '</div></div>' +
+    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">总支出</div><div style="font-size:18px;font-weight:700;color:var(--red);">¥' + n.expense.toLocaleString() + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">净利润</div><div style="font-size:18px;font-weight:700;color:var(--blue);">¥' + n.net.toLocaleString() + '</div></div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">入住房间</div><div style="font-size:20px;font-weight:700;">' + n.rooms + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">入住</div><div style="font-size:20px;font-weight:700;color:var(--green);">' + n.checkins + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">退房</div><div style="font-size:20px;font-weight:700;color:var(--orange);">' + n.checkouts + '</div></div></div>' +
+    '<div class="form-group"><label class="form-label">备注说明</label><div style="padding:10px;background:var(--bg);border-radius:8px;font-size:13px;">' + n.notes + '</div></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-na-detail\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="deleteNightAudit(' + idx + ')" style="background:var(--red);color:white;border:none;">🗑️ 删除记录</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openNightAuditCreateModal() {
+  document.getElementById('modal-na-detail') && document.getElementById('modal-na-detail').remove();
+  var existing = document.getElementById('modal-na-create');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-na-create" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🌙 新增夜审记录</div>' +
+    '<button onclick="document.getElementById(\'modal-na-create\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">夜审日期 <span class="required">*</span></label>' +
+    '<input type="date" class="form-input" id="na-date" value="' + new Date().toISOString().slice(0,10) + '" style="width:100%;"></div>' +
+    '<div class="form-group"><label class="form-label">审核人 <span class="required">*</span></label>' +
+    '<select class="form-select" id="na-auditor" style="width:100%;"><option value="前台小王">前台小王</option><option value="前台小李">前台小李</option><option value="管理员">管理员</option></select></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">当日收入(元)</label>' +
+    '<input type="number" class="form-input" id="na-income" placeholder="0" style="width:100%;"></div>' +
+    '<div class="form-group"><label class="form-label">当日支出(元)</label>' +
+    '<input type="number" class="form-input" id="na-expense" placeholder="0" style="width:100%;"></div></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">入住房间数</label>' +
+    '<input type="number" class="form-input" id="na-rooms" placeholder="0" style="width:100%;"></div>' +
+    '<div class="form-group"><label class="form-label">入住/退房数</label>' +
+    '<div style="display:flex;gap:8px;"><input type="number" class="form-input" id="na-checkins" placeholder="入住" style="width:50%;"><input type="number" class="form-input" id="na-checkouts" placeholder="退房" style="width:50%;"></div></div></div>' +
+    '<div class="form-group"><label class="form-label">备注说明</label>' +
+    '<textarea class="form-textarea" id="na-notes" placeholder="可选，填写特殊情况..." style="min-height:60px;width:100%;"></textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-na-create\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitNightAuditCreate()" style="background:var(--blue);color:white;border:none;">✅ 保存记录</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitNightAuditCreate() {
+  var date = document.getElementById('na-date') ? document.getElementById('na-date').value : '';
+  var auditor = document.getElementById('na-auditor') ? document.getElementById('na-auditor').value : '';
+  var income = parseInt(document.getElementById('na-income') ? document.getElementById('na-income').value : 0);
+  var expense = parseInt(document.getElementById('na-expense') ? document.getElementById('na-expense').value : 0);
+  var rooms = parseInt(document.getElementById('na-rooms') ? document.getElementById('na-rooms').value : 0);
+  var checkins = parseInt(document.getElementById('na-checkins') ? document.getElementById('na-checkins').value : 0);
+  var checkouts = parseInt(document.getElementById('na-checkouts') ? document.getElementById('na-checkouts').value : 0);
+  var notes = document.getElementById('na-notes') ? document.getElementById('na-notes').value.trim() : '正常';
+  if (!date || !auditor) { showToast('请填写日期和审核人', 'error'); return; }
+  _nightAuditData.unshift({date:date, auditor:auditor, income:income, expense:expense, net:income - expense, rooms:rooms, checkins:checkins, checkouts:checkouts, notes:notes || '正常'});
+  document.getElementById('modal-na-create') && document.getElementById('modal-na-create').remove();
+  showToast('✅ 夜审记录已保存', 'success');
+  openNightAuditFullModal();
+}
+
+function deleteNightAudit(idx) {
+  var n = _nightAuditData[idx];
+  if (!confirm('确定删除 ' + n.date + ' 的夜审记录？')) return;
+  _nightAuditData.splice(idx, 1);
+  document.getElementById('modal-na-detail') && document.getElementById('modal-na-detail').remove();
+  showToast('🗑️ 夜审记录已删除', 'success');
+  openNightAuditFullModal();
+}
+
+function exportNightAuditCSV() {
+  var headers = ['日期','审核人','收入','支出','净利润','入住房间','入住数','退房数','备注'];
+  var rows = _nightAuditData.map(function(n){ return [n.date, n.auditor, n.income, n.expense, n.net, n.rooms, n.checkins, n.checkouts, n.notes]; });
+  var csv = '\uFEFF' + headers.join(',') + '\n' + rows.map(function(r){ return r.join(','); }).join('\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '夜审报表_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv'; a.click();
+  showToast('📤 已导出 ' + _nightAuditData.length + ' 条夜审记录', 'success');
+}
+
+// -------- 缺失函数2：押金管理完整弹窗 --------
+var _depositList = [
+  {room:'301', guest:'张三', phone:'138****8888', amount:100, payTime:'2026-03-26 14:00', status:'已收', refund:0},
+  {room:'203', guest:'李四', phone:'139****6666', amount:100, payTime:'2026-03-25 10:00', status:'已退', refund:100},
+  {room:'304', guest:'王五', phone:'137****5555', amount:100, payTime:'2026-03-24 16:00', status:'已收', refund:0},
+  {room:'201', guest:'赵六', phone:'136****4444', amount:100, payTime:'2026-03-23 09:00', status:'已退', refund:100},
+  {room:'401', guest:'钱七', phone:'135****3333', amount:100, payTime:'2026-03-22 15:00', status:'已收', refund:0}
+];
+
+function openDepositManagementModal() {
+  var existing = document.getElementById('modal-deposit-mgmt');
+  if (existing) existing.remove();
+  var totalCollected = _depositList.filter(function(d){ return d.status === '已收'; }).reduce(function(s,d){ return s + d.amount; }, 0);
+  var totalRefunded = _depositList.filter(function(d){ return d.status === '已退'; }).reduce(function(s,d){ return s + d.refund; }, 0);
+  var pending = _depositList.filter(function(d){ return d.status === '已收'; }).length;
+  var rows = _depositList.map(function(d, i) {
+    var statusBadge = d.status === '已收' ? '<span class="tbadge green">已收</span>' : '<span class="tbadge blue">已退</span>';
+    var action = d.status === '已收'
+      ? '<button class="action-btn small green" onclick="openDepositRefundModal(' + i + ')">💳 退款</button>'
+      : '<button class="action-btn small" onclick="openDepositDetail(' + i + ')">详情</button>';
+    return '<tr>' +
+      '<td style="font-weight:600;">' + d.room + '</td>' +
+      '<td>' + d.guest + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + d.phone + '</td>' +
+      '<td><span style="font-weight:700;color:var(--green);">¥' + d.amount + '</span></td>' +
+      '<td style="font-size:11px;">' + d.payTime + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td><button class="action-btn small" onclick="openDepositDetail(' + i + ')">详情</button> ' + action + '</td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-deposit-mgmt" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:800px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">💰</div><div><div style="font-size:15px;font-weight:700;">押金管理</div><div style="font-size:11px;color:var(--text-muted);">押金收取与退还记录</div></div></div>' +
+    '<div style="display:flex;gap:16px;align-items:center;">' +
+    '<div style="text-align:center;"><div style="font-size:11px;color:var(--text-muted);">待退押金</div><div style="font-size:16px;font-weight:700;color:var(--orange);">¥' + totalCollected.toLocaleString() + '</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:11px;color:var(--text-muted);">已退押金</div><div style="font-size:16px;font-weight:700;color:var(--blue);">¥' + totalRefunded.toLocaleString() + '</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:11px;color:var(--text-muted);">在住押金</div><div style="font-size:16px;font-weight:700;color:var(--green);">' + pending + '笔</div></div>' +
+    '</div>' +
+    '<button onclick="document.getElementById(\'modal-deposit-mgmt\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-shrink:0;background:var(--bg);">' +
+    '<input type="text" id="dp-search" placeholder="搜索房间/姓名/电话..." style="flex:1;padding:7px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;" oninput="applyDepositSearch()">' +
+    '<select id="dp-status-filter" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="applyDepositSearch()">' +
+    '<option value="all">全部状态</option><option value="已收">已收</option><option value="已退">已退</option></select>' +
+    '<button class="action-btn" onclick="exportDepositCSV()" style="padding:6px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 24px;">' +
+    '<table class="table" style="margin-top:12px;"><thead><tr><th>房间</th><th>客人</th><th>电话</th><th>押金金额</th><th>收款时间</th><th>状态</th><th>操作</th></tr></thead>' +
+    '<tbody id="dp-table-body">' + rows + '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-deposit-mgmt\').remove()">关闭</button>' +
+    '<button class="modal-btn" onclick="openDepositAutoConfigModal()" style="background:var(--blue);color:white;border:none;">⚙️ 自动续期配置</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function applyDepositSearch() {
+  var kw = (document.getElementById('dp-search') || {}).value.trim().toLowerCase() || '';
+  var status = (document.getElementById('dp-status-filter') || {}).value || 'all';
+  var tbody = document.getElementById('dp-table-body');
+  if (!tbody) return;
+  var filtered = _depositList.filter(function(d) {
+    var matchKw = !kw || d.room.toLowerCase().indexOf(kw) >= 0 || d.guest.toLowerCase().indexOf(kw) >= 0 || d.phone.indexOf(kw) >= 0;
+    var matchStatus = status === 'all' || d.status === status;
+    return matchKw && matchStatus;
+  });
+  var rows = filtered.map(function(d, i) {
+    var realIdx = _depositList.indexOf(d);
+    var statusBadge = d.status === '已收' ? '<span class="tbadge green">已收</span>' : '<span class="tbadge blue">已退</span>';
+    var action = d.status === '已收'
+      ? '<button class="action-btn small green" onclick="openDepositRefundModal(' + realIdx + ')">💳 退款</button>'
+      : '<button class="action-btn small" onclick="openDepositDetail(' + realIdx + ')">详情</button>';
+    return '<tr>' +
+      '<td style="font-weight:600;">' + d.room + '</td><td>' + d.guest + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + d.phone + '</td>' +
+      '<td><span style="font-weight:700;color:var(--green);">¥' + d.amount + '</span></td>' +
+      '<td style="font-size:11px;">' + d.payTime + '</td><td>' + statusBadge + '</td>' +
+      '<td><button class="action-btn small" onclick="openDepositDetail(' + realIdx + ')">详情</button> ' + action + '</td></tr>';
+  }).join('');
+  tbody.innerHTML = rows || '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">暂无记录</td></tr>';
+}
+
+function openDepositDetail(idx) {
+  var d = _depositList[idx];
+  if (!d) return;
+  var existing = document.getElementById('modal-dp-detail');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-dp-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">💰 押金详情 - ' + d.room + '</div>' +
+    '<button onclick="document.getElementById(\'modal-dp-detail\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">房间</div><div style="font-size:20px;font-weight:700;color:var(--blue);">' + d.room + '</div></div>' +
+    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">押金金额</div><div style="font-size:20px;font-weight:700;color:var(--green);">¥' + d.amount + '</div></div></div>' +
+    '<div class="form-group"><label class="form-label">客人姓名</label><div style="font-size:14px;font-weight:600;">' + d.guest + '</div></div>' +
+    '<div class="form-group"><label class="form-label">联系电话</label><div style="font-size:14px;">' + d.phone + '</div></div>' +
+    '<div class="form-group"><label class="form-label">收款时间</label><div style="font-size:14px;">' + d.payTime + '</div></div>' +
+    '<div class="form-group"><label class="form-label">押金状态</label>' + (d.status === '已收' ? '<span class="tbadge green" style="padding:4px 12px;font-size:13px;">已收</span>' : '<span class="tbadge blue" style="padding:4px 12px;font-size:13px;">已退 ¥' + d.refund + '</span>') + '</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-dp-detail\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openDepositRefundModal(idx) {
+  var d = _depositList[idx];
+  if (!d) return;
+  var existing = document.getElementById('modal-dp-refund');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-dp-refund" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:24px;">💳</div><div style="font-size:15px;font-weight:700;">押金退款 - ' + d.room + '</div></div>' +
+    '<button onclick="document.getElementById(\'modal-dp-refund\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:14px;background:var(--blue-bg);border-radius:8px;margin-bottom:16px;text-align:center;">' +
+    '<div style="font-size:12px;color:var(--text-muted);">退还押金</div>' +
+    '<div style="font-size:32px;font-weight:800;color:var(--green);">¥' + d.amount + '</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">房间：' + d.room + ' · 客人：' + d.guest + '</div></div>' +
+    '<div class="form-group"><label class="form-label">退款方式</label>' +
+    '<select class="form-select" id="dp-refund-method" style="width:100%;">' +
+    '<option value="cash">💵 现金退款</option><option value="transfer">🏦 原路退回</option><option value="wechat">💚 微信转账</option><option value="alipay">💙 支付宝转账</option></select></div>' +
+    '<div class="form-group"><label class="form-label">退款备注</label>' +
+    '<textarea class="form-textarea" id="dp-refund-note" placeholder="可选，填写退款说明..." style="min-height:60px;width:100%;"></textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-dp-refund\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitDepositRefund(' + idx + ')" style="background:var(--green);color:white;border:none;">✅ 确认退款</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitDepositRefund(idx) {
+  var d = _depositList[idx];
+  if (!d) return;
+  var method = document.getElementById('dp-refund-method') ? document.getElementById('dp-refund-method').value : 'cash';
+  var methodLabel = {cash:'现金',transfer:'原路退回',wechat:'微信',alipay:'支付宝'}[method] || method;
+  d.status = '已退';
+  d.refund = d.amount;
+  document.getElementById('modal-dp-refund') && document.getElementById('modal-dp-refund').remove();
+  document.getElementById('modal-deposit-mgmt') && document.getElementById('modal-deposit-mgmt').remove();
+  showToast('✅ 押金¥' + d.amount + '已通过' + methodLabel + '退还给' + d.guest, 'success');
+  openDepositManagementModal();
+}
+
+function exportDepositCSV() {
+  var headers = ['房间','客人','电话','押金金额','收款时间','状态','退款金额'];
+  var rows = _depositList.map(function(d){ return [d.room, d.guest, d.phone, d.amount, d.payTime, d.status, d.refund]; });
+  var csv = '\uFEFF' + headers.join(',') + '\n' + rows.map(function(r){ return r.join(','); }).join('\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '押金管理_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv'; a.click();
+  showToast('📤 已导出 ' + _depositList.length + ' 条押金记录', 'success');
+}
+
+// -------- 缺失函数3：排班管理完整弹窗 --------
+var _scheduleList = [
+  {date:'2026-03-29', shift:'早班', staff:'前台小王', status:'已到岗'},
+  {date:'2026-03-29', shift:'中班', staff:'前台小李', status:'已到岗'},
+  {date:'2026-03-29', shift:'夜班', staff:'管理员', status:'已到岗'},
+  {date:'2026-03-28', shift:'早班', staff:'前台小王', status:'已到岗'},
+  {date:'2026-03-28', shift:'中班', staff:'前台小李', status:'休息'},
+  {date:'2026-03-28', shift:'夜班', staff:'管理员', status:'已到岗'},
+  {date:'2026-03-27', shift:'早班', staff:'前台小王', status:'休息'},
+  {date:'2026-03-27', shift:'中班', staff:'前台小李', status:'已到岗'}
+];
+var _staffOptions = ['前台小王','前台小李','管理员','客房小张','保安老李'];
+
+function openStaffScheduleModal() {
+  var existing = document.getElementById('modal-staff-schedule');
+  if (existing) existing.remove();
+  var rows = _scheduleList.map(function(s, i) {
+    var statusBadge = s.status === '已到岗' ? '<span class="tbadge green">已到岗</span>'
+      : s.status === '休息' ? '<span class="tbadge gray">休息</span>'
+      : '<span class="tbadge orange">请假</span>';
+    return '<tr>' +
+      '<td style="font-weight:600;">' + s.date + '</td>' +
+      '<td><span class="tbadge blue">' + s.shift + '</span></td>' +
+      '<td style="font-weight:600;">' + s.staff + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td><button class="action-btn small" onclick="openScheduleEditModal(' + i + ')">✏️ 编辑</button> ' +
+      '<button class="action-btn small red" onclick="deleteSchedule(' + i + ')">🗑️</button></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-staff-schedule" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📅</div><div><div style="font-size:15px;font-weight:700;">排班管理</div><div style="font-size:11px;color:var(--text-muted);">员工排班与考勤记录</div></div></div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<select id="sch-date-filter" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="applyScheduleFilter()">' +
+    '<option value="">全部日期</option><option value="2026-03-29">今天(03-29)</option><option value="2026-03-28">昨天(03-28)</option><option value="2026-03-27">03-27</option></select>' +
+    '<select id="sch-staff-filter" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="applyScheduleFilter()">' +
+    '<option value="">全部员工</option>' + _staffOptions.map(function(s){ return '<option value="' + s + '">' + s + '</option>'; }).join('') + '</select>' +
+    '</div>' +
+    '<button onclick="document.getElementById(\'modal-staff-schedule\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 24px;">' +
+    '<table class="table" style="margin-top:12px;"><thead><tr><th>日期</th><th>班次</th><th>员工</th><th>状态</th><th>操作</th></tr></thead>' +
+    '<tbody id="sch-table-body">' + rows + '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-staff-schedule\').remove()">关闭</button>' +
+    '<button class="action-btn" onclick="exportScheduleCSV()" style="padding:6px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出</button>' +
+    '<button class="modal-btn primary" onclick="openScheduleAddModal()" style="background:var(--blue);color:white;border:none;">+ 新增加班</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function applyScheduleFilter() {
+  var dateVal = (document.getElementById('sch-date-filter') || {}).value || '';
+  var staffVal = (document.getElementById('sch-staff-filter') || {}).value || '';
+  var tbody = document.getElementById('sch-table-body');
+  if (!tbody) return;
+  var filtered = _scheduleList.filter(function(s) {
+    return (!dateVal || s.date === dateVal) && (!staffVal || s.staff === staffVal);
+  });
+  var rows = filtered.map(function(s, i) {
+    var realIdx = _scheduleList.indexOf(s);
+    var statusBadge = s.status === '已到岗' ? '<span class="tbadge green">已到岗</span>'
+      : s.status === '休息' ? '<span class="tbadge gray">休息</span>'
+      : '<span class="tbadge orange">请假</span>';
+    return '<tr>' +
+      '<td style="font-weight:600;">' + s.date + '</td>' +
+      '<td><span class="tbadge blue">' + s.shift + '</span></td>' +
+      '<td style="font-weight:600;">' + s.staff + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td><button class="action-btn small" onclick="openScheduleEditModal(' + realIdx + ')">✏️ 编辑</button> ' +
+      '<button class="action-btn small red" onclick="deleteSchedule(' + realIdx + ')">🗑️</button></td></tr>';
+  }).join('');
+  tbody.innerHTML = rows || '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">暂无记录</td></tr>';
+}
+
+function openScheduleAddModal() {
+  document.getElementById('modal-sch-add') && document.getElementById('modal-sch-add').remove();
+  var staffOptions = _staffOptions.map(function(s){ return '<option value="' + s + '">' + s + '</option>'; }).join('');
+  var html = '<div class="modal-overlay" id="modal-sch-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">📅 新增加班记录</div>' +
+    '<button onclick="document.getElementById(\'modal-sch-add\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">日期</label><input type="date" class="form-input" id="sch-add-date" value="' + new Date().toISOString().slice(0,10) + '" style="width:100%;"></div>' +
+    '<div class="form-group"><label class="form-label">班次</label>' +
+    '<select class="form-select" id="sch-add-shift" style="width:100%;"><option value="早班">🌅 早班(08:00-16:00)</option><option value="中班">🌇 中班(16:00-24:00)</option><option value="夜班">🌙 夜班(00:00-08:00)</option></select></div>' +
+    '<div class="form-group"><label class="form-label">员工</label>' +
+    '<select class="form-select" id="sch-add-staff" style="width:100%;">' + staffOptions + '</select></div>' +
+    '<div class="form-group"><label class="form-label">状态</label>' +
+    '<select class="form-select" id="sch-add-status" style="width:100%;"><option value="已到岗">✅ 已到岗</option><option value="休息">💤 休息</option><option value="请假">📋 请假</option></select></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-sch-add\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitScheduleAdd()" style="background:var(--blue);color:white;border:none;">✅ 保存</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openScheduleEditModal(idx) {
+  var s = _scheduleList[idx];
+  if (!s) return;
+  document.getElementById('modal-sch-add') && document.getElementById('modal-sch-add').remove();
+  var staffOptions = _staffOptions.map(function(st){ return '<option value="' + st + '"' + (st === s.staff ? ' selected' : '') + '>' + st + '</option>'; }).join('');
+  var html = '<div class="modal-overlay" id="modal-sch-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">✏️ 编辑排班 - ' + s.date + '</div>' +
+    '<button onclick="document.getElementById(\'modal-sch-add\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">日期</label><input type="date" class="form-input" id="sch-add-date" value="' + s.date + '" style="width:100%;"></div>' +
+    '<div class="form-group"><label class="form-label">班次</label>' +
+    '<select class="form-select" id="sch-add-shift" style="width:100%;"><option value="早班"' + (s.shift==='早班'?' selected':'') + '>🌅 早班</option><option value="中班"' + (s.shift==='中班'?' selected':'') + '>🌇 中班</option><option value="夜班"' + (s.shift==='夜班'?' selected':'') + '>🌙 夜班</option></select></div>' +
+    '<div class="form-group"><label class="form-label">员工</label><select class="form-select" id="sch-add-staff" style="width:100%;">' + staffOptions + '</select></div>' +
+    '<div class="form-group"><label class="form-label">状态</label>' +
+    '<select class="form-select" id="sch-add-status" style="width:100%;"><option value="已到岗"' + (s.status==='已到岗'?' selected':'') + '>✅ 已到岗</option><option value="休息"' + (s.status==='休息'?' selected':'') + '>💤 休息</option><option value="请假"' + (s.status==='请假'?' selected':'') + '>📋 请假</option></select></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-sch-add\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitScheduleEdit(' + idx + ')" style="background:var(--blue);color:white;border:none;">✅ 保存修改</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitScheduleAdd() {
+  var date = document.getElementById('sch-add-date') ? document.getElementById('sch-add-date').value : '';
+  var shift = document.getElementById('sch-add-shift') ? document.getElementById('sch-add-shift').value : '早班';
+  var staff = document.getElementById('sch-add-staff') ? document.getElementById('sch-add-staff').value : '';
+  var status = document.getElementById('sch-add-status') ? document.getElementById('sch-add-status').value : '已到岗';
+  if (!date || !staff) { showToast('请填写日期和员工', 'error'); return; }
+  _scheduleList.unshift({date:date, shift:shift, staff:staff, status:status});
+  document.getElementById('modal-sch-add') && document.getElementById('modal-sch-add').remove();
+  showToast('✅ 排班已添加', 'success');
+  openStaffScheduleModal();
+}
+
+function submitScheduleEdit(idx) {
+  var s = _scheduleList[idx];
+  if (!s) return;
+  s.date = document.getElementById('sch-add-date') ? document.getElementById('sch-add-date').value : s.date;
+  s.shift = document.getElementById('sch-add-shift') ? document.getElementById('sch-add-shift').value : s.shift;
+  s.staff = document.getElementById('sch-add-staff') ? document.getElementById('sch-add-staff').value : s.staff;
+  s.status = document.getElementById('sch-add-status') ? document.getElementById('sch-add-status').value : s.status;
+  document.getElementById('modal-sch-add') && document.getElementById('modal-sch-add').remove();
+  showToast('✅ 排班已更新', 'success');
+  openStaffScheduleModal();
+}
+
+function deleteSchedule(idx) {
+  if (!confirm('确定删除该排班记录？')) return;
+  _scheduleList.splice(idx, 1);
+  showToast('🗑️ 排班记录已删除', 'success');
+  openStaffScheduleModal();
+}
+
+function exportScheduleCSV() {
+  var headers = ['日期','班次','员工','状态'];
+  var rows = _scheduleList.map(function(s){ return [s.date, s.shift, s.staff, s.status]; });
+  var csv = '\uFEFF' + headers.join(',') + '\n' + rows.map(function(r){ return r.join(','); }).join('\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '排班表_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv'; a.click();
+  showToast('📤 已导出 ' + _scheduleList.length + ' 条排班记录', 'success');
+}
+
+// -------- 缺失函数4：服务评价中心完整弹窗 --------
+var _satisfactionList = [
+  {id:'SAT-001', room:'301', guest:'张三', type:'praise', score:5, content:'服务热情周到，环境整洁舒适！', time:'2026-03-28 14:00', status:'已回复'},
+  {id:'SAT-002', room:'203', guest:'李四', type:'complaint', score:2, content:'空调声音太大，影响休息', time:'2026-03-27 22:00', status:'处理中'},
+  {id:'SAT-003', room:'304', guest:'王五', type:'praise', score:5, content:'前台小姐姐非常耐心，赞！', time:'2026-03-26 10:00', status:'已回复'},
+  {id:'SAT-004', room:'201', guest:'赵六', type:'suggestion', score:3, content:'希望早餐时间能延长到10点', time:'2026-03-25 09:00', status:'待处理'},
+  {id:'SAT-005', room:'401', guest:'钱七', type:'praise', score:5, content:'智能锁很方便，点赞！', time:'2026-03-24 18:00', status:'已回复'}
+];
+
+function openSatisfactionCenterModal() {
+  var existing = document.getElementById('modal-satisfaction');
+  if (existing) existing.remove();
+  var avgScore = (_satisfactionList.reduce(function(s,n){ return s + n.score; }, 0) / _satisfactionList.length).toFixed(1);
+  var praiseCount = _satisfactionList.filter(function(n){ return n.type === 'praise'; }).length;
+  var complaintCount = _satisfactionList.filter(function(n){ return n.type === 'complaint'; }).length;
+  var rows = _satisfactionList.map(function(s, i) {
+    var typeIcon = s.type === 'praise' ? '⭐' : s.type === 'complaint' ? '🔴' : '💡';
+    var typeLabel = s.type === 'praise' ? '表扬' : s.type === 'complaint' ? '投诉' : '建议';
+    var typeBadgeClass = s.type === 'praise' ? 'green' : s.type === 'complaint' ? 'red' : 'blue';
+    var statusBadge = s.status === '已回复' ? '<span class="tbadge green">' + s.status + '</span>'
+      : s.status === '处理中' ? '<span class="tbadge orange">' + s.status + '</span>'
+      : '<span class="tbadge gray">' + s.status + '</span>';
+    var stars = '⭐'.repeat(s.score) + '☆'.repeat(5 - s.score);
+    return '<tr>' +
+      '<td style="font-size:11px;color:var(--blue);">' + s.id + '</td>' +
+      '<td style="font-weight:600;">' + s.room + '</td>' +
+      '<td>' + s.guest + '</td>' +
+      '<td><span class="tbadge ' + typeBadgeClass + '">' + typeIcon + ' ' + typeLabel + '</span></td>' +
+      '<td><span style="color:var(--orange);">' + stars + '</span></td>' +
+      '<td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + s.content + '">' + s.content + '</td>' +
+      '<td style="font-size:11px;">' + s.time + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td><button class="action-btn small" onclick="openSatisfactionDetail(' + i + ')">详情</button></td></tr>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-satisfaction" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:900px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">⭐</div><div><div style="font-size:15px;font-weight:700;">服务评价中心</div><div style="font-size:11px;color:var(--text-muted);">客户满意度追踪与处理</div></div></div>' +
+    '<div style="display:flex;gap:20px;align-items:center;">' +
+    '<div style="text-align:center;"><div style="font-size:11px;color:var(--text-muted);">平均评分</div><div style="font-size:20px;font-weight:800;color:var(--orange);">' + avgScore + '</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:11px;color:var(--text-muted);">收到表扬</div><div style="font-size:16px;font-weight:700;color:var(--green);">' + praiseCount + '</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:11px;color:var(--text-muted);">收到投诉</div><div style="font-size:16px;font-weight:700;color:var(--red);">' + complaintCount + '</div></div>' +
+    '</div>' +
+    '<button onclick="document.getElementById(\'modal-satisfaction\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-shrink:0;background:var(--bg);">' +
+    '<select id="sat-type-filter" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="applySatisfactionFilter()">' +
+    '<option value="">全部类型</option><option value="praise">⭐ 表扬</option><option value="complaint">🔴 投诉</option><option value="suggestion">💡 建议</option></select>' +
+    '<select id="sat-status-filter" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="applySatisfactionFilter()">' +
+    '<option value="">全部状态</option><option value="已回复">已回复</option><option value="处理中">处理中</option><option value="待处理">待处理</option></select>' +
+    '<input type="text" id="sat-search" placeholder="搜索房间/客人/内容..." style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;" oninput="applySatisfactionFilter()">' +
+    '<button class="action-btn" onclick="exportSatisfactionCSV()" style="padding:6px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 24px;">' +
+    '<table class="table" style="margin-top:12px;"><thead><tr><th>ID</th><th>房间</th><th>客人</th><th>类型</th><th>评分</th><th>评价内容</th><th>时间</th><th>状态</th><th>操作</th></tr></thead>' +
+    '<tbody id="sat-table-body">' + rows + '</tbody></table></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-satisfaction\').remove()">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function applySatisfactionFilter() {
+  var typeVal = (document.getElementById('sat-type-filter') || {}).value || '';
+  var statusVal = (document.getElementById('sat-status-filter') || {}).value || '';
+  var kw = (document.getElementById('sat-search') || {}).value.trim().toLowerCase() || '';
+  var tbody = document.getElementById('sat-table-body');
+  if (!tbody) return;
+  var filtered = _satisfactionList.filter(function(s) {
+    return (!typeVal || s.type === typeVal) && (!statusVal || s.status === statusVal)
+      && (!kw || s.room.toLowerCase().indexOf(kw) >= 0 || s.guest.toLowerCase().indexOf(kw) >= 0 || s.content.toLowerCase().indexOf(kw) >= 0);
+  });
+  var rows = filtered.map(function(s, i) {
+    var realIdx = _satisfactionList.indexOf(s);
+    var typeIcon = s.type === 'praise' ? '⭐' : s.type === 'complaint' ? '🔴' : '💡';
+    var typeLabel = s.type === 'praise' ? '表扬' : s.type === 'complaint' ? '投诉' : '建议';
+    var typeBadgeClass = s.type === 'praise' ? 'green' : s.type === 'complaint' ? 'red' : 'blue';
+    var statusBadge = s.status === '已回复' ? '<span class="tbadge green">' + s.status + '</span>'
+      : s.status === '处理中' ? '<span class="tbadge orange">' + s.status + '</span>'
+      : '<span class="tbadge gray">' + s.status + '</span>';
+    var stars = '⭐'.repeat(s.score) + '☆'.repeat(5 - s.score);
+    return '<tr>' +
+      '<td style="font-size:11px;color:var(--blue);">' + s.id + '</td><td style="font-weight:600;">' + s.room + '</td>' +
+      '<td>' + s.guest + '</td>' +
+      '<td><span class="tbadge ' + typeBadgeClass + '">' + typeIcon + ' ' + typeLabel + '</span></td>' +
+      '<td><span style="color:var(--orange);">' + stars + '</span></td>' +
+      '<td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + s.content + '</td>' +
+      '<td style="font-size:11px;">' + s.time + '</td><td>' + statusBadge + '</td>' +
+      '<td><button class="action-btn small" onclick="openSatisfactionDetail(' + realIdx + ')">详情</button></td></tr>';
+  }).join('');
+  tbody.innerHTML = rows || '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">暂无记录</td></tr>';
+}
+
+function openSatisfactionDetail(idx) {
+  var s = _satisfactionList[idx];
+  if (!s) return;
+  var existing = document.getElementById('modal-sat-detail');
+  if (existing) existing.remove();
+  var typeIcon = s.type === 'praise' ? '⭐' : s.type === 'complaint' ? '🔴' : '💡';
+  var typeLabel = s.type === 'praise' ? '表扬' : s.type === 'complaint' ? '投诉' : '建议';
+  var stars = '⭐'.repeat(s.score) + '☆'.repeat(5 - s.score);
+  var html = '<div class="modal-overlay" id="modal-sat-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:500px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">' + typeIcon + '</div><div><div style="font-size:15px;font-weight:700;">评价详情</div><div style="font-size:11px;color:var(--text-muted);">' + typeLabel + ' · ' + s.id + '</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-sat-detail\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">房间</div><div style="font-size:20px;font-weight:700;color:var(--blue);">' + s.room + '</div></div>' +
+    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">评分</div><div style="font-size:20px;font-weight:700;color:var(--orange);">' + stars + '</div></div></div>' +
+    '<div class="form-group"><label class="form-label">客人姓名</label><div style="font-size:14px;font-weight:600;">' + s.guest + '</div></div>' +
+    '<div class="form-group"><label class="form-label">评价时间</label><div style="font-size:14px;">' + s.time + '</div></div>' +
+    '<div class="form-group"><label class="form-label">评价内容</label><div style="padding:12px;background:var(--bg);border-radius:8px;font-size:13px;line-height:1.6;">' + s.content + '</div></div>' +
+    '<div class="form-group"><label class="form-label">处理状态</label>' +
+    '<select class="form-select" id="sat-detail-status" style="width:100%;">' +
+    '<option value="待处理"' + (s.status==='待处理'?' selected':'') + '>📋 待处理</option>' +
+    '<option value="处理中"' + (s.status==='处理中'?' selected':'') + '>🔄 处理中</option>' +
+    '<option value="已回复"' + (s.status==='已回复'?' selected':'') + '>✅ 已回复</option></select></div>' +
+    '<div class="form-group"><label class="form-label">回复内容</label>' +
+    '<textarea class="form-textarea" id="sat-detail-reply" placeholder="输入回复内容..." style="min-height:60px;width:100%;">' + (s.reply || '') + '</textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-sat-detail\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="submitSatisfactionReply(' + idx + ')" style="background:var(--blue);color:white;border:none;">✅ 保存回复</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitSatisfactionReply(idx) {
+  var s = _satisfactionList[idx];
+  if (!s) return;
+  s.status = document.getElementById('sat-detail-status') ? document.getElementById('sat-detail-status').value : s.status;
+  s.reply = document.getElementById('sat-detail-reply') ? document.getElementById('sat-detail-reply').value.trim() : s.reply;
+  document.getElementById('modal-sat-detail') && document.getElementById('modal-sat-detail').remove();
+  showToast('✅ 评价已回复：' + s.id, 'success');
+  openSatisfactionCenterModal();
+}
+
+function exportSatisfactionCSV() {
+  var headers = ['ID','房间','客人','类型','评分','内容','时间','状态'];
+  var rows = _satisfactionList.map(function(s){ return [s.id, s.room, s.guest, s.type, s.score, s.content, s.time, s.status]; });
+  var csv = '\uFEFF' + headers.join(',') + '\n' + rows.map(function(r){ return r.join(','); }).join('\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '服务评价_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv'; a.click();
+  showToast('📤 已导出 ' + _satisfactionList.length + ' 条评价记录', 'success');
+}
+
+// -------- 缺失函数5：积分商城完整弹窗 --------
+var _pointsMallItems = [
+  {id:'PM-001', name:'免费房型升级', points:500, stock:10, claimed:3, desc:'可将当前房型免费升级一档', validUntil:'2026-12-31'},
+  {id:'PM-002', name:'延迟退房2小时', points:200, stock:50, claimed:12, desc:'最晚可延至14:00退房', validUntil:'2026-12-31'},
+  {id:'PM-003', name:'免费早餐一份', points:300, stock:20, claimed:7, desc:'次日早餐免费一份', validUntil:'2026-06-30'},
+  {id:'PM-004', name:'SPA按摩券', points:800, stock:5, claimed:1, desc:'酒店SPA中心任意项目8折', validUntil:'2026-09-30'},
+  {id:'PM-005', name:'下午茶套餐', points:400, stock:15, claimed:5, desc:'双人下午茶套餐一份', validUntil:'2026-08-31'}
+];
+var _pointsBalance = 1280;
+
+function openPointsMallPage() {
+  var existing = document.getElementById('modal-points-mall');
+  if (existing) existing.remove();
+  var itemsHtml = _pointsMallItems.map(function(item, i) {
+    var percent = Math.round(item.claimed / item.stock * 100);
+    var disabled = item.claimed >= item.stock ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '';
+    return '<div class="exchange-item" ' + disabled + ' onclick="' + (item.claimed < item.stock ? 'claimPointsItem(' + i + ')' : '') + '">' +
+      '<div class="icon-wrap">' + (item.points >= 500 ? '🎁' : '☕') + '</div>' +
+      '<div class="info"><h4>' + item.name + '</h4><p>' + item.desc + '</p><p style="color:var(--text-muted);font-size:10px;">有效期至：' + item.validUntil + '</p></div>' +
+      '<div class="points">' + item.points + '<br><span style="font-size:10px;color:var(--text-muted);font-weight:400;">积分</span></div></div>';
+  }).join('');
+  var claimedHistory = _pointsMallItems.filter(function(i){ return i.claimed > 0; }).map(function(item) {
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">' +
+      '<div><div style="font-size:13px;font-weight:600;">' + item.name + '</div><div style="font-size:11px;color:var(--text-muted);">已兑换 ' + item.claimed + ' / ' + item.stock + ' 次</div></div>' +
+      '<div style="font-size:12px;color:var(--green);">' + item.claimed * item.points + ' 积分消耗</div></div>';
+  }).join('') || '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">暂无兑换记录</div>';
+  var html = '<div class="modal-overlay" id="modal-points-mall" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:680px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🎁</div><div><div style="font-size:15px;font-weight:700;">积分商城</div><div style="font-size:11px;color:var(--text-muted);">积分兑换礼品与特权</div></div></div>' +
+    '<div class="points-balance" style="margin:0;padding:10px 16px;min-width:160px;text-align:center;background:linear-gradient(135deg,var(--orange),#ffc053);border-radius:10px;color:white;">' +
+    '<div style="font-size:11px;opacity:0.85;">可用积分</div>' +
+    '<div style="font-size:24px;font-weight:800;">' + _pointsBalance + '</div></div>' +
+    '<button onclick="document.getElementById(\'modal-points-mall\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="flex:1;overflow-y:auto;padding:16px 24px;">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text);">🎯 可兑换礼品</div>' +
+    '<div id="pm-items-grid" style="margin-bottom:20px;">' + itemsHtml + '</div>' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text);">📋 兑换记录</div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;padding:0 12px;background:var(--bg);">' + claimedHistory + '</div></div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-points-mall\').remove()">关闭</button>' +
+    '<button class="modal-btn primary" onclick="openPointsAddItemModal()" style="background:var(--orange);color:white;border:none;">+ 添加礼品</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function claimPointsItem(idx) {
+  var item = _pointsMallItems[idx];
+  if (!item || item.claimed >= item.stock) { showToast('该礼品已兑完', 'warning'); return; }
+  if (_pointsBalance < item.points) { showToast('积分不足（需要' + item.points + '，当前' + _pointsBalance + '）', 'error'); return; }
+  if (!confirm('确定花费 ' + item.points + ' 积分兑换 "' + item.name + '" 吗？')) return;
+  item.claimed++;
+  _pointsBalance -= item.points;
+  showToast('🎉 恭喜！已成功兑换 "' + item.name + '"，请联系前台核销', 'success');
+  openPointsMallPage();
+}
+
+function openPointsAddItemModal() {
+  document.getElementById('modal-pm-add') && document.getElementById('modal-pm-add').remove();
+  var html = '<div class="modal-overlay" id="modal-pm-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-size:15px;font-weight:700;">🎁 添加积分礼品</div>' +
+    '<button onclick="document.getElementById(\'modal-pm-add\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div class="form-group"><label class="form-label">礼品名称 <span style="color:var(--red);">*</span></label>' +
+    '<input type="text" class="form-input" id="pm-item-name" placeholder="如：免费早餐一份" style="width:100%;"></div>' +
+    '<div class="form-row"><div class="form-group"><label class="form-label">所需积分 <span style="color:var(--red);">*</span></label>' +
+    '<input type="number" class="form-input" id="pm-item-points" placeholder="如：300" style="width:100%;"></div>' +
+    '<div class="form-group"><label class="form-label">库存数量</label>' +
+    '<input type="number" class="form-input" id="pm-item-stock" placeholder="如：20" value="20" style="width:100%;"></div></div>' +
+    '<div class="form-group"><label class="form-label">有效期至</label>' +
+    '<input type="date" class="form-input" id="pm-item-valid" value="2026-12-31" style="width:100%;"></div>' +
+    '<div class="form-group"><label class="form-label">礼品描述</label>' +
+    '<textarea class="form-textarea" id="pm-item-desc" placeholder="简要描述礼品内容..." style="min-height:60px;width:100%;"></textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-pm-add\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitPointsAddItem()" style="background:var(--orange);color:white;border:none;">✅ 添加礼品</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitPointsAddItem() {
+  var name = document.getElementById('pm-item-name') ? document.getElementById('pm-item-name').value.trim() : '';
+  var points = parseInt(document.getElementById('pm-item-points') ? document.getElementById('pm-item-points').value : 0);
+  var stock = parseInt(document.getElementById('pm-item-stock') ? document.getElementById('pm-item-stock').value : 20);
+  var valid = document.getElementById('pm-item-valid') ? document.getElementById('pm-item-valid').value : '2026-12-31';
+  var desc = document.getElementById('pm-item-desc') ? document.getElementById('pm-item-desc').value.trim() : '';
+  if (!name || !points) { showToast('请填写礼品名称和积分', 'error'); return; }
+  _pointsMallItems.push({id:'PM-' + Date.now().toString().slice(-3), name:name, points:points, stock:stock, claimed:0, desc:desc || name, validUntil:valid});
+  document.getElementById('modal-pm-add') && document.getElementById('modal-pm-add').remove();
+  showToast('✅ 礼品 "' + name + '" 已添加', 'success');
+  openPointsMallPage();
+}
+
+// ============================================================
 // 初始化增强：showPage hook + 页面自动初始化
 // ============================================================
 var _origShowPageRef = null;
