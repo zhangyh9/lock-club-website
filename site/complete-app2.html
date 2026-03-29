@@ -28229,6 +28229,177 @@ function submitUnlockLogSubscribe() {
   showToast('✅ 开锁记录订阅已开启（' + (methodLabels[method] || method) + '）', 'success');
   addNotif('📬', 'var(--purple)', 'system', '开锁记录订阅已成功开启');
 }
+
+// ============================================================
+// 【物联后台 v4 第X轮-全面检查修复】5个功能性闭环缺失
+// ============================================================
+
+// 【修复1】能耗分析菜单 → openEnergyDetailPageEnhanced（替换断链）
+// 理由：侧边栏能耗菜单调用 openEnergyDetailPageEnhanced() 但函数体从未定义
+// 修复：实现增强版函数，正确打开能耗详情弹窗并注入AI建议按钮
+function openEnergyDetailPageEnhanced() {
+  var modal = document.getElementById('modal-energy-detail');
+  if (!modal) {
+    showToast('能耗详情弹窗未找到', 'error');
+    return;
+  }
+  modal.classList.remove('hidden');
+  modal.style.display = 'flex';
+  setTimeout(injectEnergyAISuggestBtn, 150);
+}
+
+function injectEnergyAISuggestBtn() {
+  var energyModal = document.getElementById('modal-energy-detail');
+  if (!energyModal) return;
+  var btnArea = energyModal.querySelector('[style*="display:flex"][style*="gap"]');
+  if (!btnArea) return;
+  if (btnArea.textContent.indexOf('AI节能建议') >= 0) return;
+  var aiBtn = document.createElement('button');
+  aiBtn.className = 'action-btn';
+  aiBtn.style.cssText = 'padding:8px 14px;font-size:12px;background:var(--purple);color:white;border:none;border-radius:6px;cursor:pointer;';
+  aiBtn.textContent = '🤖 AI节能建议';
+  aiBtn.onclick = function() { openEnergyAISuggestModal(); };
+  btnArea.insertBefore(aiBtn, btnArea.firstChild);
+}
+
+// 【修复2】告警列表 → filterAlertTable / openAlertModalV2 / submitAlertProcessV2
+// 理由：告警Tab调用 filterAlertTable，告警行调用 openAlertModalV2，但函数体缺失
+var _alertCurrentTab = 'all';
+function filterAlertTable(tab, el) {
+  _alertCurrentTab = tab;
+  var tabContainer = document.querySelector('#page-alert .card-tabs');
+  if (tabContainer) {
+    tabContainer.querySelectorAll('.card-tab').forEach(function(t) {
+      t.classList.remove('active');
+      t.style.background = '';
+      t.style.color = '';
+    });
+    if (el) {
+      el.classList.add('active');
+      el.style.background = 'var(--blue)';
+      el.style.color = 'white';
+    }
+  }
+  var tbody = document.getElementById('alert-table-body');
+  if (!tbody) return;
+  var rows = tbody.querySelectorAll('tr');
+  var matchCount = 0;
+  rows.forEach(function(row) {
+    var status = row.getAttribute('data-status') || '';
+    var show = tab === 'all'
+      || (tab === 'pending' && (status === 'pending' || status === ''))
+      || (tab === 'done' && (status === 'resolved' || status === 'done' || status === 'recovered' || status === 'ignored'));
+    row.style.display = show ? '' : 'none';
+    if (show) matchCount++;
+  });
+  var countEl = document.getElementById('alert-count-label');
+  if (countEl) countEl.textContent = '共 ' + matchCount + ' 条';
+}
+
+function openAlertModalV2(idx) {
+  var d = alertData ? alertData[idx] : null;
+  if (!d) { showToast('未找到告警记录', 'error'); return; }
+  var existing = document.getElementById('modal-alert-process');
+  if (existing) existing.remove();
+  var statusOptions = [
+    {val:'resolved', label:'✅ 标记已处理', color:'var(--green)'},
+    {val:'ignored', label:'👁️ 标记已忽略', color:'var(--text-muted)'},
+    {val:'repair', label:'🔧 联系维修', color:'var(--orange)'}
+  ];
+  var html = '<div class="modal-overlay" id="modal-alert-process" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-alert-process\').remove()">' +
+    '<div class="modal" style="width:480px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="width:44px;height:44px;background:var(--red-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">⚠️</div>' +
+    '<div><div style="font-size:15px;font-weight:700;">告警处理</div><div style="font-size:11px;color:var(--text-muted);">' + (d.type||'') + ' · ' + (d.room||'') + '</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-alert-process\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--text-light);line-height:1.8;">' +
+    '<div><span style="color:var(--text-muted);">设备/房间：</span><strong>' + (d.room||'') + '</strong></div>' +
+    '<div><span style="color:var(--text-muted);">告警详情：</span>' + (d.detail||'') + '</div>' +
+    '<div><span style="color:var(--text-muted);">发生时间：</span>' + (d.time||'') + '</div></div>' +
+    '<div class="form-group"><label class="form-label">处理方式 <span class="required">*</span></label>' +
+    '<select class="form-select" id="ap-action" style="width:100%;">' +
+    '<option value="resolved">✅ 标记已处理</option>' +
+    '<option value="ignored">👁️ 标记已忽略</option>' +
+    '<option value="repair">🔧 联系维修</option></select></div>' +
+    '<div class="form-group"><label class="form-label">处理备注</label>' +
+    '<textarea class="form-textarea" id="ap-note" placeholder="可选，填写处理说明..." style="min-height:70px;width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:13px;"></textarea></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-alert-process\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="submitAlertProcessV2(' + idx + ')" style="background:var(--blue);color:white;border:none;">✅ 确认处理</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitAlertProcessV2(idx) {
+  var action = document.getElementById('ap-action') ? document.getElementById('ap-action').value : '';
+  var note = document.getElementById('ap-note') ? document.getElementById('ap-note').value.trim() : '';
+  var d = alertData ? alertData[idx] : null;
+  if (!d) { showToast('未找到告警记录', 'error'); return; }
+  var statusMap = {resolved:'已处理', ignored:'已忽略', repair:'维修中'};
+  var labelMap = {resolved:'✅ 已标记处理', ignored:'👁️ 已标记忽略', repair:'🔧 已提交维修'};
+  d.status = statusMap[action] || d.status;
+  if (note) d.note = note;
+  var tbody = document.getElementById('alert-table-body');
+  if (tbody) {
+    var rows = tbody.querySelectorAll('tr');
+    if (rows[idx]) {
+      var row = rows[idx];
+      row.setAttribute('data-status', action === 'resolved' ? 'done' : action);
+      var cells = row.querySelectorAll('td');
+      if (cells[4]) {
+        var sc = action === 'resolved' ? ['green-bg','green','✅ '] : action === 'ignored' ? ['bg','text-muted','👁️ '] : ['orange-bg','orange','🔧 '];
+        cells[4].innerHTML = '<span class="tbadge" style="background:var(' + sc[0] + ');color:var(' + sc[1] + ');">' + sc[2] + (statusMap[action]||'') + '</span>';
+      }
+      if (cells[5]) {
+        cells[5].innerHTML = '<button class="action-btn small" onclick="openAlertDetailFullModal(' + idx + ')">详情</button>';
+      }
+    }
+  }
+  document.getElementById('modal-alert-process') && document.getElementById('modal-alert-process').remove();
+  showToast(labelMap[action] || '✅ 告警已处理', 'success');
+}
+
+// 【修复3】通知管理 → filterNotifCategory
+// 理由：通知Tab调用 filterNotifCategory 但函数体缺失，点击Tab无响应
+var _notifCurrentCategory = 'all';
+function filterNotifCategory(category, el) {
+  _notifCurrentCategory = category;
+  var tabContainer = document.querySelector('#page-notif .card-tabs');
+  if (tabContainer) {
+    tabContainer.querySelectorAll('.card-tab').forEach(function(t) {
+      var cat = t.getAttribute('data-cat');
+      if (cat === category) {
+        t.classList.add('active');
+        t.style.background = 'var(--blue)';
+        t.style.color = 'white';
+      } else {
+        t.classList.remove('active');
+        t.style.background = '';
+        t.style.color = '';
+      }
+    });
+  }
+  var cards = document.querySelectorAll('#page-notif .card');
+  cards.forEach(function(card) {
+    var notifCat = card.getAttribute('data-category') || '';
+    card.style.display = (category === 'all' || notifCat === category) ? '' : 'none';
+  });
+}
+
+// 【修复4】告警Tab点击时初始化 filterAlertTable
+// 理由：告警页面有Tab但切换Tab时无数据过滤逻辑
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var firstTab = document.querySelector('#page-alert .card-tab');
+    if (firstTab && typeof filterAlertTable === 'function') {
+      filterAlertTable('all', firstTab);
+    }
+    var notifTab = document.querySelector('#page-notif .card-tab');
+    if (notifTab && typeof filterNotifCategory === 'function') {
+      filterNotifCategory('all', notifTab);
+    }
+  }, 600);
+});
 </script>
 <script src="improvements-v4-func.js"></script>
 </body></html>
