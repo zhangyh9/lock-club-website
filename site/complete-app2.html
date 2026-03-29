@@ -544,6 +544,7 @@ function showPage(pageName) {
   if (pageName === 'blacklist') { setTimeout(function(){ renderBlacklist && renderBlacklist(); }, 100); }
   if (pageName === 'staffschedule') { setTimeout(function(){ renderStaffSchedule && renderStaffSchedule(); }, 100); }
   if (pageName === 'energy') { setTimeout(function(){ renderEnergyChart && renderEnergyChart(); }, 100); }
+  if (pageName === 'device') { setTimeout(function(){ refreshDeviceTable && refreshDeviceTable(); }, 100); }
   window.scrollTo(0, 0);
 }
 
@@ -38084,7 +38085,390 @@ function submitVoidInvoice(id) {
   renderInvoiceMgmt && renderInvoiceMgmt();
 }
 
-// 【改进5】能耗阈值告警管理弹窗 - openEnergyAlertModal()
+// ============================================================
+// 全局设备列表数据（用于设备CRUD操作）
+var deviceList = [];
+
+// 【物联后台v4改进1】工单作废功能
+// 理由：工单列表和详情页的"作废"按钮调用cancelWorkorderById()但函数未定义，导致JS报错
+// 功能：支持单个工单作废（弹窗确认+记录原因）、工单详情页新增作废入口
+// ============================================================
+var _woVoidReasons = {
+  '重复开票': '重复开票',
+  '信息填写错误': '信息填写错误',
+  '客户取消': '客户取消/退房',
+  '测试工单': '测试工单误创',
+  '其他': '其他原因'
+};
+
+function cancelWorkorderById(woId) {
+  var existing = document.getElementById('modal-wo-void');
+  if (existing) existing.remove();
+  var wo = workorderData.find(function(w) { return w.id === woId; });
+  if (!wo) { showToast('工单不存在', 'error'); return; }
+  var html = '<div class="modal-overlay" id="modal-wo-void" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-void\').remove()">' +
+    '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🗑️</div><div><div style="font-size:15px;font-weight:700;">工单作废确认</div><div style="font-size:11px;color:var(--text-muted);">工单号：' + woId + '</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-wo-void\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--red);line-height:1.6;">⚠️ 工单作废后无法恢复，请确认操作。</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:10px;color:var(--text-muted);">工单类型</div><div style="font-size:13px;font-weight:700;">' + (wo.typeLabel || wo.type) + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:10px;color:var(--text-muted);">当前状态</div><div style="font-size:13px;font-weight:700;">' + (wo.statusLabel || wo.status) + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:10px;color:var(--text-muted);">房间号</div><div style="font-size:13px;font-weight:700;">' + wo.room + '</div></div>' +
+    '<div style="padding:10px;background:var(--bg);border-radius:6px;"><div style="font-size:10px;color:var(--text-muted);">客户</div><div style="font-size:13px;font-weight:700;">' + wo.customer + '</div></div></div>' +
+    '<div class="form-group"><label class="form-label">作废原因 <span class="required">*</span></label>' +
+    '<select class="form-select" id="wo-void-reason"><option value="">请选择作废原因</option>' +
+    '<option value="重复开票">重复开票</option><option value="信息填写错误">信息填写错误</option>' +
+    '<option value="客户取消">客户取消/退房</option><option value="测试工单">测试工单误创</option>' +
+    '<option value="其他">其他原因</option></select></div>' +
+    '<div class="form-group"><label class="form-label">详细说明</label>' +
+    '<textarea class="form-textarea" id="wo-void-note" placeholder="请输入详细说明（选填）" style="min-height:60px;resize:vertical;"></textarea></div>' +
+    '<div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:10px;background:var(--bg);border-radius:8px;">' +
+    '<input type="checkbox" id="wo-void-notify" style="accent-color:var(--blue);width:15px;height:15px;"><span>通知相关人员（发送内部通知）</span></label></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-void\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitWorkorderVoid(\'' + woId + '\')" style="background:var(--red);border-color:var(--red);color:white;">🗑️ 确认作废</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitWorkorderVoid(woId) {
+  var reason = document.getElementById('wo-void-reason').value;
+  var note = document.getElementById('wo-void-note').value.trim();
+  var notify = document.getElementById('wo-void-notify').checked;
+  if (!reason) { showToast('请选择作废原因', 'error'); return; }
+  // Update data
+  var idx = workorderData.findIndex(function(w) { return w.id === woId; });
+  if (idx !== -1) {
+    workorderData[idx].status = 'void';
+    workorderData[idx].statusLabel = '❌ 已作废';
+    workorderData[idx].voidReason = reason + (note ? '：' + note : '');
+    workorderData[idx].voidTime = new Date().toLocaleString('zh-CN');
+    workorderData[idx].voidNotify = notify;
+  }
+  document.getElementById('modal-wo-void').remove();
+  showToast('🗑️ 工单 ' + woId + ' 已作废', 'warn');
+  // Re-render workorder table
+  var tbody = document.getElementById('workorder-table-body');
+  if (tbody) {
+    tbody.querySelectorAll('tr[data-wo-id]').forEach(function(row) {
+      if (row.getAttribute('data-wo-id') === woId) row.remove();
+    });
+    // Fallback: re-render all
+    if (!tbody.querySelector('[data-wo-id="' + woId + '"]')) {
+      renderWorkorderTable && renderWorkorderTable();
+    }
+  }
+  // Close detail modal if open
+  var detailModal = document.getElementById('modal-wo-detail-update');
+  if (detailModal) detailModal.remove();
+}
+
+// 【物联后台v4改进4】工单批量关闭功能
+// 理由：批量关闭按钮有但batchCloseWorkorders函数未定义，点击后无反应
+// 功能：支持批量关闭（作废）多个工单，一次确认全部作废
+function batchCloseWorkorders() {
+  var checked = document.querySelectorAll('#workorder-table-body .wo-row-check:checked');
+  if (checked.length === 0) { showToast('请先选择要关闭的工单', 'error'); return; }
+  var woIds = Array.from(checked).map(function(cb) { return cb.getAttribute('data-wo-id'); });
+  var existing = document.getElementById('modal-wo-batch-void');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-wo-batch-void" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-batch-void\').remove()">' +
+    '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🚪</div><div><div style="font-size:15px;font-weight:700;">批量关闭工单</div><div style="font-size:11px;color:var(--text-muted);">将关闭 ' + woIds.length + ' 个工单</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-wo-batch-void\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="padding:12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--red);line-height:1.6;">⚠️ 批量关闭后 ' + woIds.length + ' 个工单将全部作废，无法恢复！</div>' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">即将关闭的工单：</div>' +
+    '<div style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg);margin-bottom:16px;">' +
+    woIds.map(function(id) { return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border-last);">' + id + '</div>'; }).join('') +
+    '</div>' +
+    '<div class="form-group"><label class="form-label">关闭原因 <span class="required">*</span></label>' +
+    '<select class="form-select" id="wo-batch-void-reason"><option value="">请选择原因</option>' +
+    '<option value="统一关闭">统一关闭（批量处理）</option><option value="重复开票">重复开票</option>' +
+    '<option value="客户退房">客户退房自动结清</option><option value="误创">误创工单</option>' +
+    '<option value="其他">其他原因</option></select></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-batch-void\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitBatchWorkorderVoid([' + woIds.map(function(id) { return "'" + id + "'"; }).join(',') + '])" style="background:var(--red);border-color:var(--red);color:white;">🚪 确认关闭 ' + woIds.length + ' 个工单</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitBatchWorkorderVoid(woIds) {
+  var reason = document.getElementById('wo-batch-void-reason').value;
+  if (!reason) { showToast('请选择关闭原因', 'error'); return; }
+  var count = 0;
+  woIds.forEach(function(woId) {
+    var idx = workorderData.findIndex(function(w) { return w.id === woId; });
+    if (idx !== -1) {
+      workorderData[idx].status = 'void';
+      workorderData[idx].statusLabel = '❌ 已作废';
+      workorderData[idx].voidReason = reason;
+      workorderData[idx].voidTime = new Date().toLocaleString('zh-CN');
+      count++;
+    }
+  });
+  document.getElementById('modal-wo-batch-void').remove();
+  showToast('🚪 已关闭 ' + count + ' 个工单', 'warn');
+  // Re-render table
+  renderWorkorderTable && renderWorkorderTable();
+  clearWorkorderSelection();
+}
+
+function renderWorkorderTable() {
+  var tbody = document.getElementById('workorder-table-body');
+  if (!tbody) return;
+  var rows = workorderData.map(function(wo, idx) {
+    var statusClass = wo.status === 'pending' ? 'orange' : wo.status === 'processing' ? 'purple' : wo.status === 'done' ? 'green' : 'gray';
+    var priorityClass = wo.priority === 'urgent' || wo.priority === 'high' ? 'red' : wo.priority === 'normal' ? 'blue' : 'gray';
+    var priorityBg = wo.priority === 'urgent' ? 'var(--red-bg)' : wo.priority === 'high' ? 'var(--orange-bg)' : wo.priority === 'normal' ? 'var(--blue-bg)' : 'var(--bg)';
+    var voided = wo.status === 'void';
+    if (voided) { statusClass = 'gray'; }
+    return '<tr data-status="' + wo.status + '" data-priority="' + wo.priority + '" data-wo-id="' + wo.id + '" style="' + (voided ? 'opacity:0.5;' : '') + '">' +
+      '<td><input type="checkbox" class="wo-row-check" data-wo-id="' + wo.id + '" onchange="toggleWorkorderRow(this, \'' + wo.id + '\')" style="accent-color:var(--blue);cursor:pointer;" onclick="event.stopPropagation()"></td>' +
+      '<td style="font-size:12px;font-weight:600;">' + wo.id + '</td>' +
+      '<td><span class="tbadge ' + priorityClass + '">' + (wo.typeLabel || wo.type) + '</span></td>' +
+      '<td style="font-size:12px;">' + wo.room + '</td>' +
+      '<td style="font-size:12px;">' + (wo.customer || '--') + '</td>' +
+      '<td style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (wo.desc || wo.content || '') + '">' + (wo.desc || wo.content || '--') + '</td>' +
+      '<td><span class="tbadge" style="background:' + priorityBg + ';font-size:10px;">' + (wo.priorityLabel || wo.priority || '⚪ 低') + '</span></td>' +
+      '<td><span class="tbadge ' + statusClass + '" style="font-size:11px;">' + (wo.statusLabel || wo.status || '⏳ 待接受') + '</span></td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + (wo.assignee || '未分配') + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + (wo.created || '--') + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + (wo.completeTime || '--') + '</td>' +
+      '<td>' +
+      (wo.status !== 'void' ? '<button class="action-btn" onclick="openWorkorderDetailAndUpdate(\'' + wo.id + '\')" style="padding:2px 8px;font-size:11px;">处理</button> ' : '<span style="font-size:11px;color:var(--text-muted);">已作废</span>') +
+      (wo.status !== 'void' ? '<button class="action-btn small" onclick="openWorkorderTransferModal(\'' + wo.id + '\')" style="padding:2px 6px;font-size:10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">移交</button> ' : '') +
+      (wo.status !== 'void' ? '<button class="action-btn small red" onclick="cancelWorkorderById(\'' + wo.id + '\')" style="padding:2px 6px;font-size:10px;">作废</button>' : '') +
+      '</td></tr>';
+  }).join('');
+  tbody.innerHTML = rows;
+}
+
+// ============================================================
+// 【物联后台v4改进2+3】设备列表编辑/删除功能
+// 理由：设备列表只有查看详情，缺少编辑和删除功能，无法对设备进行CRUD管理
+// 功能：每行设备新增"编辑"和"删除"按钮，支持编辑设备信息（房间/型号/备注）和删除设备
+// ============================================================
+function openDeviceEditModal(uuid) {
+  var device = null;
+  if (typeof window._devices !== 'undefined') {
+    device = window._devices.find(function(d) { return d.uuid === uuid; });
+  }
+  if (!device && typeof deviceList !== 'undefined') {
+    device = deviceList.find(function(d) { return d.uuid === uuid; });
+  }
+  if (!device) { showToast('设备不存在', 'error'); return; }
+  var existing = document.getElementById('modal-device-edit');
+  if (existing) existing.remove();
+  var typeOptions = [
+    {v:'lock', n:'🔐 门锁'},
+    {v:'ac', n:'❄️ 空调'},
+    {v:'power', n:'⚡ 电表'},
+    {v:'water', n:'💧 水表'},
+    {v:'gateway', n:'📡 网关'}
+  ];
+  var typeHtml = typeOptions.map(function(t) {
+    return '<option value="' + t.v + '"' + (device.type === t.v ? ' selected' : '') + '>' + t.n + '</option>';
+  }).join('');
+  var buildingOptions = [
+    {v:'main', n:'主楼'},
+    {v:'east', n:'东配楼'},
+    {v:'west', n:'西配楼'}
+  ];
+  var buildingHtml = buildingOptions.map(function(b) {
+    return '<option value="' + b.v + '"' + (device.building === b.v ? ' selected' : '') + '>' + b.n + '</option>';
+  }).join('');
+  var floorOptions = ['1F','2F','3F','4F'];
+  var floorHtml = floorOptions.map(function(f) {
+    return '<option value="' + f + '"' + (device.floor === f ? ' selected' : '') + '>' + f + '</option>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-device-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-edit\').remove()">' +
+    '<div class="modal" style="width:520px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">✏️</div><div><div style="font-size:15px;font-weight:700;">编辑设备</div><div style="font-size:11px;color:var(--text-muted);">' + device.uuid + '</div></div></div>' +
+    '<button onclick="document.getElementById(\'modal-device-edit\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
+    '<div style="padding:20px 24px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+    '<div class="form-group"><label class="form-label">设备类型</label><select class="form-select" id="de-type">' + typeHtml + '</select></div>' +
+    '<div class="form-group"><label class="form-label">所属楼栋</label><select class="form-select" id="de-building">' + buildingHtml + '</select></div>' +
+    '<div class="form-group"><label class="form-label">楼层</label><select class="form-select" id="de-floor">' + floorHtml + '</select></div>' +
+    '<div class="form-group"><label class="form-label">绑定房间</label><input type="text" class="form-input" id="de-room" value="' + (device.room || '') + '" placeholder="如：301"></div>' +
+    '<div class="form-group"><label class="form-label">设备型号</label><input type="text" class="form-input" id="de-model" value="' + (device.model || '') + '" placeholder="设备型号"></div>' +
+    '<div class="form-group"><label class="form-label">固件版本</label><input type="text" class="form-input" id="de-firmware" value="' + (device.firmware || '') + '" placeholder="如：v2.4.1"></div></div>' +
+    '<div class="form-group"><label class="form-label">安装位置</label><input type="text" class="form-input" id="de-location" value="' + (device.location || '') + '" placeholder="如：3层走廊东侧"></div>' +
+    '<div class="form-group"><label class="form-label">设备备注</label><textarea class="form-textarea" id="de-notes" placeholder="其他补充信息" style="min-height:60px;resize:vertical;">' + (device.notes || '') + '</textarea></div>' +
+    '<div style="margin-top:16px;padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">💡 编辑设备信息后，设备列表将实时更新显示。</div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;">' +
+    '<button class="modal-btn" onclick="deleteDeviceByUuid(\'' + uuid + '\')" style="background:var(--red-bg);color:var(--red);border-color:var(--red);">🗑️ 删除设备</button>' +
+    '<div style="display:flex;gap:10px;"><button class="modal-btn secondary" onclick="document.getElementById(\'modal-device-edit\').remove()">取消</button>' +
+    '<button class="modal-btn primary" onclick="submitDeviceEdit(\'' + uuid + '\')">💾 保存</button></div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitDeviceEdit(uuid) {
+  var room = document.getElementById('de-room').value.trim();
+  var type = document.getElementById('de-type').value;
+  var building = document.getElementById('de-building').value;
+  var floor = document.getElementById('de-floor').value;
+  var model = document.getElementById('de-model').value.trim();
+  var firmware = document.getElementById('de-firmware').value.trim();
+  var location = document.getElementById('de-location').value.trim();
+  var notes = document.getElementById('de-notes').value.trim();
+  var typeLabel = {lock:'🔐 门锁',ac:'❄️ 空调',power:'⚡ 电表',water:'💧 水表',gateway:'📡 网关'}[type] || type;
+  // Update window._devices
+  if (typeof window._devices !== 'undefined') {
+    var d = window._devices.find(function(x) { return x.uuid === uuid; });
+    if (d) {
+      d.room = room;
+      d.type = type;
+      d.typeLabel = typeLabel;
+      d.building = building;
+      d.floor = floor;
+      d.model = model;
+      d.firmware = firmware;
+      d.location = location;
+      d.notes = notes;
+    }
+  }
+  // Update deviceList
+  if (typeof deviceList !== 'undefined') {
+    var d2 = deviceList.find(function(x) { return x.uuid === uuid; });
+    if (d2) {
+      d2.room = room;
+      d2.type = type;
+      d2.typeLabel = typeLabel;
+      d2.building = building;
+      d2.floor = floor;
+      d2.model = model;
+      d2.firmware = firmware;
+      d2.location = location;
+      d2.notes = notes;
+    }
+  }
+  document.getElementById('modal-device-edit').remove();
+  showToast('✅ 设备 ' + uuid + ' 信息已更新', 'success');
+  // Re-render device table
+  refreshDeviceTable && refreshDeviceTable();
+}
+
+function deleteDeviceByUuid(uuid) {
+  if (!confirm('确定要删除设备 ' + uuid + ' 吗？删除后无法恢复。')) return;
+  // Remove from window._devices
+  if (typeof window._devices !== 'undefined') {
+    var idx = window._devices.findIndex(function(d) { return d.uuid === uuid; });
+    if (idx !== -1) window._devices.splice(idx, 1);
+  }
+  // Remove from deviceList
+  if (typeof deviceList !== 'undefined') {
+    var idx2 = deviceList.findIndex(function(d) { return d.uuid === uuid; });
+    if (idx2 !== -1) deviceList.splice(idx2, 1);
+  }
+  document.getElementById('modal-device-edit').remove();
+  showToast('🗑️ 设备 ' + uuid + ' 已删除', 'warn');
+  // Re-render device table
+  refreshDeviceTable && refreshDeviceTable();
+}
+
+function refreshDeviceTable() {
+  var tbody = document.getElementById('device-table-body');
+  if (!tbody) return;
+  var devices = (typeof window._devices !== 'undefined' && window._devices.length > 0) ? window._devices : (typeof deviceList !== 'undefined' ? deviceList : []);
+  if (devices.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted);">暂无设备数据</td></tr>';
+    return;
+  }
+  var rows = devices.slice(0, 20).map(function(d) {
+    var statusClass = d.status === 'online' ? 'green' : d.status === 'low' ? 'orange' : 'red';
+    var statusLabel = d.status === 'online' ? '🟢 在线' : d.status === 'low' ? '🟡 ' + (d.battery || '?') + '%' : '🔴 离线';
+    var typeLabel = d.typeLabel || d.type || '🔐 门锁';
+    return '<tr data-status="' + d.status + '" data-uuid="' + d.uuid + '">' +
+      '<td><input type="checkbox" class="device-row-check" data-uuid="' + d.uuid + '" style="accent-color:var(--blue);cursor:pointer;"></td>' +
+      '<td style="font-size:12px;font-weight:700;cursor:pointer;" onclick="openDeviceDetailModal(\'' + (d.room || d.uuid) + '\')">' + (d.room || '--') + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + typeLabel + '</td>' +
+      '<td><span class="tbadge ' + statusClass + '" style="font-size:11px;">' + statusLabel + '</span></td>' +
+      '<td style="font-size:12px;">' + (d.battery != null ? d.battery + '%' : '--') + '</td>' +
+      '<td style="font-size:12px;">' + (d.signal != null ? d.signal + 'dBm' : '--') + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + (d.lastSync || '--') + '</td>' +
+      '<td>' +
+      '<button class="action-btn small" onclick="openDeviceDetailModal(\'' + (d.room || d.uuid) + '\')" style="padding:2px 6px;font-size:10px;">详情</button> ' +
+      '<button class="action-btn small" onclick="openDeviceEditModal(\'' + d.uuid + '\')" style="padding:2px 6px;font-size:10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">✏️</button> ' +
+      '<button class="action-btn small red" onclick="deleteDeviceFromTable(\'' + d.uuid + '\')" style="padding:2px 6px;font-size:10px;">🗑️</button>' +
+      '</td></tr>';
+  }).join('');
+  tbody.innerHTML = rows;
+  var countEl = document.getElementById('device-filter-count');
+  if (countEl) countEl.textContent = '共 ' + devices.length + ' 台设备';
+}
+
+function deleteDeviceFromTable(uuid) {
+  if (!confirm('确定删除此设备？删除后无法恢复。')) return;
+  if (typeof window._devices !== 'undefined') {
+    var idx = window._devices.findIndex(function(d) { return d.uuid === uuid; });
+    if (idx !== -1) window._devices.splice(idx, 1);
+  }
+  if (typeof deviceList !== 'undefined') {
+    var idx2 = deviceList.findIndex(function(d) { return d.uuid === uuid; });
+    if (idx2 !== -1) deviceList.splice(idx2, 1);
+  }
+  showToast('🗑️ 设备已删除', 'warn');
+  refreshDeviceTable();
+}
+
+// 初始化设备列表渲染（showPage device时调用）
+var _deviceTableInitialized = false;
+function initDeviceTable() {
+  if (_deviceTableInitialized) return;
+  _deviceTableInitialized = true;
+  var existingInit = document.getElementById('page-device');
+  if (existingInit) {
+    refreshDeviceTable();
+  }
+}
+
+// 【物联后台v4改进5】工单详情页新增作废入口
+// 理由：工单详情弹窗只有"接单"和"完成"按钮，缺少作废入口，紧急情况下无法快速作废
+// 功能：在工单详情弹窗的状态更新区域新增"作废工单"红色按钮
+// 在openWorkorderDetailAndUpdate的按钮区域添加作废按钮（在完成按钮后）
+function addVoidButtonToWoDetail() {
+  // This will be called via the existing modal — no separate function needed
+  // The void button will be injected in the existing modal's button area
+}
+
+// Hook into existing openWorkorderDetailAndUpdate by adding void button
+// We patch the existing function by overriding it with an enhanced version
+var _originalOpenWorkorderDetailAndUpdate = null;
+try { _originalOpenWorkorderDetailAndUpdate = openWorkorderDetailAndUpdate; } catch(e) {}
+
+function openWorkorderDetailAndUpdate(orderId) {
+  // Call original if exists
+  if (_originalOpenWorkorderDetailAndUpdate) {
+    _originalOpenWorkorderDetailAndUpdate(orderId);
+  }
+  // Add void button to existing modal after a short delay
+  setTimeout(function() {
+    var modal = document.getElementById('modal-wo-detail-update');
+    if (!modal) return;
+    // Check if void button already added
+    if (modal.querySelector('.wo-detail-void-btn')) return;
+    var footer = modal.querySelector('.modal-footer, [style*="border-top"]');
+    if (!footer) return;
+    // Only add if status is not void
+    var d = workorderData.find(function(w) { return w.id === orderId; });
+    if (!d || d.status === 'void') return;
+    var voidBtn = document.createElement('button');
+    voidBtn.className = 'wo-detail-void-btn';
+    voidBtn.style.cssText = 'padding:10px 16px;background:var(--red-bg);color:var(--red);border:1px solid var(--red);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-right:auto;';
+    voidBtn.textContent = '🗑️ 作废';
+    voidBtn.onclick = function() { cancelWorkorderById(orderId); };
+    footer.insertBefore(voidBtn, footer.firstChild);
+  }, 100);
+}
+
+// ============================================================
+// 【物联后台v4改进5】能耗阈值告警管理弹窗 - openEnergyAlertModal()
 // 理由：节能风控页面缺少能耗阈值告警规则的增删改查入口，无法设置和管理各楼层能耗告警。
 // 功能：楼栋/楼层级能耗阈值配置 + 告警规则设置 + 历史告警记录查看。
 var _energyAlertStore = [
