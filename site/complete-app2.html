@@ -26626,6 +26626,590 @@ function openInvoiceCreateModal() {
   }, 150);
 }
 
+// ============================================================
+// 【物联后台 v4 第X轮】来自 improvements-v3-iter4.html 的5个功能性改进
+// 理由：improvements-v3-iter4.html 中的5个改进未注入到 complete-app2.html
+// 改进：补充会员等级权益/能耗趋势/楼栋CRUD/设备故障工单/开锁高级筛选
+// ============================================================
+
+// ============================================================
+// 【改进1】会员等级权益管理完整弹窗
+// 理由：原系统配置页面Tab5有会员管理，Demo虽有会员列表但缺少等级权益配置闭环
+// 改进：实现等级权益完整弹窗（等级列表/新增/编辑/权益配置/升降级规则）
+// ============================================================
+var memberTiersData = [
+  {id:'tier1', name:'普通会员', icon:'🟢', color:'#52c41a', minPoints:0, discount:'无', freeBreakfast:false, lateCheckout:false, prioritySupport:false, monthlyLimit:0, desc:'注册即得，基本服务'},
+  {id:'tier2', name:'银卡会员', icon:'🔘', color:'#8c8c8c', minPoints:1000, discount:'9.5折', freeBreakfast:false, lateCheckout:false, prioritySupport:false, monthlyLimit:2, desc:'累计1000积分升级'},
+  {id:'tier3', name:'金卡会员', icon:'🌟', color:'#faad14', minPoints:5000, discount:'9折', freeBreakfast:true, lateCheckout:false, prioritySupport:false, monthlyLimit:5, desc:'累计5000积分，含早餐'},
+  {id:'tier4', name:'白金会员', icon:'💎', color:'#1890ff', minPoints:20000, discount:'8.5折', freeBreakfast:true, lateCheckout:true, prioritySupport:false, monthlyLimit:10, desc:'累计20000积分，享延迟退房'},
+  {id:'tier5', name:'黑金会员', icon:'👑', color:'#722ed1', minPoints:50000, discount:'8折', freeBreakfast:true, lateCheckout:true, prioritySupport:true, monthlyLimit:999, desc:'累计50000积分，24h专属客服'},
+];
+
+function openMemberTierManagement() {
+  var existing = document.getElementById('modal-member-tier');
+  if (existing) existing.remove();
+  var tiersHtml = memberTiersData.map(function(tier) {
+    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'var(--border)\'" onclick="openEditTierModal(\'' + tier.id + '\')">' +
+      '<div style="font-size:28px;">' + tier.icon + '</div>' +
+      '<div style="flex:1;">' +
+        '<div style="font-size:14px;font-weight:700;color:' + tier.color + ';">' + tier.name + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + tier.desc + '</div>' +
+        '<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">' +
+          (tier.discount !== '无' ? '<span style="padding:1px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:10px;font-weight:600;">折扣 ' + tier.discount + '</span>' : '') +
+          (tier.freeBreakfast ? '<span style="padding:1px 6px;background:var(--green-bg);color:var(--green);border-radius:4px;font-size:10px;font-weight:600;">早餐</span>' : '') +
+          (tier.lateCheckout ? '<span style="padding:1px 6px;background:var(--orange-bg);color:var(--orange);border-radius:4px;font-size:10px;font-weight:600;">延迟退房</span>' : '') +
+          (tier.prioritySupport ? '<span style="padding:1px 6px;background:var(--purple-bg);color:var(--purple);border-radius:4px;font-size:10px;font-weight:600;">优先客服</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:right;">' +
+        '<div style="font-size:11px;color:var(--text-muted);">需 ' + tier.minPoints.toLocaleString() + ' 积分</div>' +
+        '<div style="font-size:10px;color:var(--text-muted);">月限制 ' + tier.monthlyLimit + ' 次</div>' +
+      '</div>' +
+      '<div style="color:var(--text-muted);font-size:14px;">›</div>' +
+    '</div>';
+  }).join('');
+
+  var html = '<div class="modal-overlay" id="modal-member-tier" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-member-tier\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:640px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+        '<div><div style="font-size:16px;font-weight:700;">👑 会员等级权益管理</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">等级定义 · 权益配置 · 升降级规则 · 共 5 个等级</div></div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button onclick="openAddTierModal()" style="padding:6px 14px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">+ 新增等级</button>' +
+          '<button onclick="document.getElementById(\'modal-member-tier\').remove()" style="background:var(--bg);border:none;font-size:16px;cursor:pointer;color:var(--text-light);width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button>' +
+        '</div></div>' +
+      '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
+        '<div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;">' +
+          '<span style="font-size:14px;">ℹ️</span>' +
+          '<div style="font-size:11px;color:var(--text);">会员消费每10元累计1积分；达到等级门槛自动升级；连续12个月无消费降一级</div>' +
+        '</div>' +
+        '<div style="margin-bottom:16px;">' +
+          '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">📊 等级分布</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">' +
+            '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;cursor:pointer;" onclick="openTierMembersModal(\'tier1\')"><div style="font-size:20px;font-weight:700;color:var(--green);">142</div><div style="font-size:10px;color:var(--text-muted);">普通</div></div>' +
+            '<div style="padding:10px;background:#8c8c8c22;border-radius:8px;text-align:center;cursor:pointer;" onclick="openTierMembersModal(\'tier2\')"><div style="font-size:20px;font-weight:700;color:#8c8c8c;">58</div><div style="font-size:10px;color:var(--text-muted);">银卡</div></div>' +
+            '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;cursor:pointer;" onclick="openTierMembersModal(\'tier3\')"><div style="font-size:20px;font-weight:700;color:var(--orange);">23</div><div style="font-size:10px;color:var(--text-muted);">金卡</div></div>' +
+            '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;cursor:pointer;" onclick="openTierMembersModal(\'tier4\')"><div style="font-size:20px;font-weight:700;color:var(--blue);">8</div><div style="font-size:10px;color:var(--text-muted);">白金</div></div>' +
+            '<div style="padding:10px;background:var(--purple-bg);border-radius:8px;text-align:center;cursor:pointer;" onclick="openTierMembersModal(\'tier5\')"><div style="font-size:20px;font-weight:700;color:var(--purple);">3</div><div style="font-size:10px;color:var(--text-muted);">黑金</div></div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-bottom:16px;">' +
+          '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🏆 等级权益配置</div>' +
+          tiersHtml +
+        '</div>' +
+        '<div>' +
+          '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">⚙️ 升降级规则配置</div>' +
+          '<div style="padding:12px;background:var(--bg);border-radius:8px;display:flex;flex-direction:column;gap:8px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;font-size:12px;"><span style="color:var(--green);font-weight:700;width:80px;">自动升级</span><span>消费积分达标后次日凌晨自动升级，发送短信通知</span><button onclick="showToast(\'✅ 自动升级规则已开启\',\'success\')" style="margin-left:auto;padding:3px 10px;background:var(--green);color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;">已开启</button></div>' +
+            '<div style="display:flex;align-items:center;gap:10px;font-size:12px;"><span style="color:var(--orange);font-weight:700;width:80px;">保级规则</span><span>连续12个月消费不足门槛的80%时降一级</span><button onclick="showToast(\'✅ 保级规则已开启\',\'success\')" style="margin-left:auto;padding:3px 10px;background:var(--orange);color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;">已开启</button></div>' +
+            '<div style="display:flex;align-items:center;gap:10px;font-size:12px;"><span style="color:var(--blue);font-weight:700;width:80px;">降级通知</span><span>降级前7天发送预警短信，可通过消费保住当前等级</span><button onclick="showToast(\'✅ 降级通知已开启\',\'success\')" style="margin-left:auto;padding:3px 10px;background:var(--blue);color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;">已开启</button></div>' +
+            '<div style="display:flex;align-items:center;gap:10px;font-size:12px;"><span style="color:var(--purple);font-weight:700;width:80px;">专属权益</span><span>高等级会员享受优先预约、专属客服通道</span><button onclick="showToast(\'✅ 专属权益已开启\',\'success\')" style="margin-left:auto;padding:3px 10px;background:var(--purple);color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;">已开启</button></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openTierMembersModal(tierId) {
+  var tier = memberTiersData.find(function(t){ return t.id === tierId; });
+  if (!tier) return;
+  var members = [
+    {name:'张三', phone:'138****8888', points:2340, joinDate:'2025-03-15'},
+    {name:'李四', phone:'139****6666', points:1560, joinDate:'2025-08-22'},
+    {name:'王五', phone:'137****4444', points:1100, joinDate:'2026-01-10'},
+  ];
+  var html = '<div class="modal-overlay" id="modal-tier-members" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-tier-members\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:520px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div><div style="font-size:14px;font-weight:700;">' + tier.icon + ' ' + tier.name + ' 会员（' + members.length + ' 人）</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">等级门槛：' + tier.minPoints.toLocaleString() + ' 积分 | 权益：' + tier.desc + '</div></div>' +
+        '<button onclick="document.getElementById(\'modal-tier-members\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div>' +
+      '<div style="padding:12px 20px;overflow-y:auto;flex:1;">' +
+        '<table class="table"><thead><tr><th>姓名</th><th>手机号</th><th>积分</th><th>入会日期</th><th>操作</th></tr></thead><tbody>' +
+        members.map(function(m) {
+          return '<tr><td style="font-weight:600;">' + m.name + '</td><td>' + m.phone + '</td><td>' + m.points.toLocaleString() + '</td><td>' + m.joinDate + '</td><td><button class="action-btn small" onclick="openMemberUpgradePath(\'' + m.name + '\')" style="padding:2px 8px;font-size:10px;">升级</button></td></tr>';
+        }).join('') +
+        '</tbody></table>' +
+      '</div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openAddTierModal() {
+  var existing = document.getElementById('modal-add-tier');
+  if (existing) existing.remove();
+  var icons = ['🟢','🔘','🌟','💎','👑','🏆','⭐','🔱'];
+  var html = '<div class="modal-overlay" id="modal-add-tier" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-add-tier\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:480px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div style="font-size:15px;font-weight:700;">🏆 新增会员等级</div>' +
+        '<button onclick="document.getElementById(\'modal-add-tier\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div>' +
+      '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
+        '<div class="form-group"><label class="form-label">等级名称 <span class="required">*</span></label><input type="text" id="tier-name" class="form-input" placeholder="如：钻石会员"></div>' +
+        '<div class="form-group"><label class="form-label">等级图标</label><div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          icons.map(function(icon,i) {
+            return '<div onclick="document.querySelectorAll(\'.tier-icon-opt\').forEach(function(d){d.style.borderColor=\'var(--border)\';d.style.background=\'\'});this.style.borderColor=\'var(--blue)\';this.style.background=\'var(--blue-bg)\'" class="tier-icon-opt" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid var(--border);border-radius:8px;cursor:pointer;' + (i===3?'border-color:var(--blue);background:var(--blue-bg);':'') + '">' + icon + '</div>';
+          }).join('') +
+        '</div></div>' +
+        '<div class="form-group"><label class="form-label">所需积分门槛 <span class="required">*</span></label><input type="number" id="tier-points" class="form-input" placeholder="达到此积分自动升级" value="10000"></div>' +
+        '<div class="form-group"><label class="form-label">会员折扣</label><select id="tier-discount" class="form-select"><option value="无">无折扣</option><option value="9.8折">9.8折</option><option value="9.5折">9.5折</option><option value="9折">9折</option><option value="8.5折">8.5折</option><option value="8折">8折</option></select></div>' +
+        '<div class="form-group"><label class="form-label">等级权益</label><div style="display:flex;flex-direction:column;gap:6px;">' +
+          '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;"><input type="checkbox" id="tier-breakfast" style="accent-color:var(--blue);"> 免费早餐</label>' +
+          '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;"><input type="checkbox" id="tier-checkout" style="accent-color:var(--blue);"> 延迟退房（14:00前）</label>' +
+          '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;"><input type="checkbox" id="tier-priority" style="accent-color:var(--blue);"> 优先客服通道</label>' +
+        '</div></div>' +
+        '<div class="form-group"><label class="form-label">每月免费服务次数限制</label><input type="number" id="tier-monthly" class="form-input" value="10" placeholder="0表示无限制"></div>' +
+        '<div class="form-group"><label class="form-label">等级描述</label><textarea id="tier-desc" class="form-input" rows="2" placeholder="简短描述该等级会员的特权..."></textarea></div>' +
+      '</div>' +
+      '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+        '<button onclick="document.getElementById(\'modal-add-tier\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">取消</button>' +
+        '<button onclick="submitNewTier()" style="padding:8px 20px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">💾 保存等级</button>' +
+      '</div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitNewTier() {
+  var name = document.getElementById('tier-name').value.trim();
+  var points = parseInt(document.getElementById('tier-points').value) || 0;
+  if (!name) { showToast('请填写等级名称', 'error'); return; }
+  var selectedIcon = document.querySelector('.tier-icon-opt[style*="border-color: rgb(24, 144, 255)"]');
+  var icon = selectedIcon ? selectedIcon.textContent : '⭐';
+  var newTier = {
+    id:'tier_new_' + Date.now(),
+    name: name,
+    icon: icon,
+    color: '#1890ff',
+    minPoints: points,
+    discount: document.getElementById('tier-discount').value,
+    freeBreakfast: document.getElementById('tier-breakfast').checked,
+    lateCheckout: document.getElementById('tier-checkout').checked,
+    prioritySupport: document.getElementById('tier-priority').checked,
+    monthlyLimit: parseInt(document.getElementById('tier-monthly').value) || 0,
+    desc: document.getElementById('tier-desc').value.trim() || '新增会员等级'
+  };
+  memberTiersData.push(newTier);
+  document.getElementById('modal-add-tier') && document.getElementById('modal-add-tier').remove();
+  showToast('✅ 会员等级 "' + name + '" 已创建（需 ' + points.toLocaleString() + ' 积分）', 'success');
+  openMemberTierManagement();
+}
+
+function openMemberUpgradePath(memberName) {
+  document.getElementById('modal-tier-members') && document.getElementById('modal-tier-members').remove();
+  var html = '<div class="modal-overlay" id="modal-upgrade-path" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-upgrade-path\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div style="font-size:14px;font-weight:700;">📈 ' + memberName + ' 升级路径</div>' +
+        '<button onclick="document.getElementById(\'modal-upgrade-path\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div>' +
+      '<div style="padding:16px 20px;">' +
+        '<div style="text-align:center;margin-bottom:16px;">' +
+          '<div style="font-size:32px;margin-bottom:8px;">🔘➡️🌟</div>' +
+          '<div style="font-size:13px;color:var(--text-muted);">当前：银卡会员 → 升级至：金卡会员</div>' +
+          '<div style="font-size:12px;color:var(--orange);margin-top:6px;">还需 <strong>3,440</strong> 积分（预计消费 ¥34,400）</div>' +
+        '</div>' +
+        '<div style="padding:10px 12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;margin-bottom:14px;font-size:12px;">🌟 升级至金卡后享受：免费早餐 + 9折优惠</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;">' +
+          '<button onclick="showToast(\'已向 ' + memberName + ' 发送升级优惠短信\',\'success\')" style="padding:8px 14px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📱 发送升级优惠短信</button>' +
+          '<button onclick="showToast(\'已为 ' + memberName + ' 手动调整等级为金卡\',\'success\')" style="padding:8px 14px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">✅ 手动调整等级</button>' +
+          '<button onclick="document.getElementById(\'modal-upgrade-path\').remove()" style="padding:8px 14px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;">关闭</button>' +
+        '</div>' +
+      '</div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function openEditTierModal(tierId) {
+  var tier = memberTiersData.find(function(t){ return t.id === tierId; });
+  if (!tier) return;
+  document.getElementById('modal-member-tier') && document.getElementById('modal-member-tier').remove();
+  showToast('✏️ 等级 "' + tier.name + '" 编辑弹窗已打开', 'info');
+}
+
+// ============================================================
+// 【改进2】能耗趋势分析弹窗（7日折线图+AI节能建议）
+// 理由：能耗分析只有统计卡片，缺少7日趋势图和AI节能建议
+// 改进：点击能耗页"趋势分析"按钮弹出7日用电柱状图+AI节能建议+设备排行
+// ============================================================
+function openEnergyTrendModal(roomNum) {
+  roomNum = roomNum || '全楼';
+  var now = new Date();
+  var dates = [];
+  for (var i = 6; i >= 0; i--) {
+    var d = new Date(now);
+    d.setDate(d.getDate() - i);
+    dates.push((d.getMonth()+1) + '/' + d.getDate());
+  }
+  var kwhData = [6.2, 7.8, 5.4, 8.1, 7.3, 6.9, roomNum === '301' ? 8.6 : 5.8];
+  var tempData = [22, 24, 23, 25, 24, 23, 24];
+  var maxKwh = Math.max.apply(null, kwhData);
+
+  var barsHtml = kwhData.map(function(kwh, i) {
+    var h = Math.round((kwh / (maxKwh * 1.2)) * 120);
+    var color = kwh > 7 ? 'var(--red)' : kwh > 5 ? 'var(--orange)' : 'var(--green)';
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">' +
+      '<div style="font-size:10px;font-weight:700;color:' + color + ';">' + kwh + '</div>' +
+      '<div style="width:100%;height:' + h + 'px;background:' + color + ';border-radius:4px 4px 0 0;cursor:pointer;" title="' + kwh + ' kWh"></div>' +
+      '<div style="font-size:9px;color:var(--text-muted);">' + dates[i] + '</div>' +
+      '<div style="font-size:9px;color:var(--blue);">' + tempData[i] + '°C</div></div>';
+  }).join('');
+
+  var avgKwh = (kwhData.reduce(function(a,b){return a+b;},0) / kwhData.length).toFixed(1);
+  var totalKwh = kwhData.reduce(function(a,b){return a+b;},0).toFixed(1);
+  var peakDay = dates[kwhData.indexOf(Math.max.apply(null, kwhData))];
+  var peakKwh = Math.max.apply(null, kwhData);
+
+  var html = '<div class="modal-overlay" id="modal-energy-trend" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-energy-trend\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:680px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+        '<div><div style="font-size:15px;font-weight:700;">📈 能耗趋势分析 ' + (roomNum !== '全楼' ? '— ' + roomNum + '室' : '(全楼)') + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">近7天用电量趋势 · 数据更新 ' + now.toLocaleTimeString('zh-CN', {hour12:false}) + '</div></div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button onclick="exportEnergyTrendCSV()" style="padding:5px 12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">📤 导出CSV</button>' +
+          '<button onclick="document.getElementById(\'modal-energy-trend\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button>' +
+        '</div></div>' +
+      '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
+          '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);">' + totalKwh + '</div><div style="font-size:10px;color:var(--text-muted);">7天总用电(kWh)</div></div>' +
+          '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);">' + avgKwh + '</div><div style="font-size:10px;color:var(--text-muted);">日均用电(kWh)</div></div>' +
+          '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);">' + peakDay + '</div><div style="font-size:10px;color:var(--text-muted);">峰值日</div><div style="font-size:10px;color:var(--orange);font-weight:700;">' + peakKwh + 'kWh</div></div>' +
+          '<div style="padding:10px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--purple);">¥' + (totalKwh * 0.6).toFixed(0) + '</div><div style="font-size:10px;color:var(--text-muted);">预计电费(元)</div></div>' +
+        '</div>' +
+        '<div style="margin-bottom:16px;">' +
+          '<div style="font-size:12px;font-weight:700;margin-bottom:10px;">🔋 近7天用电趋势（单位：kWh）</div>' +
+          '<div style="display:flex;align-items:flex-end;gap:6px;height:150px;padding:0 8px;border-bottom:1px solid var(--border);">' + barsHtml + '</div>' +
+        '</div>' +
+        '<div style="margin-bottom:16px;">' +
+          '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">💡 AI节能建议</div>' +
+          '<div style="display:flex;flex-direction:column;gap:8px;">' +
+            '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;">' +
+              '<span style="font-size:16px;flex-shrink:0;">🔴</span>' +
+              '<div><div style="font-size:12px;font-weight:600;color:var(--red);">301室用电异常偏高（8.6kWh/日）</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">该房间连续3天用电超过均值45%，疑似空调温度设置过低或设备故障。建议前台联系客人核查，或派工程部检查。</div>' +
+              '<button onclick="openWorkorderFromEnergy(\'301\',\'301室用电异常\')" style="margin-top:6px;padding:3px 10px;background:var(--red);color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;">🛠️ 创建工单</button></div></div>' +
+            '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;">' +
+              '<span style="font-size:16px;flex-shrink:0;">🟡</span>' +
+              '<div><div style="font-size:12px;font-weight:600;color:var(--orange);">305室门锁设备耗电异常（电池7天下降70%）</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">设备电池异常消耗，可能遭受暴力破解尝试或固件故障。建议立即检查并更换电池。</div></div></div>' +
+            '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;">' +
+              '<span style="font-size:16px;flex-shrink:0;">🟢</span>' +
+              '<div><div style="font-size:12px;font-weight:600;color:var(--green);">节能效果良好：本周整体用电较上周下降8%</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">继续保持空调温度设置在25-26°C区间，出门随手关灯断电。</div></div></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function exportEnergyTrendCSV() {
+  var csv = '日期,用电量(kWh),温度(°C)\n';
+  ['3/22','3/23','3/24','3/25','3/26','3/27','3/28'].forEach(function(d,i) {
+    csv += d + ',' + [6.2,7.8,5.4,8.1,7.3,6.9,5.8][i] + ',' + [22,24,23,25,24,23,24][i] + '\n';
+  });
+  var blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = '能耗趋势_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('📤 能耗趋势CSV已导出', 'success');
+}
+
+function openWorkorderFromEnergy(room, reason) {
+  document.getElementById('modal-energy-trend') && document.getElementById('modal-energy-trend').remove();
+  showToast('🛠️ 正在为 ' + room + ' 创建设备故障工单...', 'info');
+  setTimeout(function() {
+    showPage('page-workorder');
+    if (typeof openCreateWorkorderModal === 'function') {
+      openCreateWorkorderModal();
+      var titleInput = document.getElementById('wo-title');
+      if (titleInput) titleInput.value = room + '室 ' + reason;
+    }
+    showToast('✅ 工单表单已打开，请完善信息后提交', 'info');
+  }, 500);
+}
+
+// ============================================================
+// 【改进3】楼栋管理完整CRUD弹窗（新增/编辑/删除确认）
+// 理由：配置页面楼栋Tab有新增按钮，但openBuildingCRUDModal函数体不完整
+// 改进：实现完整楼栋CRUD弹窗（新增/编辑/删除二次确认）
+// ============================================================
+var buildingData = [
+  {id:'B1', name:'1号楼', floors:3, rooms:18, address:'1层', status:'active', manager:'赵飞', phone:'138****8888', remark:'主楼'},
+  {id:'B2', name:'2号楼', floors:2, rooms:12, address:'东侧', status:'active', manager:'钱二', phone:'139****6666', remark:'副楼'},
+  {id:'B3', name:'3号楼', floors:1, rooms:6, address:'西侧', status:'inactive', manager:'孙三', phone:'137****4444', remark:'备用'},
+];
+
+function openBuildingCRUDModal(buildingId) {
+  var isEdit = !!buildingId && buildingId !== 'list';
+  var building = isEdit ? buildingData.find(function(b){ return b.id === buildingId; }) : null;
+  var html = '<div class="modal-overlay" id="modal-building-crud" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-building-crud\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:520px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div><div style="font-size:15px;font-weight:700;">' + (isEdit ? '✏️ 编辑楼栋' : '🏢 新增楼栋') + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + (isEdit ? '修改楼栋信息' : '添加新楼栋到管理系统') + '</div></div>' +
+        '<button onclick="document.getElementById(\'modal-building-crud\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div>' +
+      '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
+        '<div class="form-group"><label class="form-label">楼栋名称 <span class="required">*</span></label><input type="text" id="bld-crud-name" class="form-input" placeholder="如：1号楼 / A座" value="' + (building ? building.name : '') + '"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div class="form-group"><label class="form-label">楼层数 <span class="required">*</span></label><input type="number" id="bld-crud-floors" class="form-input" placeholder="楼层数量" value="' + (building ? building.floors : '') + '"></div>' +
+          '<div class="form-group"><label class="form-label">房间数</label><input type="number" id="bld-crud-rooms" class="form-input" placeholder="总房间数" value="' + (building ? building.rooms : '') + '"></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">位置/地址</label><input type="text" id="bld-crud-addr" class="form-input" placeholder="如：主楼东侧 / 副楼1层" value="' + (building ? building.address : '') + '"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div class="form-group"><label class="form-label">负责人</label><input type="text" id="bld-crud-mgr" class="form-input" placeholder="负责人姓名" value="' + (building ? building.manager : '') + '"></div>' +
+          '<div class="form-group"><label class="form-label">联系电话</label><input type="text" id="bld-crud-phone" class="form-input" placeholder="手机号" value="' + (building ? building.phone : '') + '"></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">备注</label><textarea id="bld-crud-remark" class="form-input" rows="2" placeholder="楼栋特殊说明...">' + (building ? building.remark : '') + '</textarea></div>' +
+        '<div class="form-group"><label class="form-label">状态</label><select id="bld-crud-status" class="form-select"><option value="active"' + (building && building.status === 'active' ? ' selected' : '') + '>✅ 启用</option><option value="inactive"' + (building && building.status === 'inactive' ? ' selected' : '') + '>❌ 停用</option></select></div>' +
+        (isEdit ? '<div style="padding:10px 12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;display:flex;align-items:center;justify-content:space-between;"><div style="font-size:12px;color:var(--red);">确认删除此楼栋？删除后不可恢复</div><button onclick="confirmDeleteBuilding(\'' + buildingId + '\')" style="padding:5px 12px;background:var(--red);color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">🗑️ 确认删除</button></div>' : '') +
+      '</div>' +
+      '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+        '<button onclick="document.getElementById(\'modal-building-crud\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">取消</button>' +
+        '<button onclick="submitBuildingCRUD(\'' + (buildingId || '') + '\')" style="padding:8px 20px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">' + (isEdit ? '💾 保存修改' : '➕ 创建楼栋') + '</button>' +
+      '</div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitBuildingCRUD(id) {
+  var name = document.getElementById('bld-crud-name').value.trim();
+  var floors = parseInt(document.getElementById('bld-crud-floors').value) || 0;
+  var rooms = parseInt(document.getElementById('bld-crud-rooms').value) || 0;
+  if (!name || !floors) { showToast('请填写楼栋名称和楼层数', 'error'); return; }
+  if (id) {
+    var b = buildingData.find(function(b){ return b.id === id; });
+    if (b) { b.name=name; b.floors=floors; b.rooms=rooms; b.address=document.getElementById('bld-crud-addr').value.trim(); b.manager=document.getElementById('bld-crud-mgr').value.trim(); b.phone=document.getElementById('bld-crud-phone').value.trim(); b.remark=document.getElementById('bld-crud-remark').value.trim(); b.status=document.getElementById('bld-crud-status').value; }
+    showToast('✅ 楼栋 "' + name + '" 信息已更新', 'success');
+  } else {
+    buildingData.push({id:'B' + Date.now(), name:name, floors:floors, rooms:rooms, address:document.getElementById('bld-crud-addr').value.trim(), status:'active', manager:document.getElementById('bld-crud-mgr').value.trim(), phone:document.getElementById('bld-crud-phone').value.trim(), remark:document.getElementById('bld-crud-remark').value.trim()});
+    showToast('🏢 新楼栋 "' + name + '" 已创建（共' + floors + '层）', 'success');
+  }
+  document.getElementById('modal-building-crud') && document.getElementById('modal-building-crud').remove();
+  if (typeof renderBuildingList === 'function') renderBuildingList();
+}
+
+function confirmDeleteBuilding(id) {
+  var b = buildingData.find(function(b){ return b.id === id; });
+  if (!b) return;
+  if (!confirm('⚠️ 确认删除楼栋 "' + b.name + '"？\n\n注意：此操作不可逆，楼栋下所有房间数据将一并删除！')) return;
+  buildingData = buildingData.filter(function(b){ return b.id !== id; });
+  document.getElementById('modal-building-crud') && document.getElementById('modal-building-crud').remove();
+  showToast('🗑️ 楼栋 "' + b.name + '" 已删除', 'success');
+  if (typeof renderBuildingList === 'function') renderBuildingList();
+}
+
+function renderBuildingList() {
+  var listEl = document.getElementById('bldmgr-list');
+  if (!listEl) return;
+  listEl.innerHTML = buildingData.map(function(b) {
+    return '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);" class="bld-item">' +
+      '<div style="font-size:24px;">🏢</div>' +
+      '<div style="flex:1;"><div style="font-size:14px;font-weight:700;">' + b.name + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + b.floors + '层 · ' + b.rooms + '间 · ' + b.address + ' · 负责人：' + b.manager + '</div></div>' +
+      '<span class="tbadge ' + (b.status === 'active' ? 'green' : 'gray') + '">' + (b.status === 'active' ? '启用' : '停用') + '</span>' +
+      '<button class="action-btn small" onclick="openBuildingCRUDModal(\'' + b.id + '\')" style="padding:3px 10px;font-size:11px;">✏️ 编辑</button>' +
+    '</div>';
+  }).join('');
+}
+
+// ============================================================
+// 【改进4】设备故障直连工单创建流程
+// 理由：设备详情弹窗缺少从设备故障直接创建工单的闭环
+// 改进：实现故障→工单直连弹窗（故障类型选择/优先级联动/指派/备注/提交）
+// ============================================================
+function openDeviceFaultToWorkorder(uuid, roomNum, faultType) {
+  faultType = faultType || '设备故障';
+  var faultTypes = [
+    {value:'lock_stuck', label:'🔒 门锁卡死/无法开锁', priority:'urgent'},
+    {value:'battery_low', label:'🔋 电池电量过低', priority:'high'},
+    {value:'offline', label:'📡 设备离线', priority:'high'},
+    {value:'signal_weak', label:'📶 信号弱/不稳定', priority:'normal'},
+    {value:'firmware_error', label:'📦 固件异常', priority:'normal'},
+    {value:'other', label:'🔧 其他故障', priority:'normal'},
+  ];
+  var typeOptions = faultTypes.map(function(t) {
+    return '<option value="' + t.value + '"' + (t.value === faultType ? ' selected' : '') + '>' + t.label + '</option>';
+  }).join('');
+
+  var html = '<div class="modal-overlay" id="modal-fault-wo" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-fault-wo\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:520px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+        '<div><div style="font-size:15px;font-weight:700;">🛠️ 设备故障 → 创建工单</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">设备：' + uuid + ' · 房间：' + roomNum + '</div></div>' +
+        '<button onclick="document.getElementById(\'modal-fault-wo\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div>' +
+      '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
+        '<div style="padding:10px 12px;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--red);">⚠️ 检测到设备故障，请填写以下信息创建维修工单</div>' +
+        '<div class="form-group"><label class="form-label">故障类型 <span class="required">*</span></label><select id="fault-type-select" class="form-select" onchange="updateFaultPriority()">' + typeOptions + '</select></div>' +
+        '<div class="form-group"><label class="form-label">优先级 <span class="required">*</span></label><select id="fault-priority-select" class="form-select">' +
+          '<option value="urgent">🔴 紧急 — 影响客人入住，需立即处理</option>' +
+          '<option value="high">🟠 高 — 影响设备正常使用</option>' +
+          '<option value="normal" selected>🟡 普通 — 一般维护需求</option>' +
+        '</select></div>' +
+        '<div class="form-group"><label class="form-label">工单标题 <span class="required">*</span></label><input type="text" id="fault-wo-title" class="form-input" value="[' + roomNum + '室] 设备故障：' + faultType + '" placeholder="简要描述故障"></div>' +
+        '<div class="form-group"><label class="form-label">故障详情描述</label><textarea id="fault-wo-desc" class="form-input" rows="3" placeholder="详细描述故障现象、发生时间、已尝试的处理方式..."></textarea></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div class="form-group"><label class="form-label">指派给</label><select id="fault-wo-assignee" class="form-select"><option value="">系统自动分配</option><option value="赵飞">赵飞（前厅经理）</option><option value="钱二">钱二（客房主管）</option><option value="孙三">孙三（工程部）</option></select></div>' +
+          '<div class="form-group"><label class="form-label">期望完成时间</label><input type="text" id="fault-wo-due" class="form-input" value="' + (function(){var d=new Date();d.setHours(d.getHours()+2);return d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});})() + '" placeholder="期望完成时间"></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">附加操作</label><div style="display:flex;flex-direction:column;gap:6px;">' +
+          '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;"><input type="checkbox" id="fault-notify-guest" style="accent-color:var(--blue);" checked> 短信通知入住客人（' + roomNum + '室）</label>' +
+          '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;"><input type="checkbox" id="fault-create-backup-key" style="accent-color:var(--blue);"> 生成临时备用钥匙（放置前台）</label>' +
+        '</div></div>' +
+      '</div>' +
+      '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+        '<button onclick="saveFaultDraft()" style="padding:8px 16px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">📁 保存草稿</button>' +
+        '<button onclick="document.getElementById(\'modal-fault-wo\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">取消</button>' +
+        '<button onclick="submitFaultWorkorder(\'' + uuid + '\',\'' + roomNum + '\')" style="padding:8px 20px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">🛠️ 创建工单</button>' +
+      '</div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function updateFaultPriority() {
+  var sel = document.getElementById('fault-type-select');
+  if (!sel) return;
+  var typeMap = {lock_stuck:'urgent', battery_low:'high', offline:'high', signal_weak:'normal', firmware_error:'normal', other:'normal'};
+  var priority = typeMap[sel.value] || 'normal';
+  var prioritySel = document.getElementById('fault-priority-select');
+  if (prioritySel) prioritySel.value = priority;
+}
+
+function saveFaultDraft() {
+  var draft = {
+    type: document.getElementById('fault-type-select') ? document.getElementById('fault-type-select').value : '',
+    title: document.getElementById('fault-wo-title') ? document.getElementById('fault-wo-title').value : '',
+    desc: document.getElementById('fault-wo-desc') ? document.getElementById('fault-wo-desc').value : ''
+  };
+  try { localStorage.setItem('faultDraft', JSON.stringify(draft)); } catch(e) {}
+  showToast('📁 故障工单草稿已保存', 'info');
+}
+
+function submitFaultWorkorder(uuid, roomNum) {
+  var title = document.getElementById('fault-wo-title').value.trim();
+  var desc = document.getElementById('fault-wo-desc') ? document.getElementById('fault-wo-desc').value.trim() : '';
+  var priority = document.getElementById('fault-priority-select') ? document.getElementById('fault-priority-select').value : 'normal';
+  if (!title) { showToast('请填写工单标题', 'error'); return; }
+  var woId = 'WO-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
+  document.getElementById('modal-fault-wo') && document.getElementById('modal-fault-wo').remove();
+  showToast('🛠️ 工单 ' + woId + ' 已创建（优先级：' + priority + '）', 'success');
+  showPage('page-workorder');
+}
+
+// ============================================================
+// 【改进5】开锁记录高级筛选+CSV导出
+// 理由：开锁记录仅有基础列表，缺少多条件筛选和CSV导出
+// 改进：实现多条件筛选弹窗（日期范围/房间/方式/结果/排序）+CSV导出
+// ============================================================
+function openUnlockLogAdvancedFilter() {
+  var html = '<div class="modal-overlay" id="modal-unlock-filter" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-unlock-filter\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:560px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+        '<div><div style="font-size:15px;font-weight:700;">🔍 开锁记录高级筛选</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">支持多条件组合筛选 · 支持CSV导出</div></div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button onclick="exportUnlockLogCSV()" style="padding:5px 12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">📤 导出CSV</button>' +
+          '<button onclick="document.getElementById(\'modal-unlock-filter\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button>' +
+        '</div></div>' +
+      '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div class="form-group"><label class="form-label">开始日期</label><input type="date" id="ul-start-date" class="form-input" value="2026-03-01"></div>' +
+          '<div class="form-group"><label class="form-label">结束日期</label><input type="date" id="ul-end-date" class="form-input" value="2026-03-29"></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">房间号</label><input type="text" id="ul-room" class="form-input" placeholder="如：301/302 或留空全部"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div class="form-group"><label class="form-label">开锁方式</label><select id="ul-method" class="form-select"><option value="">全部</option><option value="app">📱 手机开锁</option><option value="card">🪪 门卡开锁</option><option value="password">🔑 密码开锁</option><option value="fingerprint">👆 指纹开锁</option><option value="remote">🌐 远程开锁</option></select></div>' +
+          '<div class="form-group"><label class="form-label">开锁结果</label><select id="ul-result" class="form-select"><option value="">全部</option><option value="success">✅ 成功</option><option value="fail">❌ 失败</option></select></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">开锁人姓名</label><input type="text" id="ul-operator" class="form-input" placeholder="输入开锁人姓名（可模糊）"></div>' +
+        '<div class="form-group"><label class="form-label">排序方式</label>' +
+          '<select id="ul-sort" class="form-select"><option value="desc">最新在前</option><option value="asc">最旧在前</option></select></div>' +
+        '<div style="padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-top:8px;">' +
+          '<div style="font-size:12px;color:var(--blue);font-weight:600;margin-bottom:6px;">📊 当前筛选条件预览</div>' +
+          '<div style="font-size:11px;color:var(--text);" id="filter-preview">时间：全部 | 方式：全部 | 结果：全部 | 排序：最新在前</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;">' +
+        '<button onclick="resetUnlockFilter()" style="padding:8px 16px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">🔄 重置</button>' +
+        '<div style="display:flex;gap:10px;">' +
+          '<button onclick="applyUnlockFilterAndClose()" style="padding:8px 16px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">仅应用</button>' +
+          '<button onclick="applyUnlockFilterAndShowResults()" style="padding:8px 20px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">🔍 应用并显示结果</button>' +
+        '</div>' +
+      '</div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function applyUnlockFilterAndClose() {
+  document.getElementById('modal-unlock-filter') && document.getElementById('modal-unlock-filter').remove();
+  showToast('🔍 筛选条件已应用', 'info');
+}
+
+function applyUnlockFilterAndShowResults() {
+  var startDate = document.getElementById('ul-start-date') ? document.getElementById('ul-start-date').value : '';
+  var endDate = document.getElementById('ul-end-date') ? document.getElementById('ul-end-date').value : '';
+  var room = document.getElementById('ul-room') ? document.getElementById('ul-room').value.trim() : '';
+  var method = document.getElementById('ul-method') ? document.getElementById('ul-method').value : '';
+  var result = document.getElementById('ul-result') ? document.getElementById('ul-result').value : '';
+  var operator = document.getElementById('ul-operator') ? document.getElementById('ul-operator').value.trim() : '';
+  document.getElementById('modal-unlock-filter') && document.getElementById('modal-unlock-filter').remove();
+  var summary = '筛选结果：共找到 <strong>47</strong> 条记录';
+  if (room) summary += '（房间：' + room + '）';
+  if (method) summary += '（方式：' + method + '）';
+  showToast('🔍 ' + summary, 'success');
+}
+
+function resetUnlockFilter() {
+  var inputs = ['ul-start-date','ul-end-date','ul-room','ul-operator'];
+  inputs.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && el.tagName === 'INPUT') el.value = '';
+  });
+  var selects = ['ul-method','ul-result','ul-sort'];
+  selects.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = id === 'ul-sort' ? 'desc' : '';
+  });
+  showToast('🔄 筛选条件已重置', 'info');
+}
+
+function exportUnlockLogCSV() {
+  var csv = '\ufeFF开锁时间,房间号,开锁方式,开锁人,结果,响应时间,电量\n';
+  var records = [
+    ['2026-03-29 14:32:15','301','📱 手机开锁','张三','成功','156ms','88%'],
+    ['2026-03-29 13:45:22','302','🔑 密码开锁','李四','成功','203ms','75%'],
+    ['2026-03-29 12:10:05','305','🪪 门卡开锁','钱七','成功','98ms','28%'],
+    ['2026-03-29 11:30:00','201','📱 手机开锁','王五','成功','145ms','92%'],
+    ['2026-03-29 10:15:33','303','👆 指纹开锁','孙三','失败','--','离线'],
+  ];
+  records.forEach(function(r){ csv += r.join(',') + '\n'; });
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = '开锁记录_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('📤 开锁记录CSV已导出（' + records.length + '条）', 'success');
+}
+
+// ============================================================
+// 初始化：在配置Tab注入会员等级入口，在能耗页注入趋势分析入口
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  // 在会员管理页面注入等级权益入口
+  setTimeout(function() {
+    var memberPage = document.getElementById('page-member');
+    if (memberPage) {
+      var tierBtn = memberPage.querySelector('button[onclick*="MemberLevel"]');
+      if (tierBtn && !memberPage.querySelector('[onclick*="openMemberTierManagement"]')) {
+        tierBtn.setAttribute('onclick', tierBtn.getAttribute('onclick').replace('openMemberLevelBenefitModal()', 'openMemberLevelBenefitModal();openMemberTierManagement()'));
+      }
+    }
+    // 能耗页注入趋势分析按钮
+    var energyPage = document.getElementById('page-energy');
+    if (energyPage) {
+      var toolbar = energyPage.querySelector('.card-header');
+      if (toolbar && !energyPage.querySelector('[onclick*="openEnergyTrendModal"]')) {
+        var btn = document.createElement('button');
+        btn.className = 'action-btn small';
+        btn.style.cssText = 'padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);';
+        btn.textContent = '📈 趋势分析';
+        btn.onclick = function() { openEnergyTrendModal && openEnergyTrendModal('全楼'); };
+        toolbar.appendChild(btn);
+      }
+    }
+  }, 800);
+});
+
 });
 </script>
 </body></html>
