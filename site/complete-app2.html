@@ -27589,5 +27589,281 @@ function submitInvoiceCreate() {
   renderInvoiceFilteredList();
   showToast('✅ 发票已创建：' + newInv.id + '，金额¥' + amount, 'success');
 }
+
+// ============================================================
+// 【物联后台v4-第X轮】5个缺失功能性改进
+// ============================================================
+
+// ============================================================
+// 【改进1】工单管理 - applyWorkorderSearch（关键词+类型+状态+优先级综合搜索）
+// 理由：工单工具栏有搜索框和多个筛选下拉，但applyWorkorderSearch函数缺失
+// 改进：根据关键词/类型/状态/优先级综合过滤，联动渲染工单表格+更新统计数字
+// ============================================================
+function applyWorkorderSearch() {
+  var kwInput = document.getElementById('wo-search-input');
+  var kw = kwInput ? kwInput.value.trim().toLowerCase() : '';
+  var typeSel = document.getElementById('wo-type-filter');
+  var typeFilter = typeSel ? typeSel.value : 'all';
+  var statusSel = document.getElementById('wo-status-filter');
+  var statusFilter = statusSel ? statusSel.value : 'all';
+  var prioritySel = document.getElementById('wo-priority-filter');
+  var priorityFilter = prioritySel ? prioritySel.value : 'all';
+  var statusMap = {pending:'pending', processing:'processing', done:'done'};
+  var typeMap = {complaint:'complaint', delivery:'delivery', invoice:'invoice', praise:'praise', repair:'repair', other:'other'};
+  var filtered = _woList.filter(function(wo) {
+    var matchKw = !kw
+      || wo.id.toLowerCase().indexOf(kw) >= 0
+      || (wo.customer && wo.customer.toLowerCase().indexOf(kw) >= 0)
+      || (wo.room && wo.room.toLowerCase().indexOf(kw) >= 0)
+      || (wo.desc && wo.desc.toLowerCase().indexOf(kw) >= 0)
+      || (wo.phone && wo.phone.toLowerCase().indexOf(kw) >= 0);
+    var matchType = typeFilter === 'all' || wo.type === typeMap[typeFilter];
+    var matchStatus = statusFilter === 'all' || wo.status === statusMap[statusFilter];
+    var matchPriority = priorityFilter === 'all' || wo.priority === priorityFilter;
+    return matchKw && matchType && matchStatus && matchPriority;
+  });
+  var tbody = document.getElementById('workorder-table-body');
+  if (!tbody) return;
+  var rows = '';
+  filtered.forEach(function(wo) {
+    var isOverdue = wo.status !== 'done' && wo.sla && wo.sla !== '--' && new Date(wo.sla.replace('今天','2026-03-29')) < new Date();
+    var priorityColor = {urgent:'red',high:'orange',normal:'blue',low:'gray'}[wo.priority] || 'gray';
+    var statusBadge = wo.status === 'done' ? '<span class="tbadge green">已完成</span>'
+      : wo.status === 'processing' ? '<span class="tbadge orange">处理中</span>'
+      : '<span class="tbadge blue">待接受</span>';
+    var actionBtn = wo.status === 'done'
+      ? '<button class="action-btn small" onclick="openProcessWorkorderModal(' + _woList.indexOf(wo) + ')">查看</button>'
+      : '<button class="action-btn small" onclick="openProcessWorkorderModal(' + _woList.indexOf(wo) + ')">处理</button>';
+    rows += '<tr' + (isOverdue ? ' style="background:var(--red-bg);"' : '') + '>' +
+      '<td style="font-size:11px;font-family:monospace;">' + wo.id + '</td>' +
+      '<td>' + getWoTypeLabel(wo.type) + '</td>' +
+      '<td>' + wo.room + '</td>' +
+      '<td><div style="font-weight:600;">' + wo.customer + '</div><div style="font-size:10px;color:var(--text-muted);">' + wo.phone + '</div></td>' +
+      '<td><span class="tbadge ' + priorityColor + '">' + getWoPriorityLabel(wo.priority) + '</span></td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td>' + (wo.assign || '--') + '</td>' +
+      '<td style="font-size:11px;">' + wo.create + '</td>' +
+      '<td style="font-size:11px;color:' + (isOverdue ? 'var(--red)' : 'var(--text-muted)') + ';">' + (wo.sla || '--') + (isOverdue ? ' ⚠️' : '') + '</td>' +
+      '<td>' + actionBtn + '</td></tr>';
+  });
+  tbody.innerHTML = rows || '<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text-muted);">未找到匹配的服务工单</td></tr>';
+  var totalEl = document.querySelector('#page-workorder .stat-card:nth-child(1) .stat-num');
+  if (totalEl) totalEl.textContent = filtered.length;
+  var pendingEl = document.querySelector('#page-workorder .stat-card:nth-child(2) .stat-num');
+  if (pendingEl) pendingEl.textContent = filtered.filter(function(w){ return w.status === 'pending'; }).length;
+  var processingEl = document.querySelector('#page-workorder .stat-card:nth-child(3) .stat-num');
+  if (processingEl) processingEl.textContent = filtered.filter(function(w){ return w.status === 'processing'; }).length;
+  var doneEl = document.querySelector('#page-workorder .stat-card:nth-child(4) .stat-num');
+  if (doneEl) doneEl.textContent = filtered.filter(function(w){ return w.status === 'done'; }).length;
+  showToast('🔍 找到 ' + filtered.length + ' 条工单', 'info');
+}
+
+// ============================================================
+// 【改进2】工单管理 - resetWorkorderSearch（重置搜索和筛选）
+// 理由：工单工具有"重置"按钮但函数缺失
+// 改进：清空所有筛选条件，恢复完整工单列表
+// ============================================================
+function resetWorkorderSearch() {
+  var kwInput = document.getElementById('wo-search-input');
+  if (kwInput) kwInput.value = '';
+  var typeSel = document.getElementById('wo-type-filter');
+  if (typeSel) typeSel.value = 'all';
+  var statusSel = document.getElementById('wo-status-filter');
+  if (statusSel) statusSel.value = 'all';
+  var prioritySel = document.getElementById('wo-priority-filter');
+  if (prioritySel) prioritySel.value = 'all';
+  renderWorkorderTable();
+  var totalEl = document.querySelector('#page-workorder .stat-card:nth-child(1) .stat-num');
+  if (totalEl) totalEl.textContent = _woList.length;
+  var pendingEl = document.querySelector('#page-workorder .stat-card:nth-child(2) .stat-num');
+  if (pendingEl) pendingEl.textContent = _woList.filter(function(w){ return w.status === 'pending'; }).length;
+  var processingEl = document.querySelector('#page-workorder .stat-card:nth-child(3) .stat-num');
+  if (processingEl) processingEl.textContent = _woList.filter(function(w){ return w.status === 'processing'; }).length;
+  var doneEl = document.querySelector('#page-workorder .stat-card:nth-child(4) .stat-num');
+  if (doneEl) doneEl.textContent = _woList.filter(function(w){ return w.status === 'done'; }).length;
+  showToast('🔄 工单筛选已重置，共 ' + _woList.length + ' 条', 'info');
+}
+
+// ============================================================
+// 【改进3】工单管理 - exportWorkorderCSV（工单CSV导出）
+// 理由：工单工具栏有"导出CSV"按钮但函数缺失
+// 改进：导出当前筛选结果（含全部字段）到CSV文件
+// ============================================================
+function exportWorkorderCSV() {
+  var kwInput = document.getElementById('wo-search-input');
+  var kw = kwInput ? kwInput.value.trim().toLowerCase() : '';
+  var typeSel = document.getElementById('wo-type-filter');
+  var typeFilter = typeSel ? typeSel.value : 'all';
+  var statusSel = document.getElementById('wo-status-filter');
+  var statusFilter = statusSel ? statusSel.value : 'all';
+  var prioritySel = document.getElementById('wo-priority-filter');
+  var priorityFilter = prioritySel ? prioritySel.value : 'all';
+  var statusMap = {pending:'pending', processing:'processing', done:'done'};
+  var typeMap = {complaint:'complaint', delivery:'delivery', invoice:'invoice', praise:'praise', repair:'repair', other:'other'};
+  var filtered = _woList.filter(function(wo) {
+    var matchKw = !kw
+      || wo.id.toLowerCase().indexOf(kw) >= 0
+      || (wo.customer && wo.customer.toLowerCase().indexOf(kw) >= 0)
+      || (wo.room && wo.room.toLowerCase().indexOf(kw) >= 0)
+      || (wo.desc && wo.desc.toLowerCase().indexOf(kw) >= 0);
+    var matchType = typeFilter === 'all' || wo.type === typeMap[typeFilter];
+    var matchStatus = statusFilter === 'all' || wo.status === statusMap[statusFilter];
+    var matchPriority = priorityFilter === 'all' || wo.priority === priorityFilter;
+    return matchKw && matchType && matchStatus && matchPriority;
+  });
+  var typeNameMap = {complaint:'客户投诉', repair:'设备报修', delivery:'送物服务', invoice:'发票需求', praise:'表扬', other:'其他'};
+  var priorityNameMap = {urgent:'紧急', high:'高', normal:'普通', low:'低'};
+  var statusNameMap = {pending:'待接受', processing:'处理中', done:'已完成'};
+  var csv = '\uFEFF工单号,类型,房间号,客户姓名,手机号,工单描述,优先级,状态,负责人,创建时间,SLA时限,满意度\n';
+  filtered.forEach(function(wo) {
+    csv += [
+      wo.id,
+      typeNameMap[wo.type] || wo.type,
+      wo.room,
+      wo.customer || '',
+      wo.phone || '',
+      (wo.desc || '').replace(/,/g, ';'),
+      priorityNameMap[wo.priority] || wo.priority,
+      statusNameMap[wo.status] || wo.status,
+      wo.assign || '',
+      wo.create || '',
+      wo.sla || '',
+      wo.satisfaction ? wo.satisfaction + '星' : '未评价'
+    ].join(',') + '\n';
+  });
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '服务工单_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv';
+  a.click();
+  showToast('📤 已导出 ' + filtered.length + ' 条工单记录', 'success');
+}
+
+// ============================================================
+// 【改进4】能耗管理 - exportEnergyData（能耗数据CSV导出）
+// 理由：能耗页面有"导出能耗报表"按钮但函数缺失
+// 改进：导出今日/本周/本月能耗统计数据到CSV
+// ============================================================
+function exportEnergyData() {
+  var todayKwEl = document.querySelector('#page-energy .stat-card:nth-child(1) .stat-num');
+  var todayKw = todayKwEl ? todayKwEl.textContent : '48.2';
+  var yesterdayKwEl = document.querySelector('#page-energy .stat-card:nth-child(2) .stat-num');
+  var yesterdayKw = yesterdayKwEl ? yesterdayKwEl.textContent : '30.5';
+  var anomalyEl = document.querySelector('#page-energy .stat-card:nth-child(3) .stat-num');
+  var anomalyCount = anomalyEl ? anomalyEl.textContent : '8';
+  var alertEl = document.querySelector('#page-energy .stat-card:nth-child(4) .stat-num');
+  var alertCount = alertEl ? alertEl.textContent : '3';
+  var energyItems = [
+    {room:'301', type:'空调', kwh:'8.6', status:'异常偏高', pct:92},
+    {room:'304', type:'空调', kwh:'7.1', status:'偏高', pct:76},
+    {room:'201', type:'空调', kwh:'5.2', status:'正常', pct:55},
+    {room:'302', type:'空调', kwh:'1.2', status:'正常', pct:15}
+  ];
+  var csv = '\uFEFF领锁物联后台 - 能耗数据报表\n';
+  csv += '导出时间,' + new Date().toLocaleString('zh-CN') + '\n\n';
+  csv += '【今日概况】\n';
+  csv += '项目,数值\n';
+  csv += '今日用电(kWh),' + todayKw + '\n';
+  csv += '昨日同期用电(kWh),' + yesterdayKw + '\n';
+  csv += '空调异常房间数,' + anomalyCount + '\n';
+  csv += '高耗能告警数,' + alertCount + '\n\n';
+  csv += '【房间能耗排行（今日）】\n';
+  csv += '房间号,设备类型,用电量(kWh),状态,占比率(%)\n';
+  energyItems.forEach(function(item) {
+    csv += item.room + ',' + item.type + ',' + item.kwh + ',' + item.status + ',' + item.pct + '\n';
+  });
+  csv += '\n【月度能耗汇总】（单位：kWh）\n';
+  csv += '月份,第1周,第2周,第3周,第4周,月合计\n';
+  csv += '2026-03,312.5,328.4,298.6,356.2,1295.7\n';
+  csv += '2026-02,285.3,310.2,290.8,320.5,1206.8\n';
+  csv += '2026-01,298.7,305.4,288.9,315.3,1208.3\n';
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '能耗报表_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv';
+  a.click();
+  showToast('📤 能耗数据报表已导出', 'success');
+}
+
+// ============================================================
+// 【改进5】工单管理 - openSLATableModal（SLA监控表弹窗）
+// 理由：工单页面有"⏱️ SLA监控表"按钮但函数缺失
+// 改进：弹出完整SLA工单监控表格，显示所有工单SLA时限/剩余时间/状态
+// ============================================================
+function openSLATableModal() {
+  var existing = document.getElementById('modal-sla-table');
+  if (existing) { existing.remove(); }
+  var now = new Date();
+  var overdueCount = 0;
+  var urgentCount = 0;
+  var normalCount = 0;
+  _woList.filter(function(wo) { return wo.status !== 'done' && wo.sla && wo.sla !== '--'; }).forEach(function(wo) {
+    var slaDateStr = wo.sla.replace('今天', new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0') + '-' + String(new Date().getDate()).padStart(2,'0'));
+    var slaTime = new Date(slaDateStr.replace('今天','2026-03-29'));
+    var diffMs = slaTime - now;
+    var diffMin = Math.round(diffMs / 60000);
+    if (diffMin < 0) overdueCount++;
+    else if (diffMin <= 30) urgentCount++;
+    else normalCount++;
+  });
+  var slaRows = _woList.filter(function(wo) { return wo.status !== 'done' && wo.sla && wo.sla !== '--'; }).map(function(wo) {
+    var slaDateStr = wo.sla.replace('今天', new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0') + '-' + String(new Date().getDate()).padStart(2,'0'));
+    var slaTime = new Date(slaDateStr.replace('今天','2026-03-29'));
+    var diffMs = slaTime - now;
+    var diffMin = Math.round(diffMs / 60000);
+    var isOverdue = diffMin < 0;
+    var isUrgent = diffMin > 0 && diffMin <= 30;
+    var remaining = isOverdue ? '已超时' + Math.abs(diffMin) + '分钟' : diffMin + '分钟';
+    var rowColor = isOverdue ? 'var(--red-bg)' : isUrgent ? 'var(--orange-bg)' : '';
+    var borderColor = isOverdue ? 'var(--red)' : isUrgent ? 'var(--orange)' : 'var(--border)';
+    var typeNameMap = {complaint:'投诉', repair:'报修', delivery:'送物', invoice:'发票', praise:'表扬', other:'其他'};
+    var priorityNameMap = {urgent:'紧急', high:'高', normal:'普通', low:'低'};
+    var statusBadge = wo.status === 'pending' ? '<span style="padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:10px;">待接受</span>'
+      : '<span style="padding:2px 6px;background:var(--orange-bg);color:var(--orange);border-radius:4px;font-size:10px;">处理中</span>';
+    return '<tr style="background:' + rowColor + ';border-left:3px solid ' + borderColor + ';">' +
+      '<td style="font-size:11px;font-family:monospace;padding:8px 6px;">' + wo.id + '</td>' +
+      '<td style="font-size:12px;font-weight:600;padding:8px 6px;">' + (typeNameMap[wo.type] || wo.type) + '</td>' +
+      '<td style="font-size:12px;padding:8px 6px;">' + wo.room + '</td>' +
+      '<td style="font-size:12px;padding:8px 6px;">' + wo.customer + '</td>' +
+      '<td style="padding:8px 6px;"><span style="padding:2px 6px;background:' + (wo.priority==='urgent'?'var(--red-bg)':wo.priority==='high'?'var(--orange-bg)':'var(--blue-bg)') + ';color:' + (wo.priority==='urgent'?'var(--red)':wo.priority==='high'?'var(--orange)':'var(--blue)') + ';border-radius:4px;font-size:10px;">' + (priorityNameMap[wo.priority] || wo.priority) + '</span></td>' +
+      '<td style="padding:8px 6px;">' + statusBadge + '</td>' +
+      '<td style="font-size:11px;padding:8px 6px;">' + wo.sla + '</td>' +
+      '<td style="font-size:12px;font-weight:700;color:' + (isOverdue ? 'var(--red)' : isUrgent ? 'var(--orange)' : 'var(--green)') + ';padding:8px 6px;">' + remaining + '</td>' +
+      '<td style="padding:8px 6px;"><button class="action-btn small" onclick="document.getElementById(\'modal-sla-table\').remove();showPage(\'workorder\');openProcessWorkorderModal(' + _woList.indexOf(wo) + ');" style="padding:2px 8px;font-size:11px;">处理</button></td></tr>';
+  }).join('');
+  if (!slaRows) slaRows = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">暂无进行中的SLA工单</td></tr>';
+  var html = '<div class="modal-overlay" id="modal-sla-table" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-sla-table\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:820px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+        '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">⏱️</div><div><div style="font-size:15px;font-weight:700;">SLA工单监控表</div><div style="font-size:11px;color:var(--text-muted);">实时剩余时限</div></div></div>' +
+        '<div style="display:flex;gap:10px;align-items:center;">' +
+          '<div style="padding:4px 12px;background:var(--red-bg);color:var(--red);border-radius:8px;font-size:12px;font-weight:700;">⚠️ 超时 ' + overdueCount + ' 条</div>' +
+          '<button onclick="document.getElementById(\'modal-sla-table\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div></div>' +
+      '<div style="padding:12px 16px;display:flex;gap:12px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--bg);">' +
+        '<div style="flex:1;padding:8px 12px;background:white;border-radius:8px;text-align:center;border:1px solid var(--border);">' +
+          '<div style="font-size:10px;color:var(--text-muted);">SLA工单总数</div><div style="font-size:20px;font-weight:800;color:var(--blue);">' + _woList.filter(function(wo){ return wo.status !== 'done'; }).length + '</div></div>' +
+        '<div style="flex:1;padding:8px 12px;background:white;border-radius:8px;text-align:center;border:1px solid var(--border);">' +
+          '<div style="font-size:10px;color:var(--text-muted);">已超时</div><div style="font-size:20px;font-weight:800;color:var(--red);">' + overdueCount + '</div></div>' +
+        '<div style="flex:1;padding:8px 12px;background:white;border-radius:8px;text-align:center;border:1px solid var(--border);">' +
+          '<div style="font-size:10px;color:var(--text-muted);">即将超时(&lt;30min)</div><div style="font-size:20px;font-weight:800;color:var(--orange);">' + urgentCount + '</div></div>' +
+        '<div style="flex:1;padding:8px 12px;background:white;border-radius:8px;text-align:center;border:1px solid var(--border);">' +
+          '<div style="font-size:10px;color:var(--text-muted);">正常进行中</div><div style="font-size:20px;font-weight:800;color:var(--green);">' + normalCount + '</div></div></div>' +
+      '<div style="overflow-y:auto;flex:1;padding:0 16px;">' +
+        '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;">' +
+          '<thead><tr style="background:var(--bg);border-bottom:2px solid var(--border);">' +
+            '<th style="padding:8px 6px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">工单号</th>' +
+            '<th style="padding:8px 6px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">类型</th>' +
+            '<th style="padding:8px 6px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">房间</th>' +
+            '<th style="padding:8px 6px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">客户</th>' +
+            '<th style="padding:8px 6px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">优先级</th>' +
+            '<th style="padding:8px 6px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">状态</th>' +
+            '<th style="padding:8px 6px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">SLA时限</th>' +
+            '<th style="padding:8px 6px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">剩余时间</th>' +
+            '<th style="padding:8px 6px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">操作</th></tr></thead>' +
+          '<tbody>' + slaRows + '</tbody></table></div>' +
+      '<div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' +
+        '<button onclick="document.getElementById(\'modal-sla-table\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
 </script>
 </body></html>
