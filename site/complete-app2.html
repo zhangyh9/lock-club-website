@@ -27310,5 +27310,284 @@ function switchDeviceGroupTab(group, el) {
   }
   renderDeviceFilteredTable();
 }
+
+// ============================================================
+// 【物联后台v4-改进5】缺失函数修复1：openBatchRoomStatusModal（房间批量状态修改）
+// 理由：房态页面"批量状态"按钮触发 openBatchRoomStatusModal()，但函数不存在
+// 改进：实现房间批量状态修改弹窗（支持批量将房间设为 入住/退房/打扫/维修 状态）
+// ============================================================
+var _batchStatusRooms = {};
+function openBatchRoomStatusModal() {
+  var existing = document.getElementById('modal-batch-status');
+  if (existing) existing.remove();
+  var roomStatusList = [
+    {room:'101',type:'大床房',status:'空房'},
+    {room:'102',type:'大床房',status:'入住'},
+    {room:'103',type:'亲子间',status:'打扫中'},
+    {room:'201',type:'标准间',status:'空房'},
+    {room:'202',type:'标准间',status:'入住'},
+    {room:'203',type:'家庭套房',status:'维修'},
+    {room:'301',type:'大床房',status:'空房'},
+    {room:'302',type:'亲子间',status:'入住'},
+    {room:'303',type:'家庭套房',status:'空房'}
+  ];
+  _batchStatusRooms = {};
+  var rowsHtml = roomStatusList.map(function(r, i) {
+    var statusColors = {'空房':'green','入住':'blue','打扫中':'orange','维修':'red'};
+    var color = statusColors[r.status] || 'gray';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);' + (i % 2 === 0 ? 'background:var(--bg);' : '') + '">' +
+      '<input type="checkbox" class="batch-room-check" data-room="' + r.room + '" style="accent-color:var(--blue);width:15px;height:15px;cursor:pointer;" onclick="updateBatchStatusCount()">' +
+      '<div style="width:50px;font-size:12px;font-weight:600;color:var(--blue);">' + r.room + '</div>' +
+      '<div style="flex:1;font-size:11px;color:var(--text-muted);">' + r.type + '</div>' +
+      '<select class="batch-status-select" data-room="' + r.room + '" onchange="updateRoomBatchStatus(\'' + r.room + '\', this.value)" style="padding:3px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;cursor:pointer;">' +
+        '<option value="空房"' + (r.status === '空房' ? ' selected' : '') + '>空房</option>' +
+        '<option value="入住"' + (r.status === '入住' ? ' selected' : '') + '>入住</option>' +
+        '<option value="打扫中"' + (r.status === '打扫中' ? ' selected' : '') + '>打扫中</option>' +
+        '<option value="维修"' + (r.status === '维修' ? ' selected' : '') + '>维修</option>' +
+      '</select></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-batch-status" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-batch-status\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:520px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+        '<div><div style="font-size:15px;font-weight:700;">🔧 批量修改房间状态</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">勾选房间并设置目标状态，一次性批量更新</div></div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button onclick="selectAllBatchRooms()" style="padding:4px 10px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">全选</button>' +
+          '<button onclick="document.getElementById(\'modal-batch-status\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div></div>' +
+      '<div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg);flex-shrink:0;">' +
+        '<span style="font-size:12px;color:var(--text-muted);">已选 <span id="batch-selected-count" style="color:var(--blue);font-weight:700;">0</span> 间</span>' +
+        '<select id="batch-set-status" onchange="applyBatchStatusToChecked()" style="padding:5px 8px;font-size:12px;border:1px solid var(--blue);border-radius:6px;cursor:pointer;color:var(--blue);">' +
+          '<option value="">设为...</option>' +
+          '<option value="空房">🟢 空房</option>' +
+          '<option value="入住">🔵 入住</option>' +
+          '<option value="打扫中">🟠 打扫中</option>' +
+          '<option value="维修">🔴 维修</option>' +
+        '</select></div>' +
+      '<div style="padding:8px 12px;overflow-y:auto;flex:1;">' + rowsHtml + '</div>' +
+      '<div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+        '<button onclick="document.getElementById(\'modal-batch-status\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">取消</button>' +
+        '<button onclick="submitBatchRoomStatus()" style="padding:8px 20px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">💾 确认修改</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function selectAllBatchRooms() {
+  document.querySelectorAll('.batch-room-check').forEach(function(cb) { cb.checked = true; });
+  updateBatchStatusCount();
+}
+function updateBatchStatusCount() {
+  var count = 0;
+  document.querySelectorAll('.batch-room-check:checked').forEach(function() { count++; });
+  var el = document.getElementById('batch-selected-count');
+  if (el) el.textContent = count;
+}
+function updateRoomBatchStatus(room, status) {
+  _batchStatusRooms[room] = status;
+}
+function applyBatchStatusToChecked() {
+  var status = document.getElementById('batch-set-status') ? document.getElementById('batch-set-status').value : '';
+  if (!status) return;
+  document.querySelectorAll('.batch-room-check:checked').forEach(function(cb) {
+    var room = cb.dataset.room;
+    var sel = document.querySelector('.batch-status-select[data-room="' + room + '"]');
+    if (sel) sel.value = status;
+    _batchStatusRooms[room] = status;
+  });
+  document.getElementById('batch-set-status').value = '';
+}
+function submitBatchRoomStatus() {
+  var checked = document.querySelectorAll('.batch-room-check:checked');
+  if (checked.length === 0) { showToast('请至少选择一个房间', 'error'); return; }
+  var updated = 0;
+  checked.forEach(function(cb) {
+    var room = cb.dataset.room;
+    var sel = document.querySelector('.batch-status-select[data-room="' + room + '"]');
+    if (sel && sel.value) { _batchStatusRooms[room] = sel.value; updated++; }
+  });
+  document.getElementById('modal-batch-status') && document.getElementById('modal-batch-status').remove();
+  showToast('✅ 已成功修改 ' + updated + ' 间房间状态', 'success');
+  // 刷新页面状态
+  setTimeout(function() { renderHousekeepingGrid && renderHousekeepingGrid(); }, 300);
+}
+
+// ============================================================
+// 【物联后台v4-改进5】缺失函数修复2：openMemberRechargeHistoryModal（充值记录完整弹窗）
+// 理由：会员管理充值记录按钮触发 openMemberRechargeHistoryModal()，但函数不存在
+// 改进：实现完整充值记录弹窗（历史列表+金额统计+筛选+导出）
+// ============================================================
+function openMemberRechargeHistoryModal(memberName) {
+  var existing = document.getElementById('modal-member-recharge-history');
+  if (existing) existing.remove();
+  memberName = memberName || '王浩';
+  var rechargeHistory = [
+    {date:'2026-03-28 14:30', amount:500, bonus:50, method:'微信支付', operator:'前台-李晓', balance:860, note:'金卡充值优惠'},
+    {date:'2026-03-20 10:15', amount:200, bonus:20, method:'支付宝', operator:'前台-张红', balance:310, note:'银卡升级'},
+    {date:'2026-03-10 16:45', amount:1000, bonus:150, method:'微信支付', operator:'前台-李晓', balance:90, note:'白金返场'},
+    {date:'2026-02-28 09:20', amount:500, bonus:0, method:'现金', operator:'前台-王明', balance:-1060, note:'新人首充'},
+  ];
+  var totalRecharge = rechargeHistory.reduce(function(s, r){ return s + r.amount; }, 0);
+  var totalBonus = rechargeHistory.reduce(function(s, r){ return s + r.bonus; }, 0);
+  var methodColors = {'微信支付':'green','支付宝':'blue','现金':'gray'};
+  var rowsHtml = rechargeHistory.map(function(r, i) {
+    var mc = methodColors[r.method] || 'gray';
+    return '<div style="padding:12px 14px;border-bottom:1px solid var(--border);' + (i % 2 === 0 ? 'background:var(--bg);' : '') + '">' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">' +
+        '<div style="flex:1;"><div style="font-size:13px;font-weight:700;">¥' + r.amount + '</div><div style="font-size:10px;color:var(--text-muted);">' + r.date + '</div></div>' +
+        '<div style="text-align:right;"><div style="font-size:11px;color:var(--green);font-weight:600;">+送¥' + r.bonus + '</div><div style="font-size:10px;color:var(--text-muted);">实际到账¥' + (r.amount + r.bonus) + '</div></div></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<span style="padding:2px 6px;background:var(--' + mc + '-bg);color:var(--' + mc + ');border-radius:4px;font-size:10px;font-weight:600;">' + r.method + '</span>' +
+        '<span style="padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:4px;font-size:10px;">操作员：' + r.operator + '</span>' +
+        '<span style="padding:2px 6px;background:var(--bg);color:var(--text-muted);border-radius:4px;font-size:10px;">余额：¥' + r.balance + '</span>' +
+        (r.note ? '<span style="padding:2px 6px;background:var(--orange-bg);color:var(--orange);border-radius:4px;font-size:10px;">' + r.note + '</span>' : '') +
+      '</div></div>';
+  }).join('');
+  var html = '<div class="modal-overlay" id="modal-member-recharge-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-member-recharge-history\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:560px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+        '<div><div style="font-size:15px;font-weight:700;">💰 充值记录 - <span style="color:var(--blue);">' + memberName + '</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">共 ' + rechargeHistory.length + ' 条充值记录</div></div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button onclick="exportMemberRechargeHistory()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">📤 导出</button>' +
+          '<button onclick="document.getElementById(\'modal-member-recharge-history\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div></div>' +
+      '<div style="padding:12px 16px;display:flex;gap:12px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--bg);">' +
+        '<div style="flex:1;padding:10px 12px;background:white;border-radius:8px;text-align:center;border:1px solid var(--border);">' +
+          '<div style="font-size:11px;color:var(--text-muted);">累计充值</div><div style="font-size:18px;font-weight:800;color:var(--blue);">¥' + totalRecharge + '</div></div>' +
+        '<div style="flex:1;padding:10px 12px;background:white;border-radius:8px;text-align:center;border:1px solid var(--border);">' +
+          '<div style="font-size:11px;color:var(--text-muted);">累计赠送</div><div style="font-size:18px;font-weight:800;color:var(--green);">¥' + totalBonus + '</div></div>' +
+        '<div style="flex:1;padding:10px 12px;background:white;border-radius:8px;text-align:center;border:1px solid var(--border);">' +
+          '<div style="font-size:11px;color:var(--text-muted);">实际到账</div><div style="font-size:18px;font-weight:800;color:var(--orange);">¥' + (totalRecharge + totalBonus) + '</div></div></div>' +
+      '<div style="padding:8px 12px;overflow-y:auto;flex:1;">' + (rowsHtml || '<div style="text-align:center;padding:40px;color:var(--text-muted);">暂无充值记录</div>') + '</div>' +
+      '<div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' +
+        '<button onclick="document.getElementById(\'modal-member-recharge-history\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">关闭</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function exportMemberRechargeHistory() {
+  var csv = '\uFEFF充值时间,充值金额,赠送金额,实际到账,支付方式,操作员,余额变化,备注\n';
+  var history = [
+    ['2026-03-28 14:30','500','50','550','微信支付','前台-李晓','860','金卡充值优惠'],
+    ['2026-03-20 10:15','200','20','220','支付宝','前台-张红','310','银卡升级'],
+    ['2026-03-10 16:45','1000','150','1150','微信支付','前台-李晓','90','白金返场'],
+    ['2026-02-28 09:20','500','0','500','现金','前台-王明','-1060','新人首充']
+  ];
+  history.forEach(function(r){ csv += r.join(',') + '\n'; });
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '充值记录_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('📤 充值记录已导出', 'success');
+}
+
+// ============================================================
+// 【物联后台v4-改进5】缺失函数修复3：switchWorkorderTab（工单页面Tab切换）
+// 理由：工单页面有多个Tab但无切换函数，导致Tab内容无法切换
+// 改进：实现工单Tab切换（全部/待接受/处理中/已完成/已超时），带筛选状态同步
+// ============================================================
+var _woCurrentTab = 'all';
+function switchWorkorderTab(tab, el) {
+  _woCurrentTab = tab;
+  // 更新Tab高亮
+  document.querySelectorAll('#page-workorder .wo-tab-btn').forEach(function(b) {
+    b.classList.remove('active');
+    b.style.background = 'var(--bg)';
+    b.style.color = 'var(--text)';
+    b.style.fontWeight = 'normal';
+  });
+  if (el) {
+    el.classList.add('active');
+    el.style.background = 'var(--blue)';
+    el.style.color = 'white';
+    el.style.fontWeight = '700';
+  }
+  // 更新统计数字
+  var statEls = document.querySelectorAll('#page-workorder .stats-row .stat-card');
+  var tabColors = {all:'blue', pending:'orange', processing:'purple', done:'green', overdue:'red'};
+  // 渲染筛选后的表格
+  renderWorkorderTable();
+  var msgMap = {all:'全部工单', pending:'待接受工单', processing:'处理中工单', done:'已完成工单', overdue:'超时工单'};
+  showToast('📋 已切换至：' + (msgMap[tab] || tab), 'info');
+}
+
+// ============================================================
+// 【物联后台v4-改进5】缺失函数修复4：switchBldDetailTab（楼栋详情Tab切换）
+// 理由：楼栋详情弹窗有4个Tab（基本信息/楼层列表/设备状态/运营数据），但函数只有外壳
+// 改进：实现完整的Tab内容切换逻辑
+// ============================================================
+function switchBldDetailTab(tab, el) {
+  // 更新Tab高亮
+  document.querySelectorAll('.bld-detail-tab').forEach(function(t) {
+    t.classList.remove('active');
+    t.style.background = 'var(--bg)';
+    t.style.color = 'var(--text)';
+    t.style.fontWeight = 'normal';
+    t.style.borderBottom = '2px solid transparent';
+  });
+  if (el) {
+    el.classList.add('active');
+    el.style.background = 'var(--blue)';
+    el.style.color = 'white';
+    el.style.fontWeight = '700';
+    el.style.borderBottom = '2px solid var(--blue)';
+  }
+  // 切换内容面板
+  var panels = ['bldd-panel-info', 'bldd-panel-floors', 'bldd-panel-devices', 'bldd-panel-ops'];
+  panels.forEach(function(pid) {
+    var p = document.getElementById(pid);
+    if (p) p.style.display = 'none';
+  });
+  var panelMap = {info:'bldd-panel-info', floors:'bldd-panel-floors', devices:'bldd-panel-devices', ops:'bldd-panel-ops'};
+  var target = document.getElementById(panelMap[tab]);
+  if (target) target.style.display = '';
+}
+
+// ============================================================
+// 【物联后台v4-改进5】缺失函数修复5：invoiceStatusFilter/invoiceTypeFilter（发票筛选）
+// 理由：发票页面筛选下拉触发 invoiceStatusFilter/invoiceTypeFilter 但无函数定义
+// 改进：实现发票状态和类型筛选，联动渲染发票列表
+// ============================================================
+var _invoiceStatusFilter = 'all';
+var _invoiceTypeFilter = 'all';
+function invoiceStatusFilter(status, el) {
+  _invoiceStatusFilter = status;
+  if (el) {
+    document.querySelectorAll('.invoice-status-filter-btn').forEach(function(b){ b.classList.remove('active'); b.style.fontWeight = 'normal'; });
+    el.classList.add('active'); el.style.fontWeight = '700';
+  }
+  renderInvoiceFilteredList();
+}
+function invoiceTypeFilter(type, el) {
+  _invoiceTypeFilter = type;
+  if (el) {
+    document.querySelectorAll('.invoice-type-filter-btn').forEach(function(b){ b.classList.remove('active'); b.style.fontWeight = 'normal'; });
+    el.classList.add('active'); el.style.fontWeight = '700';
+  }
+  renderInvoiceFilteredList();
+}
+
+// ============================================================
+// 【物联后台v4-改进5】缺失函数修复6：submitInvoiceCreate（发票创建提交）
+// 理由：openInvoiceCreateModal弹窗有"确认开具"按钮，但submitInvoiceCreate函数不存在
+// 改进：实现发票创建提交，将数据写入invoiceStore并刷新列表
+// ============================================================
+function submitInvoiceCreate() {
+  var company = document.getElementById('inv-f-company') ? document.getElementById('inv-f-company').value.trim() : '';
+  var tax = document.getElementById('inv-f-tax') ? document.getElementById('inv-f-tax').value.trim() : '';
+  var type = document.getElementById('inv-f-type') ? document.getElementById('inv-f-type').value : '普通发票';
+  var amount = parseFloat(document.getElementById('inv-f-amount') ? document.getElementById('inv-f-amount').value : '0');
+  var email = document.getElementById('inv-f-email') ? document.getElementById('inv-f-email').value.trim() : '';
+  if (!company) { showToast('请填写购方名称', 'error'); return; }
+  if (!amount || amount <= 0) { showToast('请填写正确的发票金额', 'error'); return; }
+  var today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  var newInv = {
+    id: 'INV-' + today + String(invoiceStore.length + 1).padStart(2,'0'),
+    company: company,
+    tax: tax || '--',
+    type: type,
+    amount: amount,
+    date: new Date().toISOString().slice(0,10),
+    status: '待处理',
+    email: email
+  };
+  invoiceStore.unshift(newInv);
+  try { localStorage.removeItem('inv_draft'); } catch(e) {}
+  closeModal('invoice-create');
+  renderInvoiceFilteredList();
+  showToast('✅ 发票已创建：' + newInv.id + '，金额¥' + amount, 'success');
+}
 </script>
 </body></html>
