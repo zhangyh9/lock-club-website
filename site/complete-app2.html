@@ -1291,99 +1291,7 @@ function showToast(msg, type) {
 </div>
 <div class="page-sub">运营数据总览 · <span id="dashboard-last-update" style="color:var(--blue);font-size:12px;">--</span> · <span id="dashboard-refresh-countdown" style="color:var(--orange);font-weight:600;font-size:12px;">30s</span> 后自动刷新</div>
 <div id="device-status">
-<div id="dashboard-view-tabs">
-<!-- 改进F3: 实时设备监控面板（动态心跳检测+状态实时刷新+手动刷新按钮） -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-<!-- 设备在线状态实时卡片 -->
-<div class="card" style="margin-bottom:0;">
-<div class="card-header">
-<div class="card-title">📡 设备实时状态</div>
-<div style="display:flex;align-items:center;gap:8px;">
-<div id="online-pulse" style="width:8px;height:8px;background:var(--green);border-radius:50%;animation:onlinePulse 2s ease-in-out infinite;"></div>
-<span id="dashboard-device-status" style="font-size:11px;color:var(--green);font-weight:600;">11/16 在线</span>
-<button class="action-btn small" onclick="manualRefreshDashboard()" style="padding:2px 8px;font-size:10px;" title="手动刷新数据">🔄</button>
-</div>
-</div>
-<div class="card-body" style="padding:12px;">
-<div id="device-heartbeat-list" style="display:flex;flex-direction:column;gap:6px;">
-<div data-device-uuid="A84F1AF2" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--green-bg);border-radius:6px;">
-<div style="width:6px;height:6px;background:var(--green);border-radius:50%;flex-shrink:0;"></div>
-<span style="font-size:12px;font-weight:500;flex:1;">301 · 领握LH-807</span>
-<span style="font-size:11px;color:var(--green);">在线</span>
-<div style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:onlinePulse 2s ease-in-out infinite;"></div>
-</div>
-<div data-device-uuid="C73D4CG4" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--red-bg);border-radius:6px;">
-<div style="width:6px;height:6px;background:var(--red);border-radius:50%;flex-shrink:0;animation:offlinePulse 1.5s ease-in-out infinite;"></div>
-<span style="font-size:12px;font-weight:500;flex:1;">303 · 领握LH-807</span>
-<span style="font-size:11px;color:var(--red);">离线</span>
-<div style="width:6px;height:6px;border-radius:50%;background:var(--red);animation:offlinePulse 1.5s ease-in-out infinite;"></div>
-</div>
-<div data-device-uuid="D64E5DH5" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--orange-bg);border-radius:6px;">
-<div style="width:6px;height:6px;background:var(--orange);border-radius:50%;flex-shrink:0;"></div>
-<span style="font-size:12px;font-weight:500;flex:1;">305 · 领握LH-807</span>
-<span style="font-size:11px;color:var(--orange);">低电量 28%</span>
-</div>
-<div data-device-uuid="E75F6EI6" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--green-bg);border-radius:6px;">
-<div style="width:6px;height:6px;background:var(--green);border-radius:50%;flex-shrink:0;"></div>
-<span style="font-size:12px;font-weight:500;flex:1;">201 · 领握LH-807</span>
-<span style="font-size:11px;color:var(--green);">在线</span>
-<div style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:onlinePulse 2s ease-in-out infinite;"></div>
-</div>
-</div>
-</div>
-</div>
-<!-- 实时通知推送中心 -->
-<div class="card" style="margin-bottom:0;">
-<div class="card-header">
-<div class="card-title">🔔 实时通知</div>
-<div style="display:flex;align-items:center;gap:8px;">
-<div id="notif-tabs" style="display:flex;gap:4px;">
-<div class="card-tab active" data-cat="all" onclick="filterNotifCategory('all', this)">全部</div>
-<div class="card-tab" data-cat="device" onclick="filterNotifCategory('device', this)">设备</div>
-<div class="card-tab" data-cat="workorder" onclick="filterNotifCategory('workorder', this)">工单</div>
-<div class="card-tab" data-cat="checkin" onclick="filterNotifCategory('checkin', this)">入住</div>
-</div>
-<span id="notif-count" style="font-size:11px;color:var(--text-muted);">3 条新通知</span>
-<button class="action-btn small" id="mark-all-read-btn" onclick="markAllNotifRead()" style="padding:2px 8px;font-size:10px;color:var(--blue);">全部已读</button>
-</div>
-</div>
-<div class="card-body" id="notification-center" style="padding:12px;max-height:200px;overflow-y:auto;">
-<div class="notif-item" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
-<div style="width:28px;height:28px;background:var(--red);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">⚠️</div>
-<div style="flex:1;min-width:0;">
-<div style="font-size:12px;font-weight:600;margin-bottom:2px;">303设备离线超过10小时</div>
-<div style="font-size:11px;color:var(--text-muted);">10分钟前</div>
-</div>
-<button class="action-btn small" onclick="showPage('alert')" style="padding:2px 8px;font-size:10px;">处理</button>
-</div>
-<div class="notif-item" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
-<div style="width:28px;height:28px;background:var(--orange);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🔋</div>
-<div style="flex:1;min-width:0;">
-<div style="font-size:12px;font-weight:600;margin-bottom:2px;">305设备电量低于20%</div>
-<div style="font-size:11px;color:var(--text-muted);">2小时前</div>
-</div>
-<button class="action-btn small" onclick="showPage('alert')" style="padding:2px 8px;font-size:10px;">处理</button>
-</div>
-<div class="notif-item" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
-<div style="width:28px;height:28px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">✅</div>
-<div style="flex:1;min-width:0;">
-<div style="font-size:12px;font-weight:600;margin-bottom:2px;">304设备恢复在线</div>
-<div style="font-size:11px;color:var(--text-muted);">昨天 15:30</div>
-</div>
-<span style="font-size:10px;color:var(--green);padding:2px 6px;background:var(--green-bg);border-radius:4px;">已处理</span>
-</div>
-<div class="notif-item" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;">
-<div style="width:28px;height:28px;background:var(--blue);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🏨</div>
-<div style="flex:1;min-width:0;">
-<div style="font-size:12px;font-weight:600;margin-bottom:2px;">301入住办理成功</div>
-<div style="font-size:11px;color:var(--text-muted);">张三 · 手机开锁开通</div>
-</div>
-<span style="font-size:10px;color:var(--blue);padding:2px 6px;background:var(--blue-bg);border-radius:4px;">今天 10:32</span>
-</div>
-</div>
-</div>
-</div>
-<!-- 【改进3】实时设备监控面板（动态心跳检测，离线闪烁+通知） -->
+
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
 <!-- 设备在线状态实时卡片 -->
 <div class="card" style="margin-bottom:0;">
@@ -15281,6 +15189,56 @@ function openPmsConfigModal() {
 var batchSelectedDevices = [];
 var batchSelectedOp = null;
 
+// 【修复T05】全局搜索功能缺失
+window.performGlobalSearch = function(q) {
+  var results = document.getElementById('global-search-results');
+  if (!results) return;
+  if (!q || q.length < 1) { results.style.display = 'none'; return; }
+  q = q.toLowerCase().trim();
+  var data = [];
+  // Search deviceData
+  if (typeof deviceData !== 'undefined') {
+    deviceData.forEach(function(d) {
+      if ((d.num && d.num.toLowerCase().includes(q)) ||
+          (d.uuid && d.uuid.toLowerCase().includes(q)) ||
+          (d.type && d.type.toLowerCase().includes(q)) ||
+          (d.guest && d.guest.toLowerCase().includes(q)) ||
+          (d.phone && d.phone.toLowerCase().includes(q))) {
+        data.push({type:'device', label:(d.num||'') + ' ' + (d.type||''), sub:(d.status||'') + (d.battery ? ' | ' + d.battery : ''), uuid:d.uuid});
+      }
+    });
+  }
+  // Search roomData
+  if (typeof roomData !== 'undefined') {
+    roomData.forEach(function(r) {
+      if ((r.num && r.num.toLowerCase().includes(q)) ||
+          (r.guest && r.guest.toLowerCase().includes(q)) ||
+          (r.phone && r.phone.toLowerCase().includes(q))) {
+        data.push({type:'room', label:'🏠 ' + r.num, sub:(r.status||'') + (r.guest ? ' | ' + r.guest : ''), num:r.num});
+      }
+    });
+  }
+  data = data.slice(0, 10);
+  if (data.length === 0) {
+    results.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">未找到匹配结果</div>';
+  } else {
+    var html = '';
+    data.forEach(function(item) {
+      var click = item.type === 'device' ? "showPage('device-detail');setDeviceDetail('" + item.uuid + "')" :
+                  item.type === 'room' ? "showPage('room-detail');setRoomDetail('" + item.num + "')" : '';
+      html += '<div onclick="' + click + ';closeGlobalSearch()" style="padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:13px;font-weight:600;">' + item.label + '</div><div style="font-size:11px;color:var(--text-muted);">' + item.sub + '</div></div><span style="font-size:11px;color:var(--blue);">' + (item.type==='device'?'📱':'🏠') + '</span></div>';
+    });
+    results.innerHTML = html;
+  }
+  results.style.display = 'block';
+};
+window.closeGlobalSearch = function() {
+  var bar = document.getElementById('global-search-bar');
+  var results = document.getElementById('global-search-results');
+  if (bar) bar.style.display = 'none';
+  if (results) results.style.display = 'none';
+};
+
 var allDevicesForBatch = [
   {room:'301', uuid:'A84F1AF2', type:'领握LH-807', status:'online', battery:88},
   {room:'303', uuid:'C73D4CG4', type:'领握LH-807', status:'offline', battery:0},
@@ -15301,7 +15259,7 @@ function openBatchDeviceControlModal() {
   document.getElementById('bdc-execute-btn').style.cursor = 'not-allowed';
   // Reset op card selection
   document.querySelectorAll('.bdc-op-card').forEach(function(c){ c.style.borderColor = 'var(--border)'; c.style.background = 'white'; });
-  openModal('batch-device-control');
+  openModal('modal-batch-device-control');
 }
 
 function selectAllDevicesForBatch() {
@@ -15382,7 +15340,7 @@ function toggleBatchConfirm() {
 
 function executeBatchControl() {
   var opNames = {unlock:'批量开锁', sync:'批量同步', power:'通断电控制', restart:'批量重启', battery:'换电池提醒', freeze:'冻结权限'};
-  closeModal('batch-device-control');
+  closeModal('modal-batch-device-control');
   showToast('⚡ 正在对 ' + batchSelectedDevices.length + ' 台设备执行「' + opNames[batchSelectedOp] + '」操作...', 'info');
   setTimeout(function(){
     var success = Math.floor(batchSelectedDevices.length * 0.9);
