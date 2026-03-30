@@ -603,6 +603,9 @@ function closeAllModals() {
 }
 function openModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
 function closeModal(id) { var el = document.getElementById(id); if (el) el.classList.add('hidden'); }
+// 【P12修复】全局ESC键关闭弹窗（带清理避免内存泄漏）
+var _escKeyHandler = function(e){ if(e.key==='Escape'){closeAllModals();closeGlobalSearch();} };
+document.addEventListener('keydown', _escKeyHandler);
 // cycleHomeTab is defined in improvements-v4-iter8.js as window function
 
 // ============================================================
@@ -992,7 +995,7 @@ function showToast(msg, type) {
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
 <div style="font-size:15px;font-weight:600;">🚪 房间状态</div>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-<input id="home-room-search" placeholder="🔍 搜索房间号/客户名..." oninput="filterRoomsByKeyword(this.value)" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:180px;">
+<input id="home-room-search" placeholder="🔍 搜索房间号/设备..." oninput="debounceFilterRooms(this.value)" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:180px;">
 <select id="home-room-filter" onchange="renderRoomGrid(this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
 <option value="all">全部房间</option><option value="occupied">在住</option><option value="empty">空房</option><option value="alert">告警/维修</option>
 </select>
@@ -1000,6 +1003,14 @@ function showToast(msg, type) {
 </div>
 </div>
 <script>
+// 【物联后台v4-第X轮-改进】首页搜索防抖优化P60
+// 理由：搜索输入无防抖，每次按键立即执行过滤，性能差用户体验也不好
+function debounceFilterRooms(kw) {
+  if (window._filterRoomsTimer) clearTimeout(window._filterRoomsTimer);
+  window._filterRoomsTimer = setTimeout(function() {
+    filterRoomsByKeyword(kw);
+  }, 300);
+}
 function filterRoomsByKeyword(kw) {
   var cards = document.querySelectorAll('#room-grid .room-card');
   kw = kw.trim().toLowerCase();
@@ -1095,7 +1106,7 @@ function filterRoomsByKeyword(kw) {
 </div>
 </div>
 <div class="card-body" id="notification-center" style="padding:12px;max-height:200px;overflow-y:auto;">
-<div class="notif-item" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+<div class="notif-item" data-category="device" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
 <div style="width:28px;height:28px;background:var(--red);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">⚠️</div>
 <div style="flex:1;min-width:0;">
 <div style="font-size:12px;font-weight:600;margin-bottom:2px;">303设备离线超过10小时</div>
@@ -1103,7 +1114,7 @@ function filterRoomsByKeyword(kw) {
 </div>
 <button class="action-btn small" onclick="showPage('alert')" style="padding:2px 8px;font-size:10px;">处理</button>
 </div>
-<div class="notif-item" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+<div class="notif-item" data-category="device" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
 <div style="width:28px;height:28px;background:var(--orange);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🔋</div>
 <div style="flex:1;min-width:0;">
 <div style="font-size:12px;font-weight:600;margin-bottom:2px;">305设备电量低于20%</div>
@@ -1111,7 +1122,7 @@ function filterRoomsByKeyword(kw) {
 </div>
 <button class="action-btn small" onclick="showPage('alert')" style="padding:2px 8px;font-size:10px;">处理</button>
 </div>
-<div class="notif-item" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+<div class="notif-item" data-category="device" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
 <div style="width:28px;height:28px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">✅</div>
 <div style="flex:1;min-width:0;">
 <div style="font-size:12px;font-weight:600;margin-bottom:2px;">304设备恢复在线</div>
@@ -1119,7 +1130,7 @@ function filterRoomsByKeyword(kw) {
 </div>
 <span style="font-size:10px;color:var(--green);padding:2px 6px;background:var(--green-bg);border-radius:4px;">已处理</span>
 </div>
-<div class="notif-item" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;">
+<div class="notif-item" data-category="checkin" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;">
 <div style="width:28px;height:28px;background:var(--blue);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🏨</div>
 <div style="flex:1;min-width:0;">
 <div style="font-size:12px;font-weight:600;margin-bottom:2px;">301入住办理成功</div>
@@ -6982,94 +6993,7 @@ function saveEscalationEditorRules() {
     }
     setInterval(checkEnergyPage, 300);
     </script>
-<!-- Page: Batch Check-in Management (v3新页面：批量入住管理) -->
-<script>
-// 【改进1】账单消费明细弹窗 - 退房时展示完整消费明细（房费+押金+加购项目+汇总）
-var billingData = {};
-function openBillingDetailModal(roomNum, guestName, checkinTime, checkinDays) {
-  billingData = {room: roomNum, guest: guestName, checkin: checkinTime, days: checkinDays || 2};
-  document.getElementById('bd-room').textContent = roomNum + ' · ' + guestName;
-  var roomFee = 0, roomType = '亲子间';
-  if (roomNum >= 301 && roomNum <= 306) { roomType = '亲子间'; roomFee = 298 * billingData.days; }
-  else if (roomNum >= 201 && roomNum <= 205) { roomType = '大床房'; roomFee = 238 * billingData.days; }
-  else { roomType = '标准间'; roomFee = 168 * billingData.days; }
-  var deposit = 100;
-  var extras = [
-    {item:'早餐 ×2', qty:2, price:28, total:56},
-    {item:'迷你吧 - 啤酒', qty:2, price:12, total:24},
-    {item:'加床服务', qty:1, price:80, total:80}
-  ];
-  var extrasTotal = extras.reduce(function(s,e){return s+e.total;},0);
-  var total = roomFee + extrasTotal;
-  var refund = deposit;
-  var finalPay = Math.max(0, total - deposit);
 
-  var extrasRows = extras.map(function(e,i){
-    return '<tr style="font-size:12px;"><td style="padding:6px 8px;">'+(i+1)+'</td><td style="padding:6px 8px;">'+e.item+'</td><td style="padding:6px 8px;text-align:center;">'+e.qty+'</td><td style="padding:6px 8px;text-align:right;">¥'+e.price+'</td><td style="padding:6px 8px;text-align:right;font-weight:600;">¥'+e.total+'</td></tr>';
-  }).join('');
-
-  var body = document.getElementById('bd-body');
-  body.innerHTML = '\
-    <div style="margin-bottom:16px;">\
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;">\
-        <div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;">\
-          <div style="font-size:10px;color:var(--blue);margin-bottom:3px;">房间号</div>\
-          <div style="font-size:15px;font-weight:700;color:var(--blue);">'+roomNum+'</div>\
-        </div>\
-        <div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;">\
-          <div style="font-size:10px;color:var(--green);margin-bottom:3px;">入住人</div>\
-          <div style="font-size:15px;font-weight:700;">'+guestName+'</div>\
-        </div>\
-        <div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;">\
-          <div style="font-size:10px;color:var(--orange);margin-bottom:3px;">入住天数</div>\
-          <div style="font-size:15px;font-weight:700;">'+billingData.days+'晚</div>\
-        </div>\
-        <div style="padding:10px;background:var(--purple-bg);border-radius:8px;text-align:center;">\
-          <div style="font-size:10px;color:var(--purple);margin-bottom:3px;">房型</div>\
-          <div style="font-size:15px;font-weight:700;">'+roomType+'</div>\
-        </div>\
-      </div>\
-    </div>\
-    <div style="margin-bottom:16px;">\
-      <div style="font-size:12px;font-weight:700;margin-bottom:8px;">📋 费用清单</div>\
-      <table style="width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:8px;overflow:hidden;">\
-        <thead><tr style="background:var(--bg);font-size:11px;color:var(--text-muted);"><th style="padding:8px;text-align:left;">序号</th><th style="padding:8px;text-align:left;">项目</th><th style="padding:8px;text-align:center;">数量</th><th style="padding:8px;text-align:right;">单价</th><th style="padding:8px;text-align:right;">小计</th></tr></thead>\
-        <tbody>\
-          <tr style="font-size:12px;border-top:1px solid var(--border);"><td style="padding:6px 8px;">1</td><td style="padding:6px 8px;">房费（'+roomType+' × '+billingData.days+'晚）</td><td style="padding:6px 8px;text-align:center;">'+billingData.days+'晚</td><td style="padding:6px 8px;text-align:right;">¥'+(roomFee/billingData.days)+'</td><td style="padding:6px 8px;text-align:right;font-weight:600;">¥'+roomFee+'</td></tr>\
-          <tr style="font-size:12px;border-top:1px solid var(--border);"><td style="padding:6px 8px;">2</td><td style="padding:6px 8px;">押金</td><td style="padding:6px 8px;text-align:center;">1</td><td style="padding:6px 8px;text-align:right;">¥'+deposit+'</td><td style="padding:6px 8px;text-align:right;font-weight:600;">¥'+deposit+'</td></tr>'+
-          extrasRows +
-        '</tbody>\
-      </table>\
-    </div>\
-    <div style="padding:14px;background:var(--blue-bg);border-radius:10px;border:1px solid var(--blue);">\
-      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span style="color:var(--text-light);">房费合计</span><span style="font-weight:600;">¥'+roomFee+'</span></div>\
-      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span style="color:var(--text-light);">押金（已付）</span><span style="font-weight:600;color:var(--green);">¥'+deposit+' ✓</span></div>\
-      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span style="color:var(--text-light);">加购消费</span><span style="font-weight:600;">¥'+extrasTotal+'</span></div>\
-      <div style="display:flex;justify-content:space-between;padding:6px 0 4px;font-size:15px;border-top:1px solid var(--blue);margin-top:6px;"><span style="font-weight:700;">应付总额</span><span style="font-weight:700;color:var(--blue);">¥'+total+'</span></div>\
-      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span style="color:var(--text-light);">已付押金</span><span style="font-weight:600;color:var(--green);">-¥'+deposit+'</span></div>\
-      <div style="display:flex;justify-content:space-between;padding:6px 0 4px;font-size:16px;border-top:1px dashed var(--blue);margin-top:4px;"><span style="font-weight:700;color:var(--text);">应退/应补金额</span><span style="font-weight:700;color:'+(finalPay>0?'var(--red)':'var(--green)')+';">¥'+(finalPay>0?finalPay:Math.abs(deposit-total))+'</span></div>\
-    </div>';
-  openModal('billing-detail');
-}
-
-function openBillingDetailFromCheckout() {
-  var guestSel = document.getElementById('checkout-guest-select');
-  var val = guestSel ? guestSel.value : '';
-  var roomNum = '301', guestName = '张三';
-  if (val) {
-    var parts = val.split(':');
-    if (parts.length >= 2) { roomNum = parts[0]; guestName = parts[1]; }
-  }
-  openBillingDetailModal(roomNum, guestName, '2026-03-26 14:00', 2);
-}
-function printBillingDetail() {
-  showToast('🖨️ 正在准备打印账单...', 'info');
-  window.print();
-}
-function sendBillingToEmail() {
-  showToast('📧 账单已发送至客人邮箱 ' + (billingData.guest || '') + '***@example.com', 'success');
-}
-</script>
 <!-- 【物联后台v3.5 改进2】PMS对接状态监控面板：系统配置页面新增PMS系统集成状态实时监控Tab -->
 <!-- PMS状态监控内容（插入到基本配置Tab中，通过按钮触发显示） -->
 <script>
@@ -12752,10 +12676,19 @@ function openBlacklistAddModal() {
     '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-blacklist-add\').remove()">取消</button>' +
     '<button class="modal-btn" onclick="submitBlacklistAdd()" style="background:var(--red);color:white;border:none;">🚫 确认添加</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
-  document.getElementById('ba-type').addEventListener('change', function() {
+  // 【P12修复】黑名单添加弹窗 - ba-type事件监听器清理
+  var baTypeEl = document.getElementById('ba-type');
+  var modalEl = document.getElementById('modal-blacklist-add');
+  var baTypeHandler = function() {
     var g = document.getElementById('ba-expire-group');
     if (g) g.style.display = this.value === 'temp' ? '' : 'none';
-  });
+  };
+  if (baTypeEl) baTypeEl.addEventListener('change', baTypeHandler);
+  if (modalEl) {
+    modalEl.addEventListener('remove', function() {
+      if (baTypeEl) baTypeEl.removeEventListener('change', baTypeHandler);
+    }, {once: true});
+  }
 }
 
 function submitBlacklistAdd() {
