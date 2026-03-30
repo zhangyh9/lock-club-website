@@ -12705,7 +12705,7 @@ function openEditMemberLevelModalV2(idx) {
 <button class="action-btn small" onclick="processInvoice('INV-2026032702')">处理</button>
 <button class="action-btn small" onclick="openInvoiceDetailModal('INV-2026032702')">详情</button>
 <button class="action-btn small red" onclick="openInvoiceDeleteModal('INV-2026032702')">删除</button>
-<button class="action-btn small" onclick="cancelInvoice('INV-2026032702')">作废</button>
+<button class="action-btn small" onclick="openInvoiceVoidModal('INV-2026032702')">作废</button>
 </td>
 </tr>
 <tr data-status="processing" data-type="electronic">
@@ -12721,7 +12721,7 @@ function openEditMemberLevelModalV2(idx) {
 <button class="action-btn small" onclick="processInvoice('INV-2026032703')">处理</button>
 <button class="action-btn small" onclick="openInvoiceDetailModal('INV-2026032703')">详情</button>
 <button class="action-btn small red" onclick="openInvoiceDeleteModal('INV-2026032703')">删除</button>
-<button class="action-btn small" onclick="cancelInvoice('INV-2026032703')">作废</button>
+<button class="action-btn small" onclick="openInvoiceVoidModal('INV-2026032703')">作废</button>
 </td>
 </tr>
 <tr data-status="pending" data-type="normal">
@@ -12737,7 +12737,7 @@ function openEditMemberLevelModalV2(idx) {
 <button class="action-btn small" onclick="processInvoice('INV-2026032601')">处理</button>
 <button class="action-btn small" onclick="openInvoiceDetailModal('INV-2026032601')">详情</button>
 <button class="action-btn small red" onclick="openInvoiceDeleteModal('INV-2026032601')">删除</button>
-<button class="action-btn small" onclick="cancelInvoice('INV-2026032601')">作废</button>
+<button class="action-btn small" onclick="openInvoiceVoidModal('INV-2026032601')">作废</button>
 </td>
 </tr>
 <tr data-status="cancelled" data-type="normal">
@@ -25884,7 +25884,7 @@ function renderInvoiceFilteredList() {
       var actionBtns = inv.status === '已完成'
         ? '<button class="action-btn small" onclick="openInvoiceDetailModal(\'' + inv.id + '\')">详情</button><button class="action-btn small" onclick="reissueInvoice(\'' + inv.id + '\')">重开</button>'
         : inv.status === '待处理' || inv.status === '开具中'
-        ? '<button class="action-btn small" onclick="processInvoice(\'' + inv.id + '\')">处理</button><button class="action-btn small" onclick="openInvoiceDetailModal(\'' + inv.id + '\')">详情</button><button class="action-btn small red" onclick="openInvoiceDeleteModal(\'' + inv.id + '\')">删除</button><button class="action-btn small" onclick="cancelInvoice(\'' + inv.id + '\')">作废</button>'
+        ? '<button class="action-btn small" onclick="processInvoice(\'' + inv.id + '\')">处理</button><button class="action-btn small" onclick="openInvoiceDetailModal(\'' + inv.id + '\')">详情</button><button class="action-btn small red" onclick="openInvoiceDeleteModal(\'' + inv.id + '\')">删除</button><button class="action-btn small" onclick="openInvoiceVoidModal(\'' + inv.id + '\')">作废</button>'
         : '<button class="action-btn small" onclick="openInvoiceDetailModal(\'' + inv.id + '\')">详情</button><button class="action-btn small red" onclick="openInvoiceDeleteModal(\'' + inv.id + '\')">删除</button>';
       return '<tr>' +
         '<td><span style="font-size:11px;font-family:monospace;color:var(--blue);">' + inv.id + '</span></td>' +
@@ -26132,12 +26132,19 @@ function exportInvoiceCSV() {
 }
 
 function cancelInvoice(invId) {
-  var inv = invoiceStore.find(function(i){ return i.id === invId; });
-  if (!inv) { showToast('未找到发票记录', 'error'); return; }
-  if (inv.status === '已作废') { showToast('该发票已作废', 'warning'); return; }
-  inv.status = '已作废';
-  renderInvoiceFilteredList();
-  showToast('❌ 发票已作废：' + invId, 'success');
+  // Delegate to the confirmation modal for safer operation
+  if (typeof openInvoiceVoidModal === 'function') {
+    openInvoiceVoidModal(invId);
+  } else {
+    // Fallback: direct cancel with confirm
+    var inv = invoiceStore.find(function(i){ return i.id === invId; });
+    if (!inv) { showToast('未找到发票记录', 'error'); return; }
+    if (inv.status === '已作废') { showToast('该发票已作废', 'warning'); return; }
+    if (!confirm('确定要作废发票 ' + invId + ' 吗？')) return;
+    inv.status = '已作废';
+    try { if (typeof renderInvoiceFilteredList === 'function') renderInvoiceFilteredList(); } catch(e) {}
+    showToast('❌ 发票已作废：' + invId, 'success');
+  }
 }
 
 // ============================================================
@@ -30173,6 +30180,7 @@ function showUnlockDetail(method, time, person, result) {
 <script src="improvements-v4-iter67.js"></script>
 <script src="improvements-v4-iter69.js"></script>
 <script src="improvements-v4-iter70.js"></script>
+<script src="improvements-v4-iter71.js"></script>
 </body></html>
 
 // ============================================================
