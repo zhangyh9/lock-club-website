@@ -1245,8 +1245,11 @@ function showToast(msg, type) {
       <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <div style="font-size:15px;font-weight:600;">🚪 房间状态</div>
-          <div style="display:flex;gap:8px;">
+          <div style="display:flex;gap:8px;align-items:center;">
             <button onclick="renderRoomGrid()" style="padding:6px 12px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🔄 刷新</button>
+            <!-- 【改进1-新增】首页清洁快捷按钮（对照原系统截图：入住/退房/清洁三按钮） -->
+            <button onclick="showPage('housekeeping');showToast('🏠 已跳转至清洁管理页面','info')" style="padding:6px 12px;background:var(--orange);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🧹 清洁管理</button>
+            <button onclick="showPage('workorder');showToast('📋 已跳转至服务工单页面','info')" style="padding:6px 12px;background:var(--green);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">📞 服务工单</button>
           </div>
         </div>
         <div id="room-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
@@ -2108,7 +2111,7 @@ function showToast(msg, type) {
             <button class="action-btn small" onclick="openMaintenancePlanModal()" style="padding:4px 10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔧 维护计划</button><button class="action-btn small" onclick="openAutoMaintenanceGenerator()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🤖 AI维护计划</button>
           </div>
           <table class="table">
-            <thead><tr><th style="width:30px;"></th><th>房间号</th><th>房型</th><th>状态</th><th>电量</th><th>信号</th><th>最后同步</th><th>操作</th></tr></thead>
+            <thead><tr><th style="width:30px;"></th><th>房间号</th><th>房型</th><th>UUID</th><th>状态</th><th>电量</th><th>信号</th><th>最后同步</th><th>操作</th></tr></thead>
             <tbody id="device-table-body">
               <!-- JS动态渲染 -->
             </tbody>
@@ -2993,7 +2996,8 @@ function switchRoomDetailTab(tab, el) {
                 <td>亲子间</td>
                 <td><span class="tbadge green">当前绑定</span></td>
                 <td>赵飞</td>
-                <td><button class="action-btn small" onclick="showToast('查看绑定详情...','info')" style="padding:2px 8px;font-size:10px;">详情</button></td>
+                <!-- 【改进4-绑定历史完整闭环】当前绑定可解除，其他状态仅查看 -->
+                <td><button class="action-btn small" onclick="openBindingDetailModal('2026-03-26 10:00','301','亲子间','当前绑定','赵飞')" style="padding:2px 8px;font-size:10px;">详情</button> <button class="action-btn small red" onclick="confirmUnbindDevice('301','亲子间')" style="padding:2px 8px;font-size:10px;">解除</button></td>
               </tr>
               <tr>
                 <td>2026-02-15 14:30</td>
@@ -3001,7 +3005,7 @@ function switchRoomDetailTab(tab, el) {
                 <td>大床房</td>
                 <td><span class="tbadge gray">已解绑</span></td>
                 <td>系统</td>
-                <td><button class="action-btn small" onclick="showToast('查看绑定详情...','info')" style="padding:2px 8px;font-size:10px;">详情</button></td>
+                <td><button class="action-btn small" onclick="openBindingDetailModal('2026-02-15 14:30','203','大床房','已解绑','系统')" style="padding:2px 8px;font-size:10px;">详情</button></td>
               </tr>
               <tr>
                 <td>2026-01-10 09:15</td>
@@ -3009,7 +3013,7 @@ function switchRoomDetailTab(tab, el) {
                 <td>标准间</td>
                 <td><span class="tbadge gray">已解绑</span></td>
                 <td>王工</td>
-                <td><button class="action-btn small" onclick="showToast('查看绑定详情...','info')" style="padding:2px 8px;font-size:10px;">详情</button></td>
+                <td><button class="action-btn small" onclick="openBindingDetailModal('2026-01-10 09:15','102','标准间','已解绑','王工')" style="padding:2px 8px;font-size:10px;">详情</button></td>
               </tr>
             </tbody>
           </table>
@@ -7443,43 +7447,35 @@ function startBatchFirmwareUpgrade(mode) {
           </div>
           <!-- 历史趋势 -->
           <div id="ed-content-trend" style="display:none;padding:16px;">
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">📈 近7日用电趋势（kWh）</div>
-            <div style="display:flex;align-items:flex-end;gap:8px;height:100px;padding:0 8px;">
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:60px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-21</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">12.1</div>
+            <!-- 【改进5新增】能耗趋势按日/周/月切换（对照原系统截图的分时柱状图） -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-size:12px;color:var(--text-muted);">📈 用电趋势</div>
+              <div style="display:flex;gap:4px;">
+                <button class="action-btn small" id="et-toggle-day" onclick="switchEnergyTrendView('day',this)" style="padding:3px 10px;font-size:11px;background:var(--blue);color:white;border:none;">日</button>
+                <button class="action-btn small" id="et-toggle-week" onclick="switchEnergyTrendView('week',this)" style="padding:3px 10px;font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);">周</button>
+                <button class="action-btn small" id="et-toggle-month" onclick="switchEnergyTrendView('month',this)" style="padding:3px 10px;font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);">月</button>
               </div>
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:75px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-22</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">15.2</div>
-              </div>
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:55px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-23</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">11.2</div>
-              </div>
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:90px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-24</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">18.3</div>
-              </div>
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:80px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-25</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">16.2</div>
-              </div>
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:95px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-26</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">19.3</div>
-              </div>
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                <div style="width:100%;height:70px;background:var(--blue);border-radius:3px 3px 0 0;"></div>
-                <div style="font-size:10px;color:var(--text-muted);">03-27</div>
-                <div style="font-size:10px;font-weight:600;color:var(--blue);">14.2</div>
-              </div>
+            </div>
+            <div id="ed-trend-day" style="display:flex;align-items:flex-end;gap:8px;height:100px;padding:0 8px;">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:60px;background:var(--blue);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">03-21</div><div style="font-size:10px;font-weight:600;color:var(--blue);">12.1</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:75px;background:var(--blue);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">03-22</div><div style="font-size:10px;font-weight:600;color:var(--blue);">15.2</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:55px;background:var(--blue);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">03-23</div><div style="font-size:10px;font-weight:600;color:var(--blue);">11.2</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:90px;background:var(--blue);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">03-24</div><div style="font-size:10px;font-weight:600;color:var(--blue);">18.3</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:80px;background:var(--blue);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">03-25</div><div style="font-size:10px;font-weight:600;color:var(--blue);">16.2</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:95px;background:var(--orange);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">03-26</div><div style="font-size:10px;font-weight:600;color:var(--orange);">19.3</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:70px;background:var(--green);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">03-27</div><div style="font-size:10px;font-weight:600;color:var(--green);">14.2</div></div>
+            </div>
+            <div id="ed-trend-week" style="display:none;align-items:flex-end;gap:8px;height:100px;padding:0 8px;">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:65px;background:var(--blue);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">第12周</div><div style="font-size:10px;font-weight:600;color:var(--blue);">86.5</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:80px;background:var(--blue);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">第13周</div><div style="font-size:10px;font-weight:600;color:var(--blue);">96.8</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:55px;background:var(--green);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">第14周</div><div style="font-size:10px;font-weight:600;color:var(--green);">68.2</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:90px;background:var(--orange);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">第15周</div><div style="font-size:10px;font-weight:600;color:var(--orange);">108.3</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:78px;background:var(--blue);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">第16周</div><div style="font-size:10px;font-weight:600;color:var(--blue);">93.6</div></div>
+            </div>
+            <div id="ed-trend-month" style="display:none;align-items:flex-end;gap:8px;height:100px;padding:0 8px;">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:60px;background:var(--blue);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">1月</div><div style="font-size:10px;font-weight:600;color:var(--blue);">486kWh</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:75px;background:var(--blue);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">2月</div><div style="font-size:10px;font-weight:600;color:var(--blue);">608kWh</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:100%;height:55px;background:var(--green);border-radius:3px 3px 0 0;"></div><div style="font-size:10px;color:var(--text-muted);">3月</div><div style="font-size:10px;font-weight:600;color:var(--green);">442kWh</div></div>
             </div>
           </div>
           <!-- 节能建议 -->
@@ -7527,6 +7523,21 @@ function startBatchFirmwareUpgrade(mode) {
       document.getElementById('ed-content-advice').style.display = tab === 'advice' ? 'block' : 'none';
       document.querySelectorAll('#modal-energy-detail .tab').forEach(function(t){ t.classList.remove('active'); });
       if (el) el.classList.add('active');
+    }
+    // 【改进5新增】能耗趋势日/周/月切换
+    function switchEnergyTrendView(view, btn) {
+      var views = ['day','week','month'];
+      views.forEach(function(v) {
+        var el = document.getElementById('ed-trend-' + v);
+        var toggleBtn = document.getElementById('et-toggle-' + v);
+        if (el) el.style.display = v === view ? 'flex' : 'none';
+        if (toggleBtn) {
+          toggleBtn.style.background = v === view ? 'var(--blue)' : 'var(--bg)';
+          toggleBtn.style.color = v === view ? 'white' : 'var(--text)';
+          toggleBtn.style.borderColor = v === view ? 'var(--blue)' : 'var(--border)';
+        }
+      });
+      showToast('📈 已切换至' + (view === 'day' ? '每日' : view === 'week' ? '每周' : '每月') + '用电趋势', 'info');
     }
     function exportEnergyReport() { showToast('📤 能耗报告导出中...', 'info'); }
     </script>
@@ -25456,16 +25467,18 @@ function renderDeviceFilteredTable() {
   var pageData = filtered.slice(start, start + _devicePageSize);
   var rows = '';
   if (pageData.length === 0) {
-    rows = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">暂无设备数据</td></tr>';
+    rows = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">暂无设备数据</td></tr>';
   } else {
     pageData.forEach(function(d) {
       var batteryColor = d.battery > 60 ? 'var(--green)' : d.battery > 20 ? 'var(--orange)' : 'var(--red)';
       var batteryBg = d.battery > 60 ? 'var(--green-bg)' : d.battery > 20 ? 'var(--orange-bg)' : 'var(--red-bg)';
       var statusColor = d.status === '在线' ? 'var(--green)' : d.status === '离线' ? 'var(--red)' : 'var(--text-muted)';
       var statusBg = d.status === '在线' ? 'var(--green-bg)' : d.status === '离线' ? 'var(--red-bg)' : 'var(--bg)';
+      // 【改进2新增】UUID独立列（对照原系统截图）
       rows += '<tr>' +
         '<td><div style="font-size:12px;font-weight:600;">' + d.room + '</div></td>' +
-        '<td><div style="font-size:12px;font-weight:600;">' + d.uuid + '</div><div style="font-size:10px;color:var(--text-muted);">' + d.model + '</div></td>' +
+        '<td><div style="font-size:11px;font-weight:600;">' + d.model + '</div></td>' +
+        '<td><div style="font-size:10px;color:var(--text-muted);font-family:monospace;">' + d.uuid + '</div></td>' +
         '<td><span style="padding:2px 8px;background:' + statusBg + ';color:' + statusColor + ';border-radius:10px;font-size:11px;font-weight:600;">' + d.status + '</span></td>' +
         '<td><span style="padding:2px 8px;background:' + batteryBg + ';color:' + batteryColor + ';border-radius:10px;font-size:11px;font-weight:600;">🔋 ' + d.battery + '%</span></td>' +
         '<td style="font-size:12px;">' + d.signal + '</td>' +
@@ -25527,6 +25540,73 @@ function navigateToDeviceDetail(uuid) {
     showPage('device-detail');
     showToast('📱 已跳转至设备 ' + d.room + ' 详情', 'success');
   }
+}
+
+// 【改进4-绑定历史完整闭环】绑定详情弹窗
+function openBindingDetailModal(time, room, type, status, operator) {
+  var existing = document.getElementById('modal-binding-detail');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-binding-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:420px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.15);">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:16px;font-weight:700;">🔗 绑定详情</div>' +
+    '<button onclick="document.getElementById(\'modal-binding-detail\').remove()" style="margin-left:auto;background:rgba(0,0,0,0.08);border:none;font-size:14px;cursor:pointer;color:#555;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>' +
+    '</div>' +
+    '<div style="padding:20px;">' +
+    '<div style="display:grid;grid-template-columns:80px 1fr;gap:12px;font-size:13px;margin-bottom:16px;">' +
+    '<div style="color:var(--text-muted);">绑定时间</div><div style="font-weight:600;">' + time + '</div>' +
+    '<div style="color:var(--text-muted);">房间号</div><div style="font-weight:600;">' + room + '</div>' +
+    '<div style="color:var(--text-muted);">房型</div><div>' + type + '</div>' +
+    '<div style="color:var(--text-muted);">状态</div><div><span class="tbadge ' + (status === '当前绑定' ? 'green' : 'gray') + '">' + status + '</span></div>' +
+    '<div style="color:var(--text-muted);">操作人</div><div>' + operator + '</div>' +
+    '</div>';
+  if (status === '当前绑定') {
+    html += '<div style="display:flex;gap:8px;">' +
+      '<button onclick="confirmUnbindDevice(\'' + room + '\',\'' + type + '\');document.getElementById(\'modal-binding-detail\').remove();" style="flex:1;padding:8px;background:var(--red);color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">⚠️ 确认解除绑定</button>' +
+      '<button onclick="document.getElementById(\'modal-binding-detail\').remove()" style="flex:1;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:13px;cursor:pointer;">取消</button>' +
+      '</div>';
+  } else {
+    html += '<button onclick="document.getElementById(\'modal-binding-detail\').remove()" style="width:100%;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:13px;cursor:pointer;">关闭</button>';
+  }
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// 【改进4-绑定历史完整闭环】确认解除绑定
+function confirmUnbindDevice(room, type) {
+  var existing = document.getElementById('modal-unbind-confirm');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-unbind-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;padding:20px;">' +
+    '<div class="modal" style="width:380px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.15);">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);">' +
+    '<div style="font-size:16px;font-weight:700;">⚠️ 确认解除设备绑定</div>' +
+    '</div>' +
+    '<div style="padding:20px;">' +
+    '<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:16px;">确定要解除设备与房间 <strong>' + room + '（' + type + '）</strong> 的绑定关系吗？<br>解除后该房间将与设备断开关联，请谨慎操作。</div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<button onclick="doUnbindDevice(\'' + room + '\')" style="flex:1;padding:8px 12px;background:var(--red);color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">确认解除</button>' +
+    '<button onclick="document.getElementById(\'modal-unbind-confirm\').remove()" style="flex:1;padding:8px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:13px;cursor:pointer;">取消</button>' +
+    '</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doUnbindDevice(room) {
+  document.getElementById('modal-unbind-confirm').remove();
+  // Update the binding history table
+  var tbody = document.getElementById('binding-history-body');
+  if (tbody) {
+    var rows = tbody.querySelectorAll('tr');
+    rows.forEach(function(row) {
+      var roomCell = row.querySelector('td:nth-child(2)');
+      if (roomCell && roomCell.textContent.trim() === room) {
+        var statusCell = row.querySelector('td:nth-child(4)');
+        var actionCell = row.querySelector('td:nth-child(6)');
+        if (statusCell) statusCell.innerHTML = '<span class="tbadge gray">已解绑</span>';
+        if (actionCell) actionCell.innerHTML = '<button class="action-btn small" onclick="openBindingDetailModal(\'2026-03-26 10:00\',\'' + room + '\',\'' + (row.querySelector('td:nth-child(3)').textContent) + '\',\'已解绑\',\'赵飞\')" style="padding:2px 8px;font-size:10px;">详情</button>';
+      }
+    });
+  }
+  showToast('🔗 设备已从房间 ' + room + ' 解除绑定', 'success');
 }
 
 // ============================================================
