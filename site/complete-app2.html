@@ -630,51 +630,13 @@ function openStaffSchedulePage() {
 // 设备列表CSV导出功能
 // 功能：导出当前设备列表为CSV文件，包含设备UUID/房间/电量/信号/状态/最后同步时间。
 // ============================================================
-function exportDeviceList() {
-  var deviceData = [
-    {uuid:'DEV-LK01-301', room:'301', model:'领握LH-807', battery:88, signal:'-65dBm', status:'在线', lastSync:'今天 10:32'},
-    {uuid:'DEV-LK02-302', room:'302', model:'领握LH-807', battery:92, signal:'-62dBm', status:'在线', lastSync:'今天 10:30'},
-    {uuid:'DEV-LK03-303', room:'303', model:'领握LH-807', battery:0, signal:'无信号', status:'离线', lastSync:'昨天 14:05'},
-    {uuid:'DEV-LK04-304', room:'304', model:'领握LH-807', battery:78, signal:'-68dBm', status:'在线', lastSync:'今天 10:28'},
-    {uuid:'DEV-LK05-305', room:'305', model:'领握LH-807', battery:28, signal:'-71dBm', status:'在线(低电量)', lastSync:'今天 09:50'},
-    {uuid:'DEV-LK06-306', room:'306', model:'领握LH-807', battery:15, signal:'-73dBm', status:'在线(低电量)', lastSync:'今天 09:45'},
-    {uuid:'DEV-LK07-201', room:'201', model:'领握LH-807', battery:85, signal:'-60dBm', status:'在线', lastSync:'今天 10:20'},
-    {uuid:'DEV-LK08-202', room:'202', model:'领握LH-807', battery:90, signal:'-61dBm', status:'在线', lastSync:'今天 10:15'},
-    {uuid:'DEV-LK09-203', room:'203', model:'领握LH-807', battery:55, signal:'-67dBm', status:'在线', lastSync:'今天 10:10'},
-    {uuid:'DEV-LK10-204', room:'204', model:'领握LH-807', battery:35, signal:'-70dBm', status:'在线(低电量)', lastSync:'今天 09:55'},
-    {uuid:'DEV-LK11-205', room:'205', model:'领握LH-807', battery:82, signal:'-63dBm', status:'在线', lastSync:'今天 10:25'},
-    {uuid:'DEV-LK12-206', room:'206', model:'领握LH-807', battery:0, signal:'无信号', status:'离线', lastSync:'昨天 22:30'},
-    {uuid:'DEV-LK13-101', room:'101', model:'领握LH-807', battery:76, signal:'-65dBm', status:'在线', lastSync:'今天 10:18'},
-    {uuid:'DEV-LK14-102', room:'102', model:'领握LH-807', battery:65, signal:'-69dBm', status:'在线', lastSync:'今天 10:12'},
-    {uuid:'DEV-LK15-103', room:'103', model:'领握LH-807', battery:48, signal:'-66dBm', status:'在线', lastSync:'今天 10:05'},
-    {uuid:'DEV-LK16-104', room:'104', model:'领握LH-807', battery:20, signal:'-72dBm', status:'在线(低电量)', lastSync:'今天 09:40'}
-  ];
-
-  // 【v4修复】告警数据源 - 供openAlertDetailFullModal使用
-  var alertData = [
-    {type:'设备离线', room:'303 - 亲子间', duration:'10小时+', time:'2026-03-26 11:05', status:'待处理', detail:'最后同步 2026-03-26 11:05:36', history:[]},
-    {type:'低电量', room:'305 - 亲子间', duration:'2小时', time:'2026-03-29 08:40', status:'待处理', detail:'当前电量28%', history:[]},
-    {type:'低电量', room:'202 - 大床房', duration:'5小时', time:'2026-03-29 05:30', status:'已忽略', detail:'当前电量35%', history:[{time:'03-29 05:35',action:'已忽略',note:'确认为正常波动'}]},
-    {type:'设备离线', room:'304 - 亲子间', duration:'已恢复', time:'昨天 15:20', status:'已处理', detail:'设备恢复在线', history:[{time:'03-28 15:25',action:'设备重启',note:'远程重启后恢复'}]}
-  ];
-
-  // 【v4修复】工单SLA数据源
-  var workorderSLAStore = [
-    {id:1, title:'客户投诉-房间隔音差', type:'complaint', status:'pending', priority:'urgent', createTime:'2026-03-29 09:00', slaMinutes:30, room:'301', handler:'前厅员工'},
-    {id:2, title:'送物服务-矿泉水×2', type:'delivery', status:'pending', priority:'normal', createTime:'2026-03-29 08:30', slaMinutes:20, room:'203', handler:'前厅员工'},
-    {id:3, title:'设备报修-门锁响应慢', type:'repair', status:'processing', priority:'high', createTime:'2026-03-28 15:00', slaMinutes:60, room:'102', handler:'工程部'},
-    {id:4, title:'发票需求-普通发票', type:'invoice', status:'done', priority:'low', createTime:'2026-03-28 10:00', slaMinutes:120, room:'304', handler:'财务'},
-    {id:5, title:'客户投诉-热水无供应', type:'complaint', status:'pending', priority:'urgent', createTime:'2026-03-29 07:00', slaMinutes:15, room:'205', handler:'前厅经理'}
-  ];
-
-  // 【v4修复】发票数据源 - 供printInvoice使用
-  var invoiceStore = [
-    {id:'INV-2026032701', company:'张三', tax:'--', type:'普通发票', amount:368, date:'2026-03-27', status:'已完成', email:'zhangsan@email.com'},
-    {id:'INV-2026032702', company:'李四', tax:'91330000MA1234567X', type:'增值税专用', amount:1280, date:'2026-03-27', status:'待处理', email:'lisi@company.com'},
-    {id:'INV-2026032703', company:'王五', tax:'--', type:'电子发票', amount:296, date:'2026-03-27', status:'开具中', email:'wangwu@email.com'},
-    {id:'INV-2026032601', company:'赵六', tax:'--', type:'普通发票', amount:520, date:'2026-03-26', status:'已完成', email:'zhaoliu@email.com'},
-    {id:'INV-2026032501', company:'钱七', tax:'91330000MA7654321Y', type:'增值税专用', amount:880, date:'2026-03-25', status:'已完成', email:'qianqi@company.com'}
-  ];
+/**
+ * @description 导出设备列表为CSV文件（P47）
+ * 功能：导出当前设备列表为CSV文件，包含设备UUID/房间/电量/信号/状态/最后同步时间。
+ * @returns {void}
+ */
+function exportDeviceCSV() {
+  // 【P47修复】使用全局deviceData而非本地副本，确保导出当前列表数据
   var csv = '\uFEFF设备UUID,房间号,设备型号,电量,信号强度,在线状态,最后同步时间\n';
   deviceData.forEach(function(d) {
     csv += d.uuid + ',' + d.room + ',' + d.model + ',' + d.battery + '%,' + d.signal + ',' + d.status + ',' + d.lastSync + '\n';
@@ -12831,14 +12793,23 @@ function renderDeviceFilteredTable() {
   if (nextBtn) nextBtn.disabled = _devicePage >= totalPages;
 }
 
+/**
+ * @description 诊断单个设备（P98+JSDoc补充）
+ * @param {string} uuid - 设备UUID
+ * @returns {void}
+ */
 function diagnoseDevice(uuid) {
   var d = deviceData.find(function(x){ return x.uuid === uuid; });
   if (!d) { showToast('未找到设备', 'error'); return; }
   showToast('🛠️ 正在诊断设备 ' + d.room + '...', 'info');
   setTimeout(function() {
-    var score = Math.floor(70 + Math.random() * 30);
+    // 【P99修复】提取魔法数字为常量：DIAGNOSTIC_SCORE_MIN=70, BATTERY_THRESHOLD_LOW=30
+    var DIAGNOSTIC_SCORE_MIN = 70;
+    var DIAGNOSTIC_SCORE_RANGE = 30;
+    var BATTERY_THRESHOLD_LOW = 30;
+    var score = Math.floor(DIAGNOSTIC_SCORE_MIN + Math.random() * DIAGNOSTIC_SCORE_RANGE);
     var issues = [];
-    if (d.battery < 30) issues.push('电池电量低');
+    if (d.battery < BATTERY_THRESHOLD_LOW) issues.push('电池电量低');
     if (d.signal === '弱') issues.push('信号强度弱');
     var status = issues.length === 0 ? '✅ 健康' : '⚠️ 需关注';
     showToast('🔍 ' + d.room + ' 诊断完成：' + status + '（评分 ' + score + '分）', score >= 80 ? 'success' : 'warning');
