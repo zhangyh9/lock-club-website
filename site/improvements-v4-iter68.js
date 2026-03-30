@@ -218,7 +218,7 @@ window.openChangeRoomModal = function() {
       '</div>';
   }).join('');
   
-  var html = '<div class="modal-overlay" id="modal-change-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)closeChangeRoomModal()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-change-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)closeChangeRoomModal()">' +
     '<div class="modal" style="width:90%;max-width:460px;">' +
     '<div class="modal-header">' +
     '<div class="modal-title">🔄 换房 - 当前房间：' + currentRoom + '（' + currentRoomType + '）</div>' +

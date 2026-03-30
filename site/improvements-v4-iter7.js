@@ -27,7 +27,7 @@ window.showFloorOfBuilding = function(bldId) {
       '<button class="action-btn small" onclick="openFloorEditModal(' + f.floor + ',\'' + bldId + '\')" style="padding:3px 8px;font-size:11px;">✏️ 编辑</button>' +
       '<button class="action-btn small red" onclick="confirmFloorDeleteFromManage(' + f.floor + ',\'' + bldId + '\')" style="padding:3px 8px;font-size:11px;">🗑️</button></div>';
   }).join('') || '<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px;">暂无楼层，点击下方按钮新增</div>';
-  var html = '<div class="modal-overlay" id="modal-floor-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-manage\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-floor-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-manage\').remove()">' +
     '<div class="modal" style="width:480px;max-height:80vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🏢</div><div><div style="font-size:15px;font-weight:700;">' + bldName + ' - 楼层管理</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">管理楼层信息 · 新增/编辑/删除</div></div>' +
@@ -46,7 +46,7 @@ window.openAddFloorForBuilding = function(bldId) {
   var bldName = {main:'主楼', east:'东配楼', vip:'贵宾楼'}[bldId] || bldId;
   var existing = document.getElementById('modal-add-floor-building');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-add-floor-building" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-add-floor-building\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-add-floor-building" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-add-floor-building\').remove()">' +
     '<div class="modal" style="width:400px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">➕</div><div><div style="font-size:15px;font-weight:700;">新增楼层</div><div style="font-size:11px;color:var(--text-muted);">' + bldName + ' · 添加新楼层</div></div>' +
@@ -83,7 +83,7 @@ window.doAddFloorForBuilding = function(bldId) {
 window.confirmFloorDeleteFromManage = function(floorNum, bldId) {
   var existing = document.getElementById('modal-floor-delete-confirm');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-floor-delete-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-delete-confirm\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-floor-delete-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-delete-confirm\').remove()">' +
     '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
     '<div style="width:44px;height:44px;background:var(--red-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">🗑️</div>' +
@@ -149,7 +149,7 @@ window.editInvoiceHeader = function(hId) {
   if (!header) { showToast('未找到该发票抬头', 'error'); return; }
   var existing = document.getElementById('modal-invoice-header-edit');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-invoice-header-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-header-edit\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-invoice-header-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-header-edit\').remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">✏️</div><div><div style="font-size:15px;font-weight:700;">编辑发票抬头</div><div style="font-size:11px;color:var(--text-muted);">修改后将同步更新历史发票</div></div>' +
@@ -211,7 +211,7 @@ window.openFloorMapModal = function(bldId) {
       '<div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text);">' + f.floor + '层 <span style="font-weight:400;font-size:11px;color:var(--text-muted);">(' + f.rooms + '间)</span></div>' +
       '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:12px;background:var(--bg);border-radius:8px;">' + roomCells + '</div></div>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-floor-map" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-map\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-floor-map" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-map\').remove()">' +
     '<div class="modal" style="width:640px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">📐</div><div><div style="font-size:15px;font-weight:700;">' + bldName + ' 楼层分布图</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">平面布局概览 · 点击房间号进入详情</div></div>' +

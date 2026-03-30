@@ -139,7 +139,7 @@ window.openInvoiceBatchModal = function() {
       '<td><span class="tbadge ' + (inv.status === '待处理' ? 'orange' : 'blue') + '">' + inv.status + '</span></td>' +
       '<td style="font-size:11px;">' + inv.date + '</td></tr>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-invoice-batch" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-invoice-batch" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
     '<div style="background:var(--card);border-radius:12px;width:90%;max-width:700px;max-height:80vh;overflow:auto;">' +
     '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">' +
     '<div style="font-size:15px;font-weight:700;">📋 批量处理发票 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">（已选 <span id="batch-inv-count">0</span> 项）</span></div>' +
@@ -231,7 +231,7 @@ window.openInvoiceIssueConfirmModal = function(invoiceId) {
   }
   var existing = document.getElementById('modal-invoice-issue');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-invoice-issue" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-invoice-issue" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
     '<div style="background:var(--card);border-radius:12px;width:90%;max-width:480px;">' +
     '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">' +
     '<div style="font-size:15px;font-weight:700;">📋 开具发票</div>' +

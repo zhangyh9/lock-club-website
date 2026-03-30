@@ -12,7 +12,7 @@ window.openDeviceImportModal = function() {
   var existing = document.getElementById('modal-device-import');
   if (existing) existing.remove();
 
-  var html = '<div class="modal-overlay" id="modal-device-import" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-import\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-device-import" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-import\').remove()">' +
     '<div class="modal" style="width:560px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">📥</div>' +
@@ -101,7 +101,7 @@ window.openDeviceGroupManageModal = function() {
         '<button class="action-btn small" onclick="deleteDeviceGroup(\'' + g.id + '\')" style="padding:3px 8px;font-size:11px;background:var(--red-bg);color:var(--red);border-color:var(--red);margin-left:4px;">🗑️ 删除</button></td></tr>';
   }).join('');
 
-  var html = '<div class="modal-overlay" id="modal-device-group-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-group-manage\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-device-group-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-group-manage\').remove()">' +
     '<div class="modal" style="width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">⚙️</div>' +
@@ -122,7 +122,7 @@ window.openDeviceGroupManageModal = function() {
 window.openAddDeviceGroupModal = function() {
   var existing = document.getElementById('modal-add-device-group');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-add-device-group" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-add-device-group\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-add-device-group" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-add-device-group\').remove()">' +
     '<div class="modal" style="width:440px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">➕</div><div style="font-size:15px;font-weight:700;">新建设备分组</div>' +
@@ -173,7 +173,7 @@ window.openInvoiceResendModal = function(invId) {
   var existing = document.getElementById('modal-invoice-resend');
   if (existing) existing.remove();
 
-  var html = '<div class="modal-overlay" id="modal-invoice-resend" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+  var html = '<div class="modal-overlay hidden" id="modal-invoice-resend" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
     '<div class="modal" style="width:460px;background:white;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.2);">' +
     '<div style="padding:24px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">📧</div>' +
@@ -251,7 +251,7 @@ window.openInvoiceReissueModal = function(originalInvId) {
     ? invoiceStore.find(function(i) { return i.id === originalInvId; })
     : null;
 
-  var html = '<div class="modal-overlay" id="modal-invoice-reissue" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+  var html = '<div class="modal-overlay hidden" id="modal-invoice-reissue" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.2);">' +
     '<div style="padding:24px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🔄</div>' +

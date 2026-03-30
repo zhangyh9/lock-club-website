@@ -313,7 +313,7 @@ function exportDeviceCSV() {
 function openDeviceConfigModal() {
   var existing = document.getElementById('modal-device-config');
   if (existing) { existing.classList.remove('hidden'); return; }
-  var html = '<div class="modal-overlay" id="modal-device-config" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)closeFirmwareUpgradeModal()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-device-config" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)closeFirmwareUpgradeModal()">' +
     '<div class="modal" style="width:560px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">⚙️</div><div><div style="font-size:15px;font-weight:700;">设备参数配置</div><div style="font-size:11px;color:var(--text-muted);">批量配置设备运行参数</div></div></div>' +
@@ -358,7 +358,7 @@ function doSaveDeviceConfig() {
 function openBatchDeviceDiagnosticModal() {
   var existing = document.getElementById('modal-device-diag');
   if (existing) { existing.classList.remove('hidden'); return; }
-  var html = '<div class="modal-overlay" id="modal-device-diag" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-device-diag" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🌐</div><div><div style="font-size:15px;font-weight:700;">多设备同时Ping检测</div><div style="font-size:11px;color:var(--text-muted);">批量检测设备网络连通性</div></div></div>' +

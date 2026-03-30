@@ -48,7 +48,7 @@
     var shiftLabels = {morning:'早班 07:00-15:00',afternoon:'中班 15:00-23:00',night:'晚班 23:00-07:00'};
     var shift = document.getElementById('handover-shift-select') ? document.getElementById('handover-shift-select').value : 'morning';
     var date = document.getElementById('handover-date') ? document.getElementById('handover-date').value : new Date().toISOString().slice(0,10);
-    var html = '<div class="modal-overlay" id="modal-full-handover" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-full-handover\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-full-handover" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-full-handover\').remove()">' +
       '<div class="modal" style="width:720px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
       '<div style="font-size:28px;">📨</div><div><div style="font-size:15px;font-weight:700;">完整交接流程</div><div style="font-size:11px;color:var(--text-muted);">' + date + ' ' + (shiftLabels[shift]||shiftLabels.morning) + '</div></div>' +

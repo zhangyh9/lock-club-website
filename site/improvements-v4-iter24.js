@@ -64,7 +64,7 @@ window.showBuildingTreeInConfig = function() {
             }).join('') + '</div>';
         }).join('') + '</div></div>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-bldg-tree" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-bldg-tree\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-bldg-tree" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-bldg-tree\').remove()">' +
     '<div style="background:white;border-radius:12px;width:560px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
       '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
         '<div><div style="font-size:15px;font-weight:700;">📊 楼栋总览</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">树形结构 · 楼层房间状态一目了然</div></div>' +
@@ -83,7 +83,7 @@ window.openEditBldgConfig = function(bldId) {
   if (existing) existing.remove();
   var floors = bldId === 'main' ? 3 : 2;
   var rooms = bldId === 'main' ? 9 : 4;
-  var html = '<div class="modal-overlay" id="modal-edit-bldg-config" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-edit-bldg-config\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-edit-bldg-config" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-edit-bldg-config\').remove()">' +
     '<div style="background:white;border-radius:12px;width:480px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
       '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
         '<div style="font-size:15px;font-weight:700;">🏢 编辑楼栋 - ' + bldName + '</div>' +
@@ -124,7 +124,7 @@ window.submitEditBldgConfig = function(bldId) {
 window.confirmDeleteBldgFromConfig = function(bldId, bldName, roomCount) {
   var existing = document.getElementById('modal-confirm-delete-building');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-confirm-delete-building" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+  var html = '<div class="modal-overlay hidden" id="modal-confirm-delete-building" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
     '<div style="background:white;border-radius:12px;width:420px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="padding:28px 24px 20px;text-align:center;">' +
         '<div style="font-size:52px;margin-bottom:14px;">⚠️</div>' +

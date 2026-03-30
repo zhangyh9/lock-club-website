@@ -15,7 +15,7 @@
 window.openSwapShiftModal = function() {
   var existing = document.getElementById('modal-swap-shift');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-swap-shift" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-swap-shift\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-swap-shift" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-swap-shift\').remove()">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;max-height:85vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:24px;">🔄</div><div style="font-size:15px;font-weight:700;">换班申请</div>' +
@@ -81,7 +81,7 @@ window.submitSwapShift = function() {
 window.openBuildingManagementModal = function() {
   var existing = document.getElementById('modal-building-manage');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-building-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-building-manage\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-building-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-building-manage\').remove()">' +
     '<div class="modal" style="width:640px;background:white;border-radius:12px;max-height:85vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:24px;">🏢</div><div style="font-size:15px;font-weight:700;">楼栋管理</div>' +
@@ -115,7 +115,7 @@ window.openBuildingManagementModal = function() {
 window.openAddFloorForm = function() {
   var existing = document.getElementById('modal-add-floor-form');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-add-floor-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-floor-form\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-add-floor-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-floor-form\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:24px;">🏗️</div><div style="font-size:15px;font-weight:700;">新增楼层</div>' +
@@ -149,7 +149,7 @@ window.submitAddFloor = function() {
 window.openAddRoomForm = function() {
   var existing = document.getElementById('modal-add-room-form');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-add-room-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-room-form\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-add-room-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-room-form\').remove()">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;max-height:85vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:24px;">🚪</div><div style="font-size:15px;font-weight:700;">新增房间</div>' +
@@ -194,7 +194,7 @@ window.submitAddRoom = function() {
 window.openAddBuildingForm = function() {
   var existing = document.getElementById('modal-add-building-form');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-add-building-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-building-form\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-add-building-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-building-form\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:24px;">🏢</div><div style="font-size:15px;font-weight:700;">添加楼栋</div>' +
@@ -230,7 +230,7 @@ window.openEditBldgConfig = function(bldgId) {
   var name = names[bldgId] || bldgId;
   var existing = document.getElementById('modal-edit-bldg-config');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-edit-bldg-config" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-edit-bldg-config\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-edit-bldg-config" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-edit-bldg-config\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:24px;">✏️</div><div style="font-size:15px;font-weight:700;">编辑楼栋</div>' +
@@ -263,7 +263,7 @@ window.confirmDeleteBldgFromConfig = function(bldgId, bldgName, roomCount) {
   var existing = document.getElementById('modal-delete-bldg-confirm');
   if (existing) existing.remove();
   var roomCountStr = roomCount || 0;
-  var html = '<div class="modal-overlay" id="modal-delete-bldg-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-delete-bldg-confirm\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-delete-bldg-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-delete-bldg-confirm\').remove()">' +
     '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">⚠️</div><div style="font-size:15px;font-weight:700;">删除楼栋确认</div>' +

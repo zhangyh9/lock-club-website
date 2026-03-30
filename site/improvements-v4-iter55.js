@@ -72,7 +72,7 @@ function openBatchSettlementModal() {
       '<span style="font-weight:600;color:var(--orange);">¥' + r.payable.toFixed(0) + '</span></div>';
   }).join('');
 
-  var html = '<div class="modal-overlay" id="modal-batch-settlement" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-settlement\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-batch-settlement" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-settlement\').remove()">' +
     '<div class="modal" style="width:420px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🔄</div><div><div style="font-size:15px;font-weight:700;">批量结算确认</div><div style="font-size:11px;color:var(--text-muted);">已选 ' + rows.length + ' 条记录</div></div>' +
@@ -157,7 +157,7 @@ function renderSettlementHistoryList(page) {
 
   var totalSettlement = _settlementHistoryData.reduce(function(s, r) { return s + r.amount; }, 0);
 
-  var html = '<div class="modal-overlay" id="modal-settlement-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-history\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-settlement-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-history\').remove()">' +
     '<div style="background:white;border-radius:12px;width:720px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
     '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">📋</div><div><div style="font-size:15px;font-weight:700;">结算历史记录</div><div style="font-size:11px;color:var(--text-muted);">共 ' + _settlementHistoryData.length + ' 条记录 · 累计 ¥' + totalSettlement + '</div></div></div>' +
@@ -248,7 +248,7 @@ function openSLAAlertModal() {
   var allRows = overdueRows + urgentRows;
   if (!allRows) allRows = '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">🎉 当前没有超时或即将超时的工单，干得漂亮！</div>';
 
-  var html = '<div class="modal-overlay" id="modal-sla-alert" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-sla-alert\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-sla-alert" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-sla-alert\').remove()">' +
     '<div style="background:white;border-radius:12px;width:520px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
     '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">⏱️</div><div><div style="font-size:15px;font-weight:700;">SLA超时告警监控</div><div style="font-size:11px;color:var(--text-muted);">实时监控工单SLA状态</div></div></div>' +

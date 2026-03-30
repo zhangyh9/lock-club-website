@@ -41,7 +41,7 @@ window.applyLogFilter = function() {
 window.openBatchDeviceBindingModal = function() {
   var existing = document.getElementById('modal-batch-binding');
   if (existing) existing.remove();
-  var html = '<div id="modal-batch-binding" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-binding\').remove()">' +
+  var html = '<div id="modal-batch-binding" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-binding\').remove()">' +
     '<div class="modal" style="width:600px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:16px;font-weight:700;">📡 批量设备绑定</div>' +
@@ -166,7 +166,7 @@ window.openDeviceGroupManageModal = function() {
   }).join('');
   var existing = document.getElementById('modal-device-group-manage');
   if (existing) existing.remove();
-  var html = '<div id="modal-device-group-manage" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-group-manage\').remove()">' +
+  var html = '<div id="modal-device-group-manage" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-group-manage\').remove()">' +
     '<div class="modal" style="width:760px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:16px;font-weight:700;">⚙️ 设备分组管理</div>' +
@@ -206,7 +206,7 @@ window.openAddDeviceGroupForm = function() {
       '<input type="radio" name="group-icon" value="' + ico + '" style="display:none;">' +
       '<span>' + ico + '</span></label>';
   }).join('');
-  var html = '<div id="modal-add-device-group" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-add-device-group\').remove()">' +
+  var html = '<div id="modal-add-device-group" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-add-device-group\').remove()">' +
     '<div class="modal" style="width:440px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:15px;font-weight:700;">➕ 新增设备分组</div>' +
@@ -285,7 +285,7 @@ window.openFirmwareAnalyzerModal = function() {
   }).join('');
   var existing = document.getElementById('modal-firmware-analyzer');
   if (existing) existing.remove();
-  var html = '<div id="modal-firmware-analyzer" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-analyzer\').remove()">' +
+  var html = '<div id="modal-firmware-analyzer" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-analyzer\').remove()">' +
     '<div class="modal" style="width:720px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;">' +
@@ -325,7 +325,7 @@ window.openDeviceFirmwareOTAModal = function(uuid) {
   uuid = uuid || 'LOCK-301-001';
   var existing = document.getElementById('modal-firmware-ota');
   if (existing) existing.remove();
-  var html = '<div id="modal-firmware-ota" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-ota\').remove()">' +
+  var html = '<div id="modal-firmware-ota" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-ota\').remove()">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:15px;font-weight:700;">📦 OTA固件升级</div>' +
@@ -403,7 +403,7 @@ window.openFirmwareVersionTrackerModal = function() {
   }).join('');
   var existing = document.getElementById('modal-firmware-tracker');
   if (existing) existing.remove();
-  var html = '<div id="modal-firmware-tracker" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-tracker\').remove()">' +
+  var html = '<div id="modal-firmware-tracker" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-tracker\').remove()">' +
     '<div class="modal" style="width:820px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:15px;font-weight:700;">📡 固件版本跟踪器</div>' +

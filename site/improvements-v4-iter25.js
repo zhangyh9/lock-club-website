@@ -8,7 +8,7 @@
 window.openAddBuildingForm = function() {
   var existing = document.getElementById('modal-bldg-config-add');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-bldg-config-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-bldg-config-add\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-bldg-config-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-bldg-config-add\').remove()">' +
     '<div style="background:white;border-radius:12px;width:460px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
       '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
         '<div style="font-size:15px;font-weight:700;">🏢 新增楼栋</div>' +

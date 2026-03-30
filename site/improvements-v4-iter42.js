@@ -8,7 +8,7 @@
   window.openStaffAttendancePanel = function() {
     var old = document.getElementById('modal-staff-attendance');
     if (old) old.remove();
-    var html = '<div class="modal-overlay" id="modal-staff-attendance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-staff-attendance\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-staff-attendance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-staff-attendance\').remove()">' +
       '<div class="modal" style="width:880px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
       '<div style="font-size:22px;">&#128202;</div><div style="font-size:15px;font-weight:700;">&#21592;&#24037;&#32771;&#21171;&#26376;&#25253;</div>' +
@@ -101,7 +101,7 @@
       var minute = String(Math.floor(Math.random() * 30) + 30);
       days.push({day: i, status: dayStatus, time: '08:' + minute});
     }
-    var html = '<div class="modal-overlay" id="modal-att-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-att-detail\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-att-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-att-detail\').remove()">' +
       '<div class="modal" style="width:640px;max-height:80vh;overflow-y:auto;">' +
       '<div class="modal-header"><div class="modal-title">&#26085;&#26399; ' + name + ' (' + code + ') - &#32791;&#21171;&#26126;&#32454;</div>' +
       '<button class="modal-close" onclick="document.getElementById(\'modal-att-detail\').remove()">&#10005;</button></div>' +
@@ -149,7 +149,7 @@
         if (cells[5]) inv.amount = cells[5].textContent.trim();
       }
     });
-    var html = '<div class="modal-overlay" id="modal-invoice-void-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    var html = '<div class="modal-overlay hidden" id="modal-invoice-void-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
       '<div class="modal" style="width:400px;">' +
       '<div style="padding:24px 24px 16px;display:flex;align-items:center;gap:10px;">' +
       '<div style="font-size:32px;">&#9888;</div><div style="font-size:15px;font-weight:700;">&#30830;&#35748;&#20316;&#24223;&#21457;&#31080;</div>' +
@@ -231,7 +231,7 @@
   window.openWorkorderDeleteModal = function(woId) {
     var existing = document.getElementById('modal-wo-delete');
     if (existing) existing.remove();
-    var html = '<div class="modal-overlay" id="modal-wo-delete" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    var html = '<div class="modal-overlay hidden" id="modal-wo-delete" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
       '<div class="modal" style="width:380px;">' +
       '<div style="padding:24px 24px 16px;display:flex;align-items:center;gap:10px;">' +
       '<div style="font-size:28px;">&#128465;</div><div style="font-size:15px;font-weight:700;">&#21024;&#38500;&#24037;&#21333;</div>' +
@@ -283,7 +283,7 @@
     var existing = document.getElementById('modal-staff-leave');
     if (existing) existing.remove();
     var today = new Date().toISOString().slice(0, 10);
-    var html = '<div class="modal-overlay" id="modal-staff-leave" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    var html = '<div class="modal-overlay hidden" id="modal-staff-leave" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
       '<div class="modal" style="width:420px;">' +
       '<div style="padding:24px 24px 16px;display:flex;align-items:center;gap:10px;">' +
       '<div style="font-size:28px;">&#128579;</div><div style="font-size:15px;font-weight:700;">&#21592;&#24037;&#31163;&#32844;</div>' +
@@ -336,7 +336,7 @@
     var log = logMap[logId] || { time: '--', user: '--', module: '--', action: '--', detail: '--', ip: '--', result: '&#25104;&#21151;' };
     var resultColor = log.result === '&#25104;&#21151;' ? 'var(--green)' : 'var(--red)';
     var resultBg = log.result === '&#25104;&#21151;' ? 'var(--green-bg)' : 'var(--red-bg)';
-    var html = '<div class="modal-overlay" id="modal-oplog-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-oplog-detail\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-oplog-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-oplog-detail\').remove()">' +
       '<div class="modal" style="width:520px;">' +
       '<div class="modal-header"><div class="modal-title">&#128203; &#25805;&#20316;&#26085;&#24535;&#35814;&#24773; - ' + logId + '</div>' +
       '<button class="modal-close" onclick="document.getElementById(\'modal-oplog-detail\').remove()">&#10005;</button></div>' +

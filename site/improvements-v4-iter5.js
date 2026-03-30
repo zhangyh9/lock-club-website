@@ -23,7 +23,7 @@ function openWorkorderTransferModal(woId) {
     return '<option value="' + h.v + '">' + h.l + '</option>';
   }).join('');
   var woInfo = wo ? ('<div style="padding:10px 12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:6px;margin-bottom:16px;font-size:12px;color:var(--blue);">📋 工单编号：' + woId + ' &nbsp;|&nbsp; 类型：' + (wo.type || '服务工单') + ' &nbsp;|&nbsp; 房间：' + (wo.room || '--') + '</div>') : '';
-  var html = '<div class="modal-overlay" id="modal-wo-transfer" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-transfer\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-wo-transfer" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-transfer\').remove()">' +
     '<div class="modal" style="width:440px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🔄</div><div><div style="font-size:15px;font-weight:700;">移交工单</div><div style="font-size:11px;color:var(--text-muted);">将工单指派给其他员工处理</div></div>' +
@@ -94,7 +94,7 @@ function openPasswordSendLogModal() {
       '<td style="padding:10px 12px;">' + statusBadge + '</td>' +
       '<td style="padding:10px 12px;font-size:12px;font-family:monospace;letter-spacing:2px;color:var(--blue);">' + log.code + '</td></tr>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-password-send-log" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-password-send-log\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-password-send-log" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-password-send-log\').remove()">' +
     '<div class="modal" style="width:820px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">📋</div><div><div style="font-size:15px;font-weight:700;">密码发送记录</div><div style="font-size:11px;color:var(--text-muted);">共 ' + logData.length + ' 条发送记录</div></div>' +
@@ -140,7 +140,7 @@ function exportPasswordSendLog() {
 function openBatchPasswordModal() {
   var existing = document.getElementById('modal-batch-password');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-batch-password" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-password\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-batch-password" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-password\').remove()">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🔢</div><div><div style="font-size:15px;font-weight:700;">批量密码操作</div><div style="font-size:11px;color:var(--text-muted);">请选择批量操作类型</div></div>' +
@@ -219,7 +219,7 @@ function openBatchScheduleConflictModal() {
       '<div style="font-size:12px;color:var(--text-muted);">' + c.detail + '</div></div>' +
       '<button onclick="resolveScheduleConflict(this, \'' + c.staff + '\')" style="padding:6px 12px;background:var(--green);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">✅ 处理</button></div>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-schedule-conflict" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-schedule-conflict\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-schedule-conflict" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-schedule-conflict\').remove()">' +
     '<div class="modal" style="width:560px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🔍</div><div><div style="font-size:15px;font-weight:700;">排班冲突检测</div><div style="font-size:11px;color:var(--text-muted);">发现 ' + conflicts.length + ' 个冲突</div></div>' +
@@ -264,7 +264,7 @@ function editInvoiceHeader(hId) {
   if (!header) { showToast('未找到该发票抬头', 'error'); return; }
   var existing = document.getElementById('modal-invoice-header-edit');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-invoice-header-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-header-edit\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-invoice-header-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-header-edit\').remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">✏️</div><div><div style="font-size:15px;font-weight:700;">编辑发票抬头</div><div style="font-size:11px;color:var(--text-muted);">修改后将同步更新历史发票</div></div>' +

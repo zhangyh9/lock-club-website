@@ -213,7 +213,7 @@ function openFirmwareAnalyzerModal() {
       '<div style="min-width:140px;font-size:11px;color:var(--text-muted);">' + s.devices.slice(0,3).join(', ') + (s.devices.length > 3 ? '...' : '') + '</div>' +
       outdatedTag + '</div>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-firmware-analyzer" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-analyzer\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-firmware-analyzer" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-analyzer\').remove()">' +
     '<div class="modal" style="width:700px;max-height:85vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;">' +

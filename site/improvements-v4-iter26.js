@@ -12,7 +12,7 @@ window.openEnergyAnalysisModal = function(roomFilter) {
   var roomOptions = rooms.map(function(r) {
     return '<option value="' + r + '">' + r + '房间</option>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-energy-analysis" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-analysis\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-energy-analysis" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-analysis\').remove()">' +
     '<div class="modal" style="width:680px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
     '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">' +
     '<div style="font-size:22px;">📊</div><div style="font-size:15px;font-weight:700;">能耗详细数据分析</div>' +
@@ -87,7 +87,7 @@ window.exportEnergyAnalysisReport = function() {
 window.openEnergyForecastModal = function() {
   var existing = document.getElementById('modal-energy-forecast');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-energy-forecast" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-forecast\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-energy-forecast" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-forecast\').remove()">' +
     '<div class="modal" style="width:620px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
     '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">' +
     '<div style="font-size:22px;">📈</div><div style="font-size:15px;font-weight:700;">能耗预测分析</div>' +
@@ -210,7 +210,7 @@ window.openBatchEnergyControlModal = function() {
       '<td style="padding:8px 10px;">' + ctrl('hot','热水','var(--red)') + '</td>' +
       '<td style="padding:8px 10px;font-size:10px;color:' + (r.status === 'offline' ? 'var(--red)' : 'var(--green)') + ';">' + (r.status === 'offline' ? '离线' : '在线') + '</td></tr>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-batch-energy" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-energy\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-batch-energy" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-energy\').remove()">' +
     '<div class="modal" style="width:640px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
     '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">' +
     '<div style="font-size:22px;">⚡</div><div style="font-size:15px;font-weight:700;">批量通断电控制</div>' +
@@ -282,7 +282,7 @@ window.openEnergyAnomalyControlModal = function(room, kwh, reason) {
   var room = room || '301';
   var kwh = kwh || 8.6;
   var reason = reason || '空调持续运行12h，耗电异常偏高';
-  var html = '<div class="modal-overlay" id="modal-energy-anomaly" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-anomaly\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-energy-anomaly" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-anomaly\').remove()">' +
     '<div class="modal" style="width:500px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
     '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">' +
     '<div style="font-size:22px;">⚠️</div><div style="font-size:15px;font-weight:700;">能耗异常调控 - ' + room + '房间</div>' +
@@ -367,7 +367,7 @@ window.openEnergyAlertModal = function() {
       '<button class="action-btn small" onclick="editEnergyAlertRule(' + r.id + ')" style="padding:3px 8px;font-size:10px;margin-right:4px;">编辑</button>' +
       '<button class="action-btn small red" onclick="deleteEnergyAlertRule(' + r.id + ')" style="padding:3px 8px;font-size:10px;">删除</button></td></tr>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-energy-alert" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-alert\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-energy-alert" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-alert\').remove()">' +
     '<div class="modal" style="width:680px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
     '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">' +
     '<div style="font-size:22px;">🚨</div><div style="font-size:15px;font-weight:700;">能耗告警规则管理</div>' +

@@ -144,7 +144,7 @@ window.markRoomRepaired = function(room) {
 window.showRoomHKDetail = function(room) {
   var existing = document.getElementById('modal-hk-detail');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-hk-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-hk-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-hk-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-hk-detail\').remove()">' +
     '<div class="modal" style="width:500px;background:white;border-radius:12px;max-height:85vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🚪</div><div style="font-size:15px;font-weight:700;">房间 ' + room + ' 清洁详情</div>' +
@@ -171,7 +171,7 @@ window.showRoomHKDetail = function(room) {
 window.editHKTask = function(room) {
   var existing = document.getElementById('modal-hk-edit');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-hk-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-hk-edit\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-hk-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-hk-edit\').remove()">' +
     '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:24px;">✏️</div><div style="font-size:15px;font-weight:700;">编辑清洁任务</div>' +
@@ -218,7 +218,7 @@ window.submitHKTaskEdit = function(room) {
 window.deleteHKTask = function(room) {
   var existing = document.getElementById('modal-hk-delete');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-hk-delete" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-hk-delete\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-hk-delete" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-hk-delete\').remove()">' +
     '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">⚠️</div><div style="font-size:15px;font-weight:700;">删除确认</div>' +
@@ -250,7 +250,7 @@ window.confirmDeleteHKTask = function(room) {
 window.openHousekeepingTaskModal = function() {
   var existing = document.getElementById('modal-hk-task-add');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-hk-task-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-hk-task-add\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-hk-task-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-hk-task-add\').remove()">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:24px;">🧹</div><div style="font-size:15px;font-weight:700;">分配清洁任务</div>' +
@@ -308,7 +308,7 @@ window.submitHousekeepingTask = function() {
 window.openBulkAssignModal = function() {
   var existing = document.getElementById('modal-bulk-assign');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-bulk-assign" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-bulk-assign\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-bulk-assign" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-bulk-assign\').remove()">' +
     '<div class="modal" style="width:500px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:24px;">🔄</div><div style="font-size:15px;font-weight:700;">批量分配清洁任务</div>' +
@@ -418,7 +418,7 @@ window.filterStaffTable = function(dept, el) {
 window.openKeypadModal = function() {
   var existing = document.getElementById('modal-keypad');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-keypad" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-keypad\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-keypad" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-keypad\').remove()">' +
     '<div class="modal" style="width:560px;background:white;border-radius:12px;max-height:85vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:24px;">🔑</div><div style="font-size:15px;font-weight:700;">密码管理</div>' +
@@ -524,7 +524,7 @@ window.exportKeypadLog = function() {
 window.openReportModal = function() {
   var existing = document.getElementById('modal-report');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-report" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-report\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-report" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-report\').remove()">' +
     '<div class="modal" style="width:520px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:24px;">📊</div><div style="font-size:15px;font-weight:700;">数据报表中心</div>' +

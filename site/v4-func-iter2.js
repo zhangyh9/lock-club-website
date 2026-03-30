@@ -25,7 +25,7 @@ function openScheduleCellEdit(staffName, day, currentShift) {
     var sel = s.v === currentShift ? 'selected' : '';
     return '<option value="' + s.v + '" ' + sel + '>' + s.l + '</option>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-schedule-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-schedule-edit\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-schedule-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-schedule-edit\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">📅</div><div><div style="font-size:15px;font-weight:700;">编辑排班</div><div style="font-size:11px;color:var(--text-muted);">' + staffName + ' · 周' + ({mon:'一',tue:'二',wed:'三',thu:'四',fri:'五',sat:'六',sun:'日'}[day] || day) + '</div></div>' +
@@ -98,7 +98,7 @@ function hmClickRoom(roomNum) {
     : '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">' +
         '<button onclick="hmCheckinRoom(\'' + roomNum + '\')" style="flex:1;padding:8px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">🏠 入住</button>' +
         '<button onclick="hmViewHistory(\'' + roomNum + '\')" style="flex:1;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">📋 记录</button></div>';
-  var html = '<div class="modal-overlay" id="modal-hm-room-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-hm-room-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-hm-room-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-hm-room-detail\').remove()">' +
     '<div class="modal" style="width:460px;max-height:80vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div><div style="font-size:16px;font-weight:700;">📍 房间 ' + roomNum + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">客房服务</div></div>' +
@@ -180,7 +180,7 @@ function openWorkorderDetailAndUpdate(woId) {
   var typeLabel = typeMap[wo.type] || '📋 其他';
   var existing = document.getElementById('modal-wo-detail');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-wo-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-wo-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-detail\').remove()">' +
     '<div class="modal" style="width:560px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🛠️</div><div style="flex:1;"><div style="font-size:15px;font-weight:700;">工单详情 - ' + wo.id + '</div><div style="font-size:11px;color:var(--text-muted);">' + typeLabel + ' · ' + wo.room + '室</div></div>' +
@@ -305,7 +305,7 @@ function openMemberRechargeModalV3(memberIdx) {
   }).join('');
   var existing = document.getElementById('modal-member-recharge-v3');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-member-recharge-v3" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-recharge-v3\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-member-recharge-v3" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-recharge-v3\').remove()">' +
     '<div class="modal" style="width:500px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">💰</div><div><div style="font-size:15px;font-weight:700;">会员充值 - ' + member.name + '</div><div style="font-size:11px;color:var(--text-muted);">' + member.phone + ' · ' + member.level + '</div></div>' +

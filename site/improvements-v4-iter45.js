@@ -8,7 +8,7 @@
   // 理由：工单列表"移交"按钮调用此函数，但函数从未定义，导致点击无反应
   // 改进：打开移交弹窗，支持选择移交对象（员工），提交后更新工单状态
   window.openWorkorderTransferModal = function(woId) {
-    var html = '<div class="modal-overlay" id="modal-wo-transfer" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-transfer\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-wo-transfer" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-transfer\').remove()">' +
       '<div style="background:var(--card-bg);border-radius:12px;width:90%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--header-bg);">' +
       '<div style="font-size:15px;font-weight:700;">🔄 工单移交</div>' +
@@ -67,7 +67,7 @@
   // 理由：工单工具栏有"自动派发"按钮调用此函数，但函数从未定义
   // 改进：打开自动派发规则配置弹窗，支持设置派发规则和查看派发历史
   window.openWorkorderAutoRuleModal = function() {
-    var html = '<div class="modal-overlay" id="modal-wo-auto-rule" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-auto-rule\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-wo-auto-rule" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-auto-rule\').remove()">' +
       '<div style="background:var(--card-bg);border-radius:12px;width:90%;max-width:680px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--header-bg);">' +
       '<div style="display:flex;align-items:center;gap:12px;"><div style="font-size:15px;font-weight:700;">⚙️ 工单自动派发规则</div><span style="padding:3px 10px;background:var(--green-bg);border:1px solid var(--green);border-radius:12px;font-size:11px;color:var(--green);font-weight:600;">🟢 已启用</span></div>' +
@@ -119,7 +119,7 @@
   // 理由：工单工具栏有"SLA超时"按钮调用此函数，但函数从未定义
   // 改进：打开SLA超时规则配置弹窗，显示各工单类型的SLA时限
   window.openWorkorderSLAModal = function() {
-    var html = '<div class="modal-overlay" id="modal-wo-sla" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-sla\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-wo-sla" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-sla\').remove()">' +
       '<div style="background:var(--card-bg);border-radius:12px;width:90%;max-width:560px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--header-bg);">' +
       '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">⏰ SLA超时规则配置</div></div>' +
@@ -166,7 +166,7 @@
   // 理由：工单页面有"工单统计"按钮调用此函数，但函数从未定义
   // 改进：打开工单统计看板弹窗，显示各类型工单的数量、完成率、平均处理时长等统计
   window.openWorkorderStatsDashboard = function() {
-    var html = '<div class="modal-overlay" id="modal-wo-stats" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-stats\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-wo-stats" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-stats\').remove()">' +
       '<div style="background:var(--card-bg);border-radius:12px;width:90%;max-width:760px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--header-bg);">' +
       '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">📊 工单统计看板</div><span style="padding:3px 10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:12px;font-size:11px;color:var(--blue);font-weight:600;">本月统计</span></div>' +
@@ -240,7 +240,7 @@
     });
 
     var deviceCount = checkedDevices.length || 0;
-    var html = '<div class="modal-overlay" id="modal-device-batch" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-batch\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-device-batch" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-batch\').remove()">' +
       '<div style="background:var(--card-bg);border-radius:12px;width:90%;max-width:520px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--header-bg);">' +
       '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">📋 设备批量操作</div><span style="padding:3px 10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:12px;font-size:11px;color:var(--blue);font-weight:600;">已选 ' + deviceCount + ' 台设备</span></div>' +

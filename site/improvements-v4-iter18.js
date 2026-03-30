@@ -62,7 +62,7 @@ window.batchRestart = function() {
   }
   var existing = document.getElementById('modal-batch-restart');
   if (existing) existing.remove();
-  var html = '<div id="modal-batch-restart" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-restart\').remove()">' +
+  var html = '<div id="modal-batch-restart" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-restart\').remove()">' +
     '<div class="modal" style="width:500px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:15px;font-weight:700;">🔁 批量重启设备</div>' +

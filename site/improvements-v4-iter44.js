@@ -48,7 +48,7 @@
     var totalCount = records.length;
     var successCount = records.filter(function(r) { return r.result === '成功'; }).length;
 
-    var html = '<div class="modal-overlay" id="modal-door-log-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-door-log-detail\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-door-log-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-door-log-detail\').remove()">' +
       '<div style="background:var(--card-bg);border-radius:12px;width:90%;max-width:600px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--header-bg);">' +
       '<div style="font-size:15px;font-weight:700;">🚪 房间 ' + roomNum + ' 开锁记录</div>' +
@@ -173,7 +173,7 @@
       actionHtml = '<button disabled style="padding:10px 24px;background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:6px;cursor:not-allowed;font-size:14px;font-weight:600;">✅ 已结清</button>';
     }
 
-    var html = '<div class="modal-overlay" id="modal-settlement-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-detail\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-settlement-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-detail\').remove()">' +
       '<div style="background:var(--card-bg);border-radius:12px;width:90%;max-width:520px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--header-bg);">' +
       '<div style="font-size:15px;font-weight:700;">💰 账单详情</div>' +
@@ -239,7 +239,7 @@
     var confirmText = action === 'on' ? '确认断电' : '确认通电';
     var warnText = action === 'on' ? '断电后房间空调、照明将全部关闭' : '通电后房间电器将恢复正常使用';
 
-    var html = '<div class="modal-overlay" id="modal-power-ctrl" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-power-ctrl\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-power-ctrl" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-power-ctrl\').remove()">' +
       '<div style="background:var(--card-bg);border-radius:12px;width:90%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--header-bg);">' +
       '<div style="font-size:15px;font-weight:700;">⚡ 房间 ' + roomNum + ' 电源控制</div>' +

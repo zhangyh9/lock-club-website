@@ -72,7 +72,7 @@ window.applyLogFilter = function() {
 window.addNewInvoiceHeader = function() {
   var existing = document.getElementById('modal-invoice-header-add');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-invoice-header-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-header-add\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-invoice-header-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-header-add\').remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🏛️</div><div><div style="font-size:15px;font-weight:700;">新增发票抬头</div><div style="font-size:11px;color:var(--text-muted);">填写企业信息用于开具发票</div></div>' +

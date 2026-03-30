@@ -23,7 +23,7 @@ function openRoleAuditLogModal() {
     {time: '2026-03-24 13:00', operator: '郑强', role: '客房人员', action: '修改权限', target: '客房人员', before: '工单处理', after: '工单查看', result: '成功'}
   ];
 
-  var html = '<div class="modal-overlay" id="modal-role-audit-log" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-role-audit-log\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-role-audit-log" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-role-audit-log\').remove()">' +
     '<div style="background:white;border-radius:12px;width:780px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
     '<div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
     '<div><div style="font-size:15px;font-weight:700;">📜 权限变更日志</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">记录所有角色权限的变更操作 · 共 ' + auditData.length + ' 条</div></div>' +
@@ -103,7 +103,7 @@ function openAddRoomForm() {
     floorOptions += '<option value="' + f + '">' + f + '层</option>';
   });
 
-  var html = '<div class="modal-overlay" id="modal-add-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-add-room\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-add-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-add-room\').remove()">' +
     '<div style="background:white;border-radius:12px;width:460px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
     '<div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div><div style="font-size:15px;font-weight:700;">🚪 新增房间</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">将新房间添加到楼栋管理系统</div></div>' +
@@ -169,7 +169,7 @@ function openRoomTypeAddForm() {
   var existing = document.getElementById('modal-rt-add-form');
   if (existing) existing.remove();
 
-  var html = '<div class="modal-overlay" id="modal-rt-add-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-rt-add-form\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-rt-add-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-rt-add-form\').remove()">' +
     '<div style="background:white;border-radius:12px;width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
     '<div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div><div style="font-size:15px;font-weight:700;">🏠 新增房型</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">创建新房型供入住使用</div></div>' +
@@ -250,7 +250,7 @@ function openAddTierModal() {
     return '<div onclick="selectTierIcon(this)" class="tier-icon-opt" data-icon="' + icon + '" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid var(--border);border-radius:8px;cursor:pointer;' + selected + '">' + icon + '</div>';
   }).join('');
 
-  var html = '<div class="modal-overlay" id="modal-add-tier" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-add-tier\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-add-tier" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-add-tier\').remove()">' +
     '<div style="background:white;border-radius:12px;width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
     '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:15px;font-weight:700;">🏆 新增会员等级</div>' +

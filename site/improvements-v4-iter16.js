@@ -33,7 +33,7 @@ window.hmClickRoom = function(roomNum, el) {
   var status = roomData.status || 'vacant';
   var existing = document.getElementById('modal-hm-room-detail');
   if (existing) existing.remove();
-  var html = '<div id="modal-hm-room-detail" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+  var html = '<div id="modal-hm-room-detail" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:16px;font-weight:700;">🚪 房间 ' + roomNum + ' 详情</div>' +
@@ -83,7 +83,7 @@ window.openScheduleCellEdit = function(dateStr, staffId, staffName, shiftType) {
   }).join('');
   var existing = document.getElementById('modal-schedule-cell-edit');
   if (existing) existing.remove();
-  var html = '<div id="modal-schedule-cell-edit" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-schedule-cell-edit\').remove()">' +
+  var html = '<div id="modal-schedule-cell-edit" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-schedule-cell-edit\').remove()">' +
     '<div class="modal" style="width:440px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:16px;font-weight:700;">📅 排班编辑</div>' +
@@ -155,7 +155,7 @@ window.openBuildingManagementModal = function() {
   }).join('');
   var existing = document.getElementById('modal-building-manage');
   if (existing) existing.remove();
-  var html = '<div id="modal-building-manage" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-building-manage\').remove()">' +
+  var html = '<div id="modal-building-manage" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-building-manage\').remove()">' +
     '<div class="modal" style="width:800px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:16px;font-weight:700;">🏢 楼栋管理总览</div>' +
@@ -193,7 +193,7 @@ window.openFloorSyncAllModal = function(floorNum, buildingId) {
   }).join('');
   var existing = document.getElementById('modal-floor-sync-all');
   if (existing) existing.remove();
-  var html = '<div id="modal-floor-sync-all" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-sync-all\').remove()">' +
+  var html = '<div id="modal-floor-sync-all" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-sync-all\').remove()">' +
     '<div class="modal" style="width:520px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:16px;font-weight:700;">🔄 楼层全量同步 - ' + floorNum + '层</div>' +
@@ -264,7 +264,7 @@ window.openWorkorderKanbanModal = function() {
   }).join('');
   var existing = document.getElementById('modal-workorder-kanban');
   if (existing) existing.remove();
-  var html = '<div id="modal-workorder-kanban" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-workorder-kanban\').remove()">' +
+  var html = '<div id="modal-workorder-kanban" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-workorder-kanban\').remove()">' +
     '<div style="width:100%;max-width:960px;max-height:90vh;background:white;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:16px;font-weight:700;">📋 工单看板视图</div>' +

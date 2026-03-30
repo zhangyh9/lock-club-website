@@ -87,7 +87,7 @@ window.openDeviceRestartConfirmModal = function(uuid, roomNum, model) {
   var existing = document.getElementById('modal-dev-restart-confirm');
   if (existing) existing.remove();
   
-  var html = '<div class="modal-overlay" id="modal-dev-restart-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-dev-restart-confirm\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-dev-restart-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-dev-restart-confirm\').remove()">' +
     '<div style="background:white;border-radius:12px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
     '<div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div><div style="font-size:15px;font-weight:700;">⚠️ 确认重启设备</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">设备重启期间门锁将临时离线</div></div>' +

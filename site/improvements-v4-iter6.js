@@ -9,7 +9,7 @@
 window.openAddRoomModal = function() {
   var existing = document.getElementById('modal-add-room');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-add-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-room\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-add-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-room\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🚪</div><div><div style="font-size:15px;font-weight:700;">新增房间</div><div style="font-size:11px;color:var(--text-muted);">添加新房间到管理系统</div></div>' +
@@ -84,7 +84,7 @@ window.openEditRoomModal = function(roomNum) {
   }
   if (!rowData) rowData = {num: roomNum, floor: '3', type: '标准间', status: '空房'};
   var currentStatus = rowData.status;
-  var html = '<div class="modal-overlay" id="modal-edit-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-edit-room\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-edit-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-edit-room\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">✏️</div><div><div style="font-size:15px;font-weight:700;">编辑房间</div><div style="font-size:11px;color:var(--text-muted);">修改房间信息</div></div>' +
@@ -152,7 +152,7 @@ window.submitEditRoom = function(originalRoomNum) {
 window.addNewInvoiceHeader = function() {
   var existing = document.getElementById('modal-add-invoice-header');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-add-invoice-header" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-invoice-header\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-add-invoice-header" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-invoice-header\').remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🧾</div><div><div style="font-size:15px;font-weight:700;">新增发票抬头</div><div style="font-size:11px;color:var(--text-muted);">添加新的单位发票信息</div></div>' +
@@ -228,7 +228,7 @@ window.applyInvoiceSearch = function() {
 window.addCheckoutItem = function() {
   var existing = document.getElementById('modal-checkout-item');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-checkout-item" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-checkout-item\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-checkout-item" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-checkout-item\').remove()">' +
     '<div class="modal" style="width:400px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">➕</div><div><div style="font-size:15px;font-weight:700;">添加消费项目</div><div style="font-size:11px;color:var(--text-muted);">选择或输入消费明细</div></div>' +

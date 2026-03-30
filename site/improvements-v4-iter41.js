@@ -26,7 +26,7 @@ function editRoomRecord(recordId) {
     '<option value="change"' + (r.type === 'change' ? ' selected' : '') + '>🔄 换房</option>' +
     '<option value="cancel"' + (r.type === 'cancel' ? ' selected' : '') + '>❌ 取消</option>';
 
-  var html = '<div class="modal-overlay" id="modal-edit-room-record" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-edit-room-record\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-edit-room-record" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-edit-room-record\').remove()">' +
     '<div class="modal" style="width:500px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">✏️</div><div><div style="font-size:15px;font-weight:700;">编辑办理记录</div><div style="font-size:11px;color:var(--text-muted);">' + r.name + ' · ' + r.room + '</div></div></div>' +
@@ -84,7 +84,7 @@ function deleteRoomRecord(recordId) {
   var existing = document.getElementById('modal-delete-room-record');
   if (existing) existing.remove();
 
-  var html = '<div class="modal-overlay" id="modal-delete-room-record" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-delete-room-record\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-delete-room-record" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-delete-room-record\').remove()">' +
     '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
     '<div style="padding:24px 24px 20px;text-align:center;">' +
     '<div style="font-size:48px;margin-bottom:12px;">🗑️</div>' +
@@ -182,7 +182,7 @@ function openBatchUpgradeModal() {
   var existing = document.getElementById('modal-batch-upgrade');
   if (existing) existing.remove();
 
-  var html = '<div class="modal-overlay" id="modal-batch-upgrade" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-upgrade\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-batch-upgrade" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-upgrade\').remove()">' +
     '<div class="modal" style="width:580px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📦</div><div><div style="font-size:15px;font-weight:700;">批量固件升级</div><div style="font-size:11px;color:var(--text-muted);">选择设备进行固件批量升级</div></div></div>' +
@@ -231,7 +231,7 @@ function openFirmwareAnalyzerModal() {
   var existing = document.getElementById('modal-firmware-analyzer');
   if (existing) existing.remove();
 
-  var html = '<div class="modal-overlay" id="modal-firmware-analyzer" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-analyzer\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-firmware-analyzer" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-analyzer\').remove()">' +
     '<div class="modal" style="width:520px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📡</div><div><div style="font-size:15px;font-weight:700;">固件版本分析器</div><div style="font-size:11px;color:var(--text-muted);">设备版本分布统计</div></div></div>' +

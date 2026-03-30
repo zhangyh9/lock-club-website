@@ -16,7 +16,7 @@
 window.openSystemHealthModal = function() {
   var existing = document.getElementById('modal-system-health');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-system-health" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-system-health\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-system-health" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-system-health\').remove()">' +
     '<div class="modal" style="width:520px;background:white;border-radius:12px;max-height:85vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🩺</div><div style="font-size:15px;font-weight:700;">系统健康诊断</div>' +
@@ -118,7 +118,7 @@ window.openFloorBulkMaintenanceModal = function() {
   if (existing) existing.remove();
   var selectedCount = parseInt(document.getElementById('floor-selected-count') ? document.getElementById('floor-selected-count').textContent : '0') || 0;
   if (selectedCount === 0) { showToast('请先在楼层平面图选择要维护的房间', 'warn'); return; }
-  var html = '<div class="modal-overlay" id="modal-floor-bulk-maint" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-bulk-maint\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-floor-bulk-maint" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-bulk-maint\').remove()">' +
     '<div class="modal" style="width:440px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🔧</div><div style="font-size:15px;font-weight:700;">批量房间维护</div>' +
@@ -164,7 +164,7 @@ window.openFloorBulkUnlockModal = function() {
   if (existing) existing.remove();
   var selectedCount = parseInt(document.getElementById('floor-selected-count') ? document.getElementById('floor-selected-count').textContent : '0') || 0;
   if (selectedCount === 0) { showToast('请先在楼层平面图选择要开锁的房间', 'warn'); return; }
-  var html = '<div class="modal-overlay" id="modal-floor-bulk-unlock" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-bulk-unlock\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-floor-bulk-unlock" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-bulk-unlock\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🔓</div><div style="font-size:15px;font-weight:700;">批量开锁确认</div>' +
@@ -199,7 +199,7 @@ window.confirmBulkUnlock = function() {
 window.openFloorAlertCheckModal = function() {
   var existing = document.getElementById('modal-floor-alert-check');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-floor-alert-check" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-alert-check\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-floor-alert-check" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-alert-check\').remove()">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;max-height:85vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🚨</div><div style="font-size:15px;font-weight:700;">楼层告警检查</div>' +

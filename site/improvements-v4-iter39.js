@@ -23,7 +23,7 @@ function openEditRoomTypeModalV2(idx) {
   var rt = roomTypes[idx] || roomTypes[0];
   var isEdit = idx !== undefined;
 
-  var html = '<div class="modal-overlay" id="modal-edit-room-type-v2" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-edit-room-type-v2\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-edit-room-type-v2" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-edit-room-type-v2\').remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🏠</div><div><div style="font-size:15px;font-weight:700;">' + (isEdit ? '编辑房型' : '新增房型') + '</div><div style="font-size:11px;color:var(--text-muted);">完善房型信息用于房间分配和定价</div></div></div>' +
@@ -97,7 +97,7 @@ function deleteRoomTypeV2(idx) {
   var existing = document.getElementById('modal-confirm-delete-room-type');
   if (existing) existing.remove();
 
-  var html = '<div class="modal-overlay" id="modal-confirm-delete-room-type" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-confirm-delete-room-type\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-confirm-delete-room-type" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-confirm-delete-room-type\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
     '<div style="padding:24px;text-align:center;">' +
     '<div style="font-size:48px;margin-bottom:12px;">🗑️</div>' +
@@ -134,7 +134,7 @@ function showUnlockDetail(method, time, person, result) {
   var resultClass = result === '成功' ? 'var(--green)' : 'var(--red)';
   var resultBg = result === '成功' ? 'var(--green-bg)' : 'var(--red-bg)';
 
-  var html = '<div class="modal-overlay" id="modal-unlock-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-unlock-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-unlock-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-unlock-detail\').remove()">' +
     '<div class="modal" style="width:480px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🔓</div><div><div style="font-size:15px;font-weight:700;">开锁记录详情</div><div style="font-size:11px;color:var(--text-muted);">设备开锁行为追溯</div></div></div>' +
@@ -182,7 +182,7 @@ function fpNavigateRoom(roomNum) {
   var statusColor = rd.status === '入住' ? 'var(--green)' : rd.status === '退房' ? 'var(--orange)' : 'var(--blue)';
   var statusBg = rd.status === '入住' ? 'var(--green-bg)' : rd.status === '退房' ? 'var(--orange-bg)' : 'var(--blue-bg)';
 
-  var html = '<div class="modal-overlay" id="modal-fp-room-quick" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-fp-room-quick\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-fp-room-quick" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-fp-room-quick\').remove()">' +
     '<div class="modal" style="width:460px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🚪</div><div><div style="font-size:15px;font-weight:700;">房间 ' + roomNum + '</div><div style="font-size:11px;color:var(--text-muted);">' + rd.type + '</div></div></div>' +
@@ -229,7 +229,7 @@ function openStaffDetailModal(idx) {
   ];
   var s = staffData[idx] || staffData[0];
 
-  var html = '<div class="modal-overlay" id="modal-staff-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-staff-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-staff-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-staff-detail\').remove()">' +
     '<div class="modal" style="width:540px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:12px;">' +

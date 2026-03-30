@@ -16,7 +16,7 @@ function deleteInvoice(invId) {
   if (!inv) { showToast('未找到发票记录', 'error'); return; }
   var existing = document.getElementById('modal-confirm-delete-invoice');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-confirm-delete-invoice" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+  var html = '<div class="modal-overlay hidden" id="modal-confirm-delete-invoice" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
     '<div class="modal" style="width:400px;background:white;border-radius:12px;overflow:hidden;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">⚠️</div><div style="font-size:15px;font-weight:700;">确认删除发票</div></div>' +
@@ -89,7 +89,7 @@ function openBatchSettlementModal() {
     return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
       '<span>' + r.room + ' · ' + r.name + '</span><span style="font-weight:700;color:var(--orange);">¥' + r.amount.toFixed(0) + '</span></div>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-batch-settlement" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-settlement\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-batch-settlement" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-settlement\').remove()">' +
     '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🔄</div><div><div style="font-size:15px;font-weight:700;">批量结算确认</div><div style="font-size:11px;color:var(--text-muted);">' + rows.length + ' 个房间待结算</div></div>' +
@@ -133,7 +133,7 @@ function doBatchSettlement() {
 function openQuickCheckinModal() {
   var existing = document.getElementById('modal-quick-checkin');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-quick-checkin" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-checkin\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-quick-checkin" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-checkin\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🏨</div><div style="font-size:15px;font-weight:700;">快速入住登记</div>' +
@@ -166,7 +166,7 @@ function submitQuickCheckin() {
 function openQuickCheckoutModal() {
   var existing = document.getElementById('modal-quick-checkout');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-quick-checkout" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-checkout\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-quick-checkout" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-checkout\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🏁</div><div style="font-size:15px;font-weight:700;">快速退房结算</div>' +
@@ -255,7 +255,7 @@ function deductMemberBalance(idx) {
   if (!m) { showToast('未找到会员信息', 'error'); return; }
   var existing = document.getElementById('modal-member-deduct');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-member-deduct" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-deduct\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-member-deduct" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-deduct\').remove()">' +
     '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">💰</div><div><div style="font-size:15px;font-weight:700;">余额扣减</div><div style="font-size:11px;color:var(--text-muted);">' + m.name + ' · 当前余额 ¥' + (m.balance || 0) + '</div></div>' +

@@ -25,7 +25,7 @@ window.openBatchSettlementModal = function() {
       }
     }
   });
-  var html = '<div class="modal-overlay" id="modal-batch-settlement" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-settlement\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-batch-settlement" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-settlement\').remove()">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🔄</div><div style="font-size:15px;font-weight:700;">批量结算确认</div>' +
@@ -96,7 +96,7 @@ window.openSettlementHistoryModal = function() {
       '<td style="padding:8px 6px;"><span class="tbadge green" style="font-size:11px;padding:2px 6px;">' + d.status + '</span></td>' +
       '<td style="padding:8px 6px;"><button class="action-btn small" onclick="openSettlementDetail(\'' + d.id + '\')">详情</button></td></tr>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-settlement-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-history\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-settlement-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-history\').remove()">' +
     '<div class="modal" style="width:800px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
     '<div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">' +
     '<div style="font-size:22px;">📋</div><div style="font-size:15px;font-weight:700;">结算历史</div>' +
@@ -137,7 +137,7 @@ window.openSettlementDetail = function(settlementId) {
     payMethod: '微信', payTime: '2026-03-28 12:05'
   };
   var depositColor = d.depositStatus.indexOf('不足') >= 0 ? 'var(--red)' : d.depositStatus === '已退' ? 'var(--green)' : 'var(--orange)';
-  var html = '<div class="modal-overlay" id="modal-settlement-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-settlement-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-detail\').remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">💰</div><div><div style="font-size:15px;font-weight:700;">结算详情</div><div style="font-size:11px;color:var(--text-muted);">' + d.id + '</div></div>' +

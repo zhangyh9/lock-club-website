@@ -140,7 +140,7 @@ window.openAlertModal = function(idx) {
   var statusColor = alertStatus.indexOf('已处理') >= 0 || alertStatus.indexOf('恢复') >= 0
     ? 'var(--green)' : 'var(--orange)';
 
-  var html = '<div class="modal-overlay" id="modal-alert-generic" ' +
+  var html = '<div class="modal-overlay hidden" id="modal-alert-generic" ' +
     'style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);' +
     'display:flex;align-items:center;justify-content:center;z-index:99999;" ' +
     'onclick="if(event.target===this)document.getElementById(\'modal-alert-generic\').remove()">' +

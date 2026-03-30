@@ -25,7 +25,7 @@ if (typeof _invoiceHeaderStore === 'undefined') {
 window.addNewInvoiceHeader = function() {
   var existing = document.getElementById('modal-invoice-header-add');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-invoice-header-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-header-add\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-invoice-header-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-header-add\').remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🏛️</div><div><div style="font-size:15px;font-weight:700;">新增发票抬头</div><div style="font-size:11px;color:var(--text-muted);">填写单位信息后点击保存</div></div>' +
@@ -75,7 +75,7 @@ window.editInvoiceHeader = function(hId) {
   if (!header) { showToast('未找到该发票抬头', 'error'); return; }
   var existing = document.getElementById('modal-invoice-header-edit');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-invoice-header-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-header-edit\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-invoice-header-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-invoice-header-edit\').remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">✏️</div><div><div style="font-size:15px;font-weight:700;">编辑发票抬头</div><div style="font-size:11px;color:var(--text-muted);">修改后将同步更新历史发票</div></div>' +
@@ -123,7 +123,7 @@ window.deleteInvoiceHeader = function(hId) {
   if (!header) { showToast('未找到该发票抬头', 'error'); return; }
   var existing = document.getElementById('modal-invoice-header-del');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-invoice-header-del" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">' +
+  var html = '<div class="modal-overlay hidden" id="modal-invoice-header-del" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;">' +
     '<div class="modal" style="width:400px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:24px 24px 16px;text-align:center;">' +
     '<div style="font-size:48px;margin-bottom:12px;">🗑️</div>' +
@@ -164,7 +164,7 @@ window.deleteRecord = function(id) {
   if (existing) existing.remove();
   var r = _recordList.find(function(x){ return x.id === id; });
   if (!r) return;
-  var html = '<div class="modal-overlay" id="modal-record-del" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+  var html = '<div class="modal-overlay hidden" id="modal-record-del" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
     '<div class="modal" style="width:380px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">⚠️</div><div style="font-size:15px;font-weight:700;">确认删除记录</div></div>' +

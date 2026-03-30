@@ -8,7 +8,7 @@
   // 理由：密码管理页"智能开锁策略"按钮调用此函数，但函数从未定义，点击无反应
   // 改进：打开策略规则引擎弹窗，支持配置开锁方式优先级、时段策略、异常告警规则
   window.openUnlockStrategyEngineModal = function() {
-    var html = '<div class="modal-overlay" id="modal-unlock-strategy" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-unlock-strategy\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-unlock-strategy" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-unlock-strategy\').remove()">' +
       '<div style="background:var(--card-bg);border-radius:12px;width:90%;max-width:720px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--header-bg);">' +
       '<div style="display:flex;align-items:center;gap:12px;"><div style="font-size:15px;font-weight:700;">⚙️ 智能开锁策略规则引擎</div><span style="padding:3px 10px;background:var(--green-bg);border:1px solid var(--green);border-radius:12px;font-size:11px;color:var(--green);font-weight:600;">🟢 已启用</span></div>' +
@@ -156,7 +156,7 @@
   // 理由：密码管理页"发送记录"按钮调用此函数，但函数从未定义
   // 改进：打开密码发送记录弹窗，显示密码发送时间、渠道、接收人、状态
   window.openPasswordSendLogModal = function() {
-    var html = '<div class="modal-overlay" id="modal-password-send-log" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-password-send-log\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-password-send-log" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-password-send-log\').remove()">' +
       '<div style="background:var(--card-bg);border-radius:12px;width:90%;max-width:760px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--header-bg);">' +
       '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">📋 密码发送记录</div><span style="padding:3px 10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:12px;font-size:11px;color:var(--blue);font-weight:600;">共 28 条</span></div>' +
@@ -218,7 +218,7 @@
   // 改进：筛选并显示工单的派发历史记录，包括派发时间、派发对象、状态变更
   window.filterWoDispatchHistory = function(woId) {
     woId = woId || 'WO-2026032801';
-    var html = '<div class="modal-overlay" id="modal-wo-dispatch-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-dispatch-history\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-wo-dispatch-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-wo-dispatch-history\').remove()">' +
       '<div style="background:var(--card-bg);border-radius:12px;width:90%;max-width:560px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--header-bg);">' +
       '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">📜 工单派发历史</div><span style="padding:3px 10px;background:var(--purple-bg);border:1px solid var(--purple);border-radius:12px;font-size:11px;color:var(--purple);font-weight:600;">' + woId + '</span></div>' +
@@ -270,7 +270,7 @@
   // 改进：打开查房质量检查弹窗，支持对每次查房任务进行质量评分、问题记录和通过/返工操作
   window.openInspectQualityModal = function(roomNum) {
     roomNum = roomNum || '102';
-    var html = '<div class="modal-overlay" id="modal-inspect-quality" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-inspect-quality\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-inspect-quality" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-inspect-quality\').remove()">' +
       '<div style="background:var(--card-bg);border-radius:12px;width:90%;max-width:600px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--header-bg);">' +
       '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">🔍 查房质量检查</div><span style="padding:3px 10px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:12px;font-size:11px;color:var(--blue);font-weight:600;">房间 ' + roomNum + '</span></div>' +
@@ -373,7 +373,7 @@
   // 理由：结账页面点击"结账历史"按钮调用此函数，但函数从未定义
   // 改进：打开结账历史记录弹窗，显示所有结账记录的时间线、金额、支付方式、状态
   window.openSettlementHistoryModal = function() {
-    var html = '<div class="modal-overlay" id="modal-settlement-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-history\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-settlement-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-settlement-history\').remove()">' +
       '<div style="background:var(--card-bg);border-radius:12px;width:90%;max-width:680px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--header-bg);">' +
       '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:15px;font-weight:700;">📋 结账历史记录</div><span style="padding:3px 10px;background:var(--green-bg);border:1px solid var(--green);border-radius:12px;font-size:11px;color:var(--green);font-weight:600;">本月 36 笔</span></div>' +

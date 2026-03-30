@@ -120,7 +120,7 @@ function openBuildingDetailModal(idx) {
   var bld = bldData[idx] || bldData[0];
   var onlineRate = Math.round((bld.online / bld.devices) * 100);
 
-  var html = '<div class="modal-overlay" id="modal-bld-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-bld-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-bld-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-bld-detail\').remove()">' +
     '<div style="background:white;border-radius:12px;width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
     '<div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div><div style="font-size:15px;font-weight:700;">🏢 ' + bld.name + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + bld.address + '</div></div>' +
@@ -166,7 +166,7 @@ function openNightAuditDetail(idx) {
 
   var audit = auditData[idx] || auditData[0];
 
-  var html = '<div class="modal-overlay" id="modal-night-audit-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-night-audit-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-night-audit-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-night-audit-detail\').remove()">' +
     '<div style="background:white;border-radius:12px;width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
     '<div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div><div style="font-size:15px;font-weight:700;">🌙 夜审详情 - ' + audit.date + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">夜审员：' + audit.checker + '</div></div>' +

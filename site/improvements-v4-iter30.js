@@ -22,7 +22,7 @@ window.openBatchRoomAllocationModal = function() {
   staffList.forEach(function(s) {
     staffOptions += '<option value="' + s.id + '">' + s.name + '</option>';
   });
-  var html = '<div class="modal-overlay" id="modal-batch-room-alloc" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-room-alloc\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-batch-room-alloc" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-room-alloc\').remove()">' +
     '<div class="modal" style="width:520px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📋</div><div style="font-size:15px;font-weight:700;">批量分配房间</div></div>' +
@@ -86,7 +86,7 @@ window.openRoomTypeManageModal = function() {
       '<td style="font-weight:600;color:var(--blue);">¥' + t.price + '</td><td>' + statusBadge + '</td>' +
       '<td><button class="action-btn small" onclick="openEditRoomTypeForm(\'' + t.id + '\')">编辑</button></td></tr>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-room-type-mgr" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-room-type-mgr\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-room-type-mgr" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-room-type-mgr\').remove()">' +
     '<div class="modal" style="width:680px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🏠</div><div style="font-size:15px;font-weight:700;">房型管理</div></div>' +
@@ -146,7 +146,7 @@ window.openEditRoomTypeForm = function(id) {
 window.openStaffBatchImportModal = function() {
   var existing = document.getElementById('modal-staff-batch-import');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-staff-batch-import" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-staff-batch-import\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-staff-batch-import" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-staff-batch-import\').remove()">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📥</div><div style="font-size:15px;font-weight:700;">批量导入员工</div></div>' +
@@ -222,7 +222,7 @@ window.openAttendanceModal = function() {
     var coutBadge = s.checkout !== '--' ? '<span class="tbadge blue">' + s.checkout + '</span>' : '<span style="color:var(--text-muted);font-size:11px;">未打卡</span>';
     return '<tr><td style="font-weight:600;">' + s.name + '</td><td style="font-size:12px;color:var(--text-muted);">' + s.time + '</td><td>' + cinBadge + '</td><td>' + coutBadge + '</td></tr>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-attendance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-attendance\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-attendance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-attendance\').remove()">' +
     '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📋</div><div style="font-size:15px;font-weight:700;">员工考勤打卡</div></div>' +
@@ -304,7 +304,7 @@ window.openBuildingDeviceOverviewPanel = function(bldId) {
       '<td><span style="color:' + signalColor + ';">📶 ' + (d.online ? d.signal + '%' : '--') + '</span></td>' +
       '<td style="font-size:11px;color:var(--text-muted);">' + d.lastSync + '</td></tr>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-bld-device-overview" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-bld-device-overview\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-bld-device-overview" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-bld-device-overview\').remove()">' +
     '<div class="modal" style="width:600px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📡</div><div style="font-size:15px;font-weight:700;">' + bldName + ' 设备概览</div></div>' +

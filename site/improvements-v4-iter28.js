@@ -11,7 +11,7 @@
 window.openWorkorderCreateV2 = function() {
   var existing = document.getElementById('modal-workorder-create');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-workorder-create" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-workorder-create\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-workorder-create" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-workorder-create\').remove()">' +
     '<div class="modal" style="width:480px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:22px;">📋</div>' +
@@ -272,7 +272,7 @@ window.openEditBldgConfig = function(bldId) {
   var bldName = bldNames[bldId] || bldId;
   var existing = document.getElementById('modal-bld-edit-config');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-bld-edit-config" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-bld-edit-config\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-bld-edit-config" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-bld-edit-config\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:20px;">🏢</div><div style="font-size:15px;font-weight:700;">编辑楼栋 - ' + bldName + '</div>' +

@@ -24,7 +24,7 @@ function openEditStaffForm(idx) {
   var existing = document.getElementById('modal-edit-staff-form');
   if (existing) existing.remove();
 
-  var html = '<div class="modal-overlay" id="modal-edit-staff-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-edit-staff-form\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-edit-staff-form" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-edit-staff-form\').remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">✏️</div><div><div style="font-size:15px;font-weight:700;">编辑员工信息</div><div style="font-size:11px;color:var(--text-muted);">' + s.name + ' · ' + s.code + '</div></div></div>' +
@@ -86,7 +86,7 @@ function submitEditStaffForm(idx) {
 function openStaffBatchImportModal() {
   var existing = document.getElementById('modal-staff-batch-import');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-staff-batch-import" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-staff-batch-import\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-staff-batch-import" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-staff-batch-import\').remove()">' +
     '<div class="modal" style="width:560px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📥</div><div><div style="font-size:15px;font-weight:700;">批量导入员工</div><div style="font-size:11px;color:var(--text-muted);">支持 CSV 格式，每次最多导入 100 条</div></div></div>' +
@@ -199,7 +199,7 @@ function openAttendanceModal() {
   var dateStr = now.toLocaleDateString('zh-CN', {year:'numeric', month:'2-digit', day:'2-digit'});
   var weekDays = ['周日','周一','周二','周三','周四','周五','周六'];
   var weekDay = weekDays[now.getDay()];
-  var html = '<div class="modal-overlay" id="modal-attendance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-attendance\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-attendance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-attendance\').remove()">' +
     '<div class="modal" style="width:420px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📋</div><div><div style="font-size:15px;font-weight:700;">员工考勤打卡</div><div style="font-size:11px;color:var(--text-muted);">记录上下班打卡时间</div></div></div>' +
@@ -287,7 +287,7 @@ function openMemberTransactionHistory() {
       '<td style="padding:8px 10px;font-size:12px;">' + t.balance + '</td>' +
       '<td style="padding:8px 10px;font-size:12px;">' + t.desc + '</td></tr>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-member-trans" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-trans\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-member-trans" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-trans\').remove()">' +
     '<div class="modal" style="width:640px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">💰</div><div><div style="font-size:15px;font-weight:700;">会员消费记录</div><div style="font-size:11px;color:var(--text-muted);">查询会员充值/消费流水明细</div></div></div>' +
@@ -408,7 +408,7 @@ function exportTransCSV() {
 function openMemberLifecycleAnalyticsModal() {
   var existing = document.getElementById('modal-member-lifecycle');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-member-lifecycle" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-lifecycle\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-member-lifecycle" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-lifecycle\').remove()">' +
     '<div class="modal" style="width:720px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">👑</div><div><div style="font-size:15px;font-weight:700;">会员生命周期分析</div><div style="font-size:11px;color:var(--text-muted);">分析会员生命周期阶段，识别高价值/流失预警用户</div></div></div>' +

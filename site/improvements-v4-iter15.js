@@ -31,7 +31,7 @@ window.openAddRoomModal = function() {
     // Fallback: open simple room add modal inline
     var existing = document.getElementById('modal-quick-add-room');
     if (existing) existing.remove();
-    var html = '<div class="modal-overlay" id="modal-quick-add-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-add-room\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-quick-add-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-add-room\').remove()">' +
       '<div class="modal" style="width:440px;background:white;border-radius:12px;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
       '<div style="font-size:16px;font-weight:700;">🚪 新增房间</div>' +
@@ -114,7 +114,7 @@ window.openAddRoomTypeModalV2 = function() {
         '<button class="action-btn small" onclick="openEditRoomType(' + i + ')" style="padding:3px 8px;font-size:11px;">✏️ 编辑</button> ' +
         '<button class="action-btn small red" onclick="deleteRoomType(' + i + ')" style="padding:3px 8px;font-size:11px;">删除</button></td></tr>';
     }).join('');
-    var html = '<div class="modal-overlay" id="modal-roomtype-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-roomtype-manage\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-roomtype-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-roomtype-manage\').remove()">' +
       '<div class="modal" style="width:900px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
       '<div style="font-size:16px;font-weight:700;">🏠 房型管理</div>' +
@@ -153,7 +153,7 @@ window.deleteRoomType = function(idx) {
 window.openBatchPriceAdjustModal = function() {
   var existing = document.getElementById('modal-batch-price');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-batch-price" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-price\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-batch-price" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-price\').remove()">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:16px;font-weight:700;">💰 批量调价</div>' +
@@ -200,7 +200,7 @@ window.openAddFloorRoomModal = function() {
     modal.style.display = 'flex';
   } else {
     // Open as inline modal
-    var html = '<div class="modal-overlay" id="modal-add-floor-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-floor-room\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-add-floor-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-floor-room\').remove()">' +
       '<div class="modal" style="width:440px;background:white;border-radius:12px;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
       '<div style="font-size:16px;font-weight:700;">🚪 快速添加房间</div>' +
@@ -310,7 +310,7 @@ window.openAddBuildingForm = function() {
     // Fallback: create inline modal
     var existing = document.getElementById('modal-quick-bldg');
     if (existing) existing.remove();
-    var html = '<div class="modal-overlay" id="modal-quick-bldg" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-bldg\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-quick-bldg" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-bldg\').remove()">' +
       '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
       '<div style="font-size:16px;font-weight:700;">🏢 新增楼栋</div>' +

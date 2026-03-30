@@ -11,7 +11,7 @@
 window.openDeviceImportModal = function() {
   var existing = document.getElementById('modal-device-import');
   if (existing) existing.remove();
-  var html = '<div id="modal-device-import" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-import\').remove()">' +
+  var html = '<div id="modal-device-import" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-import\').remove()">' +
     '<div class="modal" style="width:560px;max-height:90vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:15px;font-weight:700;">📥 批量导入设备</div>' +
@@ -151,7 +151,7 @@ window.openBatchDeviceBindingModal = function() {
   var floorOptions = typeof _floors !== 'undefined' ? _floors.map(function(f) { return '<option value="' + f.id + '">' + f.name + '</option>'; }).join('') : '<option value="f-1">1层</option><option value="f-2">2层</option><option value="f-3">3层</option>';
   var roomOptions = typeof _rooms !== 'undefined' ? _rooms.slice(0, 20).map(function(r) { return '<option value="' + r.id + '">' + r.num + '</option>'; }).join('') : '<option value="r-101">101</option><option value="r-102">102</option>';
   var deviceCount = typeof window._selectedDevices !== 'undefined' ? window._selectedDevices.length : (typeof allDevicesForBatch !== 'undefined' ? allDevicesForBatch.length : 0);
-  var html = '<div id="modal-batch-binding" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-binding\').remove()">' +
+  var html = '<div id="modal-batch-binding" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-binding\').remove()">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">📡</div><div style="font-size:15px;font-weight:700;">批量设备绑定</div></div>' +
@@ -214,7 +214,7 @@ window.openDeviceFirmwareOTAModal = function() {
   var existing = document.getElementById('modal-device-ota');
   if (existing) existing.remove();
   var deviceCount = typeof window._selectedDevices !== 'undefined' ? window._selectedDevices.length : (typeof allDevicesForBatch !== 'undefined' ? allDevicesForBatch.length : 0);
-  var html = '<div id="modal-device-ota" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-ota\').remove()">' +
+  var html = '<div id="modal-device-ota" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-ota\').remove()">' +
     '<div class="modal" style="width:520px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">📦</div><div style="font-size:15px;font-weight:700;">OTA固件升级</div></div>' +
@@ -252,7 +252,7 @@ window.startOTAUpgrade = function() {
   var strategy = document.getElementById('ota-strategy') ? document.getElementById('ota-strategy').value : 'auto';
   var deviceCount = typeof window._selectedDevices !== 'undefined' ? window._selectedDevices.length : 8;
   document.getElementById('modal-device-ota') && document.getElementById('modal-device-ota').remove();
-  var progressModal = '<div id="modal-ota-progress" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+  var progressModal = '<div id="modal-ota-progress" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">🚀</div><div style="font-size:15px;font-weight:700;">OTA升级进度</div></div>' +
@@ -298,7 +298,7 @@ window.startOTAUpgrade = function() {
 window.openBatchFirmwareUpgradeModal = function() {
   var existing = document.getElementById('modal-batch-firmware-wizard');
   if (existing) existing.remove();
-  var html = '<div id="modal-batch-firmware-wizard" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-firmware-wizard\').remove()">' +
+  var html = '<div id="modal-batch-firmware-wizard" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-firmware-wizard\').remove()">' +
     '<div class="modal" style="width:580px;background:white;border-radius:12px;">' +
     '<div style="padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="font-size:15px;font-weight:700;">🚀 批量固件升级向导</div>' +
@@ -432,7 +432,7 @@ window.openACControlModal = function() {
   var existing = document.getElementById('modal-ac-control');
   if (existing) existing.remove();
   var deviceCount = typeof window._selectedDevices !== 'undefined' ? window._selectedDevices.length : (typeof allDevicesForBatch !== 'undefined' ? allDevicesForBatch.length : 0);
-  var html = '<div id="modal-ac-control" class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-ac-control\').remove()">' +
+  var html = '<div id="modal-ac-control" class="modal-overlay hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-ac-control\').remove()">' +
     '<div class="modal" style="width:500px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:20px;">❄️</div><div style="font-size:15px;font-weight:700;">空调批量控制</div></div>' +

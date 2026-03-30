@@ -116,7 +116,7 @@ function openRoomPollutionReportModal(roomNum) {
       '<td style="padding:10px 8px;"><span style="padding:2px 8px;background:' + statusColors[r.status].replace('var(--', 'var(--').replace(')', '-bg)') + ';color:' + statusColors[r.status] + ';border-radius:10px;font-size:11px;font-weight:600;">' + r.status + '</span></td>' +
       '<td style="padding:10px 8px;font-size:11px;">' + r.handler + '</td></tr>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-pollution-report" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-pollution-report\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-pollution-report" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-pollution-report\').remove()">' +
     '<div style="background:white;border-radius:12px;width:680px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
       '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
         '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">🏠</div><div><div style="font-size:15px;font-weight:700;">房间 ' + roomNum + ' 污染报告</div><div style="font-size:11px;color:var(--text-muted);">历史污染/损坏记录一览</div></div></div>' +
@@ -151,7 +151,7 @@ function printPollutionReport() {
 function openEnergyDetailPageEnhanced() {
   var existing = document.getElementById('modal-energy-detail');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-energy-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-energy-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-detail\').remove()">' +
     '<div style="background:white;border-radius:12px;width:760px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
       '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
         '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">⚡</div><div><div style="font-size:15px;font-weight:700;">能耗详情分析</div><div style="font-size:11px;color:var(--text-muted);">AI智能节能建议 · 实时数据</div></div></div>' +

@@ -26,7 +26,7 @@ function openEnergyThresholdModal() {
       '<input id="et-' + f.id + '" type="number" value="' + val + '" style="width:80px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center;" placeholder="kWh"/>' +
       '<span style="font-size:11px;color:var(--text-muted);">kWh/日</span></div></div>';
   }).join('');
-  var html = '<div class="modal-overlay" id="modal-energy-threshold" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-threshold\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-energy-threshold" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-threshold\').remove()">' +
     '<div class="modal" style="width:380px;">' +
     '<div class="modal-header"><div class="modal-title">⚡ 用电阈值配置</div><button class="modal-close" onclick="document.getElementById(\'modal-energy-threshold\').remove()">✕</button></div>' +
     '<div class="modal-body" style="padding:16px 20px;">' +
@@ -79,7 +79,7 @@ function openAddDailyReportModal() {
   var existing = document.getElementById('modal-add-daily-report');
   if (existing) existing.remove();
   var today = new Date().toISOString().slice(0, 10);
-  var html = '<div class="modal-overlay" id="modal-add-daily-report" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-daily-report\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-add-daily-report" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-daily-report\').remove()">' +
     '<div class="modal" style="width:420px;">' +
     '<div class="modal-header"><div class="modal-title">📝 新增日报</div><button class="modal-close" onclick="document.getElementById(\'modal-add-daily-report\').remove()">✕</button></div>' +
     '<div class="modal-body">' +
@@ -141,7 +141,7 @@ function openDeviceNicknameModal(uuid) {
   var nickname = _deviceNicknames[uuid] || '';
   var device = deviceList ? deviceList.find(function(d){ return d.uuid === uuid; }) : null;
   var deviceLabel = device ? (device.room ? device.room + ' · ' : '') + device.uuid.slice(0,8) : uuid.slice(0,8);
-  var html = '<div class="modal-overlay" id="modal-device-nickname" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-nickname\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-device-nickname" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-nickname\').remove()">' +
     '<div class="modal" style="width:360px;">' +
     '<div class="modal-header"><div class="modal-title">🏷️ 设备备注</div><button class="modal-close" onclick="document.getElementById(\'modal-device-nickname\').remove()">✕</button></div>' +
     '<div class="modal-body">' +
@@ -248,7 +248,7 @@ var _memberBalanceThreshold = 100; // default
 function openMemberBalanceThresholdModal() {
   var existing = document.getElementById('modal-member-balance-threshold');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-member-balance-threshold" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-balance-threshold\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-member-balance-threshold" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-balance-threshold\').remove()">' +
     '<div class="modal" style="width:340px;">' +
     '<div class="modal-header"><div class="modal-title">💰 余额告警阈值</div><button class="modal-close" onclick="document.getElementById(\'modal-member-balance-threshold\').remove()">✕</button></div>' +
     '<div class="modal-body">' +

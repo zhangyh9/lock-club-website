@@ -109,7 +109,7 @@ window.deleteKey = function(keyIdx) {
   var existing = document.getElementById('modal-key-delete-confirm');
   if (existing) existing.remove();
   
-  var html = '<div class="modal-overlay" id="modal-key-delete-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-key-delete-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
     '<div style="background:var(--card);border-radius:12px;width:90%;max-width:400px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">⚠️</div><div style="font-size:15px;font-weight:700;">确认删除钥匙</div></div>' +
@@ -182,7 +182,7 @@ window.kpBatchInvalidate = function() {
   }
   var existing = document.getElementById('modal-kp-batch-invalid');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-kp-batch-invalid" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-kp-batch-invalid" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
     '<div style="background:var(--card);border-radius:12px;width:90%;max-width:420px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">❌</div><div style="font-size:15px;font-weight:700;">批量作废密码</div></div>' +
@@ -221,7 +221,7 @@ window.kpBatchDelete = function() {
   }
   var existing = document.getElementById('modal-kp-batch-delete');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-kp-batch-delete" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-kp-batch-delete" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)this.remove()">' +
     '<div style="background:var(--card);border-radius:12px;width:90%;max-width:420px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🗑️</div><div style="font-size:15px;font-weight:700;">批量删除密码</div></div>' +

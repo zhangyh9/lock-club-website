@@ -99,7 +99,7 @@ window.showUnlockDetail = function(method, time, person, result) {
   var statusColor = result === '成功' ? 'var(--green)' : 'var(--red)';
   var statusBg = result === '成功' ? 'var(--green-bg)' : 'var(--red-bg)';
   
-  var html = '<div class="modal-overlay" id="modal-unlock-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-unlock-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-unlock-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-unlock-detail\').remove()">' +
     '<div class="modal" style="width:420px;max-height:80vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">' + methodIcon + '</div><div style="font-size:15px;font-weight:700;">开锁详情</div>' +
@@ -142,7 +142,7 @@ window.openStaffDetailModal = function(idx) {
   var statusBg = staff.status === '在职' ? 'var(--green-bg)' : 'var(--red-bg)';
   var statusColor = staff.status === '在职' ? 'var(--green)' : 'var(--red)';
   
-  var html = '<div class="modal-overlay" id="modal-staff-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-staff-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-staff-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-staff-detail\').remove()">' +
     '<div class="modal" style="width:500px;max-height:80vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="width:44px;height:44px;background:var(--blue-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;">👤</div>' +

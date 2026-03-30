@@ -68,7 +68,7 @@ window.showLogDetailModal = function(type, idx) {
   var typeName = {phone:'手机开锁', card:'门卡开锁', master:'通卡开锁', password:'密码开锁', finger:'指纹开锁'}[type] || '开锁';
   var cardtypeName = {member:'会员', staff:'员工', master:'通卡', guest:'访客'}[cardtype] || '未知';
 
-  var html = '<div class="modal-overlay" id="modal-log-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-log-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-log-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-log-detail\').remove()">' +
     '<div class="modal" style="width:440px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">' + typeIcon + '</div><div><div style="font-size:15px;font-weight:700;">开门记录详情</div><div style="font-size:11px;color:var(--text-muted);">' + date + ' ' + time + '</div></div></div>' +
@@ -125,7 +125,7 @@ window.openMemberLevelBenefitModal = function(level) {
       '<div style="font-size:11px;color:var(--text-muted);">优先级: ' + l.priority + '</div></div>';
   }).join('');
 
-  var html = '<div class="modal-overlay" id="modal-member-benefit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-benefit\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-member-benefit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-benefit\').remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">' + current.icon + '</div><div><div style="font-size:15px;font-weight:700;">会员权益体系</div><div style="font-size:11px;color:var(--text-muted);">当前选中：' + current.name + '</div></div></div>' +

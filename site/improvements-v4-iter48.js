@@ -26,7 +26,7 @@
         '<td style="padding:10px 8px;text-align:center;"><span style="color:var(--purple);font-weight:600;">+' + h.points + '</span></td>' +
         '<td style="padding:10px 8px;font-size:11px;color:var(--text-muted);">' + h.staff + '</td></tr>';
     }).join('');
-    var html = '<div class="modal-overlay" id="modal-member-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-history\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-member-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-history\').remove()">' +
       '<div class="modal" style="width:640px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
       '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📋</div><div><div style="font-size:15px;font-weight:700;">会员入住历史查询</div><div style="font-size:11px;color:var(--text-muted);">累计消费 · 积分变动 · 入住偏好</div></div></div>' +
@@ -69,7 +69,7 @@
         '<td style="padding:10px 8px;"><span style="color:' + resultColor + ';font-weight:600;">' + l.result + '</span>' + (l.reason ? '<div style="font-size:10px;color:var(--red);">' + l.reason + '</div>' : '') + '</td>' +
         '<td style="padding:10px 8px;font-size:12px;color:var(--text-muted);">' + l.duration + '</td></tr>';
     }).join('');
-    var html = '<div class="modal-overlay" id="modal-door-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-door-history\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-door-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-door-history\').remove()">' +
       '<div class="modal" style="width:600px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
       '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🔐</div><div><div style="font-size:15px;font-weight:700;">开锁记录 - ' + (room || '未知') + '</div><div style="font-size:11px;color:var(--text-muted);">最近7天 · 开锁方式 · 开门结果</div></div></div>' +
@@ -111,7 +111,7 @@
         '<td style="padding:10px 8px;text-align:center;"><span style="font-weight:600;color:var(--blue);">' + r.workHours + 'h</span></td>' +
         '<td style="padding:10px 8px;text-align:center;"><span style="color:' + statusColor + ';font-weight:600;">' + r.status + '</span>' + (r.late > 0 ? '<div style="font-size:10px;color:var(--orange);">迟到' + r.late + 'min</div>' : '') + '</td></tr>';
     }).join('');
-    var html = '<div class="modal-overlay" id="modal-attendance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-attendance\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-attendance" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-attendance\').remove()">' +
       '<div class="modal" style="width:540px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
       '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📅</div><div><div style="font-size:15px;font-weight:700;">考勤记录 - ' + (staffName || '员工') + '</div><div style="font-size:11px;color:var(--text-muted);">近30天 · 出勤统计 · 迟到统计</div></div></div>' +
@@ -151,7 +151,7 @@
         '<span style="font-size:11px;font-weight:600;color:' + barColor + ';">' + r.pct + '%</span></div>' +
         '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">当前累计：' + r.current + ' · 距离升级还需 ¥' + (parseInt(r.threshold.match(/¥(\d+)/)[1]) - 384) + '</div></div>';
     }).join('');
-    var html = '<div class="modal-overlay" id="modal-member-upgrade" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-upgrade\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-member-upgrade" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-upgrade\').remove()">' +
       '<div class="modal" style="width:520px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
       '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">⬆️</div><div><div style="font-size:15px;font-weight:700;">会员升级规则配置</div><div style="font-size:11px;color:var(--text-muted);">等级权益 · 升级条件 · 进度追踪</div></div></div>' +
@@ -187,7 +187,7 @@
         '<td style="padding:10px 8px;"><span style="font-size:11px;padding:2px 8px;background:var(--blue-bg);color:var(--blue);border-radius:10px;">' + d.latest + '</span></td>' +
         '<td style="padding:10px 8px;"><span style="color:' + sc + ';font-weight:600;font-size:12px;">' + d.status + '</span></td></tr>';
     }).join('');
-    var html = '<div class="modal-overlay" id="modal-firmware-check" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-check\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-firmware-check" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-check\').remove()">' +
       '<div class="modal" style="width:620px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
       '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🔍</div><div><div style="font-size:15px;font-weight:700;">批量固件版本检测</div><div style="font-size:11px;color:var(--text-muted);">设备型号 · 当前版本 · 最新版本</div></div></div>' +

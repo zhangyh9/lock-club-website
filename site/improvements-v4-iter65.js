@@ -145,7 +145,7 @@ window.showDoorLogDetail = function(roomNum) {
     '</div>';
   }).join('');
 
-  var html = '<div class="modal-overlay" id="modal-door-log-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-door-log-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-door-log-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-door-log-detail\').remove()">' +
     '<div class="modal" style="width:480px;max-height:80vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🚪</div><div><div style="font-size:15px;font-weight:700;">房间 ' + roomNum + ' 开锁记录</div><div style="font-size:11px;color:var(--text-muted);">共 ' + logs.length + ' 条记录</div></div></div>' +
@@ -198,7 +198,7 @@ window.openFirmwareVersionTrackerModal = function() {
     '</tr>';
   }).join('');
 
-  var html = '<div class="modal-overlay" id="modal-firmware-tracker" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-tracker\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-firmware-tracker" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-firmware-tracker\').remove()">' +
     '<div class="modal" style="width:720px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:24px;">📡</div><div><div style="font-size:15px;font-weight:700;">固件版本跟踪器</div><div style="font-size:11px;color:var(--text-muted);">追踪所有设备固件版本升级历史</div></div></div>' +
@@ -249,7 +249,7 @@ window.openDeviceGroupManageModal = function() {
     '</div>';
   }).join('');
 
-  var html = '<div class="modal-overlay" id="modal-device-group-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-group-manage\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-device-group-manage" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-device-group-manage\').remove()">' +
     '<div class="modal" style="width:520px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:24px;">⚙️</div><div><div style="font-size:15px;font-weight:700;">设备分组管理</div><div style="font-size:11px;color:var(--text-muted);">管理设备分组，分配设备归属</div></div></div>' +

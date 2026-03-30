@@ -34,7 +34,7 @@
         '<td style="padding:10px 12px;font-size:11px;color:var(--green);">→ ' + l.after + '</td>' +
         '<td style="padding:10px 12px;font-size:11px;color:var(--purple);">' + l.module + '</td></tr>';
     }).join('');
-    var html = '<div class="modal-overlay" id="modal-role-audit-log" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-role-audit-log\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-role-audit-log" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-role-audit-log\').remove()">' +
       '<div class="modal" style="width:780px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">' +
       '<div style="font-size:24px;">📜</div><div><div style="font-size:15px;font-weight:700;">权限变更日志</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">记录所有角色权限的修改操作</div></div>' +
@@ -78,7 +78,7 @@
         '<td style="padding:10px 12px;font-size:12px;color:var(--text-muted);">' + (r.status === 'on' ? r.power + ' kW' : '-') + '</td>' +
         '<td style="padding:10px 12px;"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;"><input type="checkbox" id="bec-' + i + '" ' + checked + ' style="accent-color:var(--blue);transform:scale(1.2);"> 选择</label></td></tr>';
     }).join('');
-    var html = '<div class="modal-overlay" id="modal-batch-energy" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-energy\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-batch-energy" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-energy\').remove()">' +
       '<div class="modal" style="width:560px;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
       '<div style="font-size:24px;">⚡</div><div><div style="font-size:15px;font-weight:700;">批量通断电控制</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">批量控制房间电源，支持定时任务</div></div>' +
@@ -142,7 +142,7 @@
     var room = room || '301';
     var power = power || 8.6;
     var reason = reason || '空调持续运行，耗电异常偏高';
-    var html = '<div class="modal-overlay" id="modal-energy-anomaly" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-anomaly\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-energy-anomaly" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-anomaly\').remove()">' +
       '<div class="modal" style="width:480px;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
       '<div style="font-size:24px;">⚠️</div><div><div style="font-size:15px;font-weight:700;">能耗异常调控 - ' + room + '房间</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">检测到异常高耗能设备，自动生成调控策略</div></div>' +
@@ -207,7 +207,7 @@
         '<td style="padding:10px 12px;color:var(--orange);font-weight:600;">¥' + f.cost + '</td>' +
         '<td style="padding:10px 12px;font-size:12px;color:' + trendColor + ';">' + trendIcon + ' ' + f.trendText + '</td></tr>';
     }).join('');
-    var html = '<div class="modal-overlay" id="modal-energy-forecast" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-forecast\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-energy-forecast" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-forecast\').remove()">' +
       '<div class="modal" style="width:600px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">' +
       '<div style="font-size:24px;">📈</div><div><div style="font-size:15px;font-weight:700;">能耗预测分析</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">基于历史数据和天气趋势的7天能耗预测</div></div>' +
@@ -263,7 +263,7 @@
         '<div style="width:' + e.percent + '%;height:100%;background:' + e.color + ';border-radius:3px;"></div></div>' +
         '<div style="font-size:11px;color:var(--text-muted);width:30px;text-align:right;">' + e.percent + '%</div></div>';
     }).join('');
-    var html = '<div class="modal-overlay" id="modal-energy-analysis" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-analysis\').remove()">' +
+    var html = '<div class="modal-overlay hidden" id="modal-energy-analysis" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-analysis\').remove()">' +
       '<div class="modal" style="width:580px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">' +
       '<div style="font-size:24px;">📊</div><div><div style="font-size:15px;font-weight:700;">能耗详细数据分析</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + room + ' · 今日实时数据</div></div>' +

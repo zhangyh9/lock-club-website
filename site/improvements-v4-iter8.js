@@ -82,7 +82,7 @@ window.doQuickUnlock = function() {
   }
   var existing = document.getElementById('modal-quick-unlock');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-quick-unlock" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-unlock\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-quick-unlock" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-unlock\').remove()">' +
     '<div class="modal" style="width:380px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
     '<div style="width:48px;height:48px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">🔓</div>' +
@@ -126,7 +126,7 @@ window.doQuickTempPwd = function() {
   var pwd = String(100000 + Math.floor(Math.random() * 900000));
   window._lastGeneratedPwd = pwd;
   window._lastGeneratedRoom = roomNum;
-  var html = '<div class="modal-overlay" id="modal-quick-pwd" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-pwd\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-quick-pwd" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-pwd\').remove()">' +
     '<div class="modal" style="width:400px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
     '<div style="width:48px;height:48px;background:var(--orange-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">🔢</div>' +
@@ -187,7 +187,7 @@ window.doQuickCheckin = function() {
   }
   var existing = document.getElementById('modal-quick-checkin');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-quick-checkin" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-checkin\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-quick-checkin" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-quick-checkin\').remove()">' +
     '<div class="modal" style="width:420px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
     '<div style="width:48px;height:48px;background:var(--blue-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">🏨</div>' +

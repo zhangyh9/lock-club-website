@@ -12,7 +12,7 @@
 window.openBuildingAddModal = function() {
   var existing = document.getElementById('modal-building-add');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-building-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-building-add\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-building-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-building-add\').remove()">' +
     '<div class="modal" style="width:480px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🏢</div><div><div style="font-size:15px;font-weight:700;">新增楼栋</div><div style="font-size:11px;color:var(--text-muted);">添加新楼栋信息</div></div>' +
@@ -66,7 +66,7 @@ window.openFloorAddModal = function(buildingId) {
     var maxFloor = Math.max.apply(null, floorData.filter(function(f){ return f.building === defaultBld; }).map(function(f){ return parseInt(f.floor) || 0; }));
     nextFloor = maxFloor + 1;
   }
-  var html = '<div class="modal-overlay" id="modal-floor-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-add\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-floor-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-add\').remove()">' +
     '<div class="modal" style="width:440px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">🏗️</div><div><div style="font-size:15px;font-weight:700;">新增楼层</div><div style="font-size:11px;color:var(--text-muted);">添加新楼层信息</div></div>' +
@@ -115,7 +115,7 @@ window.openFloorEditModal = function(floorNum, buildingId) {
   var bldOptions = '';
   var bldMap = {main:'主楼', east:'东配楼', vip:'贵宾楼'};
   Object.keys(bldMap).forEach(function(k){ bldOptions += '<option value="' + k + '">' + bldMap[k] + '</option>'; });
-  var html = '<div class="modal-overlay" id="modal-floor-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-edit\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-floor-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-floor-edit\').remove()">' +
     '<div class="modal" style="width:440px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">✏️</div><div><div style="font-size:15px;font-weight:700;">编辑楼层</div><div style="font-size:11px;color:var(--text-muted);">修改楼层信息</div></div>' +
@@ -167,7 +167,7 @@ window.openDeviceRegisterModal = function() {
     var rooms = ['301','302','303','304','305','306','307','308','401','402','403','404','405','406'];
     rooms.forEach(function(r){ roomOptions += '<option value="' + r + '">' + r + '室</option>'; });
   }
-  var html = '<div class="modal-overlay" id="modal-device-register" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-device-register\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-device-register" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-device-register\').remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">📱</div><div><div style="font-size:15px;font-weight:700;">新增设备</div><div style="font-size:11px;color:var(--text-muted);">录入新硬件设备信息</div></div>' +
@@ -274,7 +274,7 @@ window.openHkTaskComplete = function(taskId) {
   if (!task) { showToast('任务不存在', 'error'); return; }
   var existing = document.getElementById('modal-hk-complete');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-hk-complete" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-hk-complete\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-hk-complete" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-hk-complete\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">✅</div><div><div style="font-size:15px;font-weight:700;">确认完成任务</div><div style="font-size:11px;color:var(--text-muted);">房间：' + task.room + '</div></div>' +
@@ -310,7 +310,7 @@ window.openHkTaskDetail = function(taskId) {
   var existing = document.getElementById('modal-hk-detail');
   if (existing) existing.remove();
   var typeLabels = {clean:'🧹 清洁', repair:'🔧 维修', inspect:'🔍 检查'};
-  var html = '<div class="modal-overlay" id="modal-hk-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-hk-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-hk-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-hk-detail\').remove()">' +
     '<div class="modal" style="width:400px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
     '<div style="font-size:28px;">📋</div><div><div style="font-size:15px;font-weight:700;">任务详情</div><div style="font-size:11px;color:var(--text-muted);">ID：' + task.id + '</div></div>' +

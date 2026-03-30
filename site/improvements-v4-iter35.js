@@ -57,7 +57,7 @@ window.showRemoteOpLogDetail = function(idx) {
   var resultColor = log.result === '成功' ? 'var(--green)' : 'var(--red)';
   var existing = document.getElementById('modal-remote-op-detail');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-remote-op-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-remote-op-detail\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-remote-op-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-remote-op-detail\').remove()">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">📋</div><div><div style="font-size:15px;font-weight:700;">操作详情</div><div style="font-size:11px;color:var(--text-muted);">' + log.type + '</div></div></div>' +

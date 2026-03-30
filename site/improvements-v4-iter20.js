@@ -8,7 +8,7 @@
 window.openBatchDeviceDiagnosticModal = function() {
   var existing = document.getElementById('modal-batch-diag');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-batch-diag" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-diag\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-batch-diag" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-diag\').remove()">' +
     '<div class="modal" style="width:560px;max-height:85vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🌐</div><div style="font-size:15px;font-weight:700;">多设备同时Ping诊断</div></div>' +
@@ -117,7 +117,7 @@ window.openBatchBatteryCheck = function() {
   var lowBatt = devs.filter(function(d){ return d.battery < 30; });
   var midBatt = devs.filter(function(d){ return d.battery >= 30 && d.battery < 60; });
   var goodBatt = devs.filter(function(d){ return d.battery >= 60; });
-  var html = '<div class="modal-overlay" id="modal-batch-battery" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-battery\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-batch-battery" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-batch-battery\').remove()">' +
     '<div class="modal" style="width:520px;max-height:80vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🔋</div><div style="font-size:15px;font-weight:700;">低电量批量检测</div></div>' +
@@ -157,7 +157,7 @@ window.openMaintenancePlanModal = function() {
     {room:'203',type:'空调',status:'pending',next:'2026-04-01',interval:'180天'},
     {room:'205',type:'门锁',status:'overdue',next:'2026-03-20',interval:'90天'}
   ];
-  var html = '<div class="modal-overlay" id="modal-maintenance-plan" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-maintenance-plan\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-maintenance-plan" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-maintenance-plan\').remove()">' +
     '<div class="modal" style="width:600px;max-height:80vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🔧</div><div style="font-size:15px;font-weight:700;">设备维护计划</div></div>' +
@@ -189,7 +189,7 @@ window.openMaintenancePlanModal = function() {
 window.openAutoMaintenanceGenerator = function() {
   var existing = document.getElementById('modal-auto-maint');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-auto-maint" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-auto-maint\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-auto-maint" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-auto-maint\').remove()">' +
     '<div class="modal" style="width:500px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🤖</div><div style="font-size:15px;font-weight:700;">AI智能维护计划生成</div></div>' +
@@ -240,7 +240,7 @@ window.openAddFloorForm = function() {
     var maxFloor = Math.max.apply(null, floorData.filter(function(f){return f.building === building;}).map(function(f){return parseInt(f.floor) || 0;}));
     nextFloor = maxFloor + 1;
   }
-  var html = '<div class="modal-overlay" id="modal-add-floor" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-floor\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-add-floor" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-floor\').remove()">' +
     '<div class="modal" style="width:420px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🏢</div><div style="font-size:15px;font-weight:700;">新增楼层</div></div>' +
@@ -286,7 +286,7 @@ window.openAddRoomForm = function() {
     var maxRoom = Math.max.apply(null, floorData.filter(function(f){return f.building === building;}).map(function(f){return parseInt(f.rooms && f.rooms.length > 0 ? f.rooms[f.rooms.length-1] : 0);}));
     if (maxRoom > 0) nextRoomNum = maxRoom + 1;
   }
-  var html = '<div class="modal-overlay" id="modal-add-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-room\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-add-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-room\').remove()">' +
     '<div class="modal" style="width:480px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">🚪</div><div style="font-size:15px;font-weight:700;">快速添加房间</div></div>' +
@@ -329,7 +329,7 @@ window.submitAddRoom = function() {
 window.openAddEmployeeFullModal = function() {
   var existing = document.getElementById('modal-add-employee');
   if (existing) existing.remove();
-  var html = '<div class="modal-overlay" id="modal-add-employee" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-employee\').remove()">' +
+  var html = '<div class="modal-overlay hidden" id="modal-add-employee" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-add-employee\').remove()">' +
     '<div class="modal" style="width:520px;max-height:85vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
     '<div style="display:flex;align-items:center;gap:10px;"><div style="font-size:28px;">👨💼</div><div style="font-size:15px;font-weight:700;">新增员工</div></div>' +

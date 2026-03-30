@@ -203,7 +203,7 @@
   window.openFloorBatchModal = function() {
     var existing = document.getElementById('modal-floor-batch');
     if (existing) existing.remove();
-    var html = '<div class="modal-overlay" id="modal-floor-batch" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
+    var html = '<div class="modal-overlay hidden" id="modal-floor-batch" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
       '<div class="modal" style="width:480px;background:white;border-radius:12px;">' +
       '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
       '<div style="font-size:28px;">📋</div><div style="font-size:15px;font-weight:700;">楼层批量操作</div>' +
