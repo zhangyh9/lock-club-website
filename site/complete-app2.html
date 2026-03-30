@@ -269,6 +269,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .key-count { padding: 2px 6px; background: var(--blue-bg); color: var(--blue); border-radius: 4px; font-weight: 600; font-size: 11px; }
 .key-count.alert { background: var(--red-bg); color: var(--red); }
 
+/* 【P36修复】inline style清理 - 通用flex工具类 */
+.flex { display: flex; }
+.flex-center { display: flex; align-items: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-col { display: flex; flex-direction: column; }
+.gap-4 { gap: 4px; }
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+
 /* Table */
 .table { width: 100%; border-collapse: collapse; }
 .table th { text-align: left; padding: 10px 14px; background: var(--bg); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--text-light); }
@@ -572,6 +582,8 @@ function showPage(pageName) {
   if (pageName === 'oplog') { setTimeout(function(){ enhanceOplogSearchUI && enhanceOplogSearchUI(); }, 500); }
   if (pageName === 'config') { setTimeout(function(){ enhanceOplogSearchUI && enhanceOplogSearchUI(); }, 500); }
   window.scrollTo(0, 0);
+  // 【P13修复】统一事件监听器清理hook
+  if (typeof window._showPageHook === 'function') window._showPageHook(pageName);
 }
 
 // ======= 首页统计卡片下钻功能 =======
@@ -619,19 +631,14 @@ function closeAllModals() {
 }
 function openModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
 function closeModal(id) { var el = document.getElementById(id); if (el) el.classList.add('hidden'); }
-// 【P12修复】全局ESC键关闭弹窗（带清理避免内存泄漏）
+// 【P13修复】全局ESC键关闭弹窗（全局keydown监听器，无独立showPage覆盖，安全）
 if (window._escKeyHandler) { document.removeEventListener('keydown', window._escKeyHandler); }
 window._escKeyHandler = function(e){ if(e.key==='Escape'){closeAllModals();closeGlobalSearch();} };
 document.addEventListener('keydown', window._escKeyHandler);
 // cycleHomeTab is defined in improvements-v4-iter8.js as window function
 
-// ============================================================
-// 【物联后台 v3.6 改进 2】员工排班独立页面（openStaffSchedulePage）
-// 员工排班独立页面 - 侧边栏导航入口
-// 功能：独立排班管理页面，支持排班表查看、班次模板、请假管理、排班导出。
-// ============================================================
-function openStaffSchedulePage() {
-}
+// 【P18优化】员工排班功能已删除（PMS后台员工管理非物联核心）
+function openStaffSchedulePage() { showToast('员工排班功能已转移至PMS系统', 'info'); }
 
 // ============================================================
 // 【物联后台 v3.6 改进 3】设备列表导出功能（exportDeviceList）
@@ -2176,85 +2183,7 @@ function clearLogUuidFilter() {
 </div>
 </div>
 </div>
-<!-- 【改进3】房间记录编辑/新增弹窗 -->
-<div class="modal-overlay hidden" id="modal-room-record-form">
-<div class="modal" style="width:480px;">
-<div class="modal-header">
-<div class="modal-title" id="rrf-title">✏️ 编辑记录</div>
-<button class="modal-close" onclick="closeModal('room-record-form')">✕</button>
-</div>
-<div class="modal-body">
-<div class="form-group">
-<label class="form-label">记录类型 <span class="required">*</span></label>
-<select class="form-select" id="rrf-type" onchange="toggleRrfChangeFields()">
-<option value="in">🏨 入住</option>
-<option value="out">🚪 退房</option>
-<option value="change">🔄 换房</option>
-</select>
-</div>
-<div class="form-group">
-<label class="form-label">客人姓名 <span class="required">*</span></label>
-<input class="form-input" id="rrf-name" placeholder="输入客人姓名" type="text"/>
-</div>
-<div class="form-group">
-<label class="form-label">手机号</label>
-<input class="form-input" id="rrf-phone" placeholder="输入手机号" type="text"/>
-</div>
-<div class="form-group">
-<label class="form-label">入住方式</label>
-<select class="form-select" id="rrf-method">
-<option value="phone">📱 手机开锁</option>
-<option value="card">💳 门卡</option>
-<option value="pwd">🔢 密码</option>
-<option value="remote">🔓 远程开锁</option>
-</select>
-</div>
-<div class="form-group">
-<label class="form-label">备注</label>
-<textarea class="form-textarea" id="rrf-note" placeholder="可选备注信息" style="min-height:60px;"></textarea>
-</div>
-<div id="rrf-change-fields" style="display:none;">
-<div class="form-group">
-<label class="form-label">从哪里换房</label>
-<input class="form-input" id="rrf-from-room" placeholder="如：203" type="text"/>
-</div>
-<div class="form-group">
-<label class="form-label">换到哪个房间</label>
-<input class="form-input" id="rrf-to-room" placeholder="如：205" type="text"/>
-</div>
-<div class="form-group">
-<label class="form-label">换房原因</label>
-<input class="form-input" id="rrf-change-reason" placeholder="换房原因" type="text"/>
-</div>
-</div>
-</div>
-<div class="modal-footer">
-<button class="modal-btn secondary" onclick="closeModal('room-record-form')">取消</button>
-<button class="modal-btn primary" id="rrf-submit-btn" onclick="submitRoomRecord()">保存</button>
-</div>
-</div>
-</div>
-<!-- 【改进3】房间记录删除确认弹窗 -->
-<div class="modal-overlay hidden" id="modal-rr-delete-confirm">
-<div class="modal" style="width:400px;">
-<div class="modal-header">
-<div class="modal-title">⚠️ 删除确认</div>
-<button class="modal-close" onclick="closeModal('rr-delete-confirm')">✕</button>
-</div>
-<div class="modal-body modal-body-center" style="text-align:center;padding:24px;">
-<div style="font-size:48px;margin-bottom:12px;">🗑️</div>
-<div style="font-size:15px;font-weight:700;margin-bottom:8px;">确定要删除这条记录吗？</div>
-<div id="rr-del-detail" style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">删除后将无法恢复</div>
-<div style="display:flex;gap:10px;justify-content:center;">
-<button class="action-btn" onclick="closeModal('rr-delete-confirm')" style="padding:8px 20px;">取消</button>
-<button class="action-btn red" id="rr-del-confirm-btn" onclick="confirmDeleteRoomRecord()" style="padding:8px 20px;background:var(--red);color:white;border-color:var(--red);">🗑️ 确认删除</button>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- 【改进3】房间详情页：历史记录Tab（入住/开锁/退房时间线） -->
-<div id="rd-content-history" style="display:none;">
+<!-- 【P05优化】房间记录CRUD弹窗已删除（PMS入住/退房/换房记录功能非物联核心） -->
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
 <div style="font-size:13px;color:var(--text-muted);">📜 房间历史行为时间线（全部操作记录）</div>
 <div id="rd-history-summary" style="font-size:11px;color:var(--text-muted);"></div>
@@ -11553,26 +11482,22 @@ function deleteNotif(id) {
   showToast('🗑️ 通知已删除', 'success');
 }
 
-// 绑定通知中心事件（带清理避免内存泄漏 P12修复）
+// 【P13修复】通知中心事件监听器（统一由主showPageHook管理，无需独立showPage重写）
 var _notifTypeHandler = null, _notifStatusHandler = null;
-document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(function() {
-    renderNotifList();
-    var notifTypeFilter = document.getElementById('notif-type-filter');
-    if (notifTypeFilter) { _notifTypeHandler = applyNotifFilter; notifTypeFilter.addEventListener('change', applyNotifFilter); }
-    var notifStatusFilter = document.getElementById('notif-status-filter');
-    if (notifStatusFilter) { _notifStatusHandler = applyNotifFilter; notifStatusFilter.addEventListener('change', applyNotifFilter); }
-    // P12内存泄漏修复：页面切换时清理监听器
-    var oldShowPage = showPage;
-    showPage = function(pageName) {
-      oldShowPage(pageName);
-      if (pageName !== 'notif') {
-        if (_notifTypeHandler && notifTypeFilter) notifTypeFilter.removeEventListener('change', _notifTypeHandler);
-        if (_notifStatusHandler && notifStatusFilter) notifStatusFilter.removeEventListener('change', _notifStatusHandler);
-      }
-    };
-  }, 300);
-});
+function bindNotifCenterEvents() {
+  renderNotifList();
+  var notifTypeFilter = document.getElementById('notif-type-filter');
+  if (notifTypeFilter) { _notifTypeHandler = applyNotifFilter; notifTypeFilter.addEventListener('change', applyNotifFilter); }
+  var notifStatusFilter = document.getElementById('notif-status-filter');
+  if (notifStatusFilter) { _notifStatusHandler = applyNotifFilter; notifStatusFilter.addEventListener('change', applyNotifFilter); }
+}
+function cleanupNotifCenterEvents() {
+  var notifTypeFilter = document.getElementById('notif-type-filter');
+  var notifStatusFilter = document.getElementById('notif-status-filter');
+  if (_notifTypeHandler && notifTypeFilter) notifTypeFilter.removeEventListener('change', _notifTypeHandler);
+  if (_notifStatusHandler && notifStatusFilter) notifStatusFilter.removeEventListener('change', _notifStatusHandler);
+  _notifTypeHandler = null; _notifStatusHandler = null;
+}
 
 // 【v4改进3】办理记录完整CRUD功能
 var _recordList = [
@@ -11687,29 +11612,26 @@ function goRecordsPage(dir) {
   renderRecordTable();
 }
 
-// 【P12修复】绑定办理记录事件（带清理避免内存泄漏）
+// 【P13修复】办理记录事件监听器（统一由主showPageHook管理）
 var _recFilterHandlers = { search: null, type: null, status: null };
-document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(function() {
-    renderRecordTable();
-    var recSearch = document.getElementById('record-search-input');
-    var recTypeFilter = document.getElementById('record-type-filter');
-    var recStatusFilter = document.getElementById('record-status-filter');
-    if (recSearch) { _recFilterHandlers.search = applyRecordFilter; recSearch.addEventListener('input', applyRecordFilter); }
-    if (recTypeFilter) { _recFilterHandlers.type = applyRecordFilter; recTypeFilter.addEventListener('change', applyRecordFilter); }
-    if (recStatusFilter) { _recFilterHandlers.status = applyRecordFilter; recStatusFilter.addEventListener('change', applyRecordFilter); }
-    // P12内存泄漏修复：页面切换时清理监听器
-    var oldShowPage = showPage;
-    showPage = function(pageName) {
-      oldShowPage(pageName);
-      if (pageName !== 'records') {
-        if (_recFilterHandlers.search && recSearch) recSearch.removeEventListener('input', _recFilterHandlers.search);
-        if (_recFilterHandlers.type && recTypeFilter) recTypeFilter.removeEventListener('change', _recFilterHandlers.type);
-        if (_recFilterHandlers.status && recStatusFilter) recStatusFilter.removeEventListener('change', _recFilterHandlers.status);
-      }
-    };
-  }, 400);
-});
+function bindRecordEvents() {
+  renderRecordTable();
+  var recSearch = document.getElementById('record-search-input');
+  var recTypeFilter = document.getElementById('record-type-filter');
+  var recStatusFilter = document.getElementById('record-status-filter');
+  if (recSearch) { _recFilterHandlers.search = applyRecordFilter; recSearch.addEventListener('input', applyRecordFilter); }
+  if (recTypeFilter) { _recFilterHandlers.type = applyRecordFilter; recTypeFilter.addEventListener('change', applyRecordFilter); }
+  if (recStatusFilter) { _recFilterHandlers.status = applyRecordFilter; recStatusFilter.addEventListener('change', applyRecordFilter); }
+}
+function cleanupRecordEvents() {
+  var recSearch = document.getElementById('record-search-input');
+  var recTypeFilter = document.getElementById('record-type-filter');
+  var recStatusFilter = document.getElementById('record-status-filter');
+  if (_recFilterHandlers.search && recSearch) recSearch.removeEventListener('input', _recFilterHandlers.search);
+  if (_recFilterHandlers.type && recTypeFilter) recTypeFilter.removeEventListener('change', _recFilterHandlers.type);
+  if (_recFilterHandlers.status && recStatusFilter) recStatusFilter.removeEventListener('change', _recFilterHandlers.status);
+  _recFilterHandlers = { search: null, type: null, status: null };
+}
 
 // ============================================================
 // 【v4改进5】发票搜索重置功能（修复第二个applyInvoiceSearch被覆盖问题）
@@ -11855,7 +11777,23 @@ function openBlacklistAddModal() {
     '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-blacklist-add\').remove()">取消</button>' +
     '<button class="modal-btn" onclick="submitBlacklistAdd()" style="background:var(--red);color:white;border:none;">🚫 确认添加</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
-  // 【P12修复】黑名单添加弹窗 - ba-type事件监听器清理
+  // 【P13修复】黑名单添加弹窗 - ba-type事件监听器清理
+  var baTypeEl = document.getElementById('ba-type');
+  var modalEl = document.getElementById('modal-blacklist-add');
+  var baTypeHandler = function() {
+    var g = document.getElementById('ba-expire-group');
+    if (g) g.style.display = this.value === 'temp' ? '' : 'none';
+  };
+  if (baTypeEl) baTypeEl.addEventListener('change', baTypeHandler);
+  if (modalEl) {
+    modalEl.addEventListener('remove', function() {
+      if (baTypeEl) baTypeEl.removeEventListener('change', baTypeHandler);
+    }, {once: true});
+  }
+}
+
+// 【P13修复】黑名单添加事件绑定（供openBlacklistAddModal调用）
+function bindBlacklistAddEvents() {
   var baTypeEl = document.getElementById('ba-type');
   var modalEl = document.getElementById('modal-blacklist-add');
   var baTypeHandler = function() {
@@ -14134,36 +14072,41 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof renderBlacklist === 'function') renderBlacklist();
     injectAlertDetailButton();
     switchConfigTab('basic', document.getElementById('cfg-tab-basic'));
-    // 【P12修复】绑定发票搜索（带清理避免内存泄漏）
+    // 【P13修复】发票搜索和操作日志筛选事件绑定（统一管理）
     var invSearch = document.getElementById('inv-search-input');
     if (invSearch) { window._invSearchHandler = applyInvoiceSearch; invSearch.addEventListener('input', applyInvoiceSearch); }
-    // 【P12修复】绑定操作日志筛选（带清理避免内存泄漏）
+    // 【P13修复】_oplogHandlers存储{handler, type}，type区分change/input以正确清理
     var _oplogHandlers = {};
     ['oplog-module-filter','oplog-user-filter','oplog-type-filter'].forEach(function(id) {
       var el = document.getElementById(id);
-      if (el) { _oplogHandlers[id] = applyOplogFilter; el.addEventListener('change', applyOplogFilter); }
+      if (el) { _oplogHandlers[id] = {handler: applyOplogFilter, type: 'change'}; el.addEventListener('change', applyOplogFilter); }
     });
     var oplogDateStart = document.getElementById('oplog-date-start');
-    if (oplogDateStart) { _oplogHandlers.dateStart = applyOplogFilter; oplogDateStart.addEventListener('change', applyOplogFilter); }
+    if (oplogDateStart) { _oplogHandlers.dateStart = {handler: applyOplogFilter, type: 'change'}; oplogDateStart.addEventListener('change', applyOplogFilter); }
     var oplogDateEnd = document.getElementById('oplog-date-end');
-    if (oplogDateEnd) { _oplogHandlers.dateEnd = applyOplogFilter; oplogDateEnd.addEventListener('change', applyOplogFilter); }
+    if (oplogDateEnd) { _oplogHandlers.dateEnd = {handler: applyOplogFilter, type: 'change'}; oplogDateEnd.addEventListener('change', applyOplogFilter); }
     var oplogTarget = document.getElementById('oplog-target');
-    if (oplogTarget) { _oplogHandlers.target = applyOplogFilter; oplogTarget.addEventListener('input', applyOplogFilter); }
-    // P12内存泄漏修复：页面切换时清理发票和操作日志监听器
-    var oldShowPage = showPage;
-    showPage = function(pageName) {
-      oldShowPage(pageName);
-      if (pageName !== 'invoice') {
-        if (window._invSearchHandler && invSearch) invSearch.removeEventListener('input', window._invSearchHandler);
-      }
-      if (pageName !== 'config') {
-        Object.keys(_oplogHandlers).forEach(function(id) {
-          var el = document.getElementById(id);
-          if (el && _oplogHandlers[id]) el.removeEventListener('change', _oplogHandlers[id]);
-        });
-      }
-    };
+    if (oplogTarget) { _oplogHandlers.target = {handler: applyOplogFilter, type: 'input'}; oplogTarget.addEventListener('input', applyOplogFilter); }
   }, 400);
+  // 【P13修复】统一showPageHook：合并4个独立showPage重写，避免重复覆盖
+  window._showPageHook = function(pageName) {
+    // 通知中心
+    if (pageName !== 'notif') cleanupNotifCenterEvents();
+    else bindNotifCenterEvents();
+    // 办理记录
+    if (pageName !== 'records') cleanupRecordEvents();
+    else bindRecordEvents();
+    // 发票（搜索清理）
+    if (pageName !== 'invoice' && invSearch && window._invSearchHandler) invSearch.removeEventListener('input', window._invSearchHandler);
+    // 操作日志（_oplogHandlers存储{handler, type}，type区分change/input）
+    if (pageName !== 'config') {
+      Object.keys(_oplogHandlers).forEach(function(id) {
+        var el = document.getElementById(id);
+        var info = _oplogHandlers[id];
+        if (el && info && info.handler) el.removeEventListener(info.type || 'change', info.handler);
+      });
+    }
+  };
 // ============================================================
 // 【物联后台 v4 改进1】发票开具功能断裂修复
 // 理由：openInvoiceIssueModal() → openInvoiceCreateModal() 重定向，但 submitInvoiceCreate 成功后
@@ -16465,165 +16408,18 @@ function toggleRrfChangeFields() {
   changeFields.style.display = type.value === 'change' ? 'block' : 'none';
 }
 
-// 【修复2】submitRoomRecord - 房间记录表单提交函数断裂
-// 理由：modal-room-record-form 的保存按钮 onclick="submitRoomRecord()" 但函数体缺失
-function submitRoomRecord() {
-  var type = document.getElementById('rrf-type') ? document.getElementById('rrf-type').value : '';
-  var name = document.getElementById('rrf-name') ? document.getElementById('rrf-name').value.trim() : '';
-  var phone = document.getElementById('rrf-phone') ? document.getElementById('rrf-phone').value.trim() : '';
-  var method = document.getElementById('rrf-method') ? document.getElementById('rrf-method').value : 'phone';
-  var note = document.getElementById('rrf-note') ? document.getElementById('rrf-note').value.trim() : '';
-  var fromRoom = document.getElementById('rrf-from-room') ? document.getElementById('rrf-from-room').value.trim() : '';
-  var toRoom = document.getElementById('rrf-to-room') ? document.getElementById('rrf-to-room').value.trim() : '';
-  var changeReason = document.getElementById('rrf-change-reason') ? document.getElementById('rrf-change-reason').value.trim() : '';
-  var isEdit = window._roomRecordEditingId != null;
-  if (!type) { showToast('请选择记录类型', 'error'); return; }
-  if (!name) { showToast('请输入客人姓名', 'error'); return; }
-  var now = new Date().toLocaleString('zh-CN');
-  if (isEdit) {
-    var idx = window._roomRecordEditingIdx;
-    if (idx != null && window._roomRecordList && window._roomRecordList[idx]) {
-      window._roomRecordList[idx].type = type;
-      window._roomRecordList[idx].name = name;
-      window._roomRecordList[idx].phone = phone;
-      window._roomRecordList[idx].method = method;
-      window._roomRecordList[idx].note = note;
-      if (type === 'change') {
-        window._roomRecordList[idx].room = (fromRoom || '') + '→' + (toRoom || '');
-        window._roomRecordList[idx].changeReason = changeReason;
-      }
-    }
-    showToast('✅ 记录已更新', 'success');
-  } else {
-    var room = type === 'change' ? (fromRoom || '') + '→' + (toRoom || '') : '';
-    var entry = { type: type, name: name, phone: phone, method: method, note: note, room: room, time: now, status: 'active' };
-    if (type === 'change') entry.changeReason = changeReason;
-    if (window._roomRecordList) {
-      window._roomRecordList.unshift(entry);
-    }
-    showToast('✅ 新记录已保存（' + name + '）', 'success');
-  }
-  window._roomRecordEditingId = null;
-  window._roomRecordEditingIdx = null;
-  closeModal('room-record-form');
-  if (typeof renderRecordTable === 'function') renderRecordTable();
-}
+// 【P05优化】submitRoomRecord - 房间记录功能已移除（PMS入住/退房/换房记录非物联核心）
+function submitRoomRecord() { showToast('入住记录功能已转移至设备详情页', 'info'); }
 
-// 【修复3】confirmDeleteRoomRecord - 房间记录删除确认函数断裂
-// 理由：modal-rr-delete-confirm 弹窗的确认删除按钮调用 confirmDeleteRoomRecord() 但函数体缺失
-function confirmDeleteRoomRecord() {
-  var id = window._roomRecordToDelete;
-  if (id == null) { showToast('未指定要删除的记录', 'error'); return; }
-  if (window._roomRecordList) {
-    window._roomRecordList = window._roomRecordList.filter(function(r) { return r.id !== id; });
-  }
-  closeModal('modal-rr-delete-confirm');
-  window._roomRecordToDelete = null;
-  showToast('🗑️ 记录已删除', 'success');
-  if (typeof renderRecordTable === 'function') renderRecordTable();
-}
+// 【P05优化】confirmDeleteRoomRecord - 房间记录删除功能已移除
+function confirmDeleteRoomRecord() { showToast('入住记录功能已转移至设备详情页', 'info'); }
 
-// 【修复4】openRoomRecordForm - 打开房间记录表单函数断裂（page-room-detail 页面使用）
-// 理由：房间详情页办理记录Tab调用此函数但从未定义，导致无法新增/编辑记录
-function openRoomRecordForm(isEdit, recordId) {
-  var modal = document.getElementById('modal-room-record-form');
-  if (!modal) { showToast('房间记录表单未找到', 'error'); return; }
-  window._roomRecordEditingId = isEdit ? recordId : null;
-  window._roomRecordEditingIdx = null;
-  // Reset form fields
-  var fields = ['rrf-type','rrf-name','rrf-phone','rrf-method','rrf-note','rrf-from-room','rrf-to-room','rrf-change-reason'];
-  fields.forEach(function(f) {
-    var el = document.getElementById(f);
-    if (el) { if (el.tagName === 'SELECT') el.selectedIndex = 0; else el.value = ''; }
-  });
-  var changeFields = document.getElementById('rrf-change-fields');
-  if (changeFields) changeFields.style.display = 'none';
-  var title = document.getElementById('rrf-title');
-  if (title) title.textContent = '✏️ 新增记录';
-  if (isEdit && recordId != null && window._roomRecordList) {
-    var rec = window._roomRecordList.find(function(r) { return r.id === recordId; });
-    if (rec) {
-      window._roomRecordEditingIdx = window._roomRecordList.indexOf(rec);
-      if (title) title.textContent = '✏️ 编辑记录';
-      var typeEl = document.getElementById('rrf-type');
-      if (typeEl) typeEl.value = rec.type || 'in';
-      var nameEl = document.getElementById('rrf-name');
-      if (nameEl) nameEl.value = rec.name || '';
-      var phoneEl = document.getElementById('rrf-phone');
-      if (phoneEl) phoneEl.value = rec.phone || '';
-      var methodEl = document.getElementById('rrf-method');
-      if (methodEl) methodEl.value = rec.method || 'phone';
-      var noteEl = document.getElementById('rrf-note');
-      if (noteEl) noteEl.value = rec.note || '';
-      if (rec.type === 'change' && rec.room) {
-        var parts = rec.room.split('→');
-        var fromEl = document.getElementById('rrf-from-room');
-        var toEl = document.getElementById('rrf-to-room');
-        if (fromEl) fromEl.value = parts[0] || '';
-        if (toEl) toEl.value = parts[1] || '';
-        if (changeFields) changeFields.style.display = 'block';
-      }
-    }
-  }
-  modal.classList.remove('hidden');
-  modal.style.display = 'flex';
-}
+// 【P05优化】openRoomRecordForm - 房间记录表单已移除
+function openRoomRecordForm(isEdit, recordId) { showToast('入住记录功能已转移至设备详情页', 'info'); }
 
-// 【修复5】openSettlementModal - 结算确认弹窗函数断裂
-// 理由：page-settlement 结算按钮调用 openSettlementModal() 但函数体缺失，导致无法打开结算确认弹窗
-function openSettlementModal(id, room, name, time, nights, amount, deposit) {
-  var existing = document.getElementById('modal-settlement-confirm');
-  if (existing) existing.remove();
-  var total = (parseFloat(amount) || 0) + (parseFloat(deposit) || 0);
-  var html = '<div class="modal-overlay hidden" id="modal-settlement-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
-    '<div class="modal" style="width:440px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">' +
-    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">💰</div><div style="font-size:15px;font-weight:700;">结算确认</div>' +
-    '<button onclick="document.getElementById(\'modal-settlement-confirm\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
-    '<div style="padding:20px 24px;">' +
-    '<div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:14px;">' +
-    '<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;"><span style="color:var(--text-light);">房号</span><span style="font-weight:600;">' + room + '</span></div>' +
-    '<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;"><span style="color:var(--text-light);">客人</span><span style="font-weight:600;">' + name + '</span></div>' +
-    '<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;"><span style="color:var(--text-light);">入住时间</span><span style="font-size:12px;">' + time + '</span></div>' +
-    '<div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--text-light);">入住晚数</span><span style="font-weight:600;">' + nights + '</span></div></div>' +
-    '<div class="settlement-section"><div class="settlement-section-title">费用明细</div>' +
-    '<div class="settlement-row"><span class="label">房费</span><span class="value">¥' + amount + '</span></div>' +
-    '<div class="settlement-row"><span class="label">押金</span><span class="value" style="color:var(--orange);">¥' + deposit + '</span></div>' +
-    '<div class="settlement-row"><span class="label">其他费用</span><span class="value">¥0</span></div></div>' +
-    '<div class="settlement-section"><div class="settlement-section-title">支付方式</div>' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-    '<button onclick="this.style.borderColor=\'var(--blue)\';this.style.background=\'var(--blue-bg)\';document.querySelectorAll(\'.pay-method-btn\').forEach(function(b){if(b!==this)this.style.borderColor=\'var(--border)\',this.style.background=\'\';},this);window._settlementPayMethod=\'wechat\'" class="pay-method-btn" style="padding:8px 16px;border:1px solid var(--border);border-radius:6px;background:white;cursor:pointer;font-size:13px;">💚 微信</button>' +
-    '<button onclick="this.style.borderColor=\'var(--blue)\';this.style.background=\'var(--blue-bg)\';document.querySelectorAll(\'.pay-method-btn\').forEach(function(b){if(b!==this)this.style.borderColor=\'var(--border)\',this.style.background=\'\';},this);window._settlementPayMethod=\'alipay\'" class="pay-method-btn" style="padding:8px 16px;border:1px solid var(--border);border-radius:6px;background:white;cursor:pointer;font-size:13px;">💙 支付宝</button>' +
-    '<button onclick="this.style.borderColor=\'var(--blue)\';this.style.background=\'var(--blue-bg)\';document.querySelectorAll(\'.pay-method-btn\').forEach(function(b){if(b!==this)this.style.borderColor=\'var(--border)\',this.style.background=\'\';},this);window._settlementPayMethod=\'cash\'" class="pay-method-btn" style="padding:8px 16px;border:1px solid var(--border);border-radius:6px;background:white;cursor:pointer;font-size:13px;">💵 现金</button>' +
-    '<button onclick="this.style.borderColor=\'var(--blue)\';this.style.background=\'var(--blue-bg)\';document.querySelectorAll(\'.pay-method-btn\').forEach(function(b){if(b!==this)this.style.borderColor=\'var(--border)\',this.style.background=\'\';},this);window._settlementPayMethod=\'card\'" class="pay-method-btn" style="padding:8px 16px;border:1px solid var(--border);border-radius:6px;background:white;cursor:pointer;font-size:13px;">💳 卡类</button>' +
-    '</div></div></div>' +
-    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
-    '<button onclick="document.getElementById(\'modal-settlement-confirm\').remove()" style="padding:10px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">取消</button>' +
-    '<button onclick="doConfirmSettlement(\'' + id + '\',\'' + room + '\')" style="padding:10px 24px;background:var(--green);border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:white;">💳 确认结算 ¥' + total + '</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-  window._settlementPayMethod = 'wechat';
-}
-
-function doConfirmSettlement(id, room) {
-  var method = window._settlementPayMethod || 'wechat';
-  var methodLabel = {wechat:'微信',alipay:'支付宝',cash:'现金',card:'卡类'}[method] || '微信';
-  document.getElementById('modal-settlement-confirm').remove();
-  showToast('✅ 房间 ' + room + ' 结算完成（' + methodLabel + '支付）', 'success');
-  // Update settlement list UI if available
-  var pendingCount = document.getElementById('stl-pending-count');
-  if (pendingCount) {
-    var n = parseInt(pendingCount.textContent) - 1;
-    if (n < 0) n = 0;
-    pendingCount.textContent = n;
-  }
-  var pendingAmount = document.getElementById('stl-pending-amount');
-  if (pendingAmount) {
-    var a = parseFloat(pendingAmount.textContent.replace('¥','')) || 0;
-    // Approximate per-room amount
-    a = Math.max(0, a - 200);
-    pendingAmount.textContent = '¥' + a;
-  }
-}
+// 【P05优化】openSettlementModal - 结算功能已转移至PMS系统
+function openSettlementModal(id, room, name, time, nights, amount, deposit) { showToast('💰 结算功能已转移至PMS系统', 'info'); }
+function doConfirmSettlement(id, room) { showToast('💰 结算功能已转移至PMS系统', 'info'); }
 
 // ============================================================
 // 5 Missing Functions Implementation
