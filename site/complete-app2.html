@@ -604,8 +604,9 @@ function closeAllModals() {
 function openModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
 function closeModal(id) { var el = document.getElementById(id); if (el) el.classList.add('hidden'); }
 // 【P12修复】全局ESC键关闭弹窗（带清理避免内存泄漏）
-var _escKeyHandler = function(e){ if(e.key==='Escape'){closeAllModals();closeGlobalSearch();} };
-document.addEventListener('keydown', _escKeyHandler);
+if (window._escKeyHandler) { document.removeEventListener('keydown', window._escKeyHandler); }
+window._escKeyHandler = function(e){ if(e.key==='Escape'){closeAllModals();closeGlobalSearch();} };
+document.addEventListener('keydown', window._escKeyHandler);
 // cycleHomeTab is defined in improvements-v4-iter8.js as window function
 
 // ============================================================
@@ -5883,8 +5884,7 @@ function saveEscalationEditorRules() {
 <button class="action-btn small" onclick="openSystemHealthModal()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🩺 系统健康</button>
 <!-- 【改进4-系统设置编辑入口】 -->
 <button class="action-btn small" onclick="openConfigEditModal()" style="padding:4px 10px;background:var(--blue);color:white;border:none;">⚙️ 系统设置</button>
-<!-- 【物联后台v3.5 改进2】PMS对接状态监控入口 -->
-<button class="action-btn small" onclick="openPmsStatusModal()" style="padding:4px 10px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);">🔗 PMS状态</button>
+
 <!-- 【v3.4改进5】系统公告发布入口 -->
 <button class="action-btn small" onclick="openAnnouncementPublishModal()" style="padding:4px 10px;background:var(--orange);color:white;border:none;font-size:11px;">📢 发布公告</button>
 </div>
@@ -6994,95 +6994,7 @@ function saveEscalationEditorRules() {
     setInterval(checkEnergyPage, 300);
     </script>
 
-<!-- 【物联后台v3.5 改进2】PMS对接状态监控面板：系统配置页面新增PMS系统集成状态实时监控Tab -->
-<!-- PMS状态监控内容（插入到基本配置Tab中，通过按钮触发显示） -->
-<script>
-// PMS对接状态监控数据
-var pmsStatusData = {
-  connected: true,
-  lastSync: '2026-03-28 17:10:22',
-  syncInterval: 30,
-  pendingBookings: 3,
-  failedSyncs: 0,
-  modules: [
-    {name:'PMS订单同步', status:'online', lastSync:'2026-03-28 17:10', count:128},
-    {name:'门锁权限下发', status:'online', lastSync:'2026-03-28 17:09', count:45},
-    {name:'退房同步通知', status:'degraded', lastSync:'2026-03-28 16:55', count:12},
-    {name:'换房权限更新', status:'online', lastSync:'2026-03-28 17:08', count:8},
-    {name:'能耗数据上报', status:'offline', lastSync:'2026-03-28 14:30', count:3}
-  ],
-  logs: [
-    {time:'17:10:22', type:'sync', msg:'成功同步订单 #ORD2026032805（入住301）', status:'success'},
-    {time:'17:09:45', type:'sync', msg:'成功下发门锁权限至设备 A84F1AF2', status:'success'},
-    {time:'17:08:12', type:'error', msg:'退房同步失败，重试中（3/5）', status:'warning'},
-    {time:'17:05:00', type:'sync', msg:'成功同步订单 #ORD2026032804（退房203）', status:'success'},
-    {time:'16:55:33', type:'error', msg:'能耗数据上报失败：设备 305 无响应', status:'error'}
-  ]
-};
 
-function openPmsStatusModal() {
-  var existing = document.getElementById('modal-pms-status');
-  if (existing) existing.remove();
-  var statusColor = pmsStatusData.connected ? 'var(--green)' : 'var(--red)';
-  var statusBg = pmsStatusData.connected ? 'var(--green-bg)' : 'var(--red-bg)';
-  var statusText = pmsStatusData.connected ? '🟢 已连接' : '🔴 已断开';
-
-  var modulesHtml = pmsStatusData.modules.map(function(m){
-    var mColor = m.status === 'online' ? 'var(--green)' : m.status === 'degraded' ? 'var(--orange)' : 'var(--red)';
-    var mBg = m.status === 'online' ? 'var(--green-bg)' : m.status === 'degraded' ? 'var(--orange-bg)' : 'var(--red-bg)';
-    var statusLabel = m.status === 'online' ? '正常' : m.status === 'degraded' ? '降级' : '离线';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">' +
-      '<span style="width:8px;height:8px;border-radius:50%;background:'+mColor+';flex-shrink:0;"></span>' +
-      '<span style="flex:1;font-size:13px;font-weight:500;">'+m.name+'</span>' +
-      '<span style="padding:2px 8px;border-radius:10px;font-size:11px;background:'+mBg+';color:'+mColor+';">'+statusLabel+'</span>' +
-      '<span style="font-size:11px;color:var(--text-muted);width:120px;text-align:right;">'+m.lastSync+' · '+m.count+'次</span></div>';
-  }).join('');
-
-  var logsHtml = pmsStatusData.logs.map(function(l){
-    var lColor = l.status === 'success' ? 'var(--green)' : l.status === 'warning' ? 'var(--orange)' : 'var(--red)';
-    var lIcon = l.status === 'success' ? '✅' : l.status === 'warning' ? '⚠️' : '❌';
-    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;">' +
-      '<span style="color:'+lColor+';flex-shrink:0;width:16px;">'+lIcon+'</span>' +
-      '<span style="color:var(--text-muted);flex-shrink:0;width:60px;">'+l.time+'</span>' +
-      '<span style="flex:1;color:var(--text);">'+l.msg+'</span></div>';
-  }).join('');
-
-  var html = '<div class="hidden modal-overlay" id="modal-pms-status" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-pms-status\').remove()">' +
-    '<div class="modal" style="width:680px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;">' +
-    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
-    '<div style="display:flex;align-items:center;gap:12px;">' +
-    '<div style="font-size:18px;font-weight:700;">🔗 PMS对接状态监控</div>' +
-    '<span style="padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;background:'+statusBg+';color:'+statusColor+';">'+statusText+'</span></div>' +
-    '<button onclick="document.getElementById(\'modal-pms-status\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
-    '<div style="flex:1;overflow-y:auto;padding:20px 24px;">' +
-    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;">' +
-    '<div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--blue);">'+pmsStatusData.pendingBookings+'</div><div style="font-size:11px;color:var(--text-muted);">待同步订单</div></div>' +
-    '<div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--green);">'+pmsStatusData.modules.filter(function(m){return m.status===\'online\';}).length+'</div><div style="font-size:11px;color:var(--text-muted);">正常模块</div></div>' +
-    '<div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--orange);">1</div><div style="font-size:11px;color:var(--text-muted);">降级模块</div></div>' +
-    '<div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--red);">1</div><div style="font-size:11px;color:var(--text-muted);">离线模块</div></div>' +
-    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);">最后同步</div><div style="font-size:12px;font-weight:600;margin-top:2px;">'+pmsStatusData.lastSync+'</div></div></div>' +
-    '<div style="margin-bottom:16px;"><div style="font-size:13px;font-weight:700;margin-bottom:10px;">📡 各模块状态</div><div style="border:1px solid var(--border);border-radius:8px;padding:4px 12px;background:white;">'+modulesHtml+'</div></div>' +
-    '<div><div style="font-size:13px;font-weight:700;margin-bottom:10px;">📋 最近同步日志</div><div style="border:1px solid var(--border);border-radius:8px;padding:4px 12px;background:white;max-height:200px;overflow-y:auto;">'+logsHtml+'</div></div>' +
-    '</div>' +
-    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
-    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-pms-status\').remove()">关闭</button>' +
-    '<button class="modal-btn" onclick="syncPmsNow()" style="background:var(--blue);color:white;border:none;">🔄 立即同步</button>' +
-    '<button class="modal-btn" onclick="openPmsConfigModal()" style="background:var(--green-bg);color:var(--green);border-color:var(--green);">⚙️ PMS配置</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-function syncPmsNow() {
-  showToast('🔄 正在触发PMS全量同步...', 'info');
-  setTimeout(function(){
-    showToast('✅ PMS同步完成，新增 2 条订单，更新 5 条状态', 'success');
-    document.getElementById('modal-pms-status').remove();
-  }, 2000);
-}
-
-function openPmsConfigModal() {
-  showToast('⚙️ 打开PMS系统配置面板...', 'info');
-}
-</script>
 <!-- 【物联后台v3.5 改进3】设备批量远程控制面板：支持勾选多个设备后执行批量开锁/同步/重启等操作 -->
 <div class="modal-overlay hidden" id="modal-batch-device-control">
 <div class="modal" style="width:680px;">
@@ -8663,131 +8575,7 @@ function doDeleteStaff() {
   _staffDeleteId = null;
 }
 
-// ====== 【改进5】退房结算完整功能 ======
-var _cosData = null;
-var _cosPaymentMethod = 'wechat';
-// ============================================================
-// 【物联后台 v3.5 改进 4 - 完整退房表单（openCheckoutFullModal）实现】
-// 完整退房流程弹窗 - 立即退房/提前退房触发
-// 功能：完整退房流程弹窗，含费用明细表（房费/押金/杂费）、多种支付方式、备注填写、退房确认、钥匙失效、通知发送。
-// ============================================================
-
-function openCheckoutFullModal(room, name, scheduledTime) {
-  var existing = document.getElementById('modal-checkout-full');
-  if (existing) existing.remove();
-  var roomTypeMap = { '301':'亲子间','302':'亲子间','303':'亲子间','304':'亲子间','305':'亲子间','201':'大床房','202':'大床房','203':'大床房' };
-  var priceMap = { '亲子间':298,'大床房':238,'标准间':168,'家庭套房':458 };
-  var roomType = roomTypeMap[room] || '大床房';
-  var price = priceMap[roomType] || 238;
-  var checkinDate = '2026-03-' + (28 - Math.floor(Math.random() * 3));
-  var nights = 2;
-  var roomFee = nights * price;
-  var deposit = 100;
-  var minibarCharge = Math.floor(Math.random() * 80);
-  var damageCharge = 0;
-  var totalFee = roomFee + minibarCharge + damageCharge;
-  var refund = deposit >= totalFee ? deposit - totalFee : 0;
-  var payAmount = deposit < totalFee ? totalFee - deposit : 0;
-
-  var html = '<div class="hidden modal-overlay" id="modal-checkout-full" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;z-index:99998;" onclick="if(event.target===this)document.getElementById(\'modal-checkout-full\').remove()">' +
-    '<div class="modal" style="width:560px;background:white;border-radius:12px;max-height:90vh;overflow-y:auto;">' +
-    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
-    '<div style="font-size:15px;font-weight:700;">🚪 办理退房 - ' + room + '房间</div>' +
-    '<button onclick="document.getElementById(\'modal-checkout-full\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
-    '<div style="padding:16px 20px;">' +
-    // 客人信息
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
-    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--blue);">房号</div><div style="font-size:18px;font-weight:700;color:var(--blue);">' + room + '</div></div>' +
-    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--green);">客人</div><div style="font-size:14px;font-weight:700;color:var(--green);">' + name + '</div></div>' +
-    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--orange);">房型</div><div style="font-size:14px;font-weight:700;color:var(--orange);">' + roomType + '</div></div>' +
-    '<div style="padding:10px;background:var(--purple-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--purple);">入住</div><div style="font-size:14px;font-weight:700;color:var(--purple);">' + checkinDate + '</div></div></div>' +
-
-    // 费用明细
-    '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;">💰 费用明细</div>' +
-    '<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;">' +
-    '<div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;"><span>房费（' + nights + '晚 × ¥' + price + '）</span><span style="font-weight:600;">¥' + roomFee + '</span></div>' +
-    '<div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;"><span>迷你吧消费</span><span style="font-weight:600;color:var(--orange);">¥' + minibarCharge + '</span></div>' +
-    '<div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;"><span>赔偿/损坏费</span><span style="font-weight:600;color:var(--red);">¥' + damageCharge + '</span></div>' +
-    '<div style="display:flex;justify-content:space-between;padding:10px 14px;font-size:13px;background:var(--bg);"><span style="font-weight:700;">费用合计</span><span style="font-weight:700;color:var(--blue);font-size:15px;">¥' + totalFee + '</span></div></div>' +
-
-    // 押金与结算
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">' +
-    '<div style="padding:10px;background:var(--blue-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--blue);">押金已付</div><div style="font-size:16px;font-weight:700;color:var(--blue);">¥' + deposit + '</div></div>' +
-    '<div style="padding:10px;background:var(--green-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--green);">' + (refund > 0 ? '应退押金' : '无需退款') + '</div><div style="font-size:16px;font-weight:700;color:var(--green);">' + (refund > 0 ? '¥' + refund : '—') + '</div></div>' +
-    '<div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--orange);">' + (payAmount > 0 ? '需补缴' : '已结清') + '</div><div style="font-size:16px;font-weight:700;color:var(--orange);">' + (payAmount > 0 ? '¥' + payAmount : '¥0') + '</div></div></div>' +
-
-    // 支付方式
-    '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;">💳 支付方式</div>' +
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">' +
-    '<label id="pay-wechat" onclick="selectCheckoutPay(\'wechat\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:2px solid var(--green);border-radius:8px;cursor:pointer;background:var(--green-bg);">' +
-    '<input type="radio" name="co-pay" value="wechat" checked style="display:none;"><div style="font-size:22px;">💚</div><div style="font-size:12px;font-weight:600;color:var(--green);">微信</div></label>' +
-    '<label id="pay-alipay" onclick="selectCheckoutPay(\'alipay\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:white;">' +
-    '<input type="radio" name="co-pay" value="alipay" style="display:none;"><div style="font-size:22px;">💙</div><div style="font-size:12px;font-weight:600;">支付宝</div></label>' +
-    '<label id="pay-cash" onclick="selectCheckoutPay(\'cash\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:white;">' +
-    '<input type="radio" name="co-pay" value="cash" style="display:none;"><div style="font-size:22px;">💵</div><div style="font-size:12px;font-weight:600;">现金</div></label>' +
-    '<label id="pay-card" onclick="selectCheckoutPay(\'card\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:white;">' +
-    '<input type="radio" name="co-pay" value="card" style="display:none;"><div style="font-size:22px;">💳</div><div style="font-size:12px;font-weight:600;">银行卡</div></label></div>' +
-
-    // 退房备注
-    '<div class="form-group"><label class="form-label">📝 退房备注</label>' +
-    '<textarea class="form-textarea" id="co-full-notes" placeholder="可选：物品损坏、提前离店、特殊需求等" style="min-height:60px;"></textarea></div>' +
-
-    // 退房后动作确认
-    '<div style="padding:10px 12px;background:var(--orange-bg);border-radius:8px;margin-bottom:12px;font-size:12px;color:var(--orange);">⚠️ 退房确认后：房间自动转"待清洁"状态，所有钥匙权限立即失效，系统自动发送离店通知</div>' +
-    '</div>' +
-    '<div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
-    '<button onclick="document.getElementById(\'modal-checkout-full\').remove()" class="modal-btn secondary" style="padding:8px 20px;">取消</button>' +
-    '<button onclick="confirmCheckoutFull(\'' + room + '\',\'' + name + '\')" class="modal-btn primary" style="background:var(--blue);color:white;border:none;padding:8px 24px;font-size:15px;">✅ 确认退房</button></div>' +
-    '</div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-function selectCheckoutPay(method) {
-  var methods = ['wechat','alipay','cash','card'];
-  var colors = {wechat:'green',alipay:'blue',cash:'orange',card:'purple'};
-  methods.forEach(function(m) {
-    var el = document.getElementById('pay-' + m);
-    if (!el) return;
-    if (m === method) {
-      el.style.borderColor = 'var(--' + colors[m] + ')';
-      el.style.background = 'var(--' + colors[m] + '-bg)';
-      el.querySelector('input').checked = true;
-    } else {
-      el.style.borderColor = 'var(--border)';
-      el.style.background = 'white';
-    }
-  });
-}
-
-function confirmCheckoutFull(room, name) {
-  var notes = document.getElementById('co-full-notes') ? document.getElementById('co-full-notes').value : '';
-  var payMethod = '微信';
-  document.querySelectorAll('[name="co-pay"]').forEach(function(r) { if (r.checked) payMethod = r.value; });
-  var payLabel = {wechat:'微信',alipay:'支付宝',cash:'现金',card:'银行卡'}[payMethod] || payMethod;
-  document.getElementById('modal-checkout-full').remove();
-  showToast('✅ 退房成功！' + name + '已退房，房间' + room + '已转为待清洁状态', 'success');
-  addNotif('🚪', 'var(--blue)', 'checkout', '房间' + room + '(' + name + ')已退房，支付方式：' + payLabel);
-  // 触发清洁任务自动下发
-  addNotif('🧹', 'var(--green)', 'housekeeping', '房间' + room + '退房，清洁任务已自动下发');
-  // 更新首页房间卡片
-  var cards = document.querySelectorAll('#home-occupancy-grid .room-card');
-  cards.forEach(function(card) {
-    var numEl = card.querySelector('.room-num');
-    if (numEl && numEl.textContent === room) {
-      card.classList.remove('dirty');
-      card.dataset.dirty = 'true';
-      card.dataset.status = 'empty';
-      var badge = card.querySelector('.room-badge');
-      if (badge) { badge.textContent = '待清洁'; badge.className = 'room-badge badge-dirty'; }
-    }
-  });
-  // 更新房务管理统计
-  var dirtyCountEl = document.getElementById('hk-dirty-count');
-  if (dirtyCountEl) {
-    var newCount = parseInt(dirtyCountEl.textContent || '0') + 1;
-    dirtyCountEl.textContent = newCount;
-  }
-}
+// [P07+P08] PMS退房弹窗已删除
 
 function openCheckoutSettleModal(room, name, nights, pricePerNight) {
   _cosData = {room:room, name:name, nights:nights||2, pricePerNight:pricePerNight||128};
