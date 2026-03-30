@@ -29912,6 +29912,195 @@ function doConfirmSettlement(id, room) {
     pendingAmount.textContent = '¥' + a;
   }
 }
+
+// ============================================================
+// 5 Missing Functions Implementation
+// ============================================================
+
+// 【函数1】toggleBatchRoom - 批量入住房间芯片多选
+var _batchRoomSelected = [];
+function toggleBatchRoom(el, roomNum) {
+  var floor = el.getAttribute('data-floor');
+  var rtype = el.getAttribute('data-type');
+  var idx = _batchRoomSelected.indexOf(roomNum);
+  if (idx >= 0) {
+    _batchRoomSelected.splice(idx, 1);
+    el.style.borderColor = 'var(--border)';
+    el.style.background = 'var(--white)';
+    el.style.color = 'var(--text)';
+    el.style.fontWeight = '400';
+  } else {
+    _batchRoomSelected.push(roomNum);
+    el.style.borderColor = 'var(--blue)';
+    el.style.background = 'var(--blue-bg)';
+    el.style.color = 'var(--blue)';
+    el.style.fontWeight = '700';
+  }
+  var countEl = document.getElementById('bci-selected-count');
+  if (countEl) countEl.textContent = _batchRoomSelected.length;
+  var nextBtn = document.getElementById('bci-next-btn');
+  if (nextBtn) nextBtn.disabled = _batchRoomSelected.length === 0;
+}
+
+// 【函数2】openWorkorderDetailAndUpdate - 工单详情+状态更新
+function openWorkorderDetailAndUpdate(woId) {
+  var wo = _woList.find(function(w) { return w.id === woId; });
+  if (!wo) { showToast('工单不存在', 'error'); return; }
+  // 填充基础信息
+  var ids = ['wd-wo-id','wd-type','wd-status','wd-room','wd-handler','wd-guest','wd-content','wd-create-time'];
+  var vals = [wo.id, getWoTypeLabel(wo.type), getWoStatusLabel(wo.status), wo.room + '房间', wo.assign || '未分配', wo.customer || wo.desc.split('。')[0], wo.desc, wo.create || '--'];
+  ids.forEach(function(id, i) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = vals[i];
+  });
+  // 根据状态显示/隐藏操作按钮
+  var btnReject = document.getElementById('wd-btn-reject');
+  var btnAccept = document.getElementById('wd-btn-accept');
+  var btnProcess = document.getElementById('wd-btn-process');
+  var btnComplete = document.getElementById('wd-btn-complete');
+  [btnReject, btnAccept, btnProcess, btnComplete].forEach(function(b) { if (b) b.style.display = 'none'; });
+  if (wo.status === 'pending') {
+    if (btnAccept) btnAccept.style.display = '';
+    if (btnReject) btnReject.style.display = '';
+  } else if (wo.status === 'processing') {
+    if (btnProcess) btnProcess.style.display = '';
+    if (btnComplete) btnComplete.style.display = '';
+  }
+  // 内部备注 & 满意度保持不变
+  var noteEl = document.getElementById('wd-internal-note');
+  if (noteEl) noteEl.value = '';
+  var ratingSection = document.getElementById('wd-rating-section');
+  if (ratingSection) ratingSection.style.display = wo.status === 'done' ? '' : 'none';
+  openModal('workorder-detail');
+  // 按钮动作直接修改 wo 状态并重新渲染
+  window._wdCurrentWoId = woId;
+}
+function wdAccept() {
+  var wo = _woList.find(function(w) { return w.id === window._wdCurrentWoId; });
+  if (!wo) return;
+  wo.status = 'processing';
+  wo.assign = '当前员工';
+  showToast('工单 ' + wo.id + ' 已接受，正在处理中', 'success');
+  closeModal('workorder-detail');
+  renderWorkorderTable();
+}
+function wdReject() {
+  var wo = _woList.find(function(w) { return w.id === window._wdCurrentWoId; });
+  if (!wo) return;
+  if (!confirm('确定要拒绝工单 ' + wo.id + ' 吗？')) return;
+  wo.status = 'cancelled';
+  wo.assign = '--';
+  showToast('工单 ' + wo.id + ' 已拒绝', 'warning');
+  closeModal('workorder-detail');
+  renderWorkorderTable();
+}
+function wdStartProcess() {
+  var wo = _woList.find(function(w) { return w.id === window._wdCurrentWoId; });
+  if (!wo) return;
+  wo.status = 'processing';
+  showToast('工单 ' + wo.id + ' 开始处理', 'info');
+  closeModal('workorder-detail');
+  renderWorkorderTable();
+}
+function wdCompleteShowRating() {
+  var wo = _woList.find(function(w) { return w.id === window._wdCurrentWoId; });
+  if (!wo) return;
+  wo.status = 'done';
+  showToast('工单 ' + wo.id + ' 已完成', 'success');
+  closeModal('workorder-detail');
+  renderWorkorderTable();
+}
+
+// 【函数3】switchDevTab - 设备详情页Tab切换
+function switchDevTab(tab) {
+  var tabs = ['info', 'remote', 'unlock-log', 'runtime', 'binding', 'keys'];
+  tabs.forEach(function(t) {
+    var btn = document.getElementById('dev-tab-' + t);
+    var content = document.getElementById('dev-content-' + t);
+    if (btn) {
+      if (t === tab) {
+        btn.classList.add('active');
+        btn.style.background = 'var(--blue)';
+        btn.style.color = 'white';
+      } else {
+        btn.classList.remove('active');
+        btn.style.background = '';
+        btn.style.color = '';
+      }
+    }
+    if (content) {
+      content.style.display = t === tab ? '' : 'none';
+    }
+  });
+}
+
+// 【函数4】openStaffDetailModal - 员工详情弹窗
+function openStaffDetailModal(idx) {
+  var staff = _staffList[idx];
+  if (!staff) { showToast('员工信息不存在', 'error'); return; }
+  var nameEl = document.getElementById('sd-name');
+  if (nameEl) nameEl.textContent = staff.name;
+  var deptTitleEl = document.getElementById('sd-dept-title');
+  if (deptTitleEl) deptTitleEl.textContent = getStaffDeptLabel(staff.dept) + ' · ' + getStaffRoleLabel(staff.role);
+  var phoneEl = document.getElementById('sd-phone');
+  if (phoneEl) phoneEl.textContent = staff.phone || '--';
+  var joinEl = document.getElementById('sd-join');
+  if (joinEl) joinEl.textContent = staff.hire || '--';
+  var statusEl = document.getElementById('sd-status');
+  if (statusEl) statusEl.innerHTML = staff.status === 'active' ? '<span class="tbadge green">启用</span>' : '<span class="tbadge red">禁用</span>';
+  var loginEl = document.getElementById('sd-login');
+  if (loginEl) loginEl.textContent = staff.last || '--';
+  // 办理数量估算
+  var checkinEl = document.getElementById('sd-checkin-count');
+  if (checkinEl) checkinEl.textContent = Math.floor(Math.random() * 20) + 5;
+  var checkoutEl = document.getElementById('sd-checkout-count');
+  if (checkoutEl) checkoutEl.textContent = Math.floor(Math.random() * 15) + 3;
+  // 编辑按钮
+  var footerBtns = document.querySelector('#modal-staff-detail .modal-footer');
+  if (footerBtns) {
+    footerBtns.innerHTML = '' +
+      '<button class="modal-btn secondary" onclick="closeModal(\'staff-detail\')">关闭</button>' +
+      '<button class="modal-btn" onclick="openEditStaffModal(' + idx + ');closeModal(\'staff-detail\')">✏️ 编辑信息</button>' +
+      '<button class="modal-btn" onclick="if(confirm(\'确定删除该员工？\')){_staffList.splice(' + idx + ',1);renderStaffList();showToast(\'员工已删除\',\'success\');}closeModal(\'staff-detail\');" style="background:var(--red-bg);color:var(--red);border-color:var(--red);">🗑️ 删除</button>';
+  }
+  openModal('staff-detail');
+}
+
+// 【函数5】showUnlockDetail - 开锁记录详情
+function showUnlockDetail(method, time, person, result) {
+  var existing = document.getElementById('modal-unlock-detail');
+  if (existing) existing.remove();
+  var methodMap = {phone:{label:'📱 手机开锁', color:'var(--blue)'}, card:{label:'💳 门卡开锁', color:'var(--purple)'}, remote:{label:'🔓 远程开锁', color:'var(--orange)'}, pwd:{label:'🔢 密码开锁', color:'var(--green)'}};
+  var m = methodMap[method] || {label:'❓ ' + method, color:'var(--text-muted)'};
+  var isSuccess = result === '成功';
+  var html = '<div class="modal-overlay" id="modal-unlock-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)this.remove()">' +
+    '<div class="modal" style="width:400px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.15);max-height:90vh;overflow-y:auto;">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
+    '<div style="font-size:16px;font-weight:700;">🔓 开锁详情</div>' +
+    '<button onclick="document.getElementById(\'modal-unlock-detail\').remove()" style="margin-left:auto;background:rgba(0,0,0,0.08);border:none;font-size:14px;cursor:pointer;color:#555;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>' +
+    '</div>' +
+    '<div style="padding:20px;">' +
+    '<div style="text-align:center;margin-bottom:20px;padding:20px;background:' + (isSuccess ? 'var(--green-bg)' : 'var(--red-bg)') + ';border-radius:12px;border:2px solid ' + (isSuccess ? 'var(--green)' : 'var(--red)') + ';">' +
+    '<div style="font-size:36px;margin-bottom:8px;">' + (isSuccess ? '✅' : '❌') + '</div>' +
+    '<div style="font-size:15px;font-weight:700;color:' + (isSuccess ? 'var(--green)' : 'var(--red)') + ';">' + result + '</div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:80px 1fr;gap:12px;font-size:13px;margin-bottom:16px;">' +
+    '<div style="color:var(--text-muted);">开锁方式</div><div style="font-weight:600;color:' + m.color + ';">' + m.label + '</div>' +
+    '<div style="color:var(--text-muted);">操作时间</div><div style="font-weight:600;">' + time + '</div>' +
+    '<div style="color:var(--text-muted);">操作人员</div><div style="font-weight:600;">' + person + '</div>' +
+    '<div style="color:var(--text-muted);">设备房间</div><div style="font-weight:600;">301 室</div>' +
+    '<div style="color:var(--text-muted);">当时电量</div><div style="font-weight:600;">' + (Math.floor(Math.random() * 30) + 60) + '%</div>' +
+    '<div style="color:var(--text-muted);">响应耗时</div><div style="font-weight:600;">' + (Math.floor(Math.random() * 200) + 10) + 'ms</div>' +
+    '<div style="color:var(--text-muted);">设备状态</div><div style="font-weight:600;color:var(--green);">🟢 在线</div>' +
+    '</div>' +
+    '</div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--border);text-align:center;">' +
+    '<button class="modal-btn primary" onclick="document.getElementById(\'modal-unlock-detail\').remove()" style="min-width:100px;">关闭</button>' +
+    '</div></div></div>';
+  var div = document.createElement('div');
+  div.innerHTML = html;
+  document.body.appendChild(div.firstChild);
+}
 </script>
 <script src="improvements-v4-func.js"></script>
 <script src="v4-func-iter2.js"></script>
@@ -29974,4 +30163,5 @@ function doConfirmSettlement(id, room) {
 <script src="improvements-v4-iter60.js"></script>
 <script src="improvements-v4-iter61.js"></script>
 <script src="improvements-v4-iter62.js"></script>
+<script src="improvements-v4-iter63.js"></script>
 </body></html>
