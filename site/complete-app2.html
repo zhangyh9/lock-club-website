@@ -237,8 +237,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .room-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s; }
 .room-card:hover { border-color: var(--blue); box-shadow: 0 2px 8px rgba(24,144,255,0.15); }
 .room-card { position: relative; }
-.room-quick-actions { display: none; position: absolute; top: 8px; right: 8px; gap: 4px; z-index: 10; }
-.room-card:hover .room-quick-actions { display: flex; flex-direction: column; gap: 3px; }
+.room-quick-actions { display: flex; gap: 3px; position: absolute; bottom: 8px; right: 8px; z-index: 10; }
 .room-qa-btn { padding: 3px 7px; font-size: 10px; border-radius: 4px; border: none; cursor: pointer; font-weight: 600; opacity: 0.9; white-space: nowrap; }
 .room-qa-btn:hover { opacity: 1; }
 .room-qa-checkin { background: var(--green); color: white; }
@@ -1231,13 +1230,26 @@ function showToast(msg, type) {
 <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border);">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
 <div style="font-size:15px;font-weight:600;">🚪 房间状态</div>
-<div style="display:flex;gap:8px;align-items:center;">
-<button onclick="renderRoomGrid()" style="padding:6px 12px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🔄 刷新</button>
-<!-- 【改进1-新增】首页清洁快捷按钮（对照原系统截图：入住/退房/清洁三按钮） -->
-<button onclick="showPage('housekeeping');showToast('🏠 已跳转至清洁管理页面','info')" style="padding:6px 12px;background:var(--orange);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🧹 清洁管理</button>
-<button onclick="showPage('workorder');showToast('📋 已跳转至服务工单页面','info')" style="padding:6px 12px;background:var(--green);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">📞 服务工单</button>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+<input id="home-room-search" placeholder="🔍 搜索房间号/客户名..." oninput="filterRoomsByKeyword(this.value)" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:180px;">
+<select id="home-room-filter" onchange="renderRoomGrid(this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+<option value="all">全部房间</option><option value="occupied">在住</option><option value="empty">空房</option><option value="alert">告警/维修</option>
+</select>
+<button onclick="renderRoomGrid(document.getElementById('home-room-filter').value)" style="padding:6px 12px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🔄 刷新</button>
 </div>
 </div>
+<script>
+function filterRoomsByKeyword(kw) {
+  var cards = document.querySelectorAll('#room-grid .room-card');
+  kw = kw.trim().toLowerCase();
+  cards.forEach(function(c) {
+    var room = c.dataset.room || '';
+    var text = c.textContent.toLowerCase();
+    var match = !kw || room.toLowerCase().includes(kw) || text.includes(kw);
+    c.style.display = match ? '' : 'none';
+  });
+}
+</script>
 <div id="room-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
 <!-- 房间卡片由JS渲染 -->
 </div>
@@ -2518,7 +2530,7 @@ function switchRoomDetailTab(tab, el) {
 <div class="tab" id="dev-tab-remote" onclick="switchDevTab('remote')">远程操作</div>
 <div class="tab" id="dev-tab-unlock-log" onclick="switchDevTab('unlock-log')">开锁记录</div>
 <div class="tab" id="dev-tab-runtime" onclick="switchDevTab('runtime')">📊 运行日志</div>
-<div class="tab" id="dev-tab-history" onclick="switchPage('history')">历史记录</div>
+<div class="tab" id="dev-tab-history" onclick="switchDevTab('history')">历史记录</div>
 <div class="tab" id="dev-tab-binding" onclick="switchDevTab('binding')">🔗 绑定历史</div>
 <!-- 【改进5新增】设备详情页钥匙信息Tab（原系统房间详情有钥匙信息） -->
 <div class="tab" id="dev-tab-keys" onclick="switchDevTab('keys')">🔑 钥匙信息</div>
@@ -29472,8 +29484,8 @@ function renderRoomGrid(filter) {
         '<div style="display:flex;align-items:center;gap:4px;"><span>🚪</span><span style="color:var(--text-muted);">门锁：</span><span style="font-weight:500;" class="' + lockClass + '">' + r.lock + '</span></div>' +
         '<div style="display:flex;align-items:center;gap:4px;"><span>🔋</span><span style="color:var(--text-muted);">电量：</span><span style="font-weight:500;" class="' + battClass + '">' + r.battery + '%</span></div>' +
         '<div style="display:flex;align-items:center;gap:4px;"><span>⚡</span><span style="color:var(--text-muted);">用电：</span><span style="font-weight:500;" class="' + elecClass + '">' + r.electricity + 'kWh</span></div></div>' +
-      (r.status === 'in' ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text-muted);"><span style="font-weight:600;color:var(--text);">' + r.guest + '</span> · ' + r.phone + '<br>入住：' + r.checkin + ' → 退：' + r.checkout + '</div>' : '') +
-      '<div style="position:absolute;top:6px;right:6px;display:none;gap:3px;" class="room-quick-actions">' +
+      (r.status === 'in' ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text-muted);"><span class="room-guest-name" style="font-weight:600;color:var(--text);">' + r.guest + '</span> · ' + r.phone + '<br>入住：' + r.checkin + ' → 退：' + r.checkout + '</div>' : '') +
+      '<div class="room-quick-actions">' +
         '<button class="room-qa-btn room-qa-checkin" onclick="event.stopPropagation();rdOpenCheckinFromGrid(\'' + r.num + '\')">入住</button>' +
         '<button class="room-qa-btn room-qa-history" onclick="event.stopPropagation();navigateToRoom(\'' + r.num + '\')">详情</button>' +
         '<button class="room-qa-btn room-qa-unlock" onclick="event.stopPropagation();showToast(\'正在远程开锁...','info\')">开锁</button></div>' +
