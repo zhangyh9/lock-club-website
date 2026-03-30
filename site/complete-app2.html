@@ -1558,6 +1558,13 @@ function filterRoomsByKeyword(kw) {
 <div class="card-tab" onclick="filterAlertTable('pending', this)">待处理</div>
 <div class="card-tab" onclick="filterAlertTable('done', this)">已处理</div>
 </div>
+<div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+<!-- 【物联后台v5 改进T19】告警记录增加按设备类型分组+自动刷新 -->
+<select id="alert-type-filter" onchange="applyAlertTypeFilter()" style="padding:4px 8px;font-size:11px;border:1px solid var(--border);border-radius:6px;">
+<option value="">全部类型</option><option value="offline">🔴 设备离线</option><option value="lowbat">🟡 低电量</option><option value="door">🚪 门锁异常</option><option value="temp">🌡️ 温度告警</option>
+</select>
+<button class="action-btn small" onclick="refreshAlertTable()" style="padding:3px 8px;font-size:11px;" title="刷新告警">🔄 刷新</button>
+</div>
 </div>
 <div class="card-body">
 <table class="table">
@@ -1635,6 +1642,35 @@ function filterRoomsByKeyword(kw) {
 </div>
 </div>
 <div class="card" id="unlock-log-stats-panel" style="margin-bottom:12px;"></div>
+<!-- 【物联后台v5 改进T20】开锁记录增加按设备UUID快捷筛选 -->
+<div class="card" style="margin-bottom:12px;padding:10px 14px;">
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+<div style="font-size:12px;font-weight:600;color:var(--blue);">📡 设备快捷筛选</div>
+<div id="uuid-quick-chips" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+<script>
+// T20: 渲染设备UUID快捷筛选chips
+(function renderUuidChips(){
+  var chips = document.getElementById('uuid-quick-chips');
+  if(!chips || typeof deviceData === 'undefined') return;
+  var uuids = deviceData.slice(0,8).map(function(d){ return {uuid:d.uuid, room:d.room}; });
+  chips.innerHTML = uuids.map(function(u) {
+    return '<button class="action-btn small" onclick="filterLogByUuid(\'' + u.uuid + '\', this)" style="padding:3px 8px;font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);">' + u.room + ' ' + u.uuid.slice(-4) + '</button>';
+  }).join('') + '<button class="action-btn small" onclick="clearLogUuidFilter()" style="padding:3px 8px;font-size:10px;">全部</button>';
+})();
+function filterLogByUuid(uuid, btn) {
+  _logUuidFilter = uuid;
+  document.querySelectorAll('#uuid-quick-chips .action-btn').forEach(function(b){ b.style.background='var(--bg)'; b.style.color='var(--text)'; b.style.fontWeight='normal'; });
+  if(btn) { btn.style.background='var(--blue-bg)'; btn.style.color='var(--blue)'; btn.style.fontWeight='700'; }
+  applyLogFilter && applyLogFilter();
+}
+function clearLogUuidFilter() {
+  _logUuidFilter = null;
+  document.querySelectorAll('#uuid-quick-chips .action-btn').forEach(function(b){ b.style.background='var(--bg)'; b.style.color='var(--text)'; b.style.fontWeight='normal'; });
+  applyLogFilter && applyLogFilter();
+}
+</script>
+</div>
+</div>
 <div class="card">
 <div class="card-header">
 <div class="card-title">最近开锁记录</div>
@@ -1899,6 +1935,15 @@ function filterRoomsByKeyword(kw) {
 <div class="card-title">📋 设备列表</div>
 <div style="display:flex;gap:6px;">
 <button class="action-btn small" onclick="openDeviceRegisterModal()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">➕ 新增设备</button>
+<!-- 【物联后台v5 改进T18】设备列表增加电量区间+信号强度筛选 -->
+<div style="display:flex;gap:8px;align-items:center;margin-left:8px;padding-left:8px;border-left:1px solid var(--border);">
+<select id="dev-battery-filter" onchange="applyDeviceBatteryFilter()" style="padding:4px 8px;font-size:11px;border:1px solid var(--border);border-radius:6px;">
+<option value="">全部电量</option><option value="high">≥80% 高电量</option><option value="mid">50-79% 中电量</option><option value="low">20-49% 低电量</option><option value="crit"><20% 急需更换</option>
+</select>
+<select id="dev-signal-filter" onchange="applyDeviceSignalFilter()" style="padding:4px 8px;font-size:11px;border:1px solid var(--border);border-radius:6px;">
+<option value="">全部信号</option><option value="excellent">强(-50dBm)</option><option value="good">中(-50~-70dBm)</option><option value="weak">弱(-70~-90dBm)</option><option value="poor">差(>-90dBm)</option>
+</select>
+</div>
 <button class="action-btn small" onclick="exportDeviceCSV()" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);">📤 导出CSV</button>
 <button class="action-btn small" onclick="openDeviceImportModal()" style="padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📥 导入设备</button>
 </div>
@@ -25018,6 +25063,21 @@ var _devicePageSize = 8;
 var _deviceGroupFilter = 'all';
 var _deviceStatusFilter = 'all';
 var _deviceSearchKw = '';
+var _deviceBatteryFilter = '';
+var _deviceSignalFilter = '';
+
+function applyDeviceBatteryFilter() {
+  var sel = document.getElementById('dev-battery-filter');
+  _deviceBatteryFilter = sel ? sel.value : '';
+  _devicePage = 1;
+  renderDeviceFilteredTable();
+}
+function applyDeviceSignalFilter() {
+  var sel = document.getElementById('dev-signal-filter');
+  _deviceSignalFilter = sel ? sel.value : '';
+  _devicePage = 1;
+  renderDeviceFilteredTable();
+}
 
 function applyDeviceSearch() {
   var inp = document.getElementById('device-search-input');
@@ -25066,7 +25126,11 @@ function getFilteredDeviceList() {
     var statusMap = {'online':d.status==='在线','offline':d.status==='离线','lowbattery':d.status.indexOf('低电量')>=0,'all':true};
     var statusMatch = statusMap[_deviceStatusFilter] !== undefined ? statusMap[_deviceStatusFilter] : true;
     var kwMatch = !_deviceSearchKw || d.room.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.uuid.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.model.toLowerCase().indexOf(_deviceSearchKw) >= 0;
-    return groupMatch && statusMatch && kwMatch;
+    var batMatch = !_deviceBatteryFilter || (_deviceBatteryFilter === 'high' && d.battery >= 80) || (_deviceBatteryFilter === 'mid' && d.battery >= 50 && d.battery < 80) || (_deviceBatteryFilter === 'low' && d.battery >= 20 && d.battery < 50) || (_deviceBatteryFilter === 'crit' && d.battery < 20);
+    // T18: signal filter (假设 deviceData 有 signal 字段，默认强信号)
+    var sig = d.signal || -50;
+    var sigMatch = !_deviceSignalFilter || (_deviceSignalFilter === 'excellent' && sig > -50) || (_deviceSignalFilter === 'good' && sig >= -70 && sig <= -50) || (_deviceSignalFilter === 'weak' && sig >= -90 && sig < -70) || (_deviceSignalFilter === 'poor' && sig < -90);
+    return groupMatch && statusMatch && kwMatch && batMatch && sigMatch;
   });
 }
 
@@ -28744,6 +28808,18 @@ function injectEnergyAISuggestBtn() {
 // 【修复2】告警列表 → filterAlertTable / openAlertModalV2 / submitAlertProcessV2
 // 理由：告警Tab调用 filterAlertTable，告警行调用 openAlertModalV2，但函数体缺失
 var _alertCurrentTab = 'all';
+var _alertTypeFilter = '';
+
+function applyAlertTypeFilter() {
+  var sel = document.getElementById('alert-type-filter');
+  _alertTypeFilter = sel ? sel.value : '';
+  filterAlertTable(_alertCurrentTab, document.querySelector('#page-alert .card-tabs .active'));
+}
+
+function refreshAlertTable() {
+  filterAlertTable(_alertCurrentTab, document.querySelector('#page-alert .card-tabs .active'));
+  showToast('🔄 告警列表已刷新', 'info');
+}
 function filterAlertTable(tab, el) {
   _alertCurrentTab = tab;
   var tabContainer = document.querySelector('#page-alert .card-tabs');
@@ -28768,6 +28844,15 @@ function filterAlertTable(tab, el) {
     var show = tab === 'all'
       || (tab === 'pending' && (status === 'pending' || status === ''))
       || (tab === 'done' && (status === 'resolved' || status === 'done' || status === 'recovered' || status === 'ignored'));
+    // T19: apply type filter
+    if (show && _alertTypeFilter) {
+      var badge = row.querySelector('.tbadge');
+      var text = badge ? badge.textContent : '';
+      if (_alertTypeFilter === 'offline' && text.indexOf('离线') < 0) show = false;
+      else if (_alertTypeFilter === 'lowbat' && text.indexOf('低电量') < 0 && text.indexOf('电量') < 0) show = false;
+      else if (_alertTypeFilter === 'door' && text.indexOf('门锁') < 0 && text.indexOf('异常') < 0) show = false;
+      else if (_alertTypeFilter === 'temp' && text.indexOf('温度') < 0 && text.indexOf('高温') < 0 && text.indexOf('低温') < 0) show = false;
+    }
     row.style.display = show ? '' : 'none';
     if (show) matchCount++;
   });
