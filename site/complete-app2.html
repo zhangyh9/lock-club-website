@@ -626,8 +626,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 
 // ======= 全局常量（P99修复：魔法数字提取为命名常量） =======
 var IOT_CONST = {
-  BATTERY_LOW: 20,           // 电量告警阈值(%)
-  BATTERY_CRITICAL: 10,     // 电量严重告警阈值(%)
+  BATTERY_LOW: 50,           // 电量告警阈值(%)
+  BATTERY_CRITICAL: 20,     // 电量严重告警阈值(%)
   OFFLINE_HOURS_ALERT: 1,   // 离线超过N小时标红
   REFRESH_INTERVAL: 10000,  // 侧边栏统计刷新间隔(ms)
   DEBOUNCE_DELAY: 300,      // 防抖延迟(ms)
@@ -7786,6 +7786,7 @@ function openPointsExchangeModal() {
 }
 
 // ====== 【改进4】系统配置管理功能 ======
+// 【P97修复】openConfigEditModal + saveSystemConfig 合并为统一版本（第7789行和第8010行重复定义合并）
 function openConfigEditModal() {
   var nameEl = document.getElementById('cfg-hotel-name');
   if (nameEl) {
@@ -7794,6 +7795,15 @@ function openConfigEditModal() {
     if (sidebarBrand) currentName = sidebarBrand.textContent || currentName;
     nameEl.value = currentName;
   }
+  // 同时填充hotel-name-input（部分弹窗使用此字段）
+  var nameInput = document.getElementById('cfg-hotel-name-input');
+  if (nameInput) {
+    var sidebarBrand2 = document.getElementById('sidebar-brand-text');
+    nameInput.value = sidebarBrand2 ? sidebarBrand2.textContent : '小度语音智慧房体验店';
+  }
+  // 填充默认值
+  var telInput = document.getElementById('cfg-hotel-tel');
+  if (telInput && !telInput.value) telInput.value = '400-888-8888';
   openModal('config-edit');
 }
 function saveSystemConfig() {
@@ -7807,6 +7817,7 @@ function saveSystemConfig() {
   showToast('系统设置已保存，所有变更已生效', 'success');
 }
 
+// 【P97修复】删除第8010-8018行重复的openConfigEditModal定义（原为【v4全面检查修复3】）
 // 【P19优化】楼栋管理CRUD已删除(PMS残留)
 // ====== 【v4全面检查修复2】房型管理完整CRUD ======
 var _roomTypeV2List = [
@@ -8004,17 +8015,6 @@ function renderRoomTypeV2Table() {
       '</td></tr>';
   });
   tbody.innerHTML = rows || '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">暂无房型数据</td></tr>';
-}
-
-// ====== 【v4全面检查修复3】系统设置编辑弹窗完善 ======
-function openConfigEditModal() {
-  var sidebarBrand = document.getElementById('sidebar-brand-text');
-  var currentName = sidebarBrand ? sidebarBrand.textContent : '小度语音智慧房体验店';
-  var nameInput = document.getElementById('cfg-hotel-name-input');
-  if (nameInput) nameInput.value = currentName;
-  var telInput = document.getElementById('cfg-hotel-tel');
-  if (telInput && !telInput.value) telInput.value = '400-888-8888';
-  openModal('config-edit');
 }
 
 // ====== 【v4全面检查修复4】钥匙操作日志搜索过滤 ======
@@ -16029,11 +16029,10 @@ var _homeRoomData = [
   {num:'102', type:'大床房', floor:'1层', status:'empty', lock:'已反锁', battery:85, signal:'满格', lastSync:'10:00:00', keys:0, guest:'-', phone:'-', checkin:'-', checkout:'-', electricity:4.1}
 ];
 
-// 【P99修复】提取电池状态魔法数字为常量
-// 【P99修复】全局电池状态魔法数字常量（多处使用，提取为常量便于维护）
-var BATTERY_CRITICAL = 20;  // 严重低电量阈值（红色警告）
-var BATTERY_LOW = 50;       // 低电量阈值（橙色提醒）
-var BATTERY_GOOD = 60;      // 电量良好阈值（绿色）
+// 【P97+P99修复】删除重复的BATTERY_*全局变量（第629-636行IOT_CONST已统一）
+// 保留BATTERY_GOOD/BATTERY_HIGH供直接引用（注意与IOT_CONST保持一致）
+// 注意：直接使用BATTERY_CRITICAL/BATTERY_LOW的代码应改用IOT_CONST.BATTERY_CRITICAL/IOT_CONST.BATTERY_LOW
+var BATTERY_GOOD = 60;      // 电量良好阈值（绿色）- 与IOT_CONST.BATTERY_GOOD保持一致
 var BATTERY_HIGH = 80;      // 高电量阈值（用于筛选）
 
 function renderRoomGrid(filter) {
