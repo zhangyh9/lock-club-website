@@ -19291,7 +19291,7 @@ function openEnergyRulesConfigModal() {
 </div>
 <div class="modal-footer">
 <button class="modal-btn secondary" onclick="closeModal('config-edit')">取消</button>
-<button class="modal-btn primary" onclick="saveSystemConfig()">💾 保存设置</button>
+<button class="modal-btn primary" onclick="confirmConfigSave()">💾 保存设置</button>
 </div>
 </div>
 </div>
@@ -30171,3 +30171,295 @@ function showUnlockDetail(method, time, person, result) {
 <script src="improvements-v4-iter65.js"></script>
 <script src="improvements-v4-iter66.js"></script>
 </body></html>
+
+// ============================================================
+// 【物联后台 v4 第67轮】5个功能性断裂修复
+// 修复：config保存/楼栋编辑删除/楼层新增/房间新增/房型新增
+// ============================================================
+
+// 【修复1】confirmConfigSave - config保存按钮（修复saveSystemConfig调用断裂）
+function confirmConfigSave() {
+  var hotelName = document.getElementById('cfg-hotel-name') ? document.getElementById('cfg-hotel-name').value.trim() : '';
+  var hotelPhone = document.getElementById('cfg-hotel-phone') ? document.getElementById('cfg-hotel-phone').value.trim() : '';
+  var hotelAddr = document.getElementById('cfg-hotel-addr') ? document.getElementById('cfg-hotel-addr').value.trim() : '';
+  var checkinTime = document.getElementById('cfg-checkin-time') ? document.getElementById('cfg-checkin-time').value.trim() : '';
+  var checkoutTime = document.getElementById('cfg-checkout-time') ? document.getElementById('cfg-checkout-time').value.trim() : '';
+  var deposit = document.getElementById('cfg-deposit') ? document.getElementById('cfg-deposit').value.trim() : '';
+  if (!hotelName) { showToast('请填写酒店名称', 'error'); return; }
+  // Apply to sidebar brand
+  var sidebarBrand = document.getElementById('sidebar-brand-text');
+  if (sidebarBrand) sidebarBrand.textContent = hotelName;
+  var summary = ['酒店名称:' + hotelName];
+  if (hotelPhone) summary.push('电话:' + hotelPhone);
+  if (checkinTime) summary.push('入住:' + checkinTime);
+  if (checkoutTime) summary.push('退房:' + checkoutTime);
+  showToast('✅ 系统配置已保存：' + summary.slice(0,3).join('、'), 'success');
+  closeModal('config-edit');
+}
+
+// 【修复2】openEditBldgConfig / confirmDeleteBldgFromConfig / openAddBuildingForm
+// 理由：配置页面楼栋Tab的编辑/删除/新增按钮断裂
+function openEditBldgConfig(bldId) {
+  var b = buildingData.find(function(x){ return x.id === bldId; });
+  if (!b) { showToast('楼栋信息不存在', 'error'); return; }
+  var existing = document.getElementById('modal-bldg-config-edit');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-bldg-config-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-bldg-config-edit\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:480px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div><div style="font-size:15px;font-weight:700;">✏️ 编辑楼栋</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + b.name + '</div></div>' +
+        '<button onclick="document.getElementById(\'modal-bldg-config-edit\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;">✕</button></div>' +
+      '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
+        '<div class="form-group"><label class="form-label">楼栋名称</label><input type="text" id="bce-name" class="form-input" value="' + b.name + '"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div class="form-group"><label class="form-label">楼层数</label><input type="number" id="bce-floors" class="form-input" value="' + b.floors + '"></div>' +
+          '<div class="form-group"><label class="form-label">房间数</label><input type="number" id="bce-rooms" class="form-input" value="' + b.rooms + '"></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">位置</label><input type="text" id="bce-addr" class="form-input" value="' + (b.address||'') + '"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div class="form-group"><label class="form-label">负责人</label><input type="text" id="bce-mgr" class="form-input" value="' + (b.manager||'') + '"></div>' +
+          '<div class="form-group"><label class="form-label">电话</label><input type="text" id="bce-phone" class="form-input" value="' + (b.phone||'') + '"></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">状态</label><select id="bce-status" class="form-select"><option value="active"' + (b.status==='active'?' selected':'') + '>✅ 启用</option><option value="inactive"' + (b.status==='inactive'?' selected':'') + '>❌ 停用</option></select></div>' +
+      '</div>' +
+      '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+        '<button onclick="document.getElementById(\'modal-bldg-config-edit\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">取消</button>' +
+        '<button onclick="submitBldgConfigEdit(\'' + bldId + '\')" style="padding:8px 20px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">💾 保存</button>' +
+      '</div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitBldgConfigEdit(bldId) {
+  var b = buildingData.find(function(x){ return x.id === bldId; });
+  if (!b) return;
+  var name = document.getElementById('bce-name').value.trim();
+  if (!name) { showToast('楼栋名称不能为空', 'error'); return; }
+  b.name = name;
+  b.floors = parseInt(document.getElementById('bce-floors').value) || b.floors;
+  b.rooms = parseInt(document.getElementById('bce-rooms').value) || b.rooms;
+  b.address = document.getElementById('bce-addr').value.trim();
+  b.manager = document.getElementById('bce-mgr').value.trim();
+  b.phone = document.getElementById('bce-phone').value.trim();
+  b.status = document.getElementById('bce-status').value;
+  document.getElementById('modal-bldg-config-edit') && document.getElementById('modal-bldg-config-edit').remove();
+  showToast('✅ 楼栋 "' + name + '" 已更新', 'success');
+  // Re-render cfg-bldg-list-body if visible
+  renderCfgBuildingList();
+}
+
+function confirmDeleteBldgFromConfig(bldId, bldName, roomCount) {
+  var existing = document.getElementById('modal-bldg-del-confirm');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-bldg-del-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-bldg-del-confirm\').remove()">' +
+    '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
+    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
+    '<div style="width:44px;height:44px;background:var(--red-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">🗑️</div>' +
+    '<div><div style="font-size:15px;font-weight:700;">确认删除楼栋</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">楼栋：' + bldName + '<br>房间数：' + roomCount + '间<br>⚠️ 删除后不可恢复</div></div></div>' +
+    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-bldg-del-confirm\').remove()">取消</button>' +
+    '<button class="modal-btn" onclick="doDeleteBldgConfig(\'' + bldId + '\',\'' + bldName + '\')" style="background:var(--red);color:white;border:none;">🗑️ 确认删除</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function doDeleteBldgConfig(bldId, bldName) {
+  buildingData = buildingData.filter(function(b){ return b.id !== bldId; });
+  document.getElementById('modal-bldg-del-confirm') && document.getElementById('modal-bldg-del-confirm').remove();
+  showToast('🗑️ 楼栋 "' + bldName + '" 已删除', 'success');
+  renderCfgBuildingList();
+}
+
+// Alias for openAddBuildingForm
+function openBuildingManagementModal() { openAddBuildingForm(); }
+
+function openAddBuildingForm() {
+  var existing = document.getElementById('modal-bldg-config-add');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-bldg-config-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-bldg-config-add\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:480px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div><div style="font-size:15px;font-weight:700;">🏢 新增楼栋</div></div>' +
+        '<button onclick="document.getElementById(\'modal-bldg-config-add\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;">✕</button></div>' +
+      '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
+        '<div class="form-group"><label class="form-label">楼栋名称 <span class="required">*</span></label><input type="text" id="bca-name" class="form-input" placeholder="如：1号楼 / A座"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div class="form-group"><label class="form-label">楼层数 <span class="required">*</span></label><input type="number" id="bca-floors" class="form-input" placeholder="如：3"></div>' +
+          '<div class="form-group"><label class="form-label">房间数</label><input type="number" id="bca-rooms" class="form-input" placeholder="如：16"></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">位置</label><input type="text" id="bca-addr" class="form-input" placeholder="如：主楼东侧"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div class="form-group"><label class="form-label">负责人</label><input type="text" id="bca-mgr" class="form-input" placeholder="负责人姓名"></div>' +
+          '<div class="form-group"><label class="form-label">电话</label><input type="text" id="bca-phone" class="form-input" placeholder="手机号"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+        '<button onclick="document.getElementById(\'modal-bldg-config-add\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">取消</button>' +
+        '<button onclick="submitBldgConfigAdd()" style="padding:8px 20px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">🏢 创建楼栋</button>' +
+      '</div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitBldgConfigAdd() {
+  var name = document.getElementById('bca-name').value.trim();
+  var floors = parseInt(document.getElementById('bca-floors').value) || 0;
+  if (!name || !floors) { showToast('请填写楼栋名称和楼层数', 'error'); return; }
+  var newId = 'B' + Date.now();
+  buildingData.push({id:newId, name:name, floors:floors, rooms:parseInt(document.getElementById('bca-rooms').value)||0, address:document.getElementById('bca-addr').value.trim(), status:'active', manager:document.getElementById('bca-mgr').value.trim(), phone:document.getElementById('bca-phone').value.trim(), remark:''});
+  document.getElementById('modal-bldg-config-add') && document.getElementById('modal-bldg-config-add').remove();
+  showToast('🏢 新楼栋 "' + name + '" 已创建（' + floors + '层）', 'success');
+  renderCfgBuildingList();
+}
+
+// 渲染配置页面楼栋列表
+function renderCfgBuildingList() {
+  var tbody = document.getElementById('cfg-bldg-list-body');
+  if (!tbody) return;
+  tbody.innerHTML = buildingData.map(function(b) {
+    var online = Math.floor((b.rooms || 0) * 0.85);
+    var offline = (b.rooms || 0) - online;
+    var occ = Math.floor(Math.random() * 40 + 50);
+    return '<tr>' +
+      '<td><span style="font-weight:600;">' + b.name + '</span></td>' +
+      '<td>' + b.floors + '层</td><td>' + b.rooms + '间</td>' +
+      '<td style="color:var(--green);">' + online + '台</td><td style="color:var(--red);">' + offline + '台</td>' +
+      '<td><span style="color:var(--blue);">' + occ + '%</span></td>' +
+      '<td><span class="tbadge ' + (b.status==='active'?'green':'gray') + '">' + (b.status==='active'?'启用':'停用') + '</span></td>' +
+      '<td><button class="action-btn small" onclick="openEditBldgConfig(\'' + b.id + '\')">编辑</button> <button class="action-btn small red" onclick="confirmDeleteBldgFromConfig(\'' + b.id + '\',\'' + b.name + '\',' + b.rooms + ')">删除</button></td>' +
+    '</tr>';
+  }).join('');
+  // Update stat summary
+  var statEl = document.getElementById('bldg-stat-summary');
+  if (statEl) {
+    var totalFloors = buildingData.reduce(function(s, b){ return s + (parseInt(b.floors)||0); }, 0);
+    var totalRooms = buildingData.reduce(function(s, b){ return s + (parseInt(b.rooms)||0); }, 0);
+    statEl.textContent = '共 ' + buildingData.length + ' 栋 · ' + totalFloors + ' 层 · ' + totalRooms + ' 间';
+  }
+}
+
+// 【修复3】openAddFloorForm / openAddRoomForm / showBuildingTreeInConfig / filterBuildingByStatus
+// 理由：配置页面楼栋Tab的楼层/房间新增和筛选按钮断裂
+function openAddFloorForm() {
+  openAddFloorModal();
+}
+
+function openAddRoomForm() {
+  openAddRoomModal();
+}
+
+function showBuildingTreeInConfig() {
+  var el = document.getElementById('bldg-tree-quick');
+  if (!el) return;
+  el.innerHTML = '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:12px;font-size:12px;color:var(--blue);">📊 楼栋总览：' + buildingData.length + '栋 · ' + buildingData.reduce(function(s,b){return s+(parseInt(b.floors)||0);},0) + '层 · ' + buildingData.reduce(function(s,b){return s+(parseInt(b.rooms)||0);},0) + '间</div>' +
+    buildingData.map(function(b) {
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:white;">' +
+        '<span style="font-size:20px;">🏢</span><div style="flex:1;"><div style="font-weight:700;font-size:13px;">' + b.name + '</div><div style="font-size:11px;color:var(--text-muted);">' + b.floors + '层 · ' + b.rooms + '间 · ' + (b.address||'') + '</div></div>' +
+        '<span class="tbadge ' + (b.status==='active'?'green':'gray') + '">' + (b.status==='active'?'启用':'停用') + '</span></div>';
+    }).join('');
+  showToast('📊 楼栋总览已刷新', 'success');
+}
+
+function filterBuildingByStatus(status) {
+  var tbody = document.getElementById('cfg-bldg-list-body');
+  if (!tbody) return;
+  var filtered = status === 'all' ? buildingData : buildingData.filter(function(b) {
+    if (status === 'vacant') return b.status === 'active';
+    if (status === 'occupied') return b.status === 'active';
+    if (status === 'maintenance') return b.status === 'inactive';
+    return true;
+  });
+  tbody.innerHTML = filtered.map(function(b) {
+    var online = Math.floor((b.rooms || 0) * 0.85);
+    var offline = (b.rooms || 0) - online;
+    var occ = Math.floor(Math.random() * 40 + 50);
+    return '<tr>' +
+      '<td><span style="font-weight:600;">' + b.name + '</span></td>' +
+      '<td>' + b.floors + '层</td><td>' + b.rooms + '间</td>' +
+      '<td style="color:var(--green);">' + online + '台</td><td style="color:var(--red);">' + offline + '台</td>' +
+      '<td><span style="color:var(--blue);">' + occ + '%</span></td>' +
+      '<td><span class="tbadge ' + (b.status==='active'?'green':'gray') + '">' + (b.status==='active'?'启用':'停用') + '</span></td>' +
+      '<td><button class="action-btn small" onclick="openEditBldgConfig(\'' + b.id + '\')">编辑</button> <button class="action-btn small red" onclick="confirmDeleteBldgFromConfig(\'' + b.id + '\',\'' + b.name + '\',' + b.rooms + ')">删除</button></td>' +
+    '</tr>';
+  }).join('');
+  showToast('🔍 已筛选：' + filtered.length + '栋', 'info');
+}
+
+// 【修复4】submitRoomTypeAdd - 房型新增表单提交断裂
+// 理由：modal-rt-add-form 的确认保存按钮 onclick="submitRoomTypeAdd()" 但函数体缺失
+var _rtEditIdx = null;
+function openAddRoomtypeModalV2() {
+  _rtEditIdx = null;
+  document.getElementById('rt-add-title').textContent = '🏠 新增房型';
+  document.getElementById('rt-edit-id').value = '';
+  document.getElementById('rt-add-name').value = '';
+  document.getElementById('rt-add-code').value = '';
+  document.getElementById('rt-add-cap').value = '';
+  document.getElementById('rt-add-price').value = '';
+  document.getElementById('rt-add-feature').value = '';
+  document.getElementById('rt-add-status').value = 'enabled';
+  openModal('rt-add-form');
+}
+
+function submitRoomTypeAdd() {
+  var name = document.getElementById('rt-add-name').value.trim();
+  var code = document.getElementById('rt-add-code').value.trim().toUpperCase();
+  var cap = parseInt(document.getElementById('rt-add-cap').value) || 2;
+  var price = parseFloat(document.getElementById('rt-add-price').value) || 0;
+  var feature = document.getElementById('rt-add-feature').value.trim();
+  var status = document.getElementById('rt-add-status').value;
+  if (!name || !code) { showToast('请填写房型名称和编码', 'error'); return; }
+  var editId = document.getElementById('rt-edit-id').value;
+  if (editId) {
+    // Update existing - find by id
+    var rt = roomTypeStore.find(function(r){ return r.id === editId; });
+    if (rt) { rt.name=name; rt.code=code; rt.capacity=cap; rt.price=price; rt.feature=feature; rt.status=status; }
+    showToast('✅ 房型 "' + name + '" 已更新', 'success');
+  } else {
+    // Add new
+    roomTypeStore.push({id:'RT' + Date.now(), name:name, code:code, capacity:cap, price:price, feature:feature, status:status, roomCount:0});
+    showToast('🏠 新房型 "' + name + '" 已创建', 'success');
+  }
+  closeModal('rt-add-form');
+  if (typeof renderRoomTypeList === 'function') renderRoomTypeList();
+}
+
+// 【修复5】openAddRoomModal / submitAddRoom - 房间新增断裂（房间管理页面+配置页面共用）
+// 理由：页面有「+ 新增房间」按钮但函数体缺失
+function openAddRoomModal() {
+  var existing = document.getElementById('modal-room-add');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay" id="modal-room-add" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-room-add\').remove()">' +
+    '<div style="background:white;border-radius:12px;width:460px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div><div style="font-size:15px;font-weight:700;">🚪 新增房间</div></div>' +
+        '<button onclick="document.getElementById(\'modal-room-add\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;">✕</button></div>' +
+      '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
+        '<div class="form-group"><label class="form-label">房间号 <span class="required">*</span></label><input type="text" id="room-add-num" class="form-input" placeholder="如：305"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+          '<div class="form-group"><label class="form-label">楼层</label><select id="room-add-floor" class="form-select"><option value="3">3层</option><option value="2">2层</option><option value="1">1层</option></select></div>' +
+          '<div class="form-group"><label class="form-label">房型</label><select id="room-add-type" class="form-select"><option value="亲子间">亲子间</option><option value="大床房">大床房</option><option value="标准间">标准间</option></select></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">初始状态</label><select id="room-add-status" class="form-select"><option value="empty">🟢 空房</option><option value="occupied">🔵 入住</option><option value="maintenance">🟠 维修</option></select></div>' +
+      '</div>' +
+      '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+        '<button onclick="document.getElementById(\'modal-room-add\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">取消</button>' +
+        '<button onclick="submitAddRoom()" style="padding:8px 20px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">🚪 创建房间</button>' +
+      '</div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function submitAddRoom() {
+  var roomNum = document.getElementById('room-add-num').value.trim();
+  var floor = document.getElementById('room-add-floor').value;
+  var roomType = document.getElementById('room-add-type').value;
+  var status = document.getElementById('room-add-status').value;
+  if (!roomNum) { showToast('请填写房间号', 'error'); return; }
+  // Add to buildingData room count
+  var bld = buildingData[0];
+  if (bld) bld.rooms = (parseInt(bld.rooms)||0) + 1;
+  document.getElementById('modal-room-add') && document.getElementById('modal-room-add').remove();
+  showToast('🚪 房间 ' + roomNum + ' 已创建（' + floor + '层 · ' + roomType + '）', 'success');
+  renderCfgBuildingList();
+  if (typeof renderBuildingRoomsGrid === 'function') renderBuildingRoomsGrid();
+}
