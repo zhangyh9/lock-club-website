@@ -12141,6 +12141,15 @@ document.addEventListener('DOMContentLoaded', function() {
     if (notifTypeFilter) { _notifTypeHandler = applyNotifFilter; notifTypeFilter.addEventListener('change', applyNotifFilter); }
     var notifStatusFilter = document.getElementById('notif-status-filter');
     if (notifStatusFilter) { _notifStatusHandler = applyNotifFilter; notifStatusFilter.addEventListener('change', applyNotifFilter); }
+    // P12内存泄漏修复：页面切换时清理监听器
+    var oldShowPage = showPage;
+    showPage = function(pageName) {
+      oldShowPage(pageName);
+      if (pageName !== 'notif') {
+        if (_notifTypeHandler && notifTypeFilter) notifTypeFilter.removeEventListener('change', _notifTypeHandler);
+        if (_notifStatusHandler && notifStatusFilter) notifStatusFilter.removeEventListener('change', _notifStatusHandler);
+      }
+    };
   }, 300);
 });
 
@@ -12325,6 +12334,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (recSearch) { _recFilterHandlers.search = applyRecordFilter; recSearch.addEventListener('input', applyRecordFilter); }
     if (recTypeFilter) { _recFilterHandlers.type = applyRecordFilter; recTypeFilter.addEventListener('change', applyRecordFilter); }
     if (recStatusFilter) { _recFilterHandlers.status = applyRecordFilter; recStatusFilter.addEventListener('change', applyRecordFilter); }
+    // P12内存泄漏修复：页面切换时清理监听器
+    var oldShowPage = showPage;
+    showPage = function(pageName) {
+      oldShowPage(pageName);
+      if (pageName !== 'records') {
+        if (_recFilterHandlers.search && recSearch) recSearch.removeEventListener('input', _recFilterHandlers.search);
+        if (_recFilterHandlers.type && recTypeFilter) recTypeFilter.removeEventListener('change', _recFilterHandlers.type);
+        if (_recFilterHandlers.status && recStatusFilter) recStatusFilter.removeEventListener('change', _recFilterHandlers.status);
+      }
+    };
   }, 400);
 });
 
@@ -14804,6 +14823,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (oplogDateEnd) { _oplogHandlers.dateEnd = applyOplogFilter; oplogDateEnd.addEventListener('change', applyOplogFilter); }
     var oplogTarget = document.getElementById('oplog-target');
     if (oplogTarget) { _oplogHandlers.target = applyOplogFilter; oplogTarget.addEventListener('input', applyOplogFilter); }
+    // P12内存泄漏修复：页面切换时清理发票和操作日志监听器
+    var oldShowPage = showPage;
+    showPage = function(pageName) {
+      oldShowPage(pageName);
+      if (pageName !== 'invoice') {
+        if (window._invSearchHandler && invSearch) invSearch.removeEventListener('input', window._invSearchHandler);
+      }
+      if (pageName !== 'config') {
+        Object.keys(_oplogHandlers).forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el && _oplogHandlers[id]) el.removeEventListener(id.includes('Date') || id === 'oplog-target' ? 'input' : 'change', _oplogHandlers[id]);
+        });
+      }
+    };
   }, 400);
 // ============================================================
 // 【物联后台 v4 改进1】发票开具功能断裂修复
