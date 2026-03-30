@@ -4694,8 +4694,10 @@ function saveEscalationEditorRules() {
       showToast('🗑️ 房间 ' + room + ' 清洁任务已删除', 'success');
     }
     function openHousekeepingTaskModal() {
-      openHKTaskAddModal();
+      showToast('清洁任务管理已转移至设备管理', 'info');
     }
+    function openHKTaskAddModal() { showToast('清洁任务管理已转移至设备管理', 'info'); }
+    function submitHKTask() { showToast('清洁任务管理已转移至设备管理', 'info'); }
     function openBulkAssignModal() {
       showToast('🔄 批量分配清洁任务...', 'info');
     }
@@ -5741,8 +5743,6 @@ function saveEscalationEditorRules() {
 <div class="config-tab" id="cfg-tab-security" onclick="switchConfigTab('security',this)" style="padding:8px 18px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;font-size:13px;">🔐 安全设置</div>
 <!-- 【改进3】系统设置新增「操作日志」Tab -->
 <div class="config-tab" id="cfg-tab-oplog" onclick="switchConfigTab('oplog',this)" style="padding:8px 18px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;font-size:13px;">📋 操作日志</div>
-<!-- 【改进1】系统设置新增「楼栋管理」Tab -->
-<div class="config-tab" id="cfg-tab-building" onclick="switchConfigTab('building',this)" style="padding:8px 18px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;font-size:13px;">🏢 楼栋管理</div>
 <!-- 【改进5】系统设置新增「角色权限」Tab -->
 <div class="config-tab" id="cfg-tab-greeting" onclick="switchConfigTab('greeting',this)" style="padding:8px 18px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;font-size:13px;">🎙️ 语音迎宾</div>
 <div class="config-tab" id="cfg-tab-roles" onclick="switchConfigTab('roles',this)" style="padding:8px 18px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;font-size:13px;">🛡️ 角色权限</div>
@@ -5974,37 +5974,7 @@ function saveEscalationEditorRules() {
 </div>
 </div>
 </div>
-<!-- 【改进1】楼栋管理Tab内容 -->
-<div id="cfg-content-building" style="display:none;">
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-<input class="form-input" id="bldg-search" placeholder="🔍 搜索楼栋/楼层/房间" style="max-width:220px;padding:7px 12px;font-size:12px;" type="text"/>
-<button class="action-btn small" onclick="openBuildingManagementModal()" style="padding:6px 12px;background:var(--blue);color:white;border:none;font-size:12px;">+ 新增楼栋</button>
-<button class="action-btn small" onclick="openAddFloorForm()" style="padding:6px 12px;font-size:12px;">+ 新增楼层</button>
-<button class="action-btn small" onclick="openAddRoomForm()" style="padding:6px 12px;font-size:12px;">+ 新增房间</button>
-<button class="action-btn small" onclick="showBuildingTreeInConfig()" style="padding:6px 12px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);font-size:12px;">📊 楼栋总览</button>
-<span id="bldg-stat-summary" style="margin-left:auto;font-size:12px;color:var(--text-muted);">共 2 栋 · 4 层 · 13 间</span>
-</div>
-<!-- 楼栋树形结构快速展示 -->
-<div id="bldg-tree-quick" style="margin-bottom:16px;"></div>
-<!-- 房间状态分布 -->
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
-<div class="stat-card" onclick="filterBuildingByStatus('all')" style="cursor:pointer;">
-<div class="stat-icon" style="background:var(--blue-bg);">🏠</div>
-<div><div class="stat-num">13</div><div class="stat-label">总房间数</div></div>
-</div>
-<div class="stat-card" onclick="filterBuildingByStatus('vacant')" style="cursor:pointer;">
-<div class="stat-icon" style="background:var(--green-bg);">🟢</div>
-<div><div class="stat-num">5</div><div class="stat-label">空房</div></div>
-</div>
-<div class="stat-card" onclick="filterBuildingByStatus('occupied')" style="cursor:pointer;">
-<div class="stat-icon" style="background:var(--blue-bg);">🔵</div>
-<div><div class="stat-num">6</div><div class="stat-label">入住</div></div>
-</div>
-<div class="stat-card" onclick="filterBuildingByStatus('maintenance')" style="cursor:pointer;">
-<div class="stat-icon" style="background:var(--orange-bg);">🔶</div>
-<div><div class="stat-num">2</div><div class="stat-label">维修/其他</div></div>
-</div>
-</div>
+<!-- 【P19优化】楼栋管理Tab已删除(PMS残留) -->
 <!-- 【改进4】楼栋列表管理：完整CRUD（系统设置-楼栋管理Tab内嵌） -->
 <div class="card" style="margin-bottom:14px;">
 <div class="card-header">
@@ -7537,224 +7507,7 @@ function syncWorkorderTableFromData() {
   if (typeof updateSlaCountdowns === 'function') updateSlaCountdowns();
 }
 
-// ====== 【改进1】员工管理完整CRUD功能 ======
-var _staffEditingId = null;
-var _staffDeleteId = null;
-var _staffResetId = null;
-var _staffList = [
-  {id:'S001',name:'赵飞',code:'EMP001',phone:'138****1234',role:'manager',dept:'front',hire:'2024-01-15',status:'active',last:'今天 09:00'},
-  {id:'S002',name:'周敏',code:'EMP002',phone:'139****5678',role:'reception',dept:'front',hire:'2024-03-01',status:'active',last:'今天 08:30'},
-  {id:'S003',name:'吴倩',code:'EMP003',phone:'136****9012',role:'housekeeping',dept:'housekeeping',hire:'2023-11-20',status:'active',last:'昨天 18:00'},
-  {id:'S004',name:'郑强',code:'EMP004',phone:'135****3456',role:'cleaner',dept:'housekeeping',hire:'2024-06-01',status:'active',last:'昨天 17:30'},
-  {id:'S005',name:'王工',code:'EMP005',phone:'137****7890',role:'engineer',dept:'engineering',hire:'2023-08-15',status:'active',last:'今天 10:00'}
-];
-
-function getStaffRoleLabel(role) {
-  var map = {manager:'👨‍💼 前厅经理',reception:'👩‍💼 前厅接待',housekeeping:'🧹 客房主管',cleaner:'🧹 清洁人员',engineer:'🔧 工程师',admin:'🔑 管理员'};
-  return map[role] || role;
-}
-function getStaffDeptLabel(dept) {
-  var map = {front:'前厅部',housekeeping:'客房部',engineering:'工程部',admin:'行政部'};
-  return map[dept] || dept;
-}
-
-function openAddStaffModal() {
-  _staffEditingId = null;
-  var titleEl = document.getElementById('staff-form-title');
-  if (titleEl) titleEl.textContent = '👨‍💼 新增员工';
-  var submitBtn = document.getElementById('staff-form-submit');
-  if (submitBtn) { submitBtn.textContent = '添加员工'; submitBtn.style.background = ''; }
-  var nameEl = document.getElementById('staff-name');
-  if (nameEl) nameEl.value = '';
-  var codeEl = document.getElementById('staff-code');
-  if (codeEl) codeEl.value = 'EMP' + String(_staffList.length + 1).padStart(3,'0');
-  var phoneEl = document.getElementById('staff-phone');
-  if (phoneEl) phoneEl.value = '';
-  var roleEl = document.getElementById('staff-role');
-  if (roleEl) roleEl.value = '';
-  var deptEl = document.getElementById('staff-dept');
-  if (deptEl) deptEl.value = '';
-  var hireEl = document.getElementById('staff-hire-date');
-  if (hireEl) hireEl.value = '';
-  var pwdEl = document.getElementById('staff-password');
-  if (pwdEl) pwdEl.value = '88888888';
-  var remarkEl = document.getElementById('staff-remark');
-  if (remarkEl) remarkEl.value = '';
-  var pwdGroup = document.getElementById('staff-password-group');
-  if (pwdGroup) pwdGroup.style.display = '';
-  openModal('staff-form');
-}
-
-function openEditStaffModal(idx) {
-  var staff = _staffList[idx];
-  if (!staff) return;
-  _staffEditingId = idx;
-  var titleEl = document.getElementById('staff-form-title');
-  if (titleEl) titleEl.textContent = '✏️ 编辑员工 - ' + staff.name;
-  var submitBtn = document.getElementById('staff-form-submit');
-  if (submitBtn) { submitBtn.textContent = '保存修改'; submitBtn.style.background = 'var(--blue)'; }
-  var nameEl = document.getElementById('staff-name');
-  if (nameEl) nameEl.value = staff.name;
-  var codeEl = document.getElementById('staff-code');
-  if (codeEl) codeEl.value = staff.code;
-  var phoneEl = document.getElementById('staff-phone');
-  if (phoneEl) phoneEl.value = staff.phone;
-  var roleEl = document.getElementById('staff-role');
-  if (roleEl) roleEl.value = staff.role;
-  var deptEl = document.getElementById('staff-dept');
-  if (deptEl) deptEl.value = staff.dept;
-  var hireEl = document.getElementById('staff-hire-date');
-  if (hireEl) hireEl.value = staff.hire;
-  var pwdEl = document.getElementById('staff-password');
-  if (pwdEl) pwdEl.value = '88888888';
-  var remarkEl = document.getElementById('staff-remark');
-  if (remarkEl) remarkEl.value = '';
-  var pwdGroup = document.getElementById('staff-password-group');
-  if (pwdGroup) pwdGroup.style.display = 'none';
-  openModal('staff-form');
-}
-
-function submitStaffForm() {
-  var name = document.getElementById('staff-name') ? document.getElementById('staff-name').value.trim() : '';
-  var phone = document.getElementById('staff-phone') ? document.getElementById('staff-phone').value.trim() : '';
-  var role = document.getElementById('staff-role') ? document.getElementById('staff-role').value : '';
-  if (!name || !phone || !role) {
-    showToast('请填写必填项（姓名、手机号、角色）', 'error');
-    return;
-  }
-  if (_staffEditingId !== null) {
-    var s = _staffList[_staffEditingId];
-    s.name = name;
-    var codeEl = document.getElementById('staff-code');
-    s.code = codeEl ? (codeEl.value.trim() || s.code) : s.code;
-    s.phone = phone;
-    s.role = role;
-    var deptEl = document.getElementById('staff-dept');
-    s.dept = deptEl ? deptEl.value : s.dept;
-    var hireEl = document.getElementById('staff-hire-date');
-    s.hire = hireEl ? hireEl.value : s.hire;
-    showToast('员工 ' + name + ' 信息已更新', 'success');
-  } else {
-    var codeEl2 = document.getElementById('staff-code');
-    var deptEl2 = document.getElementById('staff-dept');
-    var hireEl2 = document.getElementById('staff-hire-date');
-    var newStaff = {
-      id: 'S' + String(Date.now()).slice(-3),
-      name: name,
-      code: codeEl2 ? (codeEl2.value.trim() || 'EMP' + String(_staffList.length + 1).padStart(3,'0')) : 'EMP' + String(_staffList.length + 1).padStart(3,'0'),
-      phone: phone,
-      role: role,
-      dept: deptEl2 ? deptEl2.value : '',
-      hire: hireEl2 ? hireEl2.value : '',
-      status: 'active',
-      last: '刚刚'
-    };
-    _staffList.push(newStaff);
-    showToast('员工 ' + name + ' 添加成功，初始密码：88888888', 'success');
-  }
-  closeModal('staff-form');
-  renderStaffTable();
-}
-
-function openDeleteStaffModal(idx) {
-  var staff = _staffList[idx];
-  if (!staff) return;
-  _staffDeleteId = idx;
-  var delNameEl = document.getElementById('staff-del-name');
-  if (delNameEl) delNameEl.textContent = '确定删除员工：' + staff.name + '？';
-  var delMetaEl = document.getElementById('staff-del-meta');
-  if (delMetaEl) delMetaEl.textContent = staff.code + ' · ' + staff.phone;
-  var reasonEl = document.getElementById('staff-del-reason');
-  if (reasonEl) reasonEl.value = '';
-  openModal('staff-delete');
-}
-
-function confirmStaffDelete() {
-  if (_staffDeleteId === null) return;
-  var staff = _staffList[_staffDeleteId];
-  var reasonEl = document.getElementById('staff-del-reason');
-  var reason = reasonEl ? reasonEl.value : '';
-  var reasonText = reason ? '（原因：' + reason + '）' : '';
-  _staffList.splice(_staffDeleteId, 1);
-  _staffDeleteId = null;
-  closeModal('staff-delete');
-  showToast('已删除员工 ' + staff.name + reasonText, 'success');
-  renderStaffTable();
-}
-
-function openResetPwdModal(idx) {
-  var staff = _staffList[idx];
-  if (!staff) return;
-  _staffResetId = idx;
-  var resetNameEl = document.getElementById('staff-reset-name');
-  if (resetNameEl) resetNameEl.textContent = '确定重置 ' + staff.name + ' 的密码？';
-  openModal('staff-resetpwd');
-}
-
-function doResetStaffPassword() {
-  if (_staffResetId === null) return;
-  var staff = _staffList[_staffResetId];
-  showToast('员工 ' + staff.name + ' 的密码已重置为 88888888', 'success');
-  closeModal('staff-resetpwd');
-  _staffResetId = null;
-}
-
-function renderStaffTable() {
-  var tbody = document.getElementById('staff-table-body');
-  if (!tbody) return;
-  var rows = '';
-  _staffList.forEach(function(s, i) {
-    var roleLabel = getStaffRoleLabel(s.role);
-    var statusBadge = s.status === 'active' ? '<span class="tbadge green">在职</span>' : '<span class="tbadge red">离职</span>';
-    rows += '<tr>' +
-      '<td><div style="font-weight:600;">' + s.name + '</div><div style="font-size:10px;color:var(--text-muted);">' + s.code + '</div></td>' +
-      '<td>' + s.phone + '</td>' +
-      '<td><span style="font-size:13px;">' + roleLabel + '</span></td>' +
-      '<td>' + getStaffDeptLabel(s.dept) + '</td>' +
-      '<td>' + (s.hire || '--') + '</td>' +
-      '<td>' + statusBadge + '</td>' +
-      '<td>' + s.last + '</td>' +
-      '<td>' +
-        '<button class="action-btn small" onclick="openEditStaffModal(' + i + ')">编辑</button> ' +
-        '<button class="action-btn small" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);" onclick="openResetPwdModal(' + i + ')">重置密码</button> ' +
-        '<button class="action-btn small" style="background:var(--red-bg);color:var(--red);border-color:var(--red);" onclick="openDeleteStaffModal(' + i + ')">删除</button>' +
-      '</td>' +
-    '</tr>';
-  });
-  tbody.innerHTML = rows || '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">暂无员工数据</td></tr>';
-}
-
-function filterStaffList() {
-  var q = document.getElementById('staff-search-input') ? document.getElementById('staff-search-input').value.toLowerCase() : '';
-  var roleFilter = document.getElementById('staff-role-filter') ? document.getElementById('staff-role-filter').value : 'all';
-  var tbody = document.getElementById('staff-table-body');
-  if (!tbody) return;
-  var rows = '';
-  _staffList.forEach(function(s, i) {
-    var matchQ = !q || s.name.toLowerCase().indexOf(q) !== -1 || s.code.toLowerCase().indexOf(q) !== -1 || s.phone.indexOf(q) !== -1;
-    var matchRole = roleFilter === 'all' || s.role === roleFilter;
-    if (matchQ && matchRole) {
-      var roleLabel = getStaffRoleLabel(s.role);
-      var statusBadge = s.status === 'active' ? '<span class="tbadge green">在职</span>' : '<span class="tbadge red">离职</span>';
-      rows += '<tr>' +
-        '<td><div style="font-weight:600;">' + s.name + '</div><div style="font-size:10px;color:var(--text-muted);">' + s.code + '</div></td>' +
-        '<td>' + s.phone + '</td>' +
-        '<td><span style="font-size:13px;">' + roleLabel + '</span></td>' +
-        '<td>' + getStaffDeptLabel(s.dept) + '</td>' +
-        '<td>' + (s.hire || '--') + '</td>' +
-        '<td>' + statusBadge + '</td>' +
-        '<td>' + s.last + '</td>' +
-        '<td>' +
-          '<button class="action-btn small" onclick="openEditStaffModal(' + i + ')">编辑</button> ' +
-          '<button class="action-btn small" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);" onclick="openResetPwdModal(' + i + ')">重置密码</button> ' +
-          '<button class="action-btn small" style="background:var(--red-bg);color:var(--red);border-color:var(--red);" onclick="openDeleteStaffModal(' + i + ')">删除</button>' +
-        '</td>' +
-      '</tr>';
-    }
-  });
-  tbody.innerHTML = rows || '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">未找到匹配的员工</td></tr>';
-}
-
+// 【P18优化】员工管理CRUD已删除(PMS残留)
 // ====== 【改进2】工单完整CRUD功能 ======
 var _currentWoProcessIdx = null;
 var _woSatisfaction = 0;
@@ -8013,127 +7766,7 @@ function saveSystemConfig() {
   showToast('系统设置已保存，所有变更已生效', 'success');
 }
 
-// ====== 【v4全面检查修复1】楼栋管理完整CRUD ======
-var _bldMgrList = [
-  {id:'MAIN', name:'主楼', floors:3, rooms:16, status:'enabled'},
-  {id:'EAST', name:'东配楼', floors:2, rooms:8, status:'enabled'}
-];
-var _bldMgrEditIdx = null;
-
-function openBldMgrAddModal() {
-  _bldMgrEditIdx = null;
-  var t = document.getElementById('bldmgr-form-title');
-  if (t) t.textContent = '🏢 新增楼栋';
-  var n = document.getElementById('bldmgr-name');
-  if (n) n.value = '';
-  var i = document.getElementById('bldmgr-id');
-  if (i) i.value = '';
-  var f = document.getElementById('bldmgr-floors');
-  if (f) f.value = '';
-  var r = document.getElementById('bldmgr-rooms');
-  if (r) r.value = '';
-  openModal('bldmgr-form');
-}
-
-function openBldMgrEditModal(idx) {
-  var b = _bldMgrList[idx];
-  if (!b) return;
-  _bldMgrEditIdx = idx;
-  var t = document.getElementById('bldmgr-form-title');
-  if (t) t.textContent = '✏️ 编辑楼栋 - ' + b.name;
-  var n = document.getElementById('bldmgr-name');
-  if (n) n.value = b.name;
-  var i = document.getElementById('bldmgr-id');
-  if (i) i.value = b.id;
-  var f = document.getElementById('bldmgr-floors');
-  if (f) f.value = b.floors;
-  var r = document.getElementById('bldmgr-rooms');
-  if (r) r.value = b.rooms;
-  openModal('bldmgr-form');
-}
-
-function submitBldMgrForm() {
-  var name = document.getElementById('bldmgr-name') ? document.getElementById('bldmgr-name').value.trim() : '';
-  var id = document.getElementById('bldmgr-id') ? document.getElementById('bldmgr-id').value.trim() : '';
-  var floors = parseInt(document.getElementById('bldmgr-floors') ? document.getElementById('bldmgr-floors').value : '0');
-  var rooms = parseInt(document.getElementById('bldmgr-rooms') ? document.getElementById('bldmgr-rooms').value : '0');
-  if (!name || !id) { showToast('请填写楼栋名称和编号', 'error'); return; }
-  if (floors <= 0 || rooms <= 0) { showToast('楼层数和房间数必须大于0', 'error'); return; }
-  if (_bldMgrEditIdx !== null) {
-    _bldMgrList[_bldMgrEditIdx] = {id:id, name:name, floors:floors, rooms:rooms, status:'enabled'};
-    showToast('楼栋 ' + name + ' 已更新', 'success');
-  } else {
-    _bldMgrList.push({id:id, name:name, floors:floors, rooms:rooms, status:'enabled'});
-    showToast('楼栋 ' + name + ' 已添加', 'success');
-  }
-  closeModal('bldmgr-form');
-  renderBldMgrTable();
-}
-
-function openBldMgrDisableModal(idx) {
-  var b = _bldMgrList[idx];
-  if (!b) return;
-  b.status = b.status === 'enabled' ? 'disabled' : 'enabled';
-  showToast('楼栋 ' + b.name + ' 已' + (b.status === 'enabled' ? '启用' : '停用'), b.status === 'disabled' ? 'warning' : 'success');
-  renderBldMgrTable();
-}
-
-function deleteBldMgrBuilding(idx) {
-  var b = _bldMgrList[idx];
-  if (!b) return;
-  var existing = document.getElementById('modal-bldmgr-confirm');
-  if (existing) existing.remove();
-  var html = '<div class="modal-overlay hidden" id="modal-bldmgr-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
-    '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
-    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">⚠️</div><div style="font-size:15px;font-weight:700;">确认删除楼栋</div></div>' +
-    '<div style="padding:20px 24px;">' +
-    '<p style="font-size:13px;color:var(--text);margin-bottom:16px;">确定要删除楼栋 <strong style="color:var(--red);">' + b.name + '</strong> 吗？</p>' +
-    '<p style="font-size:12px;color:var(--orange);padding:10px;background:var(--orange-bg);border-radius:6px;">⚠️ 删除后，该楼栋下所有楼层和房间数据将一并清除，请谨慎操作。</p></div>' +
-    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
-    '<button class="modal-btn secondary" onclick="closeModal(\'bldmgr-confirm\')">取消</button>' +
-    '<button class="modal-btn" onclick="doDeleteBldMgr(' + idx + ')" style="background:var(--red);color:white;border:none;">🗑️ 确认删除</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-function doDeleteBldMgr(idx) {
-  var b = _bldMgrList[idx];
-  closeModal('bldmgr-confirm');
-  _bldMgrList.splice(idx, 1);
-  showToast('楼栋 ' + b.name + ' 已删除', 'success');
-  renderBldMgrTable();
-}
-
-function renderBldMgrTable() {
-  var tbody = document.getElementById('bldm-table-body');
-  if (!tbody) return;
-  var totalFloors = _bldMgrList.reduce(function(s, b){ return s + b.floors; }, 0);
-  var totalRooms = _bldMgrList.reduce(function(s, b){ return s + b.rooms; }, 0);
-  var statTotal = document.getElementById('bldm-stat-total');
-  var statFloors = document.getElementById('bldm-stat-floors');
-  var statRooms = document.getElementById('bldm-stat-rooms');
-  if (statTotal) statTotal.textContent = _bldMgrList.length;
-  if (statFloors) statFloors.textContent = totalFloors;
-  if (statRooms) statRooms.textContent = totalRooms;
-  var rows = '';
-  _bldMgrList.forEach(function(b, i) {
-    var statusBadge = b.status === 'enabled' ? '<span class="tbadge green">启用</span>' : '<span class="tbadge gray">停用</span>';
-    var disableLabel = b.status === 'enabled' ? '停用' : '启用';
-    rows += '<tr data-bld-idx="' + i + '" style="cursor:pointer;" onclick="openBuildingDetailModal(' + i + ')" title="点击查看楼栋详情">' +
-      '<td><span style="font-weight:600;">🏢 ' + b.name + '</span> <span style="font-size:10px;color:var(--blue);">🔍详情</span></td>' +
-      '<td><span class="tbadge blue">' + b.id + '</span></td>' +
-      '<td>' + b.floors + '层</td>' +
-      '<td>' + b.rooms + '间</td>' +
-      '<td>' + statusBadge + '</td>' +
-      '<td onclick="event.stopPropagation()">' +
-        '<button class="action-btn small" onclick="openBldMgrEditModal(' + i + ')">编辑</button> ' +
-        '<button class="action-btn small orange" onclick="openBldMgrDisableModal(' + i + ')">' + disableLabel + '</button> ' +
-        '<button class="action-btn small red" onclick="deleteBldMgrBuilding(' + i + ')">删除</button>' +
-      '</td></tr>';
-  });
-  tbody.innerHTML = rows || '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">暂无楼栋数据</td></tr>';
-}
-
+// 【P19优化】楼栋管理CRUD已删除(PMS残留)
 // ====== 【v4全面检查修复2】房型管理完整CRUD ======
 var _roomTypeV2List = [
   {id:0, name:'标准间', bed:'大床1.8m', price:98, count:0, occupied:0, status:'disabled'},
@@ -8374,52 +8007,6 @@ function filterKeyLog() {
   });
   tbody.innerHTML = rows || '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">无匹配记录</td></tr>';
 }
-
-// ====== 【v4全面检查修复5】员工删除完整确认流程 ======
-var _staffDeleteId = null;
-
-function openDeleteStaffModal(idx) {
-  var s = _staffList[idx];
-  if (!s) return;
-  _staffDeleteId = idx;
-  var existing = document.getElementById('modal-staff-delete-confirm');
-  if (existing) existing.remove();
-  var html = '<div class="modal-overlay hidden" id="modal-staff-delete-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
-    '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
-    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">⚠️</div><div><div style="font-size:15px;font-weight:700;">确认删除员工</div><div style="font-size:11px;color:var(--text-muted);">' + s.name + ' - ' + s.code + '</div></div></div>' +
-    '<div style="padding:20px 24px;">' +
-    '<div class="form-group"><label class="form-label">删除原因 <span class="required">*</span></label>' +
-    '<select class="form-select" id="staff-del-reason" style="width:100%;padding:8px;">' +
-      '<option value="">请选择删除原因</option>' +
-      '<option value="resigned">👋 员工离职</option>' +
-      '<option value="transferred">🔄 岗位调动</option>' +
-      '<option value="probation">⚠️ 试用期未通过</option>' +
-      '<option value="other">📋 其他原因</option></select></div>' +
-    '<div class="form-group"><label class="form-label">备注</label>' +
-    '<textarea class="form-textarea" id="staff-del-note" placeholder="可选，填写删除说明..." style="min-height:50px;width:100%;padding:8px;"></textarea></div>' +
-    '<div style="padding:10px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:6px;font-size:12px;color:var(--orange);">' +
-    '⚠️ 删除后，该员工账户将立即失效，所有操作日志将保留。' + '</div></div>' +
-    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
-    '<button class="modal-btn secondary" onclick="closeModal(\'staff-delete-confirm\')">取消</button>' +
-    '<button class="modal-btn" onclick="doDeleteStaff()" style="background:var(--red);color:white;border:none;">🗑️ 确认删除</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-function doDeleteStaff() {
-  var reason = (document.getElementById('staff-del-reason') || {value:''}).value;
-  if (!reason) { showToast('请选择删除原因', 'error'); return; }
-  var note = (document.getElementById('staff-del-note') || {value:''}).value.trim();
-  var staff = _staffList[_staffDeleteId];
-  _staffList.splice(_staffDeleteId, 1);
-  closeModal('staff-delete-confirm');
-  var reasonMap = {resigned:'离职', transferred:'调动', probation:'试用期未通过', other:'其他'};
-  showToast('员工 ' + (staff ? staff.name : '') + ' 已删除（' + (reasonMap[reason] || reason) + '）', 'success');
-  if (typeof renderStaffTable === 'function') renderStaffTable();
-  _staffDeleteId = null;
-}
-
-// [P07+P08] PMS退房弹窗已删除
 
 function openCheckoutSettleModal(room, name, nights, pricePerNight) {
   _cosData = {room:room, name:name, nights:nights||2, pricePerNight:pricePerNight||128};
@@ -11987,63 +11574,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }, 300);
 });
 
-// 【v4改进2】客房清洁任务分配完整弹窗
-function openHKTaskAddModal() {
-  var existing = document.getElementById('modal-hk-task');
-  if (existing) existing.remove();
-  var html = '<div class="modal-overlay hidden" id="modal-hk-task" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
-    '<div class="modal" style="width:500px;background:white;border-radius:12px;">' +
-    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">🧹</div><div style="font-size:15px;font-weight:700;">分配清洁任务</div>' +
-    '<button onclick="closeModal(\'hk-task\')" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
-    '<div style="padding:20px 24px;">' +
-    '<div class="form-row"><div class="form-group"><label class="form-label">房间号 <span class="required">*</span></label>' +
-    '<select class="form-select" id="hkt-room" style="width:100%;">' +
-    '<option value="">-- 选择房间 --</option>' +
-    '<option value="301">301（亲子间，退房脏房）</option>' +
-    '<option value="302">302（亲子间，退房脏房）</option>' +
-    '<option value="303">303（大床房，住客离店）</option>' +
-    '<option value="304">304（大床房，退房脏房）</option></select></div>' +
-    '<div class="form-group"><label class="form-label">优先级</label>' +
-    '<select class="form-select" id="hkt-priority" style="width:100%;">' +
-    '<option value="normal">⚡ 普通</option>' +
-    '<option value="urgent">🚨 紧急</option>' +
-    '<option value="low">🔽 低</option></select></div></div>' +
-    '<div class="form-row"><div class="form-group"><label class="form-label">负责保洁员 <span class="required">*</span></label>' +
-    '<select class="form-select" id="hkt-staff" style="width:100%;">' +
-    '<option value="">-- 选择保洁员 --</option>' +
-    '<option value="李丽">李丽（当前空闲）</option>' +
-    '<option value="王芳">王芳（当前空闲）</option>' +
-    '<option value="张梅">张梅（清洁中-201）</option>' +
-    '<option value="刘婷">刘婷（当前空闲）</option></select></div>' +
-    '<div class="form-group"><label class="form-label">预计时长</label>' +
-    '<select class="form-select" id="hkt-duration" style="width:100%;">' +
-    '<option value="30">30分钟</option>' +
-    '<option value="45" selected>45分钟</option>' +
-    '<option value="60">60分钟</option>' +
-    '<option value="90">90分钟</option></select></div></div>' +
-    '<div class="form-group"><label class="form-label">备注说明</label>' +
-    '<textarea class="form-textarea" id="hkt-note" placeholder="可选，填写特殊清洁要求..." style="min-height:60px;width:100%;"></textarea></div></div>' +
-    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
-    '<button class="modal-btn secondary" onclick="closeModal(\'hk-task\')">取消</button>' +
-    '<button class="modal-btn" onclick="submitHKTask()" style="background:var(--blue);color:white;border:none;">🧹 确认分配</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-function submitHKTask() {
-  var room = document.getElementById('hkt-room') ? document.getElementById('hkt-room').value : '';
-  var staff = document.getElementById('hkt-staff') ? document.getElementById('hkt-staff').value : '';
-  var priority = document.getElementById('hkt-priority') ? document.getElementById('hkt-priority').value : 'normal';
-  if (!room) { showToast('请选择房间号', 'error'); return; }
-  if (!staff) { showToast('请选择负责保洁员', 'error'); return; }
-  var prioLabel = {urgent:'🚨 紧急', normal:'⚡ 普通', low:'🔽 低'};
-  closeModal('hk-task');
-  showToast('🧹 已将房间 ' + room + ' 清洁任务分配给 ' + staff + '（优先级：' + prioLabel[priority] + '）', 'success');
-  // 更新保洁员下拉显示
-  var staffSel = document.querySelector('#hk-task-body tr td select');
-  if (staffSel) applyHousekeepingFilter();
-}
-
 // 【v4改进3】办理记录完整CRUD功能
 var _recordList = [
   {id:1,type:'in',name:'张三',room:'301',roomType:'亲子间',phone:'138****8888',time:'2026-03-27 10:30',status:'active'},
@@ -13578,39 +13108,10 @@ function deleteBuildingFromDetail() {
   deleteBuilding(bld.id);
 }
 
-// ============================================================
-// 【物联后台 v4 改进3】员工管理 - 完整删除功能（CRUD闭环）
-// ============================================================
-function deleteStaff(idx) {
-  var staff = _staffList[idx];
-  if (!staff) return;
-  var existing = document.getElementById('modal-confirm-delete-staff');
-  if (existing) existing.remove();
-  var html = '<div class="modal-overlay hidden" id="modal-confirm-delete-staff" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;">' +
-    '<div class="modal" style="width:420px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
-    '<div style="padding:24px 24px 16px;text-align:center;">' +
-    '<div style="font-size:48px;margin-bottom:12px;">⚠️</div>' +
-    '<div style="font-size:16px;font-weight:700;margin-bottom:8px;color:var(--text);">确认删除员工</div>' +
-    '<div style="font-size:13px;color:var(--text-light);line-height:1.6;">确定要删除员工 <strong style="color:var(--red);">' + staff.name + '</strong> 吗？<br>该操作将同时删除其所有关联权限和排班数据。</div></div>' +
-    '<div style="padding:0 24px 24px;display:flex;gap:10px;justify-content:center;">' +
-    '<button onclick="document.getElementById(\'modal-confirm-delete-staff\').remove()" style="flex:1;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);">取消</button>' +
-    '<button onclick="confirmDeleteStaff(' + idx + ')" style="flex:1;padding:10px;background:var(--red);border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:white;">🗑️ 确认删除</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
+// 【P18优化】deleteStaff已删除(PMS残留)
 
-function confirmDeleteStaff(idx) {
-  var staff = _staffList[idx];
-  document.getElementById('modal-confirm-delete-staff').remove();
-  if (!staff) return;
-  _staffList.splice(idx, 1);
-  showToast('🗑️ 员工「' + staff.name + '」已删除', 'success');
-  // Re-render staff table and stats
-  if (typeof renderStaffTable === 'function') renderStaffTable();
-  var totalEl = document.getElementById('staff-stat-total');
-  if (totalEl) totalEl.textContent = _staffList.length;
-  var countEl = document.getElementById('staff-filter-count');
-  if (countEl) countEl.textContent = '共 ' + _staffList.length + ' 名员工';
-}
+
+function confirmDeleteStaff(idx) { showToast('员工管理已移除(PMS)', 'info'); } // 【P18优化】
 
 // ============================================================
 // 【物联后台 v4 改进4】发票管理 - 完整删除发票记录（增删改查闭环）
@@ -13642,22 +13143,6 @@ function confirmDeleteInvoice(invId) {
   renderInvoiceFilteredList();
 }
 
-// ============================================================
-// 【物联后台 v4 改进5】房间设备 - 一键批量开锁（设备物联核心功能）
-// 功能：对选中楼层的所有房间设备发送批量开锁指令，状态实时回传
-// ============================================================
-function openBatchUnlockModal() {
-  var existing = document.getElementById('modal-batch-unlock');
-  if (existing) existing.remove();
-  var floorRooms = [];
-  var selectedFloor = document.querySelector('.floor-chip.selected');
-  var floorNum = selectedFloor ? parseInt(selectedFloor.textContent) : 3;
-  // Collect rooms for selected floor from buildingStore
-  buildingStore.forEach(function(bld) {
-    bld.floors && bld.floors.forEach(function(fl) {
-      if (fl.num === floorNum || fl.floor === floorNum) {
-        floorRooms = floorRooms.concat(fl.rooms || []);
-      }
     });
   });
   if (floorRooms.length === 0) {
@@ -13725,8 +13210,7 @@ function switchConfigTab(tabName, el) {
     el.style.borderColor = 'var(--blue)';
   }
   var contentIds = ['cfg-content-basic','cfg-content-notify','cfg-content-device',
-    'cfg-content-security','cfg-content-oplog','cfg-content-building',
-    'cfg-content-greeting','cfg-content-roles','cfg-content-backup'];
+    'cfg-content-security','cfg-content-oplog','cfg-content-greeting','cfg-content-roles','cfg-content-backup'];
   contentIds.forEach(function(id) {
     var el2 = document.getElementById(id);
     if (el2) el2.style.display = 'none';
@@ -17262,35 +16746,8 @@ function switchDevTab(tab) {
   });
 }
 
-// 【函数4】openStaffDetailModal - 员工详情弹窗
-function openStaffDetailModal(idx) {
-  var staff = _staffList[idx];
-  if (!staff) { showToast('员工信息不存在', 'error'); return; }
-  var nameEl = document.getElementById('sd-name');
-  if (nameEl) nameEl.textContent = staff.name;
-  var deptTitleEl = document.getElementById('sd-dept-title');
-  if (deptTitleEl) deptTitleEl.textContent = getStaffDeptLabel(staff.dept) + ' · ' + getStaffRoleLabel(staff.role);
-  var phoneEl = document.getElementById('sd-phone');
-  if (phoneEl) phoneEl.textContent = staff.phone || '--';
-  var joinEl = document.getElementById('sd-join');
-  if (joinEl) joinEl.textContent = staff.hire || '--';
-  var statusEl = document.getElementById('sd-status');
-  if (statusEl) statusEl.innerHTML = staff.status === 'active' ? '<span class="tbadge green">启用</span>' : '<span class="tbadge red">禁用</span>';
-  var loginEl = document.getElementById('sd-login');
-  if (loginEl) loginEl.textContent = staff.last || '--';
-  // 办理数量估算
-  var checkinEl = document.getElementById('sd-checkin-count');
-  if (checkinEl) checkinEl.textContent = Math.floor(Math.random() * 20) + 5;
-  var checkoutEl = document.getElementById('sd-checkout-count');
-  if (checkoutEl) checkoutEl.textContent = Math.floor(Math.random() * 15) + 3;
-  // 编辑按钮
-  var footerBtns = document.querySelector('#modal-staff-detail .modal-footer');
-  if (footerBtns) {
-    footerBtns.innerHTML = '' +
-      '<button class="modal-btn secondary" onclick="closeModal(\'staff-detail\')">关闭</button>' +
-      '<button class="modal-btn" onclick="openEditStaffModal(' + idx + ');closeModal(\'staff-detail\')">✏️ 编辑信息</button>' +
-      '<button class="modal-btn" onclick="if(confirm(\'确定删除该员工？\')){_staffList.splice(' + idx + ',1);renderStaffList();showToast(\'员工已删除\',\'success\');}closeModal(\'staff-detail\');" style="background:var(--red-bg);color:var(--red);border-color:var(--red);">🗑️ 删除</button>';
-  }
+// 【P18优化】openStaffDetailModal已删除(PMS残留)
+function openStaffDetailModal(idx) { showToast('员工管理已移除(PMS)', 'info'); }
   openModal('staff-detail');
 }
 
@@ -17425,81 +16882,6 @@ function confirmConfigSave() {
   showToast('✅ 系统配置已保存：' + summary.slice(0,3).join('、'), 'success');
   closeModal('config-edit');
 }
-
-// 【修复2】openEditBldgConfig / confirmDeleteBldgFromConfig / openAddBuildingForm
-// 理由：配置页面楼栋Tab的编辑/删除/新增按钮断裂
-function openEditBldgConfig(bldId) {
-  var b = buildingData.find(function(x){ return x.id === bldId; });
-  if (!b) { showToast('楼栋信息不存在', 'error'); return; }
-  var existing = document.getElementById('modal-bldg-config-edit');
-  if (existing) existing.remove();
-  var html = '<div class="modal-overlay hidden" id="modal-bldg-config-edit" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-bldg-config-edit\').remove()">' +
-    '<div style="background:white;border-radius:12px;width:480px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
-      '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
-        '<div><div style="font-size:15px;font-weight:700;">✏️ 编辑楼栋</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + b.name + '</div></div>' +
-        '<button onclick="document.getElementById(\'modal-bldg-config-edit\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;">✕</button></div>' +
-      '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
-        '<div class="form-group"><label class="form-label">楼栋名称</label><input type="text" id="bce-name" class="form-input" value="' + b.name + '"></div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
-          '<div class="form-group"><label class="form-label">楼层数</label><input type="number" id="bce-floors" class="form-input" value="' + b.floors + '"></div>' +
-          '<div class="form-group"><label class="form-label">房间数</label><input type="number" id="bce-rooms" class="form-input" value="' + b.rooms + '"></div>' +
-        '</div>' +
-        '<div class="form-group"><label class="form-label">位置</label><input type="text" id="bce-addr" class="form-input" value="' + (b.address||'') + '"></div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
-          '<div class="form-group"><label class="form-label">负责人</label><input type="text" id="bce-mgr" class="form-input" value="' + (b.manager||'') + '"></div>' +
-          '<div class="form-group"><label class="form-label">电话</label><input type="text" id="bce-phone" class="form-input" value="' + (b.phone||'') + '"></div>' +
-        '</div>' +
-        '<div class="form-group"><label class="form-label">状态</label><select id="bce-status" class="form-select"><option value="active"' + (b.status==='active'?' selected':'') + '>✅ 启用</option><option value="inactive"' + (b.status==='inactive'?' selected':'') + '>❌ 停用</option></select></div>' +
-      '</div>' +
-      '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
-        '<button onclick="document.getElementById(\'modal-bldg-config-edit\').remove()" style="padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">取消</button>' +
-        '<button onclick="submitBldgConfigEdit(\'' + bldId + '\')" style="padding:8px 20px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">💾 保存</button>' +
-      '</div>' +
-    '</div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-function submitBldgConfigEdit(bldId) {
-  var b = buildingData.find(function(x){ return x.id === bldId; });
-  if (!b) return;
-  var name = document.getElementById('bce-name').value.trim();
-  if (!name) { showToast('楼栋名称不能为空', 'error'); return; }
-  b.name = name;
-  b.floors = parseInt(document.getElementById('bce-floors').value) || b.floors;
-  b.rooms = parseInt(document.getElementById('bce-rooms').value) || b.rooms;
-  b.address = document.getElementById('bce-addr').value.trim();
-  b.manager = document.getElementById('bce-mgr').value.trim();
-  b.phone = document.getElementById('bce-phone').value.trim();
-  b.status = document.getElementById('bce-status').value;
-  document.getElementById('modal-bldg-config-edit') && document.getElementById('modal-bldg-config-edit').remove();
-  showToast('✅ 楼栋 "' + name + '" 已更新', 'success');
-  // Re-render cfg-bldg-list-body if visible
-  renderCfgBuildingList();
-}
-
-function confirmDeleteBldgFromConfig(bldId, bldName, roomCount) {
-  var existing = document.getElementById('modal-bldg-del-confirm');
-  if (existing) existing.remove();
-  var html = '<div class="modal-overlay hidden" id="modal-bldg-del-confirm" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-bldg-del-confirm\').remove()">' +
-    '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
-    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">' +
-    '<div style="width:44px;height:44px;background:var(--red-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;">🗑️</div>' +
-    '<div><div style="font-size:15px;font-weight:700;">确认删除楼栋</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">楼栋：' + bldName + '<br>房间数：' + roomCount + '间<br>⚠️ 删除后不可恢复</div></div></div>' +
-    '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
-    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-bldg-del-confirm\').remove()">取消</button>' +
-    '<button class="modal-btn" onclick="doDeleteBldgConfig(\'' + bldId + '\',\'' + bldName + '\')" style="background:var(--red);color:white;border:none;">🗑️ 确认删除</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-function doDeleteBldgConfig(bldId, bldName) {
-  buildingData = buildingData.filter(function(b){ return b.id !== bldId; });
-  document.getElementById('modal-bldg-del-confirm') && document.getElementById('modal-bldg-del-confirm').remove();
-  showToast('🗑️ 楼栋 "' + bldName + '" 已删除', 'success');
-  renderCfgBuildingList();
-}
-
-// Alias for openAddBuildingForm
-function openBuildingManagementModal() { openAddBuildingForm(); }
 
 function openAddBuildingForm() {
   var existing = document.getElementById('modal-bldg-config-add');
