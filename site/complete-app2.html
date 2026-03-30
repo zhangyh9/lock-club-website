@@ -283,6 +283,66 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .gap-8 { gap: 8px; }
 .gap-12 { gap: 12px; }
 .gap-16 { gap: 16px; }
+/* P36修复: 通用padding/margin工具类 - 减少重复inline style */
+.p-8 { padding: 8px; }
+.p-12 { padding: 12px; }
+.p-16 { padding: 16px; }
+.p-20 { padding: 20px; }
+.px-16 { padding-left: 16px; padding-right: 16px; }
+.px-20 { padding-left: 20px; padding-right: 20px; }
+.py-8 { padding-top: 8px; padding-bottom: 8px; }
+.py-12 { padding-top: 12px; padding-bottom: 12px; }
+.py-16 { padding-top: 16px; padding-bottom: 16px; }
+.pt-8 { padding-top: 8px; }
+.pt-12 { padding-top: 12px; }
+.pt-16 { padding-top: 16px; }
+.pb-8 { padding-bottom: 8px; }
+.pb-12 { padding-bottom: 12px; }
+.pb-16 { padding-bottom: 16px; }
+.mb-4 { margin-bottom: 4px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-12 { margin-bottom: 12px; }
+.mb-16 { margin-bottom: 16px; }
+.mt-4 { margin-top: 4px; }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.ml-4 { margin-left: 4px; }
+.ml-8 { margin-left: 8px; }
+.mr-4 { margin-right: 4px; }
+.mr-8 { margin-right: 8px; }
+/* P36修复: 通用font-size/text工具类 */
+.text-xs { font-size: 11px; }
+.text-sm { font-size: 12px; }
+.text-base { font-size: 13px; }
+.text-lg { font-size: 14px; }
+.text-xl { font-size: 15px; }
+.text-2xl { font-size: 16px; }
+.text-muted { color: var(--text-muted); }
+.text-light { color: var(--text-light); }
+.text-primary { color: var(--blue); }
+.text-success { color: var(--green); }
+.text-warning { color: var(--orange); }
+.text-danger { color: var(--red); }
+.fw-500 { font-weight: 500; }
+.fw-600 { font-weight: 600; }
+.fw-700 { font-weight: 700; }
+.text-center { text-align: center; }
+/* P36修复: 通用border/shadow工具类 */
+.border-top { border-top: 1px solid var(--border); }
+.border-bottom { border-bottom: 1px solid var(--border); }
+.rounded { border-radius: 8px; }
+.rounded-sm { border-radius: 4px; }
+.shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+/* P36修复: 通用modal-header/modal-footer工具类（减少modal弹窗重复inline style） */
+.modal-header-ios { padding: 16px 20px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.modal-body-ios { padding: 20px; }
+.modal-footer-ios { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+/* P36修复: 通用page-section工具类 */
+.section { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--border); }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.section-title { font-size: 15px; font-weight: 600; }
 
 /* Table */
 .table { width: 100%; border-collapse: collapse; }
@@ -563,6 +623,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     mods[i].style.setProperty("overflow","hidden","important");
   }
 })();
+
+// ======= 全局常量（P99修复：魔法数字提取为命名常量） =======
+var IOT_CONST = {
+  BATTERY_LOW: 20,           // 电量告警阈值(%)
+  BATTERY_CRITICAL: 10,     // 电量严重告警阈值(%)
+  OFFLINE_HOURS_ALERT: 1,   // 离线超过N小时标红
+  REFRESH_INTERVAL: 10000,  // 侧边栏统计刷新间隔(ms)
+  DEBOUNCE_DELAY: 300,      // 防抖延迟(ms)
+  PAGINATION_SIZE: 10,       // 默认分页大小
+  PAGINATION_SIZE_LARGE: 20,// 大列表分页
+  TOAST_DURATION: 3000,     // Toast显示时长(ms)
+  MODAL_ZINDEX_BASE: 99998, // 弹窗z-index基准值
+  MAX_BATTERY: 100,         // 电量最大值
+  SIGNAL_MIN: -100,         // 信号强度最小值(dBm)
+  SIGNAL_MAX: -30,          // 信号强度最大值(dBm)
+  HOME_STATS_REFRESH: 30000 // 首页统计刷新间隔(ms)
+};
 
 // ======= 全局页面导航 =======
 function showPage(pageName) {
@@ -10553,74 +10630,7 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
 </div>
 </div>
 </div>
-<!-- 改进4: 新增楼层模态框 -->
-<div class="modal-overlay hidden" id="modal-add-floor">
-<div class="modal" style="width:420px;">
-<div class="modal-header">
-<div class="modal-title">🏗️ 新增楼层</div>
-<button class="modal-close" onclick="closeModal('add-floor')">✕</button>
-</div>
-<div class="modal-body">
-<div class="form-group">
-<label class="form-label">楼层号 <span class="required">*</span></label>
-<input class="form-input" id="floor-num" max="30" min="1" placeholder="请输入楼层号，如：4" type="number"/>
-</div>
-<div class="form-group">
-<label class="form-label">每层房间数</label>
-<input class="form-input" id="floor-rooms" max="30" min="1" type="number" value="8"/>
-<div class="form-hint">将自动生成房间号，如：401-408</div>
-</div>
-<div class="form-group">
-<label class="form-label">楼层用途</label>
-<select class="form-select" id="floor-usage">
-<option value="guest">客房楼层</option>
-<option value="mixed">混合用途</option>
-<option value="service">服务楼层</option>
-</select>
-</div>
-</div>
-<div class="modal-footer">
-<button class="modal-btn secondary" onclick="closeModal('add-floor')">取消</button>
-<button class="modal-btn primary" onclick="submitAddFloor()">确认创建</button>
-</div>
-</div>
-</div>
-<!-- 改进4: 快速添加房间模态框 -->
-<div class="modal-overlay hidden" id="modal-add-floor-room">
-<div class="modal" style="width:420px;">
-<div class="modal-header">
-<div class="modal-title">🚪 快速添加房间</div>
-<button class="modal-close" onclick="closeModal('add-floor-room')">✕</button>
-</div>
-<div class="modal-body">
-<div class="form-group">
-<label class="form-label">房间号 <span class="required">*</span></label>
-<input class="form-input" id="floor-room-num" placeholder="如：305" type="text"/>
-</div>
-<div class="form-group">
-<label class="form-label">房型 <span class="required">*</span></label>
-<select class="form-select" id="floor-room-type">
-<option value="亲子间">亲子间</option>
-<option value="大床房">大床房</option>
-<option value="标准间">标准间</option>
-</select>
-</div>
-<div class="form-group">
-<label class="form-label">初始状态</label>
-<select class="form-select" id="floor-room-status">
-<option value="empty">空房</option>
-<option value="maintenance">维护中</option>
-</select>
-</div>
-</div>
-<div class="modal-footer">
-<button class="modal-btn secondary" onclick="closeModal('add-floor-room')">取消</button>
-<button class="modal-btn primary" onclick="submitAddFloorRoom()">确认添加</button>
-</div>
-</div>
-</div>
-<!-- 改进4: 批量清洁模态框 -->
-<!-- 【改进1】生成密码模态框 -->
+<!-- 【P36修复】重复楼层/房间PMS弹窗已删除（只保留3460行处的物联版本） -->
 </script>
 <script>
 // ============================================================
