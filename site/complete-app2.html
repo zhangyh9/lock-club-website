@@ -8345,68 +8345,6 @@ function exportSatisfactionReport() {
   setTimeout(function(){ showToast('✅ 报告已导出（Excel格式）', 'success'); }, 1500);
 }
 
-// ============================================================
-// 改进1: 会员行为分析面板（page-member 页面引用）
-// 会员行为分析弹窗 - 会员管理页面画像入口
-// 功能：展示单个会员的消费记录、入住习惯、入会时长、偏好房型等行为画像
-// ============================================================
-function openMemberBehaviorPanel(guestName) {
-  guestName = guestName || '张三';
-  var existing = document.getElementById('modal-member-behavior');
-  if (existing) existing.remove();
-  var stayHistory = [
-    {date:'2026-03-15', room:'301', nights:2, amount:328, type:'大床房'},
-    {date:'2026-02-10', room:'205', nights:1, amount:168, type:'大床房'},
-    {date:'2026-01-20', room:'102', nights:3, amount:498, type:'标准间'},
-    {date:'2025-12-05', room:'301', nights:2, amount:328, type:'大床房'},
-    {date:'2025-11-11', room:'205', nights:1, amount:168, type:'大床房'}
-  ];
-  var historyRows = stayHistory.map(function(s) {
-    return '<tr><td>' + s.date + '</td><td>' + s.room + '</td><td>' + s.type + '</td><td>' + s.nights + '晚</td><td style="color:var(--green);font-weight:700;">¥' + s.amount + '</td></tr>';
-  }).join('');
-
-  var html = '<div class="hidden modal-overlay" id="modal-member-behavior" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-member-behavior\').remove()">' +
-    '<div class="modal" style="width:680px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;">' +
-    '<div class="modal-header">' +
-    '<div style="display:flex;align-items:center;gap:10px;">' +
-    '<div class="modal-title">🔍 会员行为分析 - ' + guestName + '</div>' +
-    '<span style="padding:3px 10px;background:var(--purple-bg);border:1px solid var(--purple);border-radius:12px;font-size:11px;color:var(--purple);font-weight:600;">🥇 金卡会员</span></div>' +
-    '<button class="modal-close" onclick="document.getElementById(\'modal-member-behavior\').remove()">✕</button></div>' +
-    '<div style="flex:1;overflow-y:auto;padding:16px 20px;">' +
-    // 行为画像卡片
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
-    '<div style="padding:12px;background:var(--blue-bg);border-radius:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--blue);">9晚</div><div style="font-size:11px;color:var(--text-muted);">累计入住</div></div>' +
-    '<div style="padding:12px;background:var(--green-bg);border-radius:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--green);">¥1,490</div><div style="font-size:11px;color:var(--text-muted);">累计消费</div></div>' +
-    '<div style="padding:12px;background:var(--purple-bg);border-radius:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--purple);">165天</div><div style="font-size:11px;color:var(--text-muted);">会员时长</div></div>' +
-    '<div style="padding:12px;background:var(--orange-bg);border-radius:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--orange);">大床房</div><div style="font-size:11px;color:var(--text-muted);">偏好房型</div></div></div>' +
-    // 消费习惯
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">' +
-    '<div style="padding:14px;background:white;border:1px solid var(--border);border-radius:10px;">' +
-    '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">💰 消费习惯</div>' +
-    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">平均消费：<b style="color:var(--green);">¥165/晚</b></div>' +
-    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">偏好房型：<b style="color:var(--blue);">大床房（80%入住）</b></div>' +
-    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">平均住宿：<b style="color:var(--purple);">1.8晚/次</b></div>' +
-    '<div style="font-size:12px;color:var(--text-muted);">入住时段：<b style="color:var(--orange);">周末为主（71%）</b></div></div>' +
-    '<div style="padding:14px;background:white;border:1px solid var(--border);border-radius:10px;">' +
-    '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">🎯 会员价值评估</div>' +
-    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">客户价值：<b style="color:var(--green);">高价值（¥1,490/年）</b></div>' +
-    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">升级潜力：<b style="color:var(--blue);">距离VIP还差21晚</b></div>' +
-    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">流失风险：<b style="color:var(--green);">低（最近30天有入住）</b></div>' +
-    '<div style="font-size:12px;color:var(--text-muted);">推荐服务：<b style="color:var(--orange);">储值卡、积分兑换</b></div></div></div>' +
-    // 入住历史
-    '<div style="padding:14px;background:white;border:1px solid var(--border);border-radius:10px;">' +
-    '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📋 入住历史（最近5次）</div>' +
-    '<table class="table" style="font-size:12px;"><thead><tr><th>日期</th><th>房号</th><th>房型</th><th>住宿</th><th>消费</th></tr></thead>' +
-    '<tbody>' + historyRows + '</tbody></table></div></div>' +
-    '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">' +
-    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-behavior\').remove()">关闭</button>' +
-    '<button class="modal-btn" onclick="sendMemberTargetedOffer(\'' + guestName + '\')" class="btn-orange" style=">🎯 发送定向优惠</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-function sendMemberTargetedOffer(name) {
-  showToast('正在为 ' + name + ' 生成定向优惠...', 'info');
-  setTimeout(function(){ showToast('🎯 已向 ' + name + ' 发送专属优惠券', 'success'); }, 1500);
-}
 
 // ============================================================
 // 改进2: 楼栋表单完整保存功能（modal-building-form-v2 引用）
@@ -8822,71 +8760,6 @@ function startBatchFirmwareUpgrade() {
   }, 600);
 }
 
-// 改进4：入住推荐房间引擎弹窗
-var _checkinRecommendation = null;
-
-function openSmartRoomRecommendModal(guestName, nights, guestCount) {
-  var existing = document.getElementById('modal-room-recommend');
-  if (existing) existing.remove();
-  guestName = guestName || '张三';
-  nights = nights || 1;
-  guestCount = guestCount || 2;
-  var recommendRooms = [
-    {room:'301',type:'亲子间',floor:'3F',price:368,reason:'亲子间优先推荐，入住3天有优惠',features:['亲子主题','小度音箱','超大空间'],match:98},
-    {room:'302',type:'亲子间',floor:'3F',price:368,reason:'同房型可拼接，适合' + guestCount + '人入住',features:['亲子主题','小度音箱'],match:92},
-    {room:'201',type:'大床房',floor:'2F',price:268,reason:'大床房价格实惠，适合' + guestCount + '人入住',features:['大床1.8m','小度音箱'],match:85}
-  ];
-  _checkinRecommendation = recommendRooms[0];
-  var cards = '';
-  recommendRooms.forEach(function(r, i) {
-    var selected = i === 0 ? 'border-color:var(--blue);background:var(--blue-bg);' : '';
-    cards += '<div class="rec-room-card" data-room="' + r.room + '" onclick="selectRecommendRoom(this,\'' + r.room + '\')" style="cursor:pointer;border:2px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;transition:all 0.2s;' + selected + '">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
-      '<div><div style="font-size:18px;font-weight:700;color:var(--blue);">' + r.room + '</div>' +
-      '<div style="font-size:12px;color:var(--text-muted);">' + r.type + ' · ' + r.floor + '</div></div>' +
-      '<div style="text-align:right;"><div style="font-size:18px;font-weight:700;color:var(--green);">¥' + r.price + '</div>' +
-      '<div style="font-size:10px;color:var(--text-muted);">/晚</div></div></div>' +
-      '<div style="font-size:12px;color:var(--orange);margin-bottom:8px;">📌 推荐理由：' + r.reason + '</div>' +
-      '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">';
-    r.features.forEach(function(f) {
-      cards += '<span style="padding:2px 8px;background:var(--bg);border-radius:4px;font-size:11px;color:var(--text-light);">' + f + '</span>';
-    });
-    cards += '</div>' +
-      '<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="height:100%;background:var(--green);border-radius:3px;width:' + r.match + '%;"></div></div><span style="font-size:11px;font-weight:700;color:var(--green);">' + r.match + '%匹配</span></div></div>';
-  });
-  var html = '<div class="hidden modal-overlay" id="modal-room-recommend" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-room-recommend\').remove()">' +
-    '<div class="modal" style="width:560px;max-height:85vh;overflow-y:auto;background:white;border-radius:12px;">' +
-    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
-    '<div style="font-size:15px;font-weight:700;">🏠 智能推荐房间 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">（基于 ' + guestName + ' · ' + nights + '晚 · ' + guestCount + '人入住）</span></div>' +
-    '<button onclick="document.getElementById(\'modal-room-recommend\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
-    '<div style="padding:16px 24px;">' +
-    '<div style="padding:12px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">' +
-    '🤖 推荐算法：综合入住天数(' + nights + '晚)、人数(' + guestCount + '人)、房型偏好(亲子间)、历史入住记录，匹配度最高优先推荐</div>' +
-    '<div id="rec-room-list">' + cards + '</div></div>' +
-    '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;">' +
-    '<button class="modal-btn secondary" onclick="showToast(\'请手动选择房间\',\'info\')">🖐️ 手动选择</button>' +
-    '<button class="modal-btn primary" onclick="confirmRoomRecommend()">✅ 确认推荐房间（' + (_checkinRecommendation ? _checkinRecommendation.room : '') + '）</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-function selectRecommendRoom(el, roomNum) {
-  document.querySelectorAll('.rec-room-card').forEach(function(c) {
-    c.style.borderColor = 'var(--border)';
-    c.style.background = 'white';
-  });
-  el.style.borderColor = 'var(--blue)';
-  el.style.background = 'var(--blue-bg)';
-  _checkinRecommendation = {room: roomNum};
-}
-
-function confirmRoomRecommend() {
-  if (!_checkinRecommendation || !_checkinRecommendation.room) {
-    showToast('请先选择一个推荐房间', 'warning');
-    return;
-  }
-  document.getElementById('modal-room-recommend').remove();
-  showToast('✅ 已确认推荐房间 ' + _checkinRecommendation.room + '，请继续完成入住办理', 'success');
-}
 
 // 改进5：系统公告发布管理弹窗
 var _announcements = [
@@ -15492,7 +15365,7 @@ function openMemberDetail(idx) {
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
     '<button class="action-btn small" onclick="document.getElementById(\'modal-member-detail\').remove();openEditMemberModal(' + idx + ');" style="padding:5px 12px;">✏️ 编辑</button>' +
     '<button class="action-btn small" onclick="document.getElementById(\'modal-member-detail\').remove();openMemberRechargeModalV3(' + idx + ');" style="padding:5px 12px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">💳 充值</button>' +
-    '<button class="action-btn small" onclick="document.getElementById(\'modal-member-detail\').remove();openMemberConsumptionHistory(' + idx + ');" style="padding:5px 12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📋 消费记录</button></div></div></div>' +
+    '<button class="action-btn small" onclick="document.getElementById(\'modal-member-detail\').remove();showToast(\'消费记录功能正在规划中\',\'info\');" style="padding:5px 12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">📋 消费记录</button></div></div></div>' +
     '<div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' +
     '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-member-detail\').remove()">关闭</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
@@ -15524,7 +15397,7 @@ function renderMemberTable() {
       '<td><span class="tbadge blue">--晚</span></td>' +
       '<td style="font-weight:600;">¥--</td>' +
       '<td>--</td>' +
-      '<td><button class="action-btn small" onclick="openMemberDetail(' + idx + ')">详情</button> <button class="action-btn small" onclick="openEditMemberModal(' + idx + ')">编辑</button> <button class="action-btn small" onclick="openMemberRechargeModalV3(' + idx + ')" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small" onclick="openMemberConsumptionHistory(' + idx + ')" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">消费记录</button> <button class="action-btn small red" onclick="deleteMember(' + idx + ')">删除</button></td>' +
+      '<td><button class="action-btn small" onclick="openMemberDetail(' + idx + ')">详情</button> <button class="action-btn small" onclick="openEditMemberModal(' + idx + ')">编辑</button> <button class="action-btn small" onclick="openMemberRechargeModalV3(' + idx + ')" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">充值</button> <button class="action-btn small" onclick="showToast('消费记录功能正在规划中','info')" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">消费记录</button> <button class="action-btn small red" onclick="deleteMember(' + idx + ')">删除</button></td>' +
       '</tr>';
   }).join('');
   tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">暂无会员数据</td></tr>';
