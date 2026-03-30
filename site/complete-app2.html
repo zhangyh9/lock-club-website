@@ -10926,7 +10926,7 @@ function openFullShiftHandoverModal() {
     '<div id="shift-panel-2" style="display:none;">' +
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">' +
     '<div style="padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--green);margin-bottom:4px;">本班营收</div><div style="font-size:20px;font-weight:700;color:var(--green);">¥2,847</div></div>' +
-    '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--blue);margin-bottom:4px;">入住率</div><div style="font-size:20px;font-weight:700;color:var(--blue);">78%</div></div>' +
+    '<div style="padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--blue);margin-bottom:4px;">设备在线</div><div style="font-size:20px;font-weight:700;color:var(--blue);">94%</div></div>' +
     '<div style="padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;text-align:center;"><div style="font-size:11px;color:var(--orange);margin-bottom:4px;">待处理工单</div><div style="font-size:20px;font-weight:700;color:var(--orange);">3</div></div></div>' +
     '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:14px;font-size:12px;">' +
     '<div style="font-weight:600;margin-bottom:8px;">📋 房态变化</div>' +
@@ -11283,7 +11283,7 @@ var _notifList = [
   {id:6,type:'workorder',title:'🛠️ 工单提醒',content:'客户投诉工单#WO-2026032901等待处理，距 SLA 剩余2小时',time:'20分钟前',read:false},
   {id:7,type:'workorder',title:'🛠️ 工单完成',content:'维修工单#WO-2026032803已完成，客户已确认',time:'2小时前',read:true},
   {id:8,type:'system',title:'⚙️ 系统通知',content:'物联后台已自动更新至 v4.2.1 版本',time:'1天前',read:true},
-  {id:9,type:'alert',title:'⚠️ 入住率预警',content:'今日入住率已达95%，仅剩1间空房',time:'3小时前',read:true},
+  {id:9,type:'alert',title:'⚠️ 设备离线预警',content:'3台设备已离线超过1小时，请检查网络',time:'3小时前',read:true},
   {id:10,type:'device',title:'📱 固件升级',content:'5台门锁设备已成功升级至最新固件 v2.3.1',time:'5小时前',read:true},
   {id:11,type:'workorder',title:'🛠️ 新工单',content:'发票索要工单#WO-2026032902已创建，等待财务处理',time:'40分钟前',read:false},
   {id:12,type:'system',title:'⚙️ 数据备份',content:'系统自动备份已于凌晨3:00完成，备份文件大小：1.2GB',time:'1天前',read:true}
@@ -13176,12 +13176,13 @@ function renderOplogTable() {
   // cfg-content-oplog uses oplog-config-table-body (to avoid duplicate id with page-oplog)
   var tbody = document.getElementById('oplog-config-table-body') || document.getElementById('oplog-table-body');
   if (!tbody) return;
-  var typeFilter = document.getElementById('oplog-module-filter');
+  // P13.3修复：oplog-module-filter DOM id不存在，实际应为oplog-type-filter
+  // 注：oplog-type-filter 对应 module 筛选（设备管理/入住管理/系统设置等）
+  //     statusVal已移除（oplog数据中status为操作结果，成功/失败，无独立筛选项）
+  var typeFilter = document.getElementById('oplog-type-filter');
   var typeVal = typeFilter ? typeFilter.value : 'all';
   var userFilter = document.getElementById('oplog-user-filter');
   var userVal = userFilter ? userFilter.value : 'all';
-  var statusFilter = document.getElementById('oplog-type-filter');
-  var statusVal = statusFilter ? statusFilter.value : 'all';
   var targetVal = (document.getElementById('oplog-target') || {}).value.trim() || '';
   var searchVal = ((document.getElementById('oplog-keyword') || {}).value || '').trim().toLowerCase();
   var mockLogs = [
@@ -13197,12 +13198,11 @@ function renderOplogTable() {
   var filtered = mockLogs.filter(function(log) {
     var matchType = typeVal === 'all' || log.module === typeVal;
     var matchUser = userVal === 'all' || log.user === userVal;
-    var matchStatus = statusVal === 'all' || log.status === statusVal;
     var matchTarget = !targetVal || log.target.indexOf(targetVal) >= 0;
     var matchSearch = !searchVal || log.action.toLowerCase().indexOf(searchVal) >= 0
       || log.detail.toLowerCase().indexOf(searchVal) >= 0
       || log.user.toLowerCase().indexOf(searchVal) >= 0;
-    return matchType && matchUser && matchStatus && matchTarget && matchSearch;
+    return matchType && matchUser && matchTarget && matchSearch;
   });
   var rows = filtered.map(function(log) {
     var statusColor = log.status === '成功' ? 'var(--green)' : 'var(--red)';
@@ -13979,13 +13979,15 @@ document.addEventListener('DOMContentLoaded', function() {
     if (invSearch) { window._invSearchHandler = applyInvoiceSearch; invSearch.addEventListener('input', applyInvoiceSearch); }
     // 【P13修复】_oplogHandlers存储{handler, type}，type区分change/input以正确清理
     var _oplogHandlers = {};
-    ['oplog-module-filter','oplog-user-filter','oplog-type-filter'].forEach(function(id) {
+    // P13.1修复：oplog-module-filter实际DOM id为oplog-type-filter（同名不同功能），删除无效oplog-module-filter绑定
+    ['oplog-user-filter','oplog-type-filter'].forEach(function(id) {
       var el = document.getElementById(id);
       if (el) { _oplogHandlers[id] = {handler: applyOplogFilter, type: 'change'}; el.addEventListener('change', applyOplogFilter); }
     });
-    var oplogDateStart = document.getElementById('oplog-date-start');
+    // P13.2修复：oplog-date-start实际DOM id为oplog-date-from，oplog-date-end实际DOM id为oplog-date-to
+    var oplogDateStart = document.getElementById('oplog-date-from');
     if (oplogDateStart) { _oplogHandlers.dateStart = {handler: applyOplogFilter, type: 'change'}; oplogDateStart.addEventListener('change', applyOplogFilter); }
-    var oplogDateEnd = document.getElementById('oplog-date-end');
+    var oplogDateEnd = document.getElementById('oplog-date-to');
     if (oplogDateEnd) { _oplogHandlers.dateEnd = {handler: applyOplogFilter, type: 'change'}; oplogDateEnd.addEventListener('change', applyOplogFilter); }
     var oplogTarget = document.getElementById('oplog-target');
     if (oplogTarget) { _oplogHandlers.target = {handler: applyOplogFilter, type: 'input'}; oplogTarget.addEventListener('input', applyOplogFilter); }
