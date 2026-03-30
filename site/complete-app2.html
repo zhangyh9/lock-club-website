@@ -1953,15 +1953,8 @@ function clearLogUuidFilter() {
 <!-- 【改进3】房间详情页快速操作面板：支持一键切换房间状态（空房/入住/维修/停用），无需返回楼栋页面 -->
 <div id="rd-quick-actions" style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:linear-gradient(135deg,#f0f5ff,#e8f4ff);border:1px solid var(--blue);border-radius:8px;margin-bottom:14px;">
 <span style="font-size:13px;font-weight:600;color:var(--blue);">⚡ 快速操作：</span>
-<button class="action-btn small" onclick="rdQuickSetStatus('空房')" style="padding:5px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);font-size:12px;">🟢 设为空房</button>
-<button class="action-btn small" onclick="rdQuickSetStatus('入住')" style="padding:5px 12px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);font-size:12px;">🔵 设为入住</button>
-<button class="action-btn small" onclick="rdQuickSetStatus('维修')" style="padding:5px 12px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);font-size:12px;">🔶 设为维修</button>
-<button class="action-btn small" onclick="rdQuickSetStatus('停用')" style="padding:5px 12px;background:var(--red-bg);color:var(--red);border-color:var(--red);font-size:12px;">🔴 设为停用</button>
-<button class="action-btn small" onclick="rdQuickSetStatus('脏房')" style="padding:5px 12px;background:var(--yellow-bg,gold);color:#b37800;border-color:#b37800;font-size:12px;">🟡 设为脏房</button>
 <div style="margin-left:auto;display:flex;gap:6px;">
 <button class="action-btn small" onclick="rdOpenDeviceBind()" style="padding:5px 12px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple);font-size:12px;">📡 绑定设备</button>
-<button class="action-btn small" onclick="rdOpenCheckin()" style="padding:5px 12px;background:var(--green-bg);color:var(--green);border-color:var(--green);font-size:12px;">🏨 快速入住</button>
-<button class="action-btn small" onclick="rdOpenCheckout()" style="padding:5px 12px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);font-size:12px;">🏁 快速退房</button>
 </div>
 </div>
 <div class="tabs" id="room-detail-tabs" style="margin-bottom:16px;">
@@ -2021,7 +2014,7 @@ function clearLogUuidFilter() {
 <span style="font-size:13px;color:var(--text-muted);">应急卡</span><span class="tbadge gray" style="font-size:10px;">未配置</span>
 </div>
 </div>
-<button class="action-btn" onclick="openCompleteCheckinModal()" style="width:100%;text-align:center;">办理入住</button>
+
 </div>
 <div class="detail-card">
 <button class="action-btn green" onclick="openUnlockModal()" style="width:100%;margin-bottom:8px;">🔓 远程开锁</button>
@@ -2176,7 +2169,7 @@ function clearLogUuidFilter() {
 </div>
 <button class="action-btn small" onclick="editRoomRecord('rec-001')" style="margin-left:8px;padding:2px 8px;font-size:10px;">✏️ 编辑</button>
 <button class="action-btn small orange" onclick="openChangeRoomModal()" style="margin-left:4px;padding:2px 8px;font-size:10px;">🔄 换房</button>
-<button class="action-btn small red" onclick="openEarlyCheckoutModal()" style="margin-left:4px;padding:2px 8px;font-size:10px;">🚪 退房</button>
+
 </div>
 <!-- 退房记录 -->
 <div class="checkin-record" data-record-id="rec-002" data-rtype="out" style="opacity:0.75;">
@@ -7916,13 +7909,14 @@ function calcLeaveDuration(){
   el.textContent=days>0?days+' 天':'日期选择无效';
   el.style.color=days>0?'var(--blue)':'var(--red)';
 }
+function closeLeaveRequestModal() { var m=document.getElementById('modal-leave-request'); if(m)m.remove(); }
 function submitLeaveRequest(){
   var staff=document.getElementById('lr-staff').value;
   var type=document.getElementById('lr-type').value;
   var start=document.getElementById('lr-start').value;
   var end=document.getElementById('lr-end').value;
   if(!staff||!type||!start||!end){showToast('请填写必填项','error');return;}
-  var m=document.getElementById('modal-leave-request');if(m)m.remove();
+  closeLeaveRequestModal();
   showToast('📋 请假申请已提交，等待管理员审批！','success');
   // Refresh leave request list if it exists
   if(typeof renderLeaveRequestList==='function')renderLeaveRequestList();
@@ -16501,102 +16495,14 @@ function renderRoleTable() {
   tbody.innerHTML = rows || '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">暂无角色数据</td></tr>';
 }
 
-// ======= 房间详情页快速操作 =======
-// 【物联后台 v4 改进】房间详情页快速入住/退房功能
-// 理由：房间详情页"快速入住""快速退房"按钮调用rdOpenCheckin()/rdOpenCheckout()但函数从未定义
-function rdOpenCheckin() {
-  var roomNum = document.getElementById('room-detail-room-num') ? document.getElementById('room-detail-room-num').textContent : '301';
-  var modal = document.getElementById('modal-checkin');
-  if (!modal) { showToast('入住模态框未找到，请先进入房间详情页', 'error'); return; }
-  var roomLabel = document.getElementById('checkin-room-label');
-  if (roomLabel) roomLabel.textContent = roomNum + '房间';
-  modal.classList.remove('hidden');
-  showToast('🏨 正在为房间 ' + roomNum + ' 办理入住', 'info');
-}
 
-function rdOpenCheckout() {
-  var roomNum = document.getElementById('room-detail-room-num') ? document.getElementById('room-detail-room-num').textContent : '301';
-  var modal = document.getElementById('modal-checkout');
-  if (!modal) { showToast('退房模态框未找到，请先进入房间详情页', 'error'); return; }
-  modal.classList.remove('hidden');
-  showToast('🚪 正在为房间 ' + roomNum + ' 办理退房', 'info');
-}
+
+
 
 // ======= 【物联后台 v4 iter29】5个断裂函数补全 =======
-// 【改进1】openCompleteCheckinModal - 房间详情页"办理入住"按钮调用但函数未定义
-// 业务逻辑：打开完整入住办理表单弹窗（姓名/电话/证件/入住日期/天数/房型），提交后显示成功Toast并刷新房间状态
-function openCompleteCheckinModal() {
-  var roomNum = document.getElementById('room-detail-room-num') ? document.getElementById('room-detail-room-num').textContent : '301';
-  var existing = document.getElementById('modal-complete-checkin');
-  if (existing) existing.remove();
-  var roomTypes = ['标准间', '大床房', '亲子间', '商务房'].map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('');
-  var html = '<div class="modal-overlay hidden" id="modal-complete-checkin" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-complete-checkin\').remove()">' +
-    '<div class="modal" style="width:520px;">' +
-    '<div class="modal-header"><div class="modal-title">🏨 办理入住 - ' + roomNum + '房间</div><button class="modal-close" onclick="document.getElementById(\'modal-complete-checkin\').remove()">✕</button></div>' +
-    '<div class="modal-body">' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
-    '<div class="form-group"><label class="form-label">姓名 <span class="required">*</span></label><input type="text" class="form-input" id="cci-name" placeholder="请输入客人姓名"></div>' +
-    '<div class="form-group"><label class="form-label">手机号 <span class="required">*</span></label><input type="tel" class="form-input" id="cci-phone" placeholder="请输入手机号" maxlength="11"></div>' +
-    '</div>' +
-    '<div class="form-group"><label class="form-label">证件类型</label><select class="form-select" id="cci-idtype"><option value="id">身份证</option><option value="passport">护照</option><option value="other">其他</option></select></div>' +
-    '<div class="form-group"><label class="form-label">证件号码</label><input type="text" class="form-input" id="cci-idnum" placeholder="请输入证件号码"></div>' +
-    '<div class="form-group"><label class="form-label">房型</label><select class="form-select" id="cci-type">' + roomTypes + '</select></div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
-    '<div class="form-group"><label class="form-label">入住日期</label><input type="date" class="form-input" id="cci-indate" value="' + new Date().toISOString().slice(0,10) + '"></div>' +
-    '<div class="form-group"><label class="form-label">入住天数</label><select class="form-select" id="cci-days"><option value="1">1晚</option><option value="2">2晚</option><option value="3">3晚</option><option value="5">5晚</option><option value="7">7晚</option></select></div>' +
-    '</div>' +
-    '<div class="form-group"><label class="form-label">备注</label><textarea class="form-input" id="cci-remark" placeholder="可选，特殊要求..." style="resize:vertical;min-height:60px;"></textarea></div>' +
-    '</div>' +
-    '<div class="modal-footer" style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
-    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-complete-checkin\').remove()">取消</button>' +
-    '<button class="modal-btn primary" onclick="confirmCompleteCheckin(\'' + roomNum + '\')">确认入住</button>' +
-    '</div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-  showToast('🏨 正在为 ' + roomNum + ' 办理入住手续', 'info');
-}
 
-// confirmCompleteCheckin - 确认入住
-function confirmCompleteCheckin(roomNum) {
-  var name = document.getElementById('cci-name').value.trim();
-  var phone = document.getElementById('cci-phone').value.trim();
-  if (!name) { showToast('请输入客人姓名', 'error'); return; }
-  if (!phone || phone.length < 11) { showToast('请输入正确的手机号', 'error'); return; }
-  var modal = document.getElementById('modal-complete-checkin');
-  if (modal) modal.remove();
-  showToast('✅ 房间 ' + roomNum + ' 入住成功！客人：' + name + '，电话：' + phone, 'success');
-  if (typeof renderRoomGrid === 'function') renderRoomGrid();
-  if (typeof renderHomeStats === 'function') renderHomeStats();
-}
 
-// 【改进2】openEarlyCheckoutModal - 房间详情页"退房"按钮调用但函数未定义
-// 业务逻辑：打开提前退房确认弹窗，显示房间/天数/费用明细，支持确认退房或取消
-function openEarlyCheckoutModal() {
-  var roomNum = document.getElementById('room-detail-room-num') ? document.getElementById('room-detail-room-num').textContent : '301';
-  var guest = document.querySelector('.room-guest-name') ? document.querySelector('.room-guest-name').textContent : '张三';
-  var existing = document.getElementById('modal-early-checkout');
-  if (existing) existing.remove();
-  var html = '<div class="modal-overlay hidden" id="modal-early-checkout" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-early-checkout\').remove()">' +
-    '<div class="modal" style="width:440px;">' +
-    '<div class="modal-header"><div class="modal-title">🚪 提前退房 - ' + roomNum + '房间</div><button class="modal-close" onclick="document.getElementById(\'modal-early-checkout\').remove()">✕</button></div>' +
-    '<div class="modal-body">' +
-    '<div style="background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--blue);">💡 检测到 <strong>' + guest + '</strong> 入住中，提前退房将按实际入住天数结算</div>' +
-    '<div class="info-grid" style="margin-bottom:16px;">' +
-    '<div class="info-item"><div class="label">房间号</div><div class="value">' + roomNum + '</div></div>' +
-    '<div class="info-item"><div class="label">入住客人</div><div class="value">' + guest + '</div></div>' +
-    '<div class="info-item"><div class="label">入住日期</div><div class="value">' + new Date().toISOString().slice(0,10) + '</div></div>' +
-    '<div class="info-item"><div class="label">应退日期</div><div class="value">' + new Date(Date.now()+86400000*2).toISOString().slice(0,10) + '</div></div>' +
-    '<div class="info-item"><div class="label">预计房费</div><div class="value" style="color:var(--blue);font-weight:700;">¥356.00</div></div>' +
-    '<div class="info-item"><div class="label">押金状态</div><div class="value" style="color:var(--green);">已缴 ¥100</div></div>' +
-    '</div>' +
-    '<div class="form-group"><label class="form-label">退房原因</label><select class="form-select" id="eco-reason"><option value="early">提前退房</option><option value="change">换房</option><option value="business">出差变更</option><option value="other">其他</option></select></div>' +
-    '<div class="form-group"><label class="form-label">备注</label><textarea class="form-input" id="eco-remark" placeholder="可选..." style="resize:vertical;min-height:50px;"></textarea></div>' +
-    '</div>' +
-    '<div class="modal-footer" style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
-    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-early-checkout\').remove()">取消</button>' +
-    '<button class="modal-btn primary" style="background:var(--orange);border-color:var(--orange);" onclick="confirmEarlyCheckout(\'' + roomNum + '\')">确认退房</button>' +
-    '</div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
+
 
 function confirmEarlyCheckout(roomNum) {
   var modal = document.getElementById('modal-early-checkout');
@@ -23960,55 +23866,7 @@ function submitHandoverConfirm() {
   showToast('✅ 电子交接确认成功！交接人：' + outPerson + ' → ' + inPerson, 'success');
   document.getElementById('modal-ho-confirm') && document.getElementById('modal-ho-confirm').remove();
 }
-// ======= 【物联后台 v4 改进1】rdQuickSetStatus - 房间详情页快速设置房间状态 =======
-// 理由：房间详情页快速操作面板有"设为空房/入住/维修/停用/脏房"按钮但函数未定义
-// 业务逻辑：根据按钮快速修改房间状态，包含状态确认Toast+状态标签变色+首页房间卡片同步刷新
-// 【v4修复】当前房间详情页正在查看的房间号（房间卡片点击时设置）
-var _currentRoomDetailNum = '301';
-function setCurrentRoomDetail(num) { _currentRoomDetailNum = num; }
 
-function rdQuickSetStatus(status) {
-  var roomNum = _currentRoomDetailNum || '301';
-  var statusMap = {
-    '空房': {label:'空房', color:'var(--green)', bg:'var(--green-bg)', badge:'badge-empty', domStatus:'empty'},
-    '入住': {label:'入住', color:'var(--blue)', bg:'var(--blue-bg)', badge:'badge-in', domStatus:'in'},
-    '维修': {label:'维修', color:'var(--orange)', bg:'var(--orange-bg)', badge:'badge-low', domStatus:'maintenance'},
-    '停用': {label:'停用', color:'var(--red)', bg:'var(--red-bg)', badge:'badge-alert', domStatus:'alert'},
-    '脏房': {label:'脏房', color:'#b37800', bg:'#fffbe6', badge:'badge-low', domStatus:'dirty'}
-  };
-  var info = statusMap[status] || statusMap['空房'];
-  // 【v4修复】同步更新 _homeRoomData 数据源（保证刷新后状态不丢失）
-  var roomIdx = _homeRoomData.findIndex(function(r){ return r.num === roomNum; });
-  if (roomIdx !== -1) {
-    _homeRoomData[roomIdx].status = info.domStatus;
-  }
-  // Update status label in room detail page
-  var statusEl = document.querySelector('#page-room-detail .detail-card-title') || document.querySelector('#room-tab-info');
-  if (statusEl) {
-    statusEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:' + info.bg + ';border:1px solid ' + info.color + ';border-radius:20px;font-size:12px;color:' + info.color + ';">' + status + '</span>';
-  }
-  // Update room content status badge
-  var contentBadge = document.querySelector('#room-content-info .detail-card .value[style*="color:var(--blue)"]');
-  if (contentBadge) {
-    contentBadge.textContent = status;
-    contentBadge.style.color = info.color;
-  }
-  showToast('✅ 房间 ' + roomNum + ' 已设为「' + status + '」', 'success');
-  // Update home room card if visible
-  var homeCard = document.querySelector('.room-grid [data-room="' + roomNum + '"]');
-  if (homeCard) {
-    var badge = homeCard.querySelector('.room-badge');
-    if (badge) {
-      badge.textContent = status;
-      badge.className = 'room-badge ' + info.badge;
-      badge.style.background = info.bg;
-      badge.style.color = info.color;
-    }
-    homeCard.setAttribute('data-status', info.domStatus);
-    homeCard.style.borderColor = info.color;
-    homeCard.style.background = info.bg;
-  }
-}
 
 // ======= 【物联后台 v4 改进2】renderRoomGrid - 首页房间卡片渲染函数 =======
 // 理由：首页有刷新按钮调用renderRoomGrid()但函数从未定义，导致刷新功能失效
@@ -24069,7 +23927,7 @@ function renderRoomGrid(filter) {
         '<div style="display:flex;align-items:center;gap:4px;"><span>⚡</span><span style="color:var(--text-muted);">用电：</span><span style="font-weight:500;" class="' + elecClass + '">' + r.electricity + 'kWh</span></div></div>' +
       (r.status === 'in' ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text-muted);"><span class="room-guest-name" style="font-weight:600;color:var(--text);">' + r.guest + '</span> · ' + r.phone + '<br>入住：' + r.checkin + ' → 退：' + r.checkout + '</div>' : '') +
       '<div class="room-quick-actions">' +
-        '<button class="room-qa-btn room-qa-checkin" onclick="event.stopPropagation();rdOpenCheckinFromGrid(\'' + r.num + '\')">入住</button>' +
+        
         '<button class="room-qa-btn room-qa-history" onclick="event.stopPropagation();navigateToRoom(\'' + r.num + '\')">详情</button>' +
         '<button class="room-qa-btn room-qa-unlock" onclick="event.stopPropagation();showToast(\'正在远程开锁...','info\')">开锁</button></div>' +
       '</div>';
@@ -24105,44 +23963,9 @@ function navigateToRoom(roomNum) {
   showToast('🚪 已进入房间 ' + roomNum + ' 详情页', 'info');
 }
 
-function rdOpenCheckinFromGrid(roomNum) {
-  var modal = document.getElementById('modal-checkin');
-  if (!modal) { showToast('入住模态框未找到', 'error'); return; }
-  var roomLabel = document.getElementById('checkin-room-label');
-  if (roomLabel) roomLabel.textContent = roomNum + '房间';
-  modal.classList.remove('hidden');
-  showToast('🏨 正在为房间 ' + roomNum + ' 办理入住', 'info');
-}
 
-// ======= 【物联后台 v4 改进3】openChangeRoomModal - 换房弹窗 =======
-// 理由：房间详情页办理记录Tab有"换房"按钮调用openChangeRoomModal但函数从未定义
-// 业务逻辑：弹出换房表单，填写原房间、目标房间、换房原因，提交后显示成功Toast+换房记录刷新
-function openChangeRoomModal() {
-  var roomNum = document.getElementById('rd-page-title') ? document.getElementById('rd-page-title').textContent.replace('🚪 房间详情 - ', '') : '301';
-  var existing = document.getElementById('modal-change-room');
-  if (existing) existing.remove();
-  var emptyRooms = _homeRoomData.filter(function(r){return r.status==='empty'}).map(function(r){return '<option value="'+r.num+'">'+r.num+' ('+r.type+')</option>';}).join('');
-  var html = '<div class="modal-overlay hidden" id="modal-change-room" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-change-room\').remove()">' +
-    '<div class="modal" style="width:480px;">' +
-    '<div class="modal-header"><div class="modal-title">🔄 房间互换</div><button class="modal-close" onclick="document.getElementById(\'modal-change-room\').remove()">✕</button></div>' +
-    '<div class="modal-body">' +
-    '<div class="form-group"><label class="form-label">原房间 <span class="required">*</span></label>' +
-    '<input type="text" class="form-input" id="cr-from-room" value="' + roomNum + '" readonly style="background:var(--bg);cursor:not-allowed;"></div>' +
-    '<div class="form-group"><label class="form-label">换至房间 <span class="required">*</span></label>' +
-    '<select class="form-select" id="cr-to-room" style="padding:8px 12px;font-size:13px;"><option value="">请选择目标房间</option>' + emptyRooms + '</select></div>' +
-    '<div class="form-group"><label class="form-label">当前客人</label>' +
-    '<input type="text" class="form-input" id="cr-guest-name" value="' + (_homeRoomData.filter(function(r){return r.num===roomNum})[0] || {}).guest + '" placeholder="自动填充，可修改" style="padding:8px 12px;font-size:13px;"></div>' +
-    '<div class="form-group"><label class="form-label">换房原因</label>' +
-    '<select class="form-select" id="cr-reason" style="padding:8px 12px;font-size:13px;"><option value="noise">房间噪音大</option><option value="floor">楼层/朝向不好</option><option value="upgrade">房型升级</option><option value="maintenance">原房间维修</option><option value="other">其他原因</option></select></div>' +
-    '<div class="form-group"><label class="form-label">备注</label>' +
-    '<textarea class="form-input" id="cr-remark" placeholder="可选，补充说明..." style="padding:8px 12px;font-size:13px;resize:vertical;min-height:60px;"></textarea></div>' +
-    '</div>' +
-    '<div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end;padding:16px 20px;border-top:1px solid var(--border);">' +
-    '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-change-room\').remove()">取消</button>' +
-    '<button class="modal-btn primary" onclick="submitChangeRoom()" style="background:var(--blue);color:white;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">✅ 确认换房</button></div>' +
-    '</div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
+
+
 
 function submitChangeRoom() {
   var fromRoom = document.getElementById('cr-from-room').value;
