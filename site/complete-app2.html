@@ -2550,6 +2550,41 @@ function switchRoomDetailTab(tab, el) {
 <button class="action-btn small" onclick="showBatteryAnalysis()" style="padding:2px 8px;font-size:10px;">📊 详细分析</button>
 </div>
 </div>
+<!-- 【T21物联核心增强】设备健康度趋势图 -->
+<div class="detail-card" style="margin-top:12px;">
+<div class="detail-card-title">🏥 设备健康度趋势（近7天）</div>
+<div style="padding:10px 0;">
+<div id="health-trend-chart" style="position:relative;height:80px;">
+<svg width="100%" height="80" viewBox="0 0 400 80" preserveAspectRatio="none" style="display:block;">
+<!-- 背景网格 -->
+<line x1="0" y1="75" x2="400" y2="75" stroke="#f0f0f0" stroke-width="1"/>
+<line x1="0" y1="55" x2="400" y2="55" stroke="#f0f0f0" stroke-width="1"/>
+<line x1="0" y1="35" x2="400" y2="35" stroke="#f0f0f0" stroke-width="1"/>
+<line x1="0" y1="15" x2="400" y2="15" stroke="#f0f0f0" stroke-width="1"/>
+<!-- 健康度区域填充（绿→黄→红渐变） -->
+<path d="M0,12 L57,14 L114,18 L171,28 L228,38 L285,50 L342,54 L400,62 L400,75 L0,75 Z" fill="url(#healthGradient)" opacity="0.15"/>
+<!-- 健康度折线 -->
+<path d="M0,12 L57,14 L114,18 L171,28 L228,38 L285,50 L342,54 L400,62" fill="none" stroke="url(#healthLineGradient)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<!-- 数据点 -->
+<circle cx="0" cy="12" r="3" fill="#52c41a"/><circle cx="57" cy="14" r="3" fill="#52c41a"/><circle cx="114" cy="18" r="3" fill="#95de64"/><circle cx="171" cy="28" r="3" fill="#95de64"/><circle cx="228" cy="38" r="3" fill="#faad14"/><circle cx="285" cy="50" r="3" fill="#ff7875"/><circle cx="342" cy="54" r="3" fill="#ff4d4f"/><circle cx="400" cy="62" r="3" fill="#ff4d4f"/>
+<!-- 渐变定义 -->
+<defs>
+<linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#52c41a"/><stop offset="50%" stop-color="#faad14"/><stop offset="100%" stop-color="#ff4d4f"/></linearGradient>
+<linearGradient id="healthLineGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#52c41a"/><stop offset="50%" stop-color="#faad14"/><stop offset="100%" stop-color="#ff4d4f"/></linearGradient>
+</defs>
+</svg>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">
+<div style="display:flex;align-items:center;gap:8px;font-size:11px;">
+<span style="color:var(--green);">●</span><span>03-20 <strong>98%</strong></span>
+<span style="color:var(--orange);">●</span><span>03-23 <strong>85%</strong></span>
+<span style="color:var(--red);">●</span><span>03-26 <strong>45%</strong></span>
+</div>
+<div style="font-size:11px;color:var(--red);font-weight:600;">⚠️ 健康度下降53%</div>
+</div>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="detail-right">
@@ -9517,6 +9552,43 @@ function openEditMemberLevelModalV2(idx) {
 <!-- 【改进5】能耗阈值告警规则管理入口 -->
 <button class="action-btn small" onclick="openEnergyRulesConfigModal()" style="padding:4px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">🚨 告警规则</button>
 <div style="margin-left:auto;font-size:12px;color:var(--text-muted);">数据更新：<span id="energy-last-update" style="color:var(--blue);">--</span></div>
+<!-- 【T22物联核心增强】节能风控增加本月vs上月对比+按楼层筛选 -->
+<div style="display:flex;align-items:center;gap:8px;margin-left:16px;">
+<select id="energy-floor-filter" onchange="filterEnergyByFloor()" style="padding:4px 8px;font-size:11px;border:1px solid var(--border);border-radius:6px;background:white;color:var(--text);">
+<option value="all">🏠 全部楼层</option>
+<option value="1">1楼（102/103/104/105/106）</option>
+<option value="2">2楼（201/202/203/204/205）</option>
+<option value="3">3楼（301/302/303/304/305）</option>
+</select>
+<select id="energy-period-compare" onchange="switchEnergyComparePeriod()" style="padding:4px 8px;font-size:11px;border:1px solid var(--border);border-radius:6px;background:white;color:var(--text);">
+<option value="month">📅 本月 vs 上月</option>
+<option value="week">📅 本周 vs 上周</option>
+<option value="today">📅 今日 vs 昨日</option>
+</select>
+</div>
+</div>
+<!-- 【T22增强】本月vs上月对比统计卡片 -->
+<div id="energy-compare-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;padding:12px 16px;background:white;border:1px solid var(--border);border-radius:10px;">
+<div style="text-align:center;padding:8px;">
+<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">🏠 本月用电</div>
+<div id="ec-this-month" style="font-size:20px;font-weight:700;color:var(--blue);">1284.6</div>
+<div style="font-size:11px;color:var(--text-muted);">kWh</div>
+</div>
+<div style="text-align:center;padding:8px;">
+<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">📊 上月同期</div>
+<div id="ec-last-month" style="font-size:20px;font-weight:700;color:var(--text);">1156.3</div>
+<div style="font-size:11px;color:var(--text-muted);">kWh</div>
+</div>
+<div style="text-align:center;padding:8px;">
+<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">📈 同比变化</div>
+<div id="ec-change" style="font-size:20px;font-weight:700;color:var(--orange);">+11.1%</div>
+<div style="font-size:11px;color:var(--orange);">↑ 偏高</div>
+</div>
+<div style="text-align:center;padding:8px;">
+<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">💰 预估电费</div>
+<div id="ec-cost" style="font-size:20px;font-weight:700;color:var(--green);">¥642.3</div>
+<div style="font-size:11px;color:var(--text-muted);">本月累计</div>
+</div>
 </div>
 <div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
 <div class="stat-card">
@@ -14635,6 +14707,61 @@ function openEditMemberLevelModalV2(idx) {
       tabs.forEach(function(t) { t.classList.remove('active'); t.style.background = ''; t.style.color = ''; });
       if (el) { el.classList.add('active'); el.style.background = 'var(--blue)'; el.style.color = 'white'; }
       renderEnergyChart();
+    }
+    // 【T22物联核心增强】按楼层筛选节能数据
+    var energyFloorData = {
+      all: {thisMonth:1284.6, lastMonth:1156.3, today:48.2, yesterday:30.5, rank:[
+        {room:'301',type:'空调',kwh:'8.6',status:'异常偏高',pct:92},
+        {room:'304',type:'空调',kwh:'7.1',status:'偏高',pct:76},
+        {room:'201',type:'空调',kwh:'5.2',status:'正常',pct:55},
+        {room:'302',type:'空调',kwh:'1.2',status:'正常',pct:15}
+      ]},
+      '1': {thisMonth:386.5, lastMonth:352.1, today:12.4, yesterday:10.8, rank:[
+        {room:'101',type:'空调',kwh:'4.2',status:'正常',pct:42},
+        {room:'102',type:'空调',kwh:'3.8',status:'正常',pct:38},
+        {room:'103',type:'空调',kwh:'2.1',status:'正常',pct:21}
+      ]},
+      '2': {thisMonth:458.2, lastMonth:421.7, today:18.6, yesterday:14.2, rank:[
+        {room:'201',type:'空调',kwh:'5.2',status:'正常偏高',pct:55},
+        {room:'202',type:'空调',kwh:'4.8',status:'正常',pct:48},
+        {room:'203',type:'空调',kwh:'4.1',status:'正常',pct:41}
+      ]},
+      '3': {thisMonth:439.9, lastMonth:382.5, today:17.2, yesterday:11.2, rank:[
+        {room:'301',type:'空调',kwh:'8.6',status:'异常偏高',pct:92},
+        {room:'304',type:'空调',kwh:'7.1',status:'偏高',pct:76},
+        {room:'302',type:'空调',kwh:'1.2',status:'正常',pct:15}
+      ]}
+    };
+    function filterEnergyByFloor() {
+      var floor = document.getElementById('energy-floor-filter').value;
+      var data = energyFloorData[floor] || energyFloorData.all;
+      var change = ((data.thisMonth - data.lastMonth) / data.lastMonth * 100).toFixed(1);
+      var changeEl = document.getElementById('ec-change');
+      var changeText = change > 0 ? '+' + change + '%' : change + '%';
+      if (changeEl) { changeEl.textContent = changeText; changeEl.style.color = change > 0 ? 'var(--orange)' : 'var(--green)'; }
+      var thisMonthEl = document.getElementById('ec-this-month');
+      if (thisMonthEl) thisMonthEl.textContent = data.thisMonth.toFixed(1);
+      var lastMonthEl = document.getElementById('ec-last-month');
+      if (lastMonthEl) lastMonthEl.textContent = data.lastMonth.toFixed(1);
+      var costEl = document.getElementById('ec-cost');
+      if (costEl) costEl.textContent = '¥' + (data.thisMonth * 0.5).toFixed(1);
+      // Update today stat
+      var todayStat = document.querySelector('#page-energy .stat-card:nth-child(1) .stat-num');
+      if (todayStat) todayStat.textContent = data.today.toFixed(1);
+      showToast('已切换至' + (floor === 'all' ? '全部楼层' : floor + '楼') + '数据', 'info');
+    }
+    function switchEnergyComparePeriod() {
+      var period = document.getElementById('energy-period-compare').value;
+      var data = energyFloorData[document.getElementById('energy-floor-filter').value] || energyFloorData.all;
+      var compareData = {month:{this:'本月',last:'上月',thisVal:data.thisMonth,lastVal:data.lastMonth},week:{this:'本周',last:'上周',thisVal:(data.thisMonth/4).toFixed(1),lastVal:(data.lastMonth/4).toFixed(1)},today:{this:'今日',last:'昨日',thisVal:data.today,lastVal:data.yesterday}};
+      var c = compareData[period];
+      var change = ((c.thisVal - c.lastVal) / c.lastVal * 100).toFixed(1);
+      var thisEl = document.getElementById('ec-this-month');
+      if (thisEl) thisEl.parentElement.querySelector('div:first-child').textContent = '🏠 ' + c.this;
+      var lastEl = document.getElementById('ec-last-month');
+      if (lastEl) lastEl.parentElement.querySelector('div:first-child').textContent = '📊 ' + c.last;
+      var changeEl = document.getElementById('ec-change');
+      if (changeEl) { changeEl.textContent = (change > 0 ? '+' : '') + change + '%'; changeEl.style.color = change > 0 ? 'var(--orange)' : 'var(--green)'; }
     }
     function renderEnergyChart() {
       var canvas = document.getElementById('energy-chart-canvas');
