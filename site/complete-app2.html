@@ -20308,89 +20308,6 @@ function openEnergyRulesConfigModal() {
 <button class="modal-btn secondary" onclick="closeModal('checkin')">取消</button>
 <button class="modal-btn primary" onclick="submitCheckin()">确认办理</button>
 </div>
-<!-- 改进3: 告警处理模态框 -->
-<!-- 改进4: 告警处理完整模态框（处理方案选择 + 结果记录 + 历史处理痕迹） -->
-<div class="modal-overlay hidden" id="modal-alert">
-<div class="modal" style="width:520px;">
-<div class="modal-header">
-<div class="modal-title">⚠️ 告警处理 - <span id="alert-modal-subtitle">设备离线</span></div>
-<button class="modal-close" onclick="closeModal('alert')">✕</button>
-</div>
-<div class="modal-body">
-<div class="alert-detail-grid">
-<div class="info-item"><div class="label">告警类型</div><div class="value" id="alert-type-val" style="font-weight:600;color:var(--red);">🔴 设备离线</div></div>
-<div class="info-item"><div class="label">房间</div><div class="value" id="alert-room-val">303 - 亲子间</div></div>
-<div class="info-item"><div class="label">发生时间</div><div class="value" id="alert-time-val">2026-03-26 11:05:36</div></div>
-<div class="info-item"><div class="label">持续时长</div><div class="value" id="alert-duration-val" style="color:var(--red);">10小时32分</div></div>
-</div>
-<!-- 【改进4】本次处理记录 -->
-<div style="margin-bottom:16px;">
-<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);">📋 本次处理记录</div>
-<div class="form-group" id="wo-process-group">
-<label class="form-label">选择处理方式 <span class="required">*</span></label>
-<div class="alert-solution">
-<label class="solution-item selected" onclick="selectSolution(this, '现场处理')">
-<input checked="" name="solution" type="radio" value="现场处理"/>
-<div class="solution-text">🏠 现场处理<div class="solution-desc">前往房间现场检查设备状况</div></div>
-</label>
-<label class="solution-item" onclick="selectSolution(this, '远程重启')">
-<input name="solution" type="radio" value="远程重启"/>
-<div class="solution-text">📡 远程重启<div class="solution-desc">后台发送重启指令到设备</div></div>
-</label>
-<label class="solution-item" onclick="selectSolution(this, '忽略')">
-<input name="solution" type="radio" value="忽略"/>
-<div class="solution-text">⏭️ 忽略告警<div class="solution-desc">确认设备正常，手动标记为已处理</div></div>
-</label>
-<label class="solution-item" onclick="selectSolution(this, '更换电池')">
-<input name="solution" type="radio" value="更换电池"/>
-<div class="solution-text">🔋 更换电池<div class="solution-desc">设备电量不足，需更换电池</div></div>
-</label>
-</div>
-</div>
-<!-- 【改进4】处理结果选择 -->
-<div class="form-group">
-<label class="form-label">处理结果 <span class="required">*</span></label>
-<div style="display:flex;gap:8px;flex-wrap:wrap;">
-<label id="result-resolved" onclick="this.style.borderColor='var(--green)';this.style.background='var(--green-bg)'" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">
-<input name="alert-result" style="accent-color:var(--green);" type="radio" value="resolved"/>
-              ✅ 已解决
-            </label>
-<label id="result-partial" onclick="this.style.borderColor='var(--orange)';this.style.background='var(--orange-bg)'" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">
-<input name="alert-result" style="accent-color:var(--orange);" type="radio" value="partial"/>
-              ⚠️ 部分解决
-            </label>
-<label id="result-escalated" onclick="this.style.borderColor='var(--blue)';this.style.background='var(--blue-bg)'" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">
-<input name="alert-result" style="accent-color:var(--blue);" type="radio" value="escalated"/>
-              🔃 转工单
-            </label>
-<label id="result-ignored" onclick="this.style.borderColor='var(--gray)';this.style.background='var(--bg)'" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">
-<input name="alert-result" style="accent-color:var(--text-muted);" type="radio" value="ignored"/>
-              ⏭️ 已忽略
-            </label>
-</div>
-</div>
-<div class="form-group">
-<label class="form-label">处理备注</label>
-<textarea class="form-textarea" id="alert-note" placeholder="请输入处理备注，如现场检查结果、设备恢复情况等" rows="3"></textarea>
-</div>
-</div>
-<!-- 【改进4】历史处理痕迹 -->
-<div style="border-top:1px solid var(--border);padding-top:12px;">
-<div style="font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:8px;">📜 历史处理记录</div>
-<div id="alert-handling-history" style="display:flex;flex-direction:column;gap:8px;">
-<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--text-muted);">
-<span style="font-size:14px;">🕐</span>
-<span>暂无历史处理记录</span>
-</div>
-</div>
-</div>
-</div>
-<div class="modal-footer">
-<button class="modal-btn secondary" onclick="closeModal('alert')">取消</button>
-<button class="modal-btn primary" onclick="submitAlertProcessV2()">💾 确认处理</button>
-</div>
-</div>
-</div>
 <!-- 改进4: 远程开锁确认模态框 -->
 <!-- 【改进2】设备操作二次确认模态框（倒计时防误操作） -->
 <div class="modal-overlay hidden" id="modal-device-confirm">
@@ -28919,6 +28836,20 @@ function submitAlertProcessV2(idx) {
   }
   document.getElementById('modal-alert-process') && document.getElementById('modal-alert-process').remove();
   showToast(labelMap[action] || '✅ 告警已处理', 'success');
+  // 【T14改进】告警→工单联动：选择"联系维修"时自动打开报修工单
+  if (action === 'repair') {
+    setTimeout(function() {
+      var d = alertData ? alertData[idx] : null;
+      if (d) {
+        var batt = '';
+        if (d.detail && d.detail.indexOf('电量') > -1) {
+          var m = d.detail.match(/(\d+%)/);
+          batt = m ? m[1] : '10%';
+        }
+        openDeviceRepairRequestModal(d.room || d.device, '领握LH-807智能锁', batt || '10%', '⚠️ ' + (d.type || '告警'));
+      }
+    }, 350);
+  }
 }
 
 // 【修复3】通知管理 → filterNotifCategory
