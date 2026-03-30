@@ -535,10 +535,7 @@ function showPage(pageName) {
     'log':'log','room-detail':'room-detail','floor':'floor','building':'building',
     'records':'records','housekeeping':'housekeeping','device':'device',
     'device-detail':'device-detail','energy':'energy','workorder':'workorder',
-    'history':'history','handover':'handover','staff':'staff','roomtypemgr':'roomtypemgr',
-    'bldmgr':'bldmgr','staffschedule':'staffschedule','roles':'roles',
-    'keypad':'keypad','oplog':'oplog',
-    'config':'config','blacklist':'blacklist'
+    'history':'history','handover':'handover','keypad':'keypad','blacklist':'blacklist'
   };
   if (menuMap[pageName]) {
     var el = document.querySelector('[onclick="showPage(\'' + menuMap[pageName] + '\')"]');
@@ -950,20 +947,7 @@ function showToast(msg, type) {
 <div class="menu-item" onclick="showPage('device-detail')" title="设备详情"><span class="icon">🔍</span><span>设备详情</span></div>
 <div class="menu-item" onclick="showPage('energy')" title="节能风控"><span class="icon">⚡</span><span>节能风控</span></div>
 </div>
-<!-- 服务管理分组（精简） -->
-<div class="menu-group-title" onclick="toggleGroup(this)">📞 服务管理 <span class="group-arrow">▼</span></div>
-<div class="menu-group">
-<div class="menu-item" onclick="showPage('workorder')" title="服务工单"><span class="icon">🛠️</span><span>服务工单</span></div>
-</div>
-<!-- 系统管理分组（精简：保留物联核心） -->
-<div class="menu-group-title" onclick="toggleGroup(this)">🛡️ 系统管理 <span class="group-arrow">▼</span></div>
-<div class="menu-group">
-<div class="menu-item" onclick="showPage('staff')" title="员工管理"><span class="icon">👨💼</span><span>员工管理</span></div>
-<div class="menu-item" onclick="showPage('staffschedule')" title="员工排班"><span class="icon">📅</span><span>员工排班</span></div>
-<div class="menu-item" onclick="showPage('roles')" title="角色权限"><span class="icon">🛡️</span><span>角色权限</span></div>
-<div class="menu-item" onclick="showPage('config')" title="管理配置"><span class="icon">⚙️</span><span>管理配置</span></div>
-<div class="menu-item" onclick="showPage('oplog')" title="操作日志"><span class="icon">📝</span><span>操作日志</span></div>
-</div>
+<!-- 服务管理分组已删除（P18-物联精简：删除PMS服务管理） -->
 </div>
 
 <!-- /.sidebar -->
@@ -6394,20 +6378,18 @@ function startBatchFirmwareUpgrade(mode) {
       var reason = document.getElementById('deposit-forfeit-reason');
       if (reason) reason.style.display = 'none';
     }
-    // 押金没收选项切换逻辑
-    document.addEventListener('DOMContentLoaded', function() {
+    // 押金没收选项切换逻辑（带清理避免内存泄漏）
+    function initDepositMethodToggle() {
+      var handler = function() {
+        var reason = document.getElementById('deposit-forfeit-reason');
+        if (!reason) return;
+        reason.style.display = this.value === 'forfeit' ? 'block' : 'none';
+      };
       document.querySelectorAll('input[name="deposit-method"]').forEach(function(radio) {
-        radio.addEventListener('change', function() {
-          var reason = document.getElementById('deposit-forfeit-reason');
-          if (!reason) return;
-          if (this.value === 'forfeit') {
-            reason.style.display = 'block';
-          } else {
-            reason.style.display = 'none';
-          }
-        });
+        radio.addEventListener('change', handler);
       });
-    });
+    }
+    document.addEventListener('DOMContentLoaded', function() { initDepositMethodToggle(); });
     // ======= 【改进2】交接班报表功能 =======
     function openHandoverSignModal() {
       openModal('handover-sign');
@@ -8312,10 +8294,25 @@ function openEditMemberLevelModalV2(idx) {
       document.getElementById('wora-preview').innerHTML = '<span style="color:var(--text-muted);">请填写上方条件…</span>';
       openModal('wo-rule-add');
     }
-    // 实时预览规则
+    // 实时预览规则（带清理的版本 - P11内存泄漏修复）
+    var woraHandler = function() { updateWoRulePreview(); };
     ['wora-type','wora-urgent','wora-assign'].forEach(function(id){
-      document.getElementById(id).addEventListener('change', updateWoRulePreview);
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', woraHandler);
     });
+    // 弹窗关闭时清理（内存泄漏修复）
+    var woRuleModal = document.getElementById('modal-wo-rule-add');
+    if (woRuleModal) {
+      var origClose = woRuleModal.querySelector('.modal-close');
+      if (origClose) {
+        origClose.addEventListener('click', function() {
+          ['wora-type','wora-urgent','wora-assign'].forEach(function(id){
+            var el = document.getElementById(id);
+            if (el) el.removeEventListener('change', woraHandler);
+          });
+        }, {once: true});
+      }
+    }
     function updateWoRulePreview() {
       var type = document.getElementById('wora-type').value;
       var urgent = document.getElementById('wora-urgent').value;
@@ -16909,10 +16906,18 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
   var checkEl = document.getElementById('restart-confirm-check');
   var btnEl = document.getElementById('restart-confirm-btn');
   if (checkEl && btnEl) {
-    checkEl.addEventListener('change', function() {
+    var restartCheckHandler = function() {
       btnEl.disabled = !checkEl.checked;
       btnEl.style.opacity = checkEl.checked ? '1' : '0.5';
-    });
+    };
+    checkEl.addEventListener('change', restartCheckHandler);
+    // 弹窗关闭时清理监听器（内存泄漏修复P11）
+    var modal = document.getElementById('modal-dev-restart-confirm');
+    if (modal) {
+      modal.addEventListener('remove', function() {
+        checkEl.removeEventListener('change', restartCheckHandler);
+      }, {once: true});
+    }
   }
   // 立即隐藏弹窗（防止初始化时覆盖整个屏幕拦截侧边栏点击）
   var modal = document.getElementById('modal-dev-restart-confirm');
