@@ -6373,13 +6373,15 @@ function startBatchFirmwareUpgrade(mode) {
       var reason = document.getElementById('deposit-forfeit-reason');
       if (reason) reason.style.display = 'none';
     }
-    // 押金没收选项切换逻辑（带清理避免内存泄漏）
+    // 押金没收选项切换逻辑（带清理避免内存泄漏 P12修复）
+    var _depositMethodHandler = null;
     function initDepositMethodToggle() {
       var handler = function() {
         var reason = document.getElementById('deposit-forfeit-reason');
         if (!reason) return;
         reason.style.display = this.value === 'forfeit' ? 'block' : 'none';
       };
+      _depositMethodHandler = handler;
       document.querySelectorAll('input[name="deposit-method"]').forEach(function(radio) {
         radio.addEventListener('change', handler);
       });
@@ -8914,8 +8916,8 @@ function openEditMemberLevelModalV2(idx) {
 <div class="page-header">
 <div class="page-title">🧹 客房清洁管理</div>
 <div class="page-sub">客房清洁状态追踪 · 保洁排班 · 任务分配</div>
-<button class="action-btn" onclick="openQuickCheckinModal()" style="padding:6px 14px;background:var(--green-bg);color:var(--green);border-color:var(--green);margin-left:auto;">🏠 快速入住</button>
-<button class="action-btn" onclick="openQuickCheckoutModal()" style="padding:6px 14px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🏁 快速退房</button>
+<button class="action-btn" onclick="openDeviceBatchActionModal('check')" style="padding:6px 14px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);margin-left:auto;">🔍 批量诊断</button>
+<button class="action-btn" onclick="openDeviceBatchActionModal('restart')" style="padding:6px 14px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔄 批量重启</button>
 <button class="action-btn" onclick="openHousekeepingTaskModal()" style="background:var(--blue);color:white;border:none;">+ 分配清洁任务</button>
 </div>
 <!-- 清洁状态统计 -->
@@ -18608,14 +18610,15 @@ function deleteNotif(id) {
   showToast('🗑️ 通知已删除', 'success');
 }
 
-// 绑定通知中心事件
+// 绑定通知中心事件（带清理避免内存泄漏 P12修复）
+var _notifTypeHandler = null, _notifStatusHandler = null;
 document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
     renderNotifList();
     var notifTypeFilter = document.getElementById('notif-type-filter');
-    if (notifTypeFilter) notifTypeFilter.addEventListener('change', applyNotifFilter);
+    if (notifTypeFilter) { _notifTypeHandler = applyNotifFilter; notifTypeFilter.addEventListener('change', applyNotifFilter); }
     var notifStatusFilter = document.getElementById('notif-status-filter');
-    if (notifStatusFilter) notifStatusFilter.addEventListener('change', applyNotifFilter);
+    if (notifStatusFilter) { _notifStatusHandler = applyNotifFilter; notifStatusFilter.addEventListener('change', applyNotifFilter); }
   }, 300);
 });
 
