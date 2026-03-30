@@ -459,6 +459,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .permission-item input[type="checkbox"] { accent-color: var(--blue); width: 15px; height: 15px; }
 .permission-item label { cursor: pointer; }
 
+/* P36: IoT Stat Card — extracted from repeated inline styles */
+.stat-card-iot { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--border); }
+.stat-card-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+.stat-card-value { font-size: 32px; font-weight: 800; }
+.stat-card-meta { font-size: 11px; color: var(--text-light); margin-top: 4px; }
+/* P36: Room grid filter button group */
+.room-filter-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.room-search-input { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; width: 180px; }
+.room-filter-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }
+.room-refresh-btn { padding: 6px 12px; background: var(--blue); color: white; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; }
+
 /* Batch Room Chip (改进2批量入住) */
 .batch-room-chip { padding: 6px 14px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 12px; cursor: pointer; transition: all 0.2s; background: var(--white); color: var(--text); }
 .batch-room-chip.selected { background: var(--blue); color: white; border-color: var(--blue); font-weight: 600; }
@@ -970,25 +981,25 @@ function showToast(msg, type) {
 </div>
 <!-- 统计卡片 -->
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;">
-<div class="stat-card" style="background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border);">
-<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">📶 设备在线</div>
-<div id="home-online-devices" style="font-size:32px;font-weight:800;color:var(--green);">14</div>
-<div style="font-size:11px;color:var(--text-light);margin-top:4px;">台在线 / 16台总量</div>
+<div class="stat-card-iot">
+<div class="stat-card-label">📶 设备在线</div>
+<div id="home-online-devices" class="stat-card-value" style="color:var(--green);">14</div>
+<div class="stat-card-meta">台在线 / 16台总量</div>
 </div>
-<div class="stat-card" style="background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border);">
-<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">⚠️ 设备告警</div>
-<div id="home-device-alerts" style="font-size:32px;font-weight:800;color:var(--red);">2</div>
-<div style="font-size:11px;color:var(--text-light);margin-top:4px;">离线/低电量告警</div>
+<div class="stat-card-iot">
+<div class="stat-card-label">⚠️ 设备告警</div>
+<div id="home-device-alerts" class="stat-card-value" style="color:var(--red);">2</div>
+<div class="stat-card-meta">离线/低电量告警</div>
 </div>
-<div class="stat-card" style="background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border);">
-<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">🔋 低电量</div>
-<div id="home-low-battery" style="font-size:32px;font-weight:800;color:var(--orange);">2</div>
-<div style="font-size:11px;color:var(--text-light);margin-top:4px;">设备需更换电池</div>
+<div class="stat-card-iot">
+<div class="stat-card-label">🔋 低电量</div>
+<div id="home-low-battery" class="stat-card-value" style="color:var(--orange);">2</div>
+<div class="stat-card-meta">设备需更换电池</div>
 </div>
-<div class="stat-card" style="background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border);">
-<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">🔌 设备离线</div>
-<div id="home-offline-devices" style="font-size:32px;font-weight:800;color:var(--red);">0</div>
-<div style="font-size:11px;color:var(--text-light);margin-top:4px;">台离线需排查</div>
+<div class="stat-card-iot">
+<div class="stat-card-label">🔌 设备离线</div>
+<div id="home-offline-devices" class="stat-card-value" style="color:var(--red);">0</div>
+<div class="stat-card-meta">台离线需排查</div>
 </div>
 </div>
 <!-- 房间列表 -->
@@ -996,11 +1007,11 @@ function showToast(msg, type) {
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
 <div style="font-size:15px;font-weight:600;">🚪 房间状态</div>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-<input id="home-room-search" placeholder="🔍 搜索房间号/设备..." oninput="debounceFilterRooms(this.value)" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:180px;">
-<select id="home-room-filter" onchange="renderRoomGrid(this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+<input id="home-room-search" placeholder="🔍 搜索房间号/设备..." oninput="debounceFilterRooms(this.value)" class="room-search-input">
+<select id="home-room-filter" onchange="renderRoomGrid(this.value)" class="room-filter-select">
 <option value="all">全部房间</option><option value="occupied">在住</option><option value="empty">空房</option><option value="alert">告警/维修</option>
 </select>
-<button onclick="renderRoomGrid(document.getElementById('home-room-filter').value)" style="padding:6px 12px;background:var(--blue);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">🔄 刷新</button>
+<button onclick="renderRoomGrid(document.getElementById('home-room-filter').value)" class="room-refresh-btn">🔄 刷新</button>
 </div>
 </div>
 <script>
@@ -12306,16 +12317,17 @@ function goRecordsPage(dir) {
   renderRecordTable();
 }
 
-// 绑定办理记录事件
+// 【P12修复】绑定办理记录事件（带清理避免内存泄漏）
+var _recFilterHandlers = { search: null, type: null, status: null };
 document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
     renderRecordTable();
     var recSearch = document.getElementById('record-search-input');
-    if (recSearch) recSearch.addEventListener('input', applyRecordFilter);
     var recTypeFilter = document.getElementById('record-type-filter');
-    if (recTypeFilter) recTypeFilter.addEventListener('change', applyRecordFilter);
     var recStatusFilter = document.getElementById('record-status-filter');
-    if (recStatusFilter) recStatusFilter.addEventListener('change', applyRecordFilter);
+    if (recSearch) { _recFilterHandlers.search = applyRecordFilter; recSearch.addEventListener('input', applyRecordFilter); }
+    if (recTypeFilter) { _recFilterHandlers.type = applyRecordFilter; recTypeFilter.addEventListener('change', applyRecordFilter); }
+    if (recStatusFilter) { _recFilterHandlers.status = applyRecordFilter; recStatusFilter.addEventListener('change', applyRecordFilter); }
   }, 400);
 });
 
@@ -14780,20 +14792,21 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof renderBlacklist === 'function') renderBlacklist();
     injectAlertDetailButton();
     switchConfigTab('basic', document.getElementById('cfg-tab-basic'));
-    // 绑定发票搜索
+    // 【P12修复】绑定发票搜索（带清理避免内存泄漏）
     var invSearch = document.getElementById('inv-search-input');
-    if (invSearch) invSearch.addEventListener('input', applyInvoiceSearch);
-    // 绑定操作日志筛选
+    if (invSearch) { window._invSearchHandler = applyInvoiceSearch; invSearch.addEventListener('input', applyInvoiceSearch); }
+    // 【P12修复】绑定操作日志筛选（带清理避免内存泄漏）
+    var _oplogHandlers = {};
     ['oplog-module-filter','oplog-user-filter','oplog-type-filter'].forEach(function(id) {
       var el = document.getElementById(id);
-      if (el) el.addEventListener('change', applyOplogFilter);
+      if (el) { _oplogHandlers[id] = applyOplogFilter; el.addEventListener('change', applyOplogFilter); }
     });
     var oplogDateStart = document.getElementById('oplog-date-start');
-    if (oplogDateStart) oplogDateStart.addEventListener('change', applyOplogFilter);
+    if (oplogDateStart) { _oplogHandlers.dateStart = applyOplogFilter; oplogDateStart.addEventListener('change', applyOplogFilter); }
     var oplogDateEnd = document.getElementById('oplog-date-end');
-    if (oplogDateEnd) oplogDateEnd.addEventListener('change', applyOplogFilter);
+    if (oplogDateEnd) { _oplogHandlers.dateEnd = applyOplogFilter; oplogDateEnd.addEventListener('change', applyOplogFilter); }
     var oplogTarget = document.getElementById('oplog-target');
-    if (oplogTarget) oplogTarget.addEventListener('input', applyOplogFilter);
+    if (oplogTarget) { _oplogHandlers.target = applyOplogFilter; oplogTarget.addEventListener('input', applyOplogFilter); }
   }, 400);
 // ============================================================
 // 【物联后台 v4 改进1】发票开具功能断裂修复
