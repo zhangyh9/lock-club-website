@@ -376,8 +376,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .modal-body { padding: 24px; max-height: 60vh; overflow-y: auto; }
 .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
 .modal-btn { padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid; transition: all 0.2s; }
-.modal-btn.primary { background: var(--blue); color: white; border-color: var(--blue); }
 .modal-btn.primary:hover { background: #096dd9; border-color: #096dd9; }
+/* 【P36+P40优化】Modal样式扩展类 */
+.modal-body-center { text-align: center; padding: 24px; }
+.modal-body-pad0 { padding: 0; }
+.modal-body-flex { flex: 1; overflow-y: auto; }
+.modal-body-scroll { max-height: 60vh; overflow-y: auto; }
+.modal-footer-center { padding: 16px 24px; border-top: 1px solid var(--border); text-align: center; display: flex; gap: 10px; justify-content: center; }
+.modal-footer-right { padding: 12px 20px; border-top: 1px solid var(--border); text-align: right; }
+.modal-footer-flex { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+.modal-footer-sticky { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; position: sticky; bottom: 0; background: var(--white); }
 .modal-btn.secondary { background: var(--white); color: var(--text-light); border-color: var(--border); }
 .modal-btn.secondary:hover { border-color: var(--blue); color: var(--blue); }
 
@@ -2233,7 +2241,7 @@ function clearLogUuidFilter() {
 <div class="modal-title">⚠️ 删除确认</div>
 <button class="modal-close" onclick="closeModal('rr-delete-confirm')">✕</button>
 </div>
-<div class="modal-body" style="text-align:center;padding:24px;">
+<div class="modal-body modal-body-center" style="text-align:center;padding:24px;">
 <div style="font-size:48px;margin-bottom:12px;">🗑️</div>
 <div style="font-size:15px;font-weight:700;margin-bottom:8px;">确定要删除这条记录吗？</div>
 <div id="rr-del-detail" style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">删除后将无法恢复</div>
@@ -3890,131 +3898,7 @@ function saveEscalationEditorRules() {
 </div>
 </div>
 </div>
-<!-- 【改进1】楼层管理批量导入房间弹窗（支持楼栋+楼层+房型+批量起始号+数量+预览） -->
-<div class="modal-overlay hidden" id="modal-batch-import-rooms">
-<div class="modal" style="width:560px;">
-<div class="modal-header">
-<div class="modal-title">📋 批量导入房间</div>
-<button class="modal-close" onclick="closeModal('batch-import-rooms')">✕</button>
-</div>
-<div class="modal-body">
-<div style="padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">
-            💡 支持批量创建连续房间号，例如：主楼3层亲子间，从305开始导入4间 → 305/306/307/308
-          </div>
-<div class="form-row">
-<div class="form-group">
-<label class="form-label">所属楼栋 <span class="required">*</span></label>
-<select class="form-select" id="bir-bld">
-<option value="main">🏢 主楼</option>
-<option value="east">🏢 东配楼</option>
-</select>
-</div>
-<div class="form-group">
-<label class="form-label">楼层 <span class="required">*</span></label>
-<select class="form-select" id="bir-floor">
-<option value="3">3层</option>
-<option value="2">2层</option>
-<option value="1">1层</option>
-</select>
-</div>
-</div>
-<div class="form-row">
-<div class="form-group">
-<label class="form-label">房间类型 <span class="required">*</span></label>
-<select class="form-select" id="bir-type">
-<option value="亲子间">🏠 亲子间</option>
-<option value="大床房">🛏️ 大床房</option>
-<option value="标准间">🛏️ 标准间</option>
-<option value="家庭套房">🏠 家庭套房</option>
-</select>
-</div>
-<div class="form-group">
-<label class="form-label">初始状态</label>
-<select class="form-select" id="bir-status">
-<option value="empty">🟢 空房</option>
-<option value="in">🔵 入住中</option>
-<option value="maintain">🟡 维护中</option>
-</select>
-</div>
-</div>
-<div class="form-row">
-<div class="form-group">
-<label class="form-label">起始房间号 <span class="required">*</span></label>
-<input class="form-input" id="bir-start" placeholder="如：305" type="text" value="305"/>
-</div>
-<div class="form-group">
-<label class="form-label">导入数量 <span class="required">*</span></label>
-<input class="form-input" id="bir-count" max="50" min="1" oninput="previewBatchImport()" type="number" value="4"/>
-</div>
-</div>
-<!-- 批量预览区 -->
-<div class="form-group">
-<label class="form-label">📋 导入预览</label>
-<div id="bir-preview" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:12px;background:var(--bg);border-radius:8px;min-height:60px;">
-<!-- JS动态生成 -->
-</div>
-<div id="bir-preview-summary" style="margin-top:6px;font-size:11px;color:var(--text-muted);"></div>
-</div>
-<div class="form-group">
-<label class="form-label">备注（选填）</label>
-<textarea class="form-textarea" id="bir-note" placeholder="批量导入备注" style="min-height:50px;"></textarea>
-</div>
-</div>
-<div class="modal-footer">
-<button class="modal-btn secondary" onclick="closeModal('batch-import-rooms')">取消</button>
-<button class="modal-btn primary" id="bir-submit-btn" onclick="submitBatchImportRooms()">确认导入（<span id="bir-submit-count">4</span>间）</button>
-</div>
-</div>
-</div>
-<script>
-    // 【改进1】批量导入房间预览
-    function previewBatchImport() {
-      var start = document.getElementById('bir-start').value.trim();
-      var count = parseInt(document.getElementById('bir-count').value) || 1;
-      count = Math.min(Math.max(count, 1), 50);
-      var bld = document.getElementById('bir-bld').value;
-      var floor = document.getElementById('bir-floor').value;
-      var type = document.getElementById('bir-type').value;
-      var previewEl = document.getElementById('bir-preview');
-      var summaryEl = document.getElementById('bir-preview-summary');
-      var countEl = document.getElementById('bir-submit-count');
-      if (!start || isNaN(count) || count < 1) {
-        previewEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:12px;">请填写起始房间号和数量</div>';
-        summaryEl.textContent = '';
-        if (countEl) countEl.textContent = '0';
-        return;
-      }
-      var prefix = start.replace(/[0-9]+$/, '');
-      var num = parseInt(start.replace(/[^0-9]+/, '')) || 0;
-      var html = '';
-      for (var i = 0; i < count; i++) {
-        var roomNum = prefix + (num + i);
-        html += '<div style="padding:6px 4px;background:white;border:1px solid var(--border);border-radius:6px;text-align:center;font-size:11px;font-weight:600;">' + roomNum + '<br><span style="font-size:9px;color:var(--text-muted);font-weight:400;">' + type + '</span></div>';
-      }
-      previewEl.innerHTML = html;
-      summaryEl.textContent = '合计 ' + count + ' 间 ' + type + '，将添加至 ' + (bld === 'main' ? '主楼' : '东配楼') + ' ' + floor + '层';
-      if (countEl) countEl.textContent = count;
-    }
-
-    function submitBatchImportRooms() {
-      var start = document.getElementById('bir-start').value.trim();
-      var count = parseInt(document.getElementById('bir-count').value) || 0;
-      var floor = document.getElementById('bir-floor').value;
-      var type = document.getElementById('bir-type').value;
-      if (!start) { showToast('请填写起始房间号', 'error'); return; }
-      if (count < 1) { showToast('数量最少为1', 'error'); return; }
-      var prefix = start.replace(/[0-9]+$/, '');
-      var num = parseInt(start.replace(/[^0-9]+/, '')) || 0;
-      var rooms = [];
-      for (var i = 0; i < count; i++) rooms.push(prefix + (num + i));
-      showToast('✅ 成功导入 ' + count + ' 间房间：' + rooms.join('、'), 'success');
-      closeModal('batch-import-rooms');
-      // 清空
-      document.getElementById('bir-start').value = '';
-      document.getElementById('bir-count').value = '4';
-      previewBatchImport();
-    }
-    </script>
+<!-- 【P20优化】批量导入房间弹窗已删除（楼栋管理page-bldmgr已移除，该功能无用武之地） -->
 <!-- 【改进4】设备详情页开锁记录Tab弹窗（按门查：某房间所有开锁记录） -->
 <div class="modal-overlay hidden" id="modal-door-unlock-history">
 <div class="modal" style="width:580px;">
@@ -4022,7 +3906,7 @@ function saveEscalationEditorRules() {
 <div class="modal-title" id="duh-title">📋 301房间 开锁记录</div>
 <button class="modal-close" onclick="closeModal('door-unlock-history')">✕</button>
 </div>
-<div class="modal-body" style="padding:0;">
+<div class="modal-body modal-body-pad0" style="padding:0;">
 <div style="padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
 <span style="font-size:12px;color:var(--text-light);">筛选：</span>
 <input class="form-input" id="duh-date-from" onchange="renderDoorUnlockHistory()" style="width:110px;padding:4px 6px;font-size:11px;" title="开始日期" type="date"/>
@@ -6176,7 +6060,7 @@ function saveEscalationEditorRules() {
 <div class="modal-title">🏠 房型管理</div>
 <button class="modal-close" onclick="closeModal('roomtype-manage')">✕</button>
 </div>
-<div class="modal-body" style="padding:0;">
+<div class="modal-body modal-body-pad0" style="padding:0;">
 <div style="padding:16px 20px 0;">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
 <div style="display:flex;gap:8px;align-items:center;">
@@ -7199,7 +7083,7 @@ function executeBatchControl() {
 <div class="modal-title">📦 设备固件升级管理</div>
 <button class="modal-close" onclick="closeModal('firmware-upgrade')">✕</button>
 </div>
-<div class="modal-body" style="flex:1;overflow-y:auto;">
+<div class="modal-body modal-body-flex" style="flex:1;overflow-y:auto;">
 <!-- 当前固件信息 -->
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
 <div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;">
@@ -9692,20 +9576,18 @@ function renderRoleTable() {
 // 业务逻辑：房间快速操作面板（room-quick-panel）的5个操作按钮，处理入住/退房/清洁/密码/开锁
 function doQuickCheckin() {
   var roomNum = document.getElementById('rqp-room') ? document.getElementById('rqp-room').textContent : '301';
-  var modal = document.getElementById('modal-checkin');
-  if (!modal) { showToast('入住模态框加载中，请稍后', 'info'); return; }
-  var roomLabel = document.getElementById('checkin-room-label');
-  if (roomLabel) roomLabel.textContent = roomNum + '房间';
-  modal.classList.remove('hidden');
-  showToast('🏨 正在为房间 ' + roomNum + ' 办理入住', 'info');
+  // 物联化改造：入住/退房PMS功能已移除，改为设备状态诊断
+  var lock = document.getElementById('rqp-lock') ? document.getElementById('rqp-lock').textContent : '未知';
+  var battery = document.getElementById('rqp-battery') ? document.getElementById('rqp-battery').textContent : '--';
+  var signal = document.getElementById('rqp-signal') ? document.getElementById('rqp-signal').textContent : '--';
+  showToast('🔍 房间 ' + roomNum + ' 设备状态：门锁' + lock + ' | 电量' + battery + ' | 信号' + signal, 'info');
 }
 
 function doQuickCheckout() {
   var roomNum = document.getElementById('rqp-room') ? document.getElementById('rqp-room').textContent : '301';
-  var modal = document.getElementById('modal-checkout');
-  if (!modal) { showToast('退房模态框加载中，请稍后', 'info'); return; }
-  modal.classList.remove('hidden');
-  showToast('🚪 正在为房间 ' + roomNum + ' 办理退房', 'info');
+  // 物联化改造：退房功能已移除，改为设备批量重启快捷操作
+  showToast('⚡ 正在为房间 ' + roomNum + ' 发送设备自检指令...', 'info');
+  setTimeout(function() { showToast('✅ 房间 ' + roomNum + ' 设备自检完成', 'success'); }, 1500);
 }
 
 function doQuickClean() {
@@ -9821,13 +9703,13 @@ function openWoTimeoutHistoryModal() {
   var html = '<div class="modal-overlay hidden" id="modal-wo-timeout-history" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;padding:20px;" onclick="if(event.target===this)document.getElementById(\'modal-wo-timeout-history\').remove()">' +
     '<div class="modal" style="width:640px;">' +
     '<div class="modal-header"><div class="modal-title">📋 工单超时移交记录</div><button class="modal-close" onclick="document.getElementById(\'modal-wo-timeout-history\').remove()">✕</button></div>' +
-    '<div class="modal-body" style="padding:0;">' +
+    '<div class="modal-body modal-body-pad0" style="padding:0;">' +
     '<table style="width:100%;border-collapse:collapse;">' +
     '<thead><tr style="background:var(--bg);"><th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600;">工单号</th><th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600;">移交路径</th><th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600;">时间</th><th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600;">原因</th></tr></thead>' +
     '<tbody>' + rows + '</tbody>' +
     '</table>' +
     '</div>' +
-    '<div class="modal-footer" style="padding:12px 20px;border-top:1px solid var(--border);text-align:right;">' +
+    '<div class="modal-footer modal-footer-right" style="padding:12px 20px;border-top:1px solid var(--border);text-align:right;">' +
     '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-wo-timeout-history\').remove()">关闭</button>' +
     '</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
@@ -10148,8 +10030,8 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
 <button class="action-btn green" onclick="doQuickUnlock()" style="padding:10px;font-size:13px;">🔓 开锁</button>
 <button class="action-btn" onclick="doQuickTempPwd()" style="padding:10px;font-size:13px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔢 密码</button>
 <button class="action-btn" onclick="goToRoomDetail()" style="padding:10px;font-size:13px;">📋 记录</button>
-<button class="action-btn" id="rqp-checkin-btn" onclick="doQuickCheckin()" style="padding:10px;font-size:13px;">🏨 入住</button>
-<button class="action-btn" id="rqp-checkout-btn" onclick="doQuickCheckout()" style="padding:10px;font-size:13px;">🚪 退房</button>
+<button class="action-btn" id="rqp-checkin-btn" onclick="doQuickCheckin()" style="padding:10px;font-size:13px;">🔍 诊断</button>
+<button class="action-btn" id="rqp-checkout-btn" onclick="doQuickCheckout()" style="padding:10px;font-size:13px;">⚡ 自检</button>
 <button class="action-btn" onclick="doQuickClean()" style="padding:10px;font-size:13px;">🧹 清洁</button>
 </div>
 </div>
@@ -13471,7 +13353,7 @@ function openInvoiceCreateModal() {
     '• 普通发票：1个工作日内开具完成<br>' +
     '• 增值税专用发票：3-5个工作日，需提供完整资质<br>' +
     '• 电子发票：开具后自动发送到邮箱</div></div></div>' +
-    '<div class="modal-footer" style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
+    '<div class="modal-footer modal-footer-flex" style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
     '<button class="action-btn" onclick="saveInvoiceDraft()" style="background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">📝 保存草稿</button>' +
     '<button class="action-btn secondary" onclick="closeModal(\'modal-invoice-create\')">取消</button>' +
     '<button class="action-btn primary" onclick="submitInvoiceCreate()" style="background:var(--blue);color:white;border:none;">🧾 提交开具</button></div></div></div>';
