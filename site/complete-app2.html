@@ -12729,11 +12729,11 @@ function goDevicePage(dir) {
 function getFilteredDeviceList() {
   return deviceData.filter(function(d) {
     var groupMap = {'main':['301','302','303','304','305','306'],'east':['201','202','203','204','205','206'],'vip':['101','102','103','104']};
-    var groupMatch = _deviceGroupFilter === 'all' || (groupMap[_deviceGroupFilter] && groupMap[_deviceGroupFilter].indexOf(d.room) >= 0) || _deviceGroupFilter === 'lowbat' && d.battery < 30;
+    var groupMatch = _deviceGroupFilter === 'all' || (groupMap[_deviceGroupFilter] && groupMap[_deviceGroupFilter].indexOf(d.room) >= 0) || (_deviceGroupFilter === 'lowbat' && d.battery < BATTERY_CRITICAL);
     var statusMap = {'online':d.status==='在线','offline':d.status==='离线','lowbattery':d.status.indexOf('低电量')>=0,'all':true};
     var statusMatch = statusMap[_deviceStatusFilter] !== undefined ? statusMap[_deviceStatusFilter] : true;
     var kwMatch = !_deviceSearchKw || d.room.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.uuid.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.model.toLowerCase().indexOf(_deviceSearchKw) >= 0;
-    var batMatch = !_deviceBatteryFilter || (_deviceBatteryFilter === 'high' && d.battery >= 80) || (_deviceBatteryFilter === 'mid' && d.battery >= 50 && d.battery < 80) || (_deviceBatteryFilter === 'low' && d.battery >= 20 && d.battery < 50) || (_deviceBatteryFilter === 'crit' && d.battery < 20);
+    var batMatch = !_deviceBatteryFilter || (_deviceBatteryFilter === 'high' && d.battery >= BATTERY_HIGH) || (_deviceBatteryFilter === 'mid' && d.battery >= BATTERY_LOW && d.battery < BATTERY_HIGH) || (_deviceBatteryFilter === 'low' && d.battery >= BATTERY_CRITICAL && d.battery < BATTERY_LOW) || (_deviceBatteryFilter === 'crit' && d.battery < BATTERY_CRITICAL);
     // T18: signal filter (假设 deviceData 有 signal 字段，默认强信号)
     var sig = d.signal || -50;
     var sigMatch = !_deviceSignalFilter || (_deviceSignalFilter === 'excellent' && sig > -50) || (_deviceSignalFilter === 'good' && sig >= -70 && sig <= -50) || (_deviceSignalFilter === 'weak' && sig >= -90 && sig < -70) || (_deviceSignalFilter === 'poor' && sig < -90);
@@ -12757,7 +12757,8 @@ function renderDeviceFilteredTable() {
   } else {
     pageData.forEach(function(d) {
       var batteryColor = d.battery > 60 ? 'var(--green)' : d.battery > 20 ? 'var(--orange)' : 'var(--red)';
-      var batteryBg = d.battery > 60 ? 'var(--green-bg)' : d.battery > 20 ? 'var(--orange-bg)' : 'var(--red-bg)';
+      // 【P99修复】使用常量BATTERY_GOOD=60/BATTERY_CRITICAL=20替换电池颜色魔法数字
+      var batteryBg = d.battery > BATTERY_GOOD ? 'var(--green-bg)' : d.battery > BATTERY_CRITICAL ? 'var(--orange-bg)' : 'var(--red-bg)';
       var statusColor = d.status === '在线' ? 'var(--green)' : d.status === '离线' ? 'var(--red)' : 'var(--text-muted)';
       var statusBg = d.status === '在线' ? 'var(--green-bg)' : d.status === '离线' ? 'var(--red-bg)' : 'var(--bg)';
       // 【改进2新增】UUID独立列（对照原系统截图）
@@ -12793,13 +12794,12 @@ function diagnoseDevice(uuid) {
   if (!d) { showToast('未找到设备', 'error'); return; }
   showToast('🛠️ 正在诊断设备 ' + d.room + '...', 'info');
   setTimeout(function() {
-    // 【P99修复】提取魔法数字为常量：DIAGNOSTIC_SCORE_MIN=70, BATTERY_THRESHOLD_LOW=30
+    // 【P99修复】使用全局常量BATTERY_THRESHOLD_LOW=BATTERY_CRITICAL=20
     var DIAGNOSTIC_SCORE_MIN = 70;
     var DIAGNOSTIC_SCORE_RANGE = 30;
-    var BATTERY_THRESHOLD_LOW = 30;
     var score = Math.floor(DIAGNOSTIC_SCORE_MIN + Math.random() * DIAGNOSTIC_SCORE_RANGE);
     var issues = [];
-    if (d.battery < BATTERY_THRESHOLD_LOW) issues.push('电池电量低');
+    if (d.battery < BATTERY_CRITICAL) issues.push('电池电量低');
     if (d.signal === '弱') issues.push('信号强度弱');
     var status = issues.length === 0 ? '✅ 健康' : '⚠️ 需关注';
     showToast('🔍 ' + d.room + ' 诊断完成：' + status + '（评分 ' + score + '分）', score >= 80 ? 'success' : 'warning');
@@ -16818,6 +16818,13 @@ var _homeRoomData = [
   {num:'102', type:'大床房', floor:'1层', status:'empty', lock:'已反锁', battery:85, signal:'满格', lastSync:'10:00:00', keys:0, guest:'-', phone:'-', checkin:'-', checkout:'-', electricity:4.1}
 ];
 
+// 【P99修复】提取电池状态魔法数字为常量
+// 【P99修复】全局电池状态魔法数字常量（多处使用，提取为常量便于维护）
+var BATTERY_CRITICAL = 20;  // 严重低电量阈值（红色警告）
+var BATTERY_LOW = 50;       // 低电量阈值（橙色提醒）
+var BATTERY_GOOD = 60;      // 电量良好阈值（绿色）
+var BATTERY_HIGH = 80;      // 高电量阈值（用于筛选）
+
 function renderRoomGrid(filter) {
   if (filter === undefined) filter = 'all';
   var grid = document.getElementById('room-grid');
@@ -16837,13 +16844,31 @@ function renderRoomGrid(filter) {
   }
   var html = '';
   filtered.forEach(function(r) {
-    var badgeClass = r.status === 'in' ? 'badge-in' : r.status === 'empty' ? 'badge-empty' : r.status === 'alert' ? 'badge-alert' : 'badge-low';
-    var badgeText = r.status === 'in' ? '入住' : r.status === 'empty' ? '空房' : r.status === 'alert' ? '告警' : '维修';
-    var statusColor = r.status === 'in' ? 'var(--green)' : r.status === 'empty' ? 'var(--blue)' : r.status === 'alert' ? 'var(--red)' : 'var(--orange)';
-    var lockClass = r.lock.indexOf('⚠️') >= 0 ? 'red' : 'green';
-    var battClass = r.battery < 20 ? 'red' : r.battery < 50 ? 'orange' : 'green';
+    // 【P16修复】房间卡片Badge改为设备状态优先显示（离线/低电量/入住/空房）
+    var isOffline = r.lock.indexOf('⚠️') >= 0;
+    var isLowBattery = r.battery < BATTERY_CRITICAL;
+    var badgeClass, badgeText, statusColor;
+    if (isOffline) {
+      badgeClass = 'badge-alert'; badgeText = '离线'; statusColor = 'var(--red)';
+    } else if (isLowBattery) {
+      badgeClass = 'badge-low'; badgeText = '低电量'; statusColor = 'var(--orange)';
+    } else if (r.status === 'in') {
+      badgeClass = 'badge-in'; badgeText = '入住'; statusColor = 'var(--green)';
+    } else {
+      badgeClass = 'badge-empty'; badgeText = '空房'; statusColor = 'var(--blue)';
+    }
+    var lockClass = isOffline ? 'red' : 'green';
+    var battClass = r.battery < BATTERY_CRITICAL ? 'red' : r.battery < BATTERY_LOW ? 'orange' : 'green';
     var elecClass = r.electricity > 30 ? 'red' : r.electricity > 20 ? 'orange' : 'green';
-    var cardClass = r.status === 'alert' ? 'alert' : r.status === 'maintenance' ? 'low' : '';
+    // 【P62修复】设备离线或严重低电量时应用disabled样式（卡片灰显+房间号删除线）
+    var cardClass = '';
+    if (isOffline || isLowBattery) {
+      cardClass = 'disabled';
+    } else if (r.status === 'alert') {
+      cardClass = 'alert';
+    } else if (r.status === 'maintenance') {
+      cardClass = 'low';
+    }
     html += '<div class="room-card ' + cardClass + '" data-room="' + r.num + '" data-status="' + r.status + '" onclick="navigateToRoom(\'' + r.num + '\')" style="cursor:pointer;position:relative;">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
         '<div style="font-size:15px;font-weight:700;">' + r.num + '</div>' +
