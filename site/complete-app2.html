@@ -1297,7 +1297,7 @@ function showToast(msg, type) {
 <div id="global-search-bar" style="position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--white);border-bottom:1px solid var(--border);padding:10px 20px;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
 <div style="max-width:640px;margin:0 auto;display:flex;gap:8px;align-items:center;">
 <div style="position:relative;flex:1;">
-<input id="global-search-overlay-input" oninput="performGlobalSearch(this.value)" onkeydown="if(event.key==='Enter'){performGlobalSearch(this.value);}else if(event.key==='Escape')closeGlobalSearch()" placeholder="🔍 全局搜索：房间号 / 设备UUID / 客户姓名 / 工单号 / 手机号 / 会员手机" style="width:100%;padding:8px 12px 8px 36px;border:2px solid var(--blue);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" type="text"/>
+<input id="global-search-overlay-input" oninput="debounceGlobalSearch(this.value)" onkeydown="if(event.key==='Enter'){performGlobalSearch(this.value);}else if(event.key==='Escape')closeGlobalSearch()" placeholder="🔍 全局搜索：房间号 / 设备UUID / 客户姓名 / 工单号 / 手机号 / 会员手机" style="width:100%;padding:8px 12px 8px 36px;border:2px solid var(--blue);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" type="text"/>
 <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;">🔍</span>
 </div>
 <button onclick="closeGlobalSearch()" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--text-muted);padding:4px 8px;">✕ 关闭</button>
@@ -2173,8 +2173,8 @@ function clearLogUuidFilter() {
 <div class="card" style="margin-bottom:12px;">
 <div class="card-body" style="padding:12px 20px;">
 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-<input class="form-input" id="device-search-input" onkeydown="if(event.key==='Enter')applyDeviceSearch()" placeholder="🔍 搜索房间号/UUID/房型" style="width:200px;padding:7px 12px;font-size:12px;" type="text"/>
-<select class="form-select" id="device-status-filter" style="padding:7px 10px;font-size:12px;width:130px;">
+<input class="form-input" id="device-search-input" oninput="debounceDeviceSearch(this.value)" onkeydown="if(event.key==='Enter'){debounceDeviceSearch(this.value);applyDeviceSearch();}" placeholder="🔍 搜索房间号/UUID/房型" style="width:200px;padding:7px 12px;font-size:12px;" type="text"/>
+<select class="form-select" id="device-status-filter" onchange="debounceDeviceFilter(this.value)" style="padding:7px 10px;font-size:12px;width:130px;">
 <option value="all">全部状态</option>
 <option value="online">🟢 在线</option>
 <option value="offline">🔴 离线</option>
@@ -7131,6 +7131,13 @@ function _renderGlobalSearchHistory() {
     }).join('') +
     '<div onclick="_globalSearchHistory=[];try{localStorage.removeItem(\'iot_search_history\');}catch(e){}var r=document.getElementById(\'global-search-results\');if(r)r.style.display=\'none\';" style="padding:8px 16px;cursor:pointer;font-size:12px;color:var(--text-muted);text-align:center;">清除历史</div>';
 }
+// 【P76优化】全局搜索防抖（避免每次按键触发搜索）
+var _globalSearchTimer = null;
+function debounceGlobalSearch(q) {
+  if (_globalSearchTimer) clearTimeout(_globalSearchTimer);
+  _globalSearchTimer = setTimeout(function() { performGlobalSearch(q); }, 300);
+}
+
 window.performGlobalSearch = function(q) {
   var results = document.getElementById('global-search-results');
   if (!results) return;
@@ -12144,6 +12151,28 @@ function applyDeviceSignalFilter() {
   _deviceSignalFilter = sel ? sel.value : '';
   _devicePage = 1;
   renderDeviceFilteredTable();
+}
+
+// 【P60优化】设备状态下拉筛选防抖（避免每次切换触发重新渲染）
+var _deviceFilterTimer = null;
+function debounceDeviceFilter(status) {
+  if (_deviceFilterTimer) clearTimeout(_deviceFilterTimer);
+  _deviceFilterTimer = setTimeout(function() {
+    _deviceStatusFilter = status;
+    _devicePage = 1;
+    renderDeviceFilteredTable();
+  }, 300);
+}
+
+// 【P76优化】设备搜索防抖（替代applyDeviceSearch直接绑定oninput）
+var _deviceSearchTimer = null;
+function debounceDeviceSearch(kw) {
+  if (_deviceSearchTimer) clearTimeout(_deviceSearchTimer);
+  _deviceSearchTimer = setTimeout(function() {
+    _deviceSearchKw = kw.trim().toLowerCase();
+    _devicePage = 1;
+    renderDeviceFilteredTable();
+  }, 300);
 }
 
 function applyDeviceSearch() {
