@@ -628,8 +628,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 var IOT_CONST = {
   BATTERY_LOW: 50,           // 电量告警阈值(%)
   BATTERY_CRITICAL: 20,     // 电量严重告警阈值(%)
-  BATTERY_GOOD: 60,          // 电量良好阈值（绿色）
-  BATTERY_HIGH: 80,          // 高电量阈值（用于筛选）
   OFFLINE_HOURS_ALERT: 1,   // 离线超过N小时标红
   REFRESH_INTERVAL: 10000,  // 侧边栏统计刷新间隔(ms)
   DEBOUNCE_DELAY: 300,      // 防抖延迟(ms)
@@ -1039,7 +1037,7 @@ function showToast(msg, type) {
 <div id="global-search-bar" style="position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--white);border-bottom:1px solid var(--border);padding:10px 20px;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
 <div style="max-width:640px;margin:0 auto;display:flex;gap:8px;align-items:center;">
 <div style="position:relative;flex:1;">
-<input id="global-search-overlay-input" oninput="performGlobalSearch(this.value)" onkeydown="if(event.key==='Enter'){performGlobalSearch(this.value);}else if(event.key==='Escape')closeGlobalSearch()" placeholder="🔍 全局搜索：房间号 / 设备UUID / 客户姓名 / 工单号 / 手机号 / 会员手机" style="width:100%;padding:8px 12px 8px 36px;border:2px solid var(--blue);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" type="text"/>
+<input id="global-search-overlay-input" oninput="performGlobalSearch(this.value)" onkeydown="if(event.key==='Escape')closeGlobalSearch()" placeholder="🔍 全局搜索：房间号 / 设备UUID / 客户姓名 / 工单号 / 手机号 / 会员手机" style="width:100%;padding:8px 12px 8px 36px;border:2px solid var(--blue);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" type="text"/>
 <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;">🔍</span>
 </div>
 <button onclick="closeGlobalSearch()" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--text-muted);padding:4px 8px;">✕ 关闭</button>
@@ -6850,33 +6848,10 @@ var batchSelectedDevices = [];
 var batchSelectedOp = null;
 
 // 【修复T05】全局搜索功能缺失
-// 【P76新增】全局搜索历史记录（最近10条）
-var _globalSearchHistory = JSON.parse(localStorage.getItem('iot_search_history') || '[]');
-function _saveGlobalSearchHistory(q) {
-  if (!q || q.length < 2) return;
-  _globalSearchHistory = _globalSearchHistory.filter(function(h){ return h !== q; });
-  _globalSearchHistory.unshift(q);
-  _globalSearchHistory = _globalSearchHistory.slice(0, 10);
-  try { localStorage.setItem('iot_search_history', JSON.stringify(_globalSearchHistory)); } catch(e){}
-}
-function _renderGlobalSearchHistory() {
-  if (_globalSearchHistory.length === 0) return '';
-  return '<div style="padding:8px 12px 4px;font-size:11px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);">最近搜索</div>' +
-    _globalSearchHistory.map(function(h) {
-      return '<div onclick="var inp=document.getElementById(\'global-search-overlay-input\');if(inp){inp.value=\'' + h.replace(/'/g, "\\'") + '\';performGlobalSearch(\'' + h.replace(/'/g, "\\'") + '\');}" style="padding:8px 16px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);">' +
-        '<span style="color:var(--text-muted);font-size:12px;">🕐</span><span>' + h + '</span></div>';
-    }).join('') +
-    '<div onclick="_globalSearchHistory=[];try{localStorage.removeItem(\'iot_search_history\');}catch(e){}var r=document.getElementById(\'global-search-results\');if(r)r.style.display=\'none\';" style="padding:8px 16px;cursor:pointer;font-size:12px;color:var(--text-muted);text-align:center;">清除历史</div>';
-}
 window.performGlobalSearch = function(q) {
   var results = document.getElementById('global-search-results');
   if (!results) return;
-  // 【P76】显示搜索历史（输入框聚焦但未输入时）
-  if (!q || q.length < 1) {
-    results.innerHTML = _renderGlobalSearchHistory();
-    results.style.display = 'block';
-    return;
-  }
+  if (!q || q.length < 1) { results.style.display = 'none'; return; }
   q = q.toLowerCase().trim();
   var data = [];
   // Search deviceData
@@ -6914,8 +6889,6 @@ window.performGlobalSearch = function(q) {
     results.innerHTML = html;
   }
   results.style.display = 'block';
-  // 【P76】搜索完成后保存到历史记录
-  _saveGlobalSearchHistory(q);
 };
 window.closeGlobalSearch = function() {
   var bar = document.getElementById('global-search-bar');
@@ -9883,8 +9856,7 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
 </div>
 </div>
 <!-- 新增员工模态框 -->
-<!-- 【P01删除】modal-staff 员工新增弹窗（PMS残留代码，已转移至PMS系统）
-<div class="modal-overlay hidden" id="modal-staff" style="display:none;">
+<div class="modal-overlay hidden" id="modal-staff">
 <div class="modal">
 <div class="modal-header">
 <div class="modal-title" id="staff-modal-title">👥 新增员工</div>
@@ -9928,9 +9900,8 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
 </div>
 </div>
 </div>
-<!-- 【P01删除】modal-add-employee 员工新增弹窗v1（PMS残留代码，已转移至PMS系统）
 <!-- 【改进1】员工新增完整表单模态框 -->
-<div class="modal-overlay hidden" id="modal-add-employee" style="display:none;">
+<div class="modal-overlay hidden" id="modal-add-employee">
 <div class="modal">
 <div class="modal-header">
 <div class="modal-title" id="emp-modal-title">👥 新增员工</div>
@@ -9995,7 +9966,6 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
 </div>
 </div>
 </div>
-<!-- 【P01删除】modal-add-employee-v2 员工新增弹窗v2（PMS残留代码，已转移至PMS系统）
 <!-- 【改进2】员工新增/编辑完整表单（升级版：部门+岗位+角色+手机号+性别） -->
 <div class="modal-overlay hidden" id="modal-add-employee-v2">
 <div class="modal">
@@ -11946,11 +11916,11 @@ function goDevicePage(dir) {
 function getFilteredDeviceList() {
   return deviceData.filter(function(d) {
     var groupMap = {'main':['301','302','303','304','305','306'],'east':['201','202','203','204','205','206'],'vip':['101','102','103','104']};
-    var groupMatch = _deviceGroupFilter === 'all' || (groupMap[_deviceGroupFilter] && groupMap[_deviceGroupFilter].indexOf(d.room) >= 0) || (_deviceGroupFilter === 'lowbat' && d.battery < IOT_CONST.BATTERY_CRITICAL);
+    var groupMatch = _deviceGroupFilter === 'all' || (groupMap[_deviceGroupFilter] && groupMap[_deviceGroupFilter].indexOf(d.room) >= 0) || (_deviceGroupFilter === 'lowbat' && d.battery < BATTERY_CRITICAL);
     var statusMap = {'online':d.status==='在线','offline':d.status==='离线','lowbattery':d.status.indexOf('低电量')>=0,'all':true};
     var statusMatch = statusMap[_deviceStatusFilter] !== undefined ? statusMap[_deviceStatusFilter] : true;
     var kwMatch = !_deviceSearchKw || d.room.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.uuid.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.model.toLowerCase().indexOf(_deviceSearchKw) >= 0;
-    var batMatch = !_deviceBatteryFilter || (_deviceBatteryFilter === 'high' && d.battery >= IOT_CONST.BATTERY_HIGH) || (_deviceBatteryFilter === 'mid' && d.battery >= IOT_CONST.BATTERY_LOW && d.battery < IOT_CONST.BATTERY_HIGH) || (_deviceBatteryFilter === 'low' && d.battery >= IOT_CONST.BATTERY_CRITICAL && d.battery < IOT_CONST.BATTERY_LOW) || (_deviceBatteryFilter === 'crit' && d.battery < IOT_CONST.BATTERY_CRITICAL);
+    var batMatch = !_deviceBatteryFilter || (_deviceBatteryFilter === 'high' && d.battery >= BATTERY_HIGH) || (_deviceBatteryFilter === 'mid' && d.battery >= BATTERY_LOW && d.battery < BATTERY_HIGH) || (_deviceBatteryFilter === 'low' && d.battery >= BATTERY_CRITICAL && d.battery < BATTERY_LOW) || (_deviceBatteryFilter === 'crit' && d.battery < BATTERY_CRITICAL);
     // T18: signal filter (假设 deviceData 有 signal 字段，默认强信号)
     var sig = d.signal || -50;
     var sigMatch = !_deviceSignalFilter || (_deviceSignalFilter === 'excellent' && sig > -50) || (_deviceSignalFilter === 'good' && sig >= -70 && sig <= -50) || (_deviceSignalFilter === 'weak' && sig >= -90 && sig < -70) || (_deviceSignalFilter === 'poor' && sig < -90);
@@ -11975,7 +11945,7 @@ function renderDeviceFilteredTable() {
     pageData.forEach(function(d) {
       var batteryColor = d.battery > 60 ? 'var(--green)' : d.battery > 20 ? 'var(--orange)' : 'var(--red)';
       // 【P99修复】使用常量BATTERY_GOOD=60/BATTERY_CRITICAL=20替换电池颜色魔法数字
-      var batteryBg = d.battery > IOT_CONST.BATTERY_GOOD ? 'var(--green-bg)' : d.battery > IOT_CONST.BATTERY_CRITICAL ? 'var(--orange-bg)' : 'var(--red-bg)';
+      var batteryBg = d.battery > BATTERY_GOOD ? 'var(--green-bg)' : d.battery > BATTERY_CRITICAL ? 'var(--orange-bg)' : 'var(--red-bg)';
       var statusColor = d.status === '在线' ? 'var(--green)' : d.status === '离线' ? 'var(--red)' : 'var(--text-muted)';
       var statusBg = d.status === '在线' ? 'var(--green-bg)' : d.status === '离线' ? 'var(--red-bg)' : 'var(--bg)';
       // 【改进2新增】UUID独立列（对照原系统截图）
@@ -12016,7 +11986,7 @@ function diagnoseDevice(uuid) {
     var DIAGNOSTIC_SCORE_RANGE = 30;
     var score = Math.floor(DIAGNOSTIC_SCORE_MIN + Math.random() * DIAGNOSTIC_SCORE_RANGE);
     var issues = [];
-    if (d.battery < IOT_CONST.BATTERY_CRITICAL) issues.push('电池电量低');
+    if (d.battery < BATTERY_CRITICAL) issues.push('电池电量低');
     if (d.signal === '弱') issues.push('信号强度弱');
     var status = issues.length === 0 ? '✅ 健康' : '⚠️ 需关注';
     showToast('🔍 ' + d.room + ' 诊断完成：' + status + '（评分 ' + score + '分）', score >= 80 ? 'success' : 'warning');
@@ -13976,7 +13946,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
   };
-});
 // ============================================================
 // 【物联后台 v4 改进1】发票开具功能断裂修复
 // 理由：openInvoiceIssueModal() → openInvoiceCreateModal() 重定向，但 submitInvoiceCreate 成功后
@@ -15997,8 +15966,11 @@ var _homeRoomData = [
   {num:'102', type:'大床房', floor:'1层', status:'empty', lock:'已反锁', battery:85, signal:'满格', lastSync:'10:00:00', keys:0, guest:'-', phone:'-', checkin:'-', checkout:'-', electricity:4.1}
 ];
 
-// 【P97+P99修复】BATTERY_*已迁移至IOT_CONST常量（第628行）
-// 直接使用 IOT_CONST.BATTERY_GOOD / IOT_CONST.BATTERY_HIGH / IOT_CONST.BATTERY_CRITICAL
+// 【P97+P99修复】删除重复的BATTERY_*全局变量（第629-636行IOT_CONST已统一）
+// 保留BATTERY_GOOD/BATTERY_HIGH供直接引用（注意与IOT_CONST保持一致）
+// 注意：直接使用BATTERY_CRITICAL/BATTERY_LOW的代码应改用IOT_CONST.BATTERY_CRITICAL/IOT_CONST.BATTERY_LOW
+var BATTERY_GOOD = 60;      // 电量良好阈值（绿色）- 与IOT_CONST.BATTERY_GOOD保持一致
+var BATTERY_HIGH = 80;      // 高电量阈值（用于筛选）
 
 function renderRoomGrid(filter) {
   if (filter === undefined) filter = 'all';
@@ -16021,7 +15993,7 @@ function renderRoomGrid(filter) {
   filtered.forEach(function(r) {
     // 【P16修复】房间卡片Badge改为设备状态优先显示（离线/低电量/入住/空房）
     var isOffline = r.lock.indexOf('⚠️') >= 0;
-    var isLowBattery = r.battery < IOT_CONST.BATTERY_CRITICAL;
+    var isLowBattery = r.battery < BATTERY_CRITICAL;
     var badgeClass, badgeText, statusColor;
     if (isOffline) {
       badgeClass = 'badge-alert'; badgeText = '离线'; statusColor = 'var(--red)';
@@ -16033,7 +16005,7 @@ function renderRoomGrid(filter) {
       badgeClass = 'badge-empty'; badgeText = '空房'; statusColor = 'var(--blue)';
     }
     var lockClass = isOffline ? 'red' : 'green';
-    var battClass = r.battery < IOT_CONST.BATTERY_CRITICAL ? 'red' : r.battery < IOT_CONST.BATTERY_LOW ? 'orange' : 'green';
+    var battClass = r.battery < BATTERY_CRITICAL ? 'red' : r.battery < BATTERY_LOW ? 'orange' : 'green';
     var elecClass = r.electricity > 30 ? 'red' : r.electricity > 20 ? 'orange' : 'green';
     // 【P62修复】设备离线或严重低电量时应用disabled样式（卡片灰显+房间号删除线）
     var cardClass = '';
@@ -16061,23 +16033,16 @@ function renderRoomGrid(filter) {
       '</div>';
   });
   grid.innerHTML = html;
-  updateRoomGridStats();
-  showToast('🔄 房间列表已刷新（共' + filtered.length + '间）', 'success');
-}
-
-/**
- * @description 更新首页房间统计数字（从renderRoomGrid拆分）
- * @param {Object} opts - 可选参数 { total, occupied, dirty, alerts }
- */
-function updateRoomGridStats(opts) {
-  var total = (opts && opts.total !== undefined) ? opts.total : _homeRoomData.length;
-  var occupied = (opts && opts.occupied !== undefined) ? opts.occupied : _homeRoomData.filter(function(r){return r.status==='in'}).length;
-  var dirty = (opts && opts.dirty !== undefined) ? opts.dirty : _homeRoomData.filter(function(r){return r.status==='alert'||r.status==='maintenance'}).length;
-  var alerts = (opts && opts.alerts !== undefined) ? opts.alerts : _homeRoomData.filter(function(r){return r.status==='alert'}).length;
+  // Update stats
+  var total = _homeRoomData.length;
+  var occupied = _homeRoomData.filter(function(r){return r.status==='in'}).length;
+  var dirty = _homeRoomData.filter(function(r){return r.status==='alert'||r.status==='maintenance'}).length;
+  var alerts = _homeRoomData.filter(function(r){return r.status==='alert'}).length;
   var el = document.getElementById('home-total-rooms'); if(el) el.textContent = total;
   var el2 = document.getElementById('home-occupied'); if(el2) el2.textContent = occupied;
   var el3 = document.getElementById('home-dirty'); if(el3) el3.textContent = dirty;
   var el4 = document.getElementById('home-alerts'); if(el4) el4.textContent = alerts;
+  showToast('🔄 房间列表已刷新（共' + total + '间，空房' + (total-occupied) + '间）', 'success');
 }
 
 function navigateToRoom(roomNum) {

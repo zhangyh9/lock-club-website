@@ -1039,7 +1039,7 @@ function showToast(msg, type) {
 <div id="global-search-bar" style="position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--white);border-bottom:1px solid var(--border);padding:10px 20px;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
 <div style="max-width:640px;margin:0 auto;display:flex;gap:8px;align-items:center;">
 <div style="position:relative;flex:1;">
-<input id="global-search-overlay-input" oninput="performGlobalSearch(this.value)" onkeydown="if(event.key==='Enter'){performGlobalSearch(this.value);}else if(event.key==='Escape')closeGlobalSearch()" placeholder="🔍 全局搜索：房间号 / 设备UUID / 客户姓名 / 工单号 / 手机号 / 会员手机" style="width:100%;padding:8px 12px 8px 36px;border:2px solid var(--blue);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" type="text"/>
+<input id="global-search-overlay-input" oninput="performGlobalSearch(this.value)" onkeydown="if(event.key==='Escape')closeGlobalSearch()" placeholder="🔍 全局搜索：房间号 / 设备UUID / 客户姓名 / 工单号 / 手机号 / 会员手机" style="width:100%;padding:8px 12px 8px 36px;border:2px solid var(--blue);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" type="text"/>
 <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;">🔍</span>
 </div>
 <button onclick="closeGlobalSearch()" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--text-muted);padding:4px 8px;">✕ 关闭</button>
@@ -6850,33 +6850,10 @@ var batchSelectedDevices = [];
 var batchSelectedOp = null;
 
 // 【修复T05】全局搜索功能缺失
-// 【P76新增】全局搜索历史记录（最近10条）
-var _globalSearchHistory = JSON.parse(localStorage.getItem('iot_search_history') || '[]');
-function _saveGlobalSearchHistory(q) {
-  if (!q || q.length < 2) return;
-  _globalSearchHistory = _globalSearchHistory.filter(function(h){ return h !== q; });
-  _globalSearchHistory.unshift(q);
-  _globalSearchHistory = _globalSearchHistory.slice(0, 10);
-  try { localStorage.setItem('iot_search_history', JSON.stringify(_globalSearchHistory)); } catch(e){}
-}
-function _renderGlobalSearchHistory() {
-  if (_globalSearchHistory.length === 0) return '';
-  return '<div style="padding:8px 12px 4px;font-size:11px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);">最近搜索</div>' +
-    _globalSearchHistory.map(function(h) {
-      return '<div onclick="var inp=document.getElementById(\'global-search-overlay-input\');if(inp){inp.value=\'' + h.replace(/'/g, "\\'") + '\';performGlobalSearch(\'' + h.replace(/'/g, "\\'") + '\');}" style="padding:8px 16px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);">' +
-        '<span style="color:var(--text-muted);font-size:12px;">🕐</span><span>' + h + '</span></div>';
-    }).join('') +
-    '<div onclick="_globalSearchHistory=[];try{localStorage.removeItem(\'iot_search_history\');}catch(e){}var r=document.getElementById(\'global-search-results\');if(r)r.style.display=\'none\';" style="padding:8px 16px;cursor:pointer;font-size:12px;color:var(--text-muted);text-align:center;">清除历史</div>';
-}
 window.performGlobalSearch = function(q) {
   var results = document.getElementById('global-search-results');
   if (!results) return;
-  // 【P76】显示搜索历史（输入框聚焦但未输入时）
-  if (!q || q.length < 1) {
-    results.innerHTML = _renderGlobalSearchHistory();
-    results.style.display = 'block';
-    return;
-  }
+  if (!q || q.length < 1) { results.style.display = 'none'; return; }
   q = q.toLowerCase().trim();
   var data = [];
   // Search deviceData
@@ -6914,8 +6891,6 @@ window.performGlobalSearch = function(q) {
     results.innerHTML = html;
   }
   results.style.display = 'block';
-  // 【P76】搜索完成后保存到历史记录
-  _saveGlobalSearchHistory(q);
 };
 window.closeGlobalSearch = function() {
   var bar = document.getElementById('global-search-bar');
@@ -16061,23 +16036,16 @@ function renderRoomGrid(filter) {
       '</div>';
   });
   grid.innerHTML = html;
-  updateRoomGridStats();
-  showToast('🔄 房间列表已刷新（共' + filtered.length + '间）', 'success');
-}
-
-/**
- * @description 更新首页房间统计数字（从renderRoomGrid拆分）
- * @param {Object} opts - 可选参数 { total, occupied, dirty, alerts }
- */
-function updateRoomGridStats(opts) {
-  var total = (opts && opts.total !== undefined) ? opts.total : _homeRoomData.length;
-  var occupied = (opts && opts.occupied !== undefined) ? opts.occupied : _homeRoomData.filter(function(r){return r.status==='in'}).length;
-  var dirty = (opts && opts.dirty !== undefined) ? opts.dirty : _homeRoomData.filter(function(r){return r.status==='alert'||r.status==='maintenance'}).length;
-  var alerts = (opts && opts.alerts !== undefined) ? opts.alerts : _homeRoomData.filter(function(r){return r.status==='alert'}).length;
+  // Update stats
+  var total = _homeRoomData.length;
+  var occupied = _homeRoomData.filter(function(r){return r.status==='in'}).length;
+  var dirty = _homeRoomData.filter(function(r){return r.status==='alert'||r.status==='maintenance'}).length;
+  var alerts = _homeRoomData.filter(function(r){return r.status==='alert'}).length;
   var el = document.getElementById('home-total-rooms'); if(el) el.textContent = total;
   var el2 = document.getElementById('home-occupied'); if(el2) el2.textContent = occupied;
   var el3 = document.getElementById('home-dirty'); if(el3) el3.textContent = dirty;
   var el4 = document.getElementById('home-alerts'); if(el4) el4.textContent = alerts;
+  showToast('🔄 房间列表已刷新（共' + total + '间，空房' + (total-occupied) + '间）', 'success');
 }
 
 function navigateToRoom(roomNum) {

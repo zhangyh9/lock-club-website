@@ -628,8 +628,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 var IOT_CONST = {
   BATTERY_LOW: 50,           // 电量告警阈值(%)
   BATTERY_CRITICAL: 20,     // 电量严重告警阈值(%)
-  BATTERY_GOOD: 60,          // 电量良好阈值（绿色）
-  BATTERY_HIGH: 80,          // 高电量阈值（用于筛选）
   OFFLINE_HOURS_ALERT: 1,   // 离线超过N小时标红
   REFRESH_INTERVAL: 10000,  // 侧边栏统计刷新间隔(ms)
   DEBOUNCE_DELAY: 300,      // 防抖延迟(ms)
@@ -1039,7 +1037,7 @@ function showToast(msg, type) {
 <div id="global-search-bar" style="position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--white);border-bottom:1px solid var(--border);padding:10px 20px;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
 <div style="max-width:640px;margin:0 auto;display:flex;gap:8px;align-items:center;">
 <div style="position:relative;flex:1;">
-<input id="global-search-overlay-input" oninput="performGlobalSearch(this.value)" onkeydown="if(event.key==='Enter'){performGlobalSearch(this.value);}else if(event.key==='Escape')closeGlobalSearch()" placeholder="🔍 全局搜索：房间号 / 设备UUID / 客户姓名 / 工单号 / 手机号 / 会员手机" style="width:100%;padding:8px 12px 8px 36px;border:2px solid var(--blue);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" type="text"/>
+<input id="global-search-overlay-input" oninput="performGlobalSearch(this.value)" onkeydown="if(event.key==='Escape')closeGlobalSearch()" placeholder="🔍 全局搜索：房间号 / 设备UUID / 客户姓名 / 工单号 / 手机号 / 会员手机" style="width:100%;padding:8px 12px 8px 36px;border:2px solid var(--blue);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" type="text"/>
 <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;">🔍</span>
 </div>
 <button onclick="closeGlobalSearch()" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--text-muted);padding:4px 8px;">✕ 关闭</button>
@@ -2205,16 +2203,86 @@ function clearLogUuidFilter() {
 </div>
 </div>
 </div>
-<!-- 【P05优化】房间入住/退房/换房完整记录Tab已移除（PMS功能非物联核心） -->
+<!-- 改进3: 房间入住/退房/换房完整记录Tab -->
 <div id="room-content-records" style="display:none;">
-<div class="card">
-<div class="card-body" style="padding:40px 20px;text-align:center;">
-<div style="font-size:48px;margin-bottom:12px;">🏨</div>
-<div style="font-size:14px;color:var(--text);font-weight:600;margin-bottom:8px;">入住记录已转移至设备详情页</div>
-<div style="font-size:12px;color:var(--text-muted);">设备详情页 → 设备开锁记录中查看关联入住信息</div>
+<!-- 【改进3】房间记录完整CRUD：增删改查功能 -->
+<div class="card" style="margin-bottom:16px;">
+<div class="card-header">
+<div class="card-title">📋 房间记录 - <span id="rr-room-num">301</span></div>
+<button class="action-btn small" onclick="showToast('入住记录已整合至设备管理','info')" style="padding:4px 10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">+ 添加记录</button>
+<button class="action-btn small" onclick="showToast('入住记录已转移至设备详情页','info')" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-color:var(--green);margin-left:4px;">💰 导出入账报告</button>
+<div class="card-tabs">
+<div class="card-tab active" id="rr-tab-all" onclick="filterRoomRecords('all',this)">全部 <span id="rr-count-all">4</span></div>
+<div class="card-tab" id="rr-tab-in" onclick="filterRoomRecords('in',this)">入住 <span id="rr-count-in">1</span></div>
+<div class="card-tab" id="rr-tab-out" onclick="filterRoomRecords('out',this)">退房 <span id="rr-count-out">2</span></div>
+<div class="card-tab" id="rr-tab-change" onclick="filterRoomRecords('change',this)">换房 <span id="rr-count-change">1</span></div>
+</div>
+</div>
+<div class="card-body">
+<div id="room-records-list">
+<!-- 入住记录1 - 当前入住 -->
+<div class="checkin-record" data-record-id="rec-001" data-rtype="in" style="border-left:3px solid var(--blue);padding-left:12px;">
+<div class="record-icon stat-icon-blue">🏨</div>
+<div class="record-info">
+<div class="name">张三</div>
+<div class="meta">亲子间 · 入住方式：手机开锁 · 手机号：138****8888</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+<div class="record-badge" style="background:var(--blue-bg);color:var(--blue);">入住中</div>
+<div style="font-size:11px;color:var(--text-muted);">今天 10:32</div>
+</div>
+<button class="action-btn small" onclick="showToast('入住记录已转移至设备详情页','info')" style="margin-left:8px;padding:2px 8px;font-size:10px;">✏️ 编辑</button>
+<button class="action-btn small orange" onclick="openChangeRoomModal()" style="margin-left:4px;padding:2px 8px;font-size:10px;">🔄 换房</button>
+
+</div>
+<!-- 退房记录 -->
+<div class="checkin-record" data-record-id="rec-002" data-rtype="out" style="opacity:0.75;">
+<div class="record-icon stat-icon-green">🚪</div>
+<div class="record-info">
+<div class="name" style="color:var(--text-muted);">李四</div>
+<div class="meta" style="color:var(--text-muted);">亲子间 · 入住方式：客户卡 · 手机号：139****6666</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+<div class="record-badge" style="background:var(--green-bg);color:var(--green);">已退房</div>
+<div style="font-size:11px;color:var(--text-muted);">昨天 14:20</div>
+</div>
+<div style="margin-left:8px;font-size:11px;color:var(--green);">✅ 押金已退</div>
+<button class="action-btn small" onclick="showToast('入住记录已转移至设备详情页','info')" style="margin-left:8px;padding:2px 8px;font-size:10px;">✏️ 编辑</button>
+<button class="action-btn small red" onclick="showToast('入住记录已转移至设备详情页','info')" style="margin-left:4px;padding:2px 8px;font-size:10px;">🗑️ 删除</button>
+</div>
+<!-- 换房记录 -->
+<div class="checkin-record" data-record-id="rec-003" data-rtype="change" style="opacity:0.75;border-left:3px solid var(--orange);padding-left:12px;">
+<div class="record-icon stat-icon-orange">🔄</div>
+<div class="record-info">
+<div class="name" style="color:var(--text-muted);">钱七</div>
+<div class="meta" style="color:var(--text-muted);">从 203 换房至 301 · 亲子间 · 原因：房间噪音大</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+<div class="record-badge" style="background:var(--orange-bg);color:var(--orange);">已换房</div>
+<div style="font-size:11px;color:var(--text-muted);">03-25 16:00</div>
+</div>
+<button class="action-btn small" onclick="showToast('换房记录详情已加载','info')" style="margin-left:8px;padding:2px 8px;font-size:10px;">查看详情</button>
+<button class="action-btn small" onclick="showToast('入住记录已转移至设备详情页','info')" style="margin-left:4px;padding:2px 8px;font-size:10px;">✏️ 编辑</button>
+</div>
+<!-- 退房记录2 -->
+<div class="checkin-record" data-record-id="rec-004" data-rtype="out" style="opacity:0.75;">
+<div class="record-icon stat-icon-green">🚪</div>
+<div class="record-info">
+<div class="name" style="color:var(--text-muted);">王五</div>
+<div class="meta" style="color:var(--text-muted);">亲子间 · 入住方式：手机开锁 · 手机号：137****5555</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+<div class="record-badge" style="background:var(--green-bg);color:var(--green);">已退房</div>
+<div style="font-size:11px;color:var(--text-muted);">03-24 12:00</div>
+</div>
+<button class="action-btn small" onclick="showToast('入住记录已转移至设备详情页','info')" style="margin-left:8px;padding:2px 8px;font-size:10px;">✏️ 编辑</button>
+<button class="action-btn small red" onclick="showToast('入住记录已转移至设备详情页','info')" style="margin-left:4px;padding:2px 8px;font-size:10px;">🗑️ 删除</button>
 </div>
 </div>
 </div>
+</div>
+</div>
+<!-- 【P05优化】房间记录CRUD弹窗已删除（PMS入住/退房/换房记录功能非物联核心） -->
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
 <div style="font-size:13px;color:var(--text-muted);">📜 房间历史行为时间线（全部操作记录）</div>
 <div id="rd-history-summary" style="font-size:11px;color:var(--text-muted);"></div>
@@ -3178,6 +3246,12 @@ function switchRoomDetailTab(tab, el) {
 </div>
 <!-- 【改进2】SLA时限实时显示区：选择类型后显示具体SLA截止时间倒计时 -->
 <div id="wo-sla-hint" style="display:none;padding:8px 12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:6px;margin-bottom:12px;font-size:12px;color:var(--orange);font-weight:600;"></div>
+<!-- 【改进5】工单创建：入住记录搜索自动填充 -->
+<div class="form-group" style="margin-bottom:10px;">
+<label class="form-label">🔍 搜索入住记录自动填充</label>
+<input class="form-input" id="woc-checkin-search" oninput="searchCheckinForWorkorder(this.value)" placeholder="输入房间号或客户姓名搜索入住记录…" style="width:100%;padding:8px 12px;" type="text"/>
+<div id="woc-checkin-suggestions" style="display:none;position:absolute;z-index:100;width:calc(100% - 40px);max-height:160px;overflow-y:auto;background:white;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin-top:2px;"></div>
+</div>
 <div class="form-row">
 <div class="form-group">
 <label class="form-label">工单类型 <span class="required">*</span></label>
@@ -3212,8 +3286,13 @@ function switchRoomDetailTab(tab, el) {
 </select>
 </div>
 <div class="form-group">
-<label class="form-label">关联设备</label>
-<div style="padding:9px 12px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--text-muted);">在设备详情页创建工单时自动关联</div>
+<label class="form-label">关联入住</label>
+<select class="form-select" id="woc-checkin-ref" onchange="onWoCheckinRefChange()">
+<option value="">-- 不关联 --</option>
+<option value="ci_001">王浩 - 301亲子间（入住中）</option>
+<option value="ci_002">李娜 - 203标准间（入住中）</option>
+<option value="ci_003">张伟 - VIP套房（入住中）</option>
+</select>
 </div>
 </div>
 <div class="form-row">
@@ -6850,33 +6929,10 @@ var batchSelectedDevices = [];
 var batchSelectedOp = null;
 
 // 【修复T05】全局搜索功能缺失
-// 【P76新增】全局搜索历史记录（最近10条）
-var _globalSearchHistory = JSON.parse(localStorage.getItem('iot_search_history') || '[]');
-function _saveGlobalSearchHistory(q) {
-  if (!q || q.length < 2) return;
-  _globalSearchHistory = _globalSearchHistory.filter(function(h){ return h !== q; });
-  _globalSearchHistory.unshift(q);
-  _globalSearchHistory = _globalSearchHistory.slice(0, 10);
-  try { localStorage.setItem('iot_search_history', JSON.stringify(_globalSearchHistory)); } catch(e){}
-}
-function _renderGlobalSearchHistory() {
-  if (_globalSearchHistory.length === 0) return '';
-  return '<div style="padding:8px 12px 4px;font-size:11px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);">最近搜索</div>' +
-    _globalSearchHistory.map(function(h) {
-      return '<div onclick="var inp=document.getElementById(\'global-search-overlay-input\');if(inp){inp.value=\'' + h.replace(/'/g, "\\'") + '\';performGlobalSearch(\'' + h.replace(/'/g, "\\'") + '\');}" style="padding:8px 16px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);">' +
-        '<span style="color:var(--text-muted);font-size:12px;">🕐</span><span>' + h + '</span></div>';
-    }).join('') +
-    '<div onclick="_globalSearchHistory=[];try{localStorage.removeItem(\'iot_search_history\');}catch(e){}var r=document.getElementById(\'global-search-results\');if(r)r.style.display=\'none\';" style="padding:8px 16px;cursor:pointer;font-size:12px;color:var(--text-muted);text-align:center;">清除历史</div>';
-}
 window.performGlobalSearch = function(q) {
   var results = document.getElementById('global-search-results');
   if (!results) return;
-  // 【P76】显示搜索历史（输入框聚焦但未输入时）
-  if (!q || q.length < 1) {
-    results.innerHTML = _renderGlobalSearchHistory();
-    results.style.display = 'block';
-    return;
-  }
+  if (!q || q.length < 1) { results.style.display = 'none'; return; }
   q = q.toLowerCase().trim();
   var data = [];
   // Search deviceData
@@ -6914,8 +6970,6 @@ window.performGlobalSearch = function(q) {
     results.innerHTML = html;
   }
   results.style.display = 'block';
-  // 【P76】搜索完成后保存到历史记录
-  _saveGlobalSearchHistory(q);
 };
 window.closeGlobalSearch = function() {
   var bar = document.getElementById('global-search-bar');
@@ -7526,27 +7580,6 @@ function getWoPriorityLabel(p) {
 function getWoStatusLabel(s) {
   var map = {pending:'⏳ 待接受',processing:'🔄 处理中',done:'✅ 已完成',cancelled:'❌ 已作废'};
   return map[s] || s;
-}
-// 【P05优化】onWoTypeChange/onWoPriorityChange/onWoCheckinRefChange - 入住记录搜索已移除，函数保留空壳避免报错
-function onWoTypeChange(el) {
-  var type = el ? el.value : '';
-  var hintEl = document.getElementById('wo-sla-hint');
-  var descEl = document.getElementById('woc-desc');
-  var typeMap = {complaint:'客户投诉问题，请详细描述投诉内容及时间',repair:'设备报修，请描述设备故障现象',delivery:'送物服务请注明物品名称和数量',invoice:'发票需求请注明发票抬头和税号',praise:'表扬反馈请描述具体表扬内容',other:'其他服务需求'};
-  if (hintEl) hintEl.textContent = type ? typeMap[type] || '' : '选择工单类型后自动显示处理建议';
-  if (descEl && type && !descEl.value) descEl.value = typeMap[type] || '';
-}
-function onWoPriorityChange() {
-  var urgentEl = document.getElementById('woc-urgent');
-  var dueEl = document.getElementById('woc-due');
-  if (!urgentEl || !dueEl) return;
-  var now = new Date();
-  var hours = urgentEl.value === 'critical' ? 1 : urgentEl.value === 'urgent' ? 4 : 24;
-  var due = new Date(now.getTime() + hours * 3600000);
-  dueEl.value = due.toISOString().slice(0, 16);
-}
-function onWoCheckinRefChange() {
-  // 入住关联已移除，不再需要自动填充
 }
 
 function setWoSatisfaction(val) {
@@ -9076,11 +9109,16 @@ function doQuickUnlock() {
   setTimeout(function() { showToast('🔓 房间 ' + roomNum + ' 已开锁', 'success'); }, 1500);
 }
 
-// 【P05优化】goToRoomDetail - 入住记录Tab已移除，改跳设备详情
+// 【改进4】goToRoomDetail - 房间快速操作面板"记录"按钮
+// 业务逻辑：点击后切换到房间详情页的房间记录Tab
 function goToRoomDetail() {
   var roomNum = document.getElementById('rqp-room') ? document.getElementById('rqp-room').textContent : '301';
   if (typeof showPage === 'function') showPage('room-detail');
-  showToast('📋 正在加载房间 ' + roomNum + ' 设备详情...', 'info');
+  showToast('📋 正在加载房间 ' + roomNum + ' 详情...', 'info');
+  setTimeout(function() {
+    var recTab = document.getElementById('rr-tab-in');
+    if (recTab && typeof filterRoomRecords === 'function') filterRoomRecords('in', recTab);
+  }, 300);
 }
 
 // 【改进5】startKanbanDrag/allowKanbanDrop/dropKanbanCard - 工单看板拖拽函数
@@ -9883,8 +9921,7 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
 </div>
 </div>
 <!-- 新增员工模态框 -->
-<!-- 【P01删除】modal-staff 员工新增弹窗（PMS残留代码，已转移至PMS系统）
-<div class="modal-overlay hidden" id="modal-staff" style="display:none;">
+<div class="modal-overlay hidden" id="modal-staff">
 <div class="modal">
 <div class="modal-header">
 <div class="modal-title" id="staff-modal-title">👥 新增员工</div>
@@ -9928,9 +9965,8 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
 </div>
 </div>
 </div>
-<!-- 【P01删除】modal-add-employee 员工新增弹窗v1（PMS残留代码，已转移至PMS系统）
 <!-- 【改进1】员工新增完整表单模态框 -->
-<div class="modal-overlay hidden" id="modal-add-employee" style="display:none;">
+<div class="modal-overlay hidden" id="modal-add-employee">
 <div class="modal">
 <div class="modal-header">
 <div class="modal-title" id="emp-modal-title">👥 新增员工</div>
@@ -9995,7 +10031,6 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
 </div>
 </div>
 </div>
-<!-- 【P01删除】modal-add-employee-v2 员工新增弹窗v2（PMS残留代码，已转移至PMS系统）
 <!-- 【改进2】员工新增/编辑完整表单（升级版：部门+岗位+角色+手机号+性别） -->
 <div class="modal-overlay hidden" id="modal-add-employee-v2">
 <div class="modal">
@@ -11946,11 +11981,11 @@ function goDevicePage(dir) {
 function getFilteredDeviceList() {
   return deviceData.filter(function(d) {
     var groupMap = {'main':['301','302','303','304','305','306'],'east':['201','202','203','204','205','206'],'vip':['101','102','103','104']};
-    var groupMatch = _deviceGroupFilter === 'all' || (groupMap[_deviceGroupFilter] && groupMap[_deviceGroupFilter].indexOf(d.room) >= 0) || (_deviceGroupFilter === 'lowbat' && d.battery < IOT_CONST.BATTERY_CRITICAL);
+    var groupMatch = _deviceGroupFilter === 'all' || (groupMap[_deviceGroupFilter] && groupMap[_deviceGroupFilter].indexOf(d.room) >= 0) || (_deviceGroupFilter === 'lowbat' && d.battery < BATTERY_CRITICAL);
     var statusMap = {'online':d.status==='在线','offline':d.status==='离线','lowbattery':d.status.indexOf('低电量')>=0,'all':true};
     var statusMatch = statusMap[_deviceStatusFilter] !== undefined ? statusMap[_deviceStatusFilter] : true;
     var kwMatch = !_deviceSearchKw || d.room.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.uuid.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.model.toLowerCase().indexOf(_deviceSearchKw) >= 0;
-    var batMatch = !_deviceBatteryFilter || (_deviceBatteryFilter === 'high' && d.battery >= IOT_CONST.BATTERY_HIGH) || (_deviceBatteryFilter === 'mid' && d.battery >= IOT_CONST.BATTERY_LOW && d.battery < IOT_CONST.BATTERY_HIGH) || (_deviceBatteryFilter === 'low' && d.battery >= IOT_CONST.BATTERY_CRITICAL && d.battery < IOT_CONST.BATTERY_LOW) || (_deviceBatteryFilter === 'crit' && d.battery < IOT_CONST.BATTERY_CRITICAL);
+    var batMatch = !_deviceBatteryFilter || (_deviceBatteryFilter === 'high' && d.battery >= BATTERY_HIGH) || (_deviceBatteryFilter === 'mid' && d.battery >= BATTERY_LOW && d.battery < BATTERY_HIGH) || (_deviceBatteryFilter === 'low' && d.battery >= BATTERY_CRITICAL && d.battery < BATTERY_LOW) || (_deviceBatteryFilter === 'crit' && d.battery < BATTERY_CRITICAL);
     // T18: signal filter (假设 deviceData 有 signal 字段，默认强信号)
     var sig = d.signal || -50;
     var sigMatch = !_deviceSignalFilter || (_deviceSignalFilter === 'excellent' && sig > -50) || (_deviceSignalFilter === 'good' && sig >= -70 && sig <= -50) || (_deviceSignalFilter === 'weak' && sig >= -90 && sig < -70) || (_deviceSignalFilter === 'poor' && sig < -90);
@@ -11975,7 +12010,7 @@ function renderDeviceFilteredTable() {
     pageData.forEach(function(d) {
       var batteryColor = d.battery > 60 ? 'var(--green)' : d.battery > 20 ? 'var(--orange)' : 'var(--red)';
       // 【P99修复】使用常量BATTERY_GOOD=60/BATTERY_CRITICAL=20替换电池颜色魔法数字
-      var batteryBg = d.battery > IOT_CONST.BATTERY_GOOD ? 'var(--green-bg)' : d.battery > IOT_CONST.BATTERY_CRITICAL ? 'var(--orange-bg)' : 'var(--red-bg)';
+      var batteryBg = d.battery > BATTERY_GOOD ? 'var(--green-bg)' : d.battery > BATTERY_CRITICAL ? 'var(--orange-bg)' : 'var(--red-bg)';
       var statusColor = d.status === '在线' ? 'var(--green)' : d.status === '离线' ? 'var(--red)' : 'var(--text-muted)';
       var statusBg = d.status === '在线' ? 'var(--green-bg)' : d.status === '离线' ? 'var(--red-bg)' : 'var(--bg)';
       // 【改进2新增】UUID独立列（对照原系统截图）
@@ -12016,7 +12051,7 @@ function diagnoseDevice(uuid) {
     var DIAGNOSTIC_SCORE_RANGE = 30;
     var score = Math.floor(DIAGNOSTIC_SCORE_MIN + Math.random() * DIAGNOSTIC_SCORE_RANGE);
     var issues = [];
-    if (d.battery < IOT_CONST.BATTERY_CRITICAL) issues.push('电池电量低');
+    if (d.battery < BATTERY_CRITICAL) issues.push('电池电量低');
     if (d.signal === '弱') issues.push('信号强度弱');
     var status = issues.length === 0 ? '✅ 健康' : '⚠️ 需关注';
     showToast('🔍 ' + d.room + ' 诊断完成：' + status + '（评分 ' + score + '分）', score >= 80 ? 'success' : 'warning');
@@ -13976,7 +14011,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
   };
-});
 // ============================================================
 // 【物联后台 v4 改进1】发票开具功能断裂修复
 // 理由：openInvoiceIssueModal() → openInvoiceCreateModal() 重定向，但 submitInvoiceCreate 成功后
@@ -15997,8 +16031,11 @@ var _homeRoomData = [
   {num:'102', type:'大床房', floor:'1层', status:'empty', lock:'已反锁', battery:85, signal:'满格', lastSync:'10:00:00', keys:0, guest:'-', phone:'-', checkin:'-', checkout:'-', electricity:4.1}
 ];
 
-// 【P97+P99修复】BATTERY_*已迁移至IOT_CONST常量（第628行）
-// 直接使用 IOT_CONST.BATTERY_GOOD / IOT_CONST.BATTERY_HIGH / IOT_CONST.BATTERY_CRITICAL
+// 【P97+P99修复】删除重复的BATTERY_*全局变量（第629-636行IOT_CONST已统一）
+// 保留BATTERY_GOOD/BATTERY_HIGH供直接引用（注意与IOT_CONST保持一致）
+// 注意：直接使用BATTERY_CRITICAL/BATTERY_LOW的代码应改用IOT_CONST.BATTERY_CRITICAL/IOT_CONST.BATTERY_LOW
+var BATTERY_GOOD = 60;      // 电量良好阈值（绿色）- 与IOT_CONST.BATTERY_GOOD保持一致
+var BATTERY_HIGH = 80;      // 高电量阈值（用于筛选）
 
 function renderRoomGrid(filter) {
   if (filter === undefined) filter = 'all';
@@ -16021,7 +16058,7 @@ function renderRoomGrid(filter) {
   filtered.forEach(function(r) {
     // 【P16修复】房间卡片Badge改为设备状态优先显示（离线/低电量/入住/空房）
     var isOffline = r.lock.indexOf('⚠️') >= 0;
-    var isLowBattery = r.battery < IOT_CONST.BATTERY_CRITICAL;
+    var isLowBattery = r.battery < BATTERY_CRITICAL;
     var badgeClass, badgeText, statusColor;
     if (isOffline) {
       badgeClass = 'badge-alert'; badgeText = '离线'; statusColor = 'var(--red)';
@@ -16033,7 +16070,7 @@ function renderRoomGrid(filter) {
       badgeClass = 'badge-empty'; badgeText = '空房'; statusColor = 'var(--blue)';
     }
     var lockClass = isOffline ? 'red' : 'green';
-    var battClass = r.battery < IOT_CONST.BATTERY_CRITICAL ? 'red' : r.battery < IOT_CONST.BATTERY_LOW ? 'orange' : 'green';
+    var battClass = r.battery < BATTERY_CRITICAL ? 'red' : r.battery < BATTERY_LOW ? 'orange' : 'green';
     var elecClass = r.electricity > 30 ? 'red' : r.electricity > 20 ? 'orange' : 'green';
     // 【P62修复】设备离线或严重低电量时应用disabled样式（卡片灰显+房间号删除线）
     var cardClass = '';
@@ -16061,23 +16098,16 @@ function renderRoomGrid(filter) {
       '</div>';
   });
   grid.innerHTML = html;
-  updateRoomGridStats();
-  showToast('🔄 房间列表已刷新（共' + filtered.length + '间）', 'success');
-}
-
-/**
- * @description 更新首页房间统计数字（从renderRoomGrid拆分）
- * @param {Object} opts - 可选参数 { total, occupied, dirty, alerts }
- */
-function updateRoomGridStats(opts) {
-  var total = (opts && opts.total !== undefined) ? opts.total : _homeRoomData.length;
-  var occupied = (opts && opts.occupied !== undefined) ? opts.occupied : _homeRoomData.filter(function(r){return r.status==='in'}).length;
-  var dirty = (opts && opts.dirty !== undefined) ? opts.dirty : _homeRoomData.filter(function(r){return r.status==='alert'||r.status==='maintenance'}).length;
-  var alerts = (opts && opts.alerts !== undefined) ? opts.alerts : _homeRoomData.filter(function(r){return r.status==='alert'}).length;
+  // Update stats
+  var total = _homeRoomData.length;
+  var occupied = _homeRoomData.filter(function(r){return r.status==='in'}).length;
+  var dirty = _homeRoomData.filter(function(r){return r.status==='alert'||r.status==='maintenance'}).length;
+  var alerts = _homeRoomData.filter(function(r){return r.status==='alert'}).length;
   var el = document.getElementById('home-total-rooms'); if(el) el.textContent = total;
   var el2 = document.getElementById('home-occupied'); if(el2) el2.textContent = occupied;
   var el3 = document.getElementById('home-dirty'); if(el3) el3.textContent = dirty;
   var el4 = document.getElementById('home-alerts'); if(el4) el4.textContent = alerts;
+  showToast('🔄 房间列表已刷新（共' + total + '间，空房' + (total-occupied) + '间）', 'success');
 }
 
 function navigateToRoom(roomNum) {
@@ -16111,7 +16141,12 @@ function submitChangeRoom() {
   if (!toRoom) { showToast('请选择目标房间', 'error'); return; }
   if (fromRoom === toRoom) { showToast('目标房间不能与原房间相同', 'error'); return; }
   document.getElementById('modal-change-room').remove();
-  showToast('✅ 换房记录已保存（入住记录功能已转移至设备详情页）', 'success');
+  showToast('✅ 换房成功：' + fromRoom + ' ↔ ' + toRoom + '（' + reasonText + '）', 'success');
+  // Refresh records tab
+  setTimeout(function() {
+    var changeTab = document.getElementById('rr-tab-change');
+    if (changeTab) { changeTab.click(); }
+  }, 300);
 }
 
 // ======= 【物联后台 v4 改进4b】resetWoFilter - 工单高级筛选重置 =======
