@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""任务追踪器 - 标准JSON格式"""
+"""任务追踪器"""
 import json
 from datetime import datetime
 
@@ -13,24 +13,24 @@ def save(data):
     with open(POOL_FILE, 'w') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def get_next_task():
-    """获取下一个待执行任务"""
+def get_next_tasks(count=3):
+    """获取下N个待执行任务"""
     data = load()
     pending = [(tid, t) for tid, t in data['tasks'].items() if t.get('status', 'pending') == 'pending']
     pending.sort(key=lambda x: x[1]['priority'])
-    return pending[0] if pending else (None, None)
+    return pending[:count]
 
-def mark_done(task_id):
-    """标记任务完成（从列表中移除）"""
+def mark_done(task_ids):
+    """标记任务完成"""
     data = load()
-    if task_id in data['tasks']:
-        del data['tasks'][task_id]
-        data['doneCount'] = data.get('doneCount', 0) + 1
-        data['updatedAt'] = datetime.now().isoformat()
-        save(data)
+    for tid in task_ids:
+        if tid in data['tasks']:
+            del data['tasks'][tid]
+    data['doneCount'] = data.get('doneCount', 0) + len(task_ids)
+    data['updatedAt'] = datetime.now().isoformat()
+    save(data)
 
 def get_stats():
-    """获取统计"""
     data = load()
     original_total = data.get('originalTotal', 102)
     done = data.get('doneCount', 0)
@@ -49,9 +49,9 @@ def report():
     print(f"📊 精简进度: [{bar}] {stats['percent']}% ({stats['done']}/{stats['originalTotal']})")
     print(f"   已完成: {stats['done']} | 待执行: {stats['remaining']}")
     
-    tid, task = get_next_task()
-    if tid:
-        print(f"   下个任务: {tid} [{task.get('priority', 'P0')}]")
+    tasks = get_next_tasks(3)
+    if tasks:
+        print(f"   下批任务: {', '.join([t[0] for t in tasks])}")
 
 if __name__ == '__main__':
     report()
