@@ -720,6 +720,144 @@ function emptyState(msg, colspan, isBlock) {
   return '<tr><td' + col + '>' + content + '</td></tr>';
 }
 
+// 【P44新增】统一加载状态骨架屏 + 轻量Spinner（替代各页面自定义loading HTML，减少重复inline style）
+// @param {string} type - 'skeleton'（默认，骨架屏行）| 'spinner'（中心旋转）| 'inline'（行内点）
+// @param {string} msg - 可选提示文字
+// @returns {string} HTML string
+function loadingState(type, msg) {
+  type = type || 'skeleton';
+  var messages = {
+    'skeleton': msg || '数据加载中...',
+    'spinner': msg || '加载中',
+    'inline': msg || '加载中'
+  };
+  if (type === 'skeleton') {
+    return '<div style="text-align:center;padding:40px 20px;color:var(--text-muted);">' +
+      '<div style="font-size:32px;margin-bottom:12px;opacity:0.5;">⏳</div>' +
+      '<div style="font-size:13px;margin-bottom:16px;">' + messages[type] + '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:8px;max-width:300px;margin:0 auto;">' +
+      '<div style="height:14px;background:var(--border);border-radius:4px;animation:shimmer 1.5s infinite;opacity:0.6;"></div>' +
+      '<div style="height:14px;background:var(--border);border-radius:4px;animation:shimmer 1.5s infinite 0.1s;opacity:0.6;"></div>' +
+      '<div style="height:14px;background:var(--border);border-radius:4px;animation:shimmer 1.5s infinite 0.2s;opacity:0.6;"></div></div></div>';
+  }
+  if (type === 'spinner') {
+    return '<div style="text-align:center;padding:40px 20px;color:var(--text-muted);">' +
+      '<div style="font-size:36px;margin-bottom:12px;animation:spin 1s linear infinite;">⚙️</div>' +
+      '<div style="font-size:13px;">' + messages[type] + '</div></div>';
+  }
+  // inline
+  return '<span style="display:inline-flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;">' +
+    '<span style="font-size:12px;animation:spin 1s linear infinite;">⚙️</span>' + messages[type] + '</span>';
+}
+
+// 【P45新增】统一CRUD操作按钮组模板（替代分散的增删改查按钮inline style）
+// @param {Object} opts - 配置选项
+// @param {boolean} opts.canAdd - 显示新增按钮
+// @param {boolean} opts.canEdit - 显示编辑按钮
+// @param {boolean} opts.canDelete - 显示删除按钮（红色警告样式）
+// @param {boolean} opts.canExport - 显示导出按钮
+// @param {string} opts.addLabel - 新增按钮文字，默认'➕ 新增'
+// @param {string} opts.editLabel - 编辑按钮文字，默认'✏️ 编辑'
+// @param {string} opts.deleteLabel - 删除按钮文字，默认'🗑️ 删除'
+// @param {string} opts.onAdd - 新增点击函数名（字符串）
+// @param {string} opts.onEdit - 编辑点击函数名（字符串）
+// @param {string} opts.onDelete - 删除点击函数名（字符串）
+// @param {string} opts.onExport - 导出点击函数名（字符串）
+// @param {boolean} opts.compact - 紧凑模式（小按钮）
+// @returns {string} HTML string
+function buildCRUDBtnGroup(opts) {
+  opts = opts || {};
+  var size = opts.compact ? 'small' : '';
+  var addLabel = opts.addLabel || '✏️ 新增';
+  var editLabel = opts.editLabel || '✏️ 编辑';
+  var delLabel = opts.deleteLabel || '🗑️ 删除';
+  var exportLabel = opts.exportLabel || '📤 导出';
+  var addOn = opts.onAdd || 'showToast(\'新增功能\',\'info\')';
+  var editOn = opts.onEdit || 'showToast(\'编辑功能\',\'info\')';
+  var deleteOn = opts.onDelete || 'showToast(\'删除功能\',\'info\')';
+  var exportOn = opts.onExport || 'showToast(\'导出功能\',\'info\')';
+  var addBtn = '<button class="action-btn ' + size + '" onclick="' + addOn + '" style="' + (opts.compact ? 'padding:3px 8px;' : '') + 'background:var(--green-bg);color:var(--green);border-color:var(--green);">' + addLabel + '</button>';
+  var editBtn = '<button class="action-btn ' + size + '" onclick="' + editOn + '" style="' + (opts.compact ? 'padding:3px 8px;' : '') + '">' + editLabel + '</button>';
+  var deleteBtn = '<button class="action-btn ' + size + ' red" onclick="' + deleteOn + '" style="' + (opts.compact ? 'padding:3px 8px;' : '') + 'background:var(--red-bg);color:var(--red);border-color:var(--red);">' + delLabel + '</button>';
+  var exportBtn = '<button class="action-btn ' + size + '" onclick="' + exportOn + '" style="' + (opts.compact ? 'padding:3px 8px;' : '') + 'background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">' + exportLabel + '</button>';
+  var btns = [];
+  if (opts.canAdd) btns.push(addBtn);
+  if (opts.canEdit) btns.push(editBtn);
+  if (opts.canDelete) btns.push(deleteBtn);
+  if (opts.canExport) btns.push(exportBtn);
+  return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' + btns.join('') + '</div>';
+}
+
+// 【P29改进】renderSettlement子函数拆分 + 物联化数据替换
+// 理由：原renderSettlement 234行含PMS硬编码数据，拆分+物联化为独立子函数
+// 1. 结算卡片统计（从设备池实时计算）
+function buildSettlementStats() {
+  if (typeof deviceData === 'undefined') return { pending: 0, amount: 0, done: 0 };
+  var offlineCount = deviceData.filter(function(d) { return d.status === '离线'; }).length;
+  var lowBattCount = deviceData.filter(function(d) { return d.battery < IOT_CONST.BATTERY_LOW; }).length;
+  var pendingCount = offlineCount + lowBattCount;
+  var estimatedCost = pendingCount * 50; // 预估维修成本
+  return {
+    pending: pendingCount,
+    amount: estimatedCost,
+    done: deviceData.length - pendingCount,
+    offlineCount: offlineCount,
+    lowBattCount: lowBattCount
+  };
+}
+// 2. 结算卡片HTML渲染（物联视角：设备告警处理统计）
+function renderSettlementStatsCards() {
+  var stats = buildSettlementStats();
+  var cards = [
+    { label: '待处理告警', value: stats.pending, color: 'var(--orange)', bg: 'var(--orange-bg)', icon: '⚠️' },
+    { label: '预估处理成本', value: '¥' + stats.amount, color: 'var(--blue)', bg: 'var(--blue-bg)', icon: '💰' },
+    { label: '已完成处理', value: stats.done, color: 'var(--green)', bg: 'var(--green-bg)', icon: '✅' }
+  ];
+  return cards.map(function(c) {
+    return '<div style="padding:14px 16px;background:' + c.bg + ';border-radius:10px;text-align:center;flex:1;min-width:100px;">' +
+      '<div style="font-size:11px;color:' + c.color + ';margin-bottom:4px;">' + c.icon + ' ' + c.label + '</div>' +
+      '<div style="font-size:22px;font-weight:700;color:' + c.color + ';">' + c.value + '</div></div>';
+  }).join('');
+}
+// 3. 物联化结算列表（基于设备告警数据，而非PMS账单）
+function buildSettlementAlertRows() {
+  if (typeof deviceData === 'undefined') return '';
+  var alerts = deviceData.filter(function(d) {
+    return d.status === '离线' || d.battery < IOT_CONST.BATTERY_LOW;
+  });
+  if (alerts.length === 0) {
+    return '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">' +
+      '<div style="font-size:28px;margin-bottom:8px;">✅</div><div>所有设备运行正常</div></td></tr>';
+  }
+  return alerts.map(function(d) {
+    var alertType = d.status === '离线' ? '🔴 设备离线' : '🟡 低电量';
+    var alertColor = d.status === '离线' ? 'var(--red)' : 'var(--orange)';
+    var alertBg = d.status === '离线' ? 'var(--red-bg)' : 'var(--orange-bg)';
+    return '<tr>' +
+      '<td><span class="tbadge" style="background:' + alertBg + ';color:' + alertColor + ';">' + alertType + '</span></td>' +
+      '<td><span style="font-weight:700;color:var(--blue);">' + d.room + '</span></td>' +
+      '<td style="font-size:12px;">' + d.model + '</td>' +
+      '<td style="font-size:12px;color:var(--text-muted);">' + d.lastSync + '</td>' +
+      '<td><span class="tbadge orange">⏳ 待处理</span></td>' +
+      '<td><button class="action-btn small" onclick="openDeviceDiagnosticV2Enhanced(\'' + d.room + '\')">🔍 诊断</button></td>' +
+      '<td><button class="action-btn small" onclick="showToast(\'工单已创建\',\'success\')">📋 建单</button></td></tr>';
+  }).join('');
+}
+// 4. 主渲染函数（替换原PMS版renderSettlement）
+window.renderSettlement = function() {
+  var tbody = document.getElementById('settlement-pending-body');
+  if (tbody) {
+    tbody.innerHTML = buildSettlementAlertRows();
+  }
+  var stats = buildSettlementStats();
+  var countEl = document.getElementById('stl-pending-count');
+  if (countEl) countEl.textContent = stats.pending;
+  var amountEl = document.getElementById('stl-pending-amount');
+  if (amountEl) amountEl.textContent = '¥' + stats.amount;
+  var doneEl = document.getElementById('stl-done');
+  if (doneEl) doneEl.textContent = stats.done;
+};
+
 // ======= 全局页面导航 =======
 function showPage(pageName) {
   document.querySelectorAll('.page').forEach(function(p) {
