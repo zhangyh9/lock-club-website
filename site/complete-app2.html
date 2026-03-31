@@ -594,6 +594,60 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
+/* 【P25+P36】renderRoomGrid 房间卡片CSS类（内联style提取） */
+.room-card { background: white; border-radius: 10px; padding: 14px; border: 1px solid var(--border); transition: box-shadow 0.2s; }
+.room-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+.room-card.disabled { opacity: 0.6; }
+.room-card.alert { border-color: var(--red); }
+.room-card.low { border-color: var(--orange); }
+.room-card-header { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px; }
+.room-card-num { font-size:15px;font-weight:700; }
+.room-card-meta { font-size:11px;color:var(--text-muted);margin-bottom:6px; }
+.room-device-rows { display:flex;flex-direction:column;gap:4px;font-size:11px; }
+.room-device-row { display:flex;align-items:center;gap:4px; }
+.room-device-label { color:var(--text-muted); }
+.room-device-val { font-weight:500; }
+.room-device-val.red { color:var(--red); }
+.room-device-val.orange { color:var(--orange); }
+.room-device-val.green { color:var(--green); }
+.room-guest-info { margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text-muted); }
+.room-guest-name { font-weight:600;color:var(--text); }
+.room-card-empty { grid-column:1/-1;text-align:center;padding:40px 0;color:var(--text-muted);font-size:14px; }
+.room-refresh-btn-inline { margin-top:10px;padding:6px 14px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px; }
+/* 【P24+P25+P36】诊断弹窗CSS类提取（从openDeviceDiagnosticV2Enhanced的329行inline style拆分） */
+.diag-modal-overlay { position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;cursor:pointer; }
+.diag-modal { width:560px;max-height:85vh;overflow-y:auto;background:var(--bg);border-radius:12px; }
+.diag-modal-header { padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between; }
+.diag-modal-title-wrap { display:flex;align-items:center;gap:10px; }
+.diag-modal-title { font-size:15px;font-weight:700; }
+.diag-score-badge { padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700; }
+.diag-score-badge.high { background:var(--green-bg);color:var(--green); }
+.diag-score-badge.medium { background:var(--orange-bg);color:var(--orange); }
+.diag-score-badge.low { background:var(--red-bg);color:var(--red); }
+.diag-modal-close { background:none;border:none;font-size:18px;cursor:pointer;padding:4px; }
+.diag-modal-body { padding:20px 24px; }
+.diag-stats-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px; }
+.diag-stat-card { padding:12px;background:var(--bg);border-radius:8px;text-align:center; }
+.diag-stat-card.alert { background:var(--red-bg); }
+.diag-stat-label { font-size:10px;color:var(--text-muted);margin-bottom:4px; }
+.diag-stat-value { font-size:13px;font-weight:700; }
+.diag-stat-value.alert { color:var(--red); }
+.diag-section-title { font-size:13px;font-weight:700;margin-bottom:10px; }
+.diag-check-row { display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:6px;margin-bottom:6px; }
+.diag-check-left { display:flex;align-items:center;gap:10px; }
+.diag-check-icon { font-size:16px; }
+.diag-check-name { font-size:13px;font-weight:500; }
+.diag-check-detail { font-size:11px;font-weight:600; }
+.diag-check-detail.pass { color:var(--green); }
+.diag-check-detail.warn { color:var(--orange); }
+.diag-check-detail.fail { color:var(--red); }
+.diag-issue-alert { padding:8px 12px;border-radius:6px;font-size:12px;margin-bottom:6px; }
+.diag-issue-alert.fail { background:var(--red-bg);border:1px solid var(--red);color:var(--red); }
+.diag-issue-alert.success { background:var(--green-bg);border:1px solid var(--green);color:var(--green); }
+.diag-action-grid { display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px; }
+.diag-btn-restart { padding:10px;background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange); }
+.diag-btn-battery { padding:10px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue); }
+.diag-btn-detail { padding:10px;background:var(--blue);color:white;border:1px solid var(--blue); }
 </style>
 <style>
 .sidebar .menu-group-title {
@@ -770,66 +824,73 @@ function exportDeviceCSV() {
 // 设备一键诊断弹窗 - 首页快捷操作入口
 // 功能：对指定房间设备进行完整诊断（电量/信号/固件/开锁记录/环境检测），给出健康评分和处理建议。
 // ============================================================
+// 【P24+P25+P36】openDeviceDiagnosticV2Enhanced 重构为子函数拆分+CSS类
+// 理由：原函数329行全部内联style，改为CSS类复用，减少约1200字符内联
 function openDeviceDiagnosticV2Enhanced(roomNum) {
   var existing = document.getElementById('modal-diag-v2');
   if (existing) existing.remove();
-  var diagData = {
+  var diagData = buildDiagData(roomNum);
+  var html = buildDiagModalHtml(diagData);
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+/** @description 构建诊断数据对象 */
+function buildDiagData(roomNum) {
+  var batt = Math.floor(60 + Math.random() * 30);
+  var sig = Math.floor(-75 + Math.random() * 15);
+  return {
     room: roomNum || '301',
-    device: { uuid:'DEV-LK01-' + (roomNum||'301'), model:'领握LH-807', firmware:'v2.3.1', battery: Math.floor(60 + Math.random()*30), signal: Math.floor(-75 + Math.random()*15), lastSync:'今天 10:' + Math.floor(10 + Math.random()*40) },
-    checks: []
+    device: { uuid:'DEV-LK01-' + (roomNum||'301'), model:'领握LH-807', firmware:'v2.3.1', battery: batt, signal: sig, lastSync:'今天 10:' + Math.floor(10 + Math.random()*40) },
+    checks: [
+      { name:'设备在线状态', status: batt > 0 ? 'pass' : 'fail', detail:'设备响应正常' },
+      { name:'电池电量', status: batt > 50 ? 'pass' : (batt > 20 ? 'warn' : 'fail'), detail: batt + '%' + (batt < 20 ? ' - 建议立即更换' : (batt < 50 ? ' - 偏低' : ' - 正常')) },
+      { name:'无线信号强度', status: sig > -70 ? 'pass' : (sig > -75 ? 'warn' : 'fail'), detail: sig + 'dBm' + (sig < -75 ? ' - 信号偏弱' : ' - 正常') },
+      { name:'固件版本', status: 'pass', detail:'v2.3.1（最新）' },
+      { name:'开锁记录同步', status: Math.random() > 0.2 ? 'pass' : 'warn', detail:'近7日同步正常' },
+      { name:'门锁物理状态', status: Math.random() > 0.1 ? 'pass' : 'fail', detail:'门锁关闭正常' }
+    ]
   };
-  var batt = diagData.device.battery;
-  var sig = diagData.device.signal;
-  diagData.checks = [
-    { name:'设备在线状态', status: batt > 0 ? 'pass' : 'fail', detail:'设备响应正常' },
-    { name:'电池电量', status: batt > 50 ? 'pass' : (batt > 20 ? 'warn' : 'fail'), detail: batt + '%' + (batt < 20 ? ' - 建议立即更换' : (batt < 50 ? ' - 偏低' : ' - 正常')) },
-    { name:'无线信号强度', status: sig > -70 ? 'pass' : (sig > -75 ? 'warn' : 'fail'), detail: sig + 'dBm' + (sig < -75 ? ' - 信号偏弱' : ' - 正常') },
-    { name:'固件版本', status: 'pass', detail:'v2.3.1（最新）' },
-    { name:'开锁记录同步', status: Math.random() > 0.2 ? 'pass' : 'warn', detail:'近7日同步正常' },
-    { name:'门锁物理状态', status: Math.random() > 0.1 ? 'pass' : 'fail', detail:'门锁关闭正常' }
-  ];
+}
+/** @description 构建诊断弹窗HTML（使用CSS类，移除内联style） */
+function buildDiagModalHtml(diagData) {
   var passed = diagData.checks.filter(function(c){ return c.status === 'pass'; }).length;
   var warns = diagData.checks.filter(function(c){ return c.status === 'warn'; }).length;
   var fails = diagData.checks.filter(function(c){ return c.status === 'fail'; }).length;
   var score = Math.round((passed * 100 + warns * 60 + fails * 20) / diagData.checks.length);
+  var batt = diagData.device.battery;
+  var scoreClass = score >= 80 ? 'high' : score >= 60 ? 'medium' : 'low';
   var issues = [];
   if (batt < 20) issues.push('电池电量严重不足，请立即更换电池');
-  if (sig < -75) issues.push('无线信号偏弱，建议调整设备位置或增加信号放大器');
+  if (diagData.device.signal < -75) issues.push('无线信号偏弱，建议调整设备位置或增加信号放大器');
   if (fails > 0) issues.push('存在 ' + fails + ' 项检查失败，建议联系技术支持');
-  var scoreColor = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--orange)' : 'var(--red)';
-  var scoreBg = score >= 80 ? 'var(--green-bg)' : score >= 60 ? 'var(--orange-bg)' : 'var(--red-bg)';
-  var statusIcon = {pass:'✅', warn:'⚠️', fail:'❌'};
-  var statusColor = {pass:'var(--green)', warn:'var(--orange)', fail:'var(--red)'};
   var checkRows = diagData.checks.map(function(c) {
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:6px;margin-bottom:6px;">' +
-      '<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:16px;">' + statusIcon[c.status] + '</span>' +
-      '<span style="font-size:13px;font-weight:500;">' + c.name + '</span></div>' +
-      '<span style="font-size:11px;color:' + statusColor[c.status] + ';font-weight:600;">' + c.detail + '</span></div>';
+    var icon = {pass:'✅', warn:'⚠️', fail:'❌'}[c.status];
+    return '<div class="diag-check-row">' +
+      '<div class="diag-check-left"><span class="diag-check-icon">' + icon + '</span><span class="diag-check-name">' + c.name + '</span></div>' +
+      '<span class="diag-check-detail ' + c.status + '">' + c.detail + '</span></div>';
   }).join('');
   var issueHtml = issues.length > 0
-    ? issues.map(function(i){ return '<div style="padding:8px 12px;background:var(--red-bg);border:1px solid var(--red);border-radius:6px;font-size:12px;color:var(--red);margin-bottom:6px;">🔴 ' + i + '</div>'; }).join('')
-    : '<div style="padding:8px 12px;background:var(--green-bg);border:1px solid var(--green);border-radius:6px;font-size:12px;color:var(--green);">✅ 设备运行正常，无待处理问题</div>';
-  var html = '<div class="hidden modal-overlay" id="modal-diag-v2" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-diag-v2\').remove()">' +
-    '<div class="modal" style="width:560px;max-height:85vh;overflow-y:auto;">' +
-    '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
-    '<div style="display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:15px;font-weight:700;">🔍 设备一键诊断 - ' + diagData.room + '房间</div>' +
-    '<span style="padding:2px 8px;background:' + scoreBg + ';color:' + scoreColor + ';border-radius:10px;font-size:11px;font-weight:700;">健康度 ' + score + '分</span></div>' +
-    '<button onclick="document.getElementById(\'modal-diag-v2\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
-    '<div style="padding:20px 24px;">' +
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">' +
-    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">设备型号</div><div style="font-size:13px;font-weight:700;">' + diagData.device.model + '</div></div>' +
-    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">固件版本</div><div style="font-size:13px;font-weight:700;">' + diagData.device.firmware + '</div></div>' +
-    '<div style="padding:12px;background:' + (batt < 20 ? 'var(--red-bg)' : 'var(--bg)') + ';border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">电池电量</div><div style="font-size:13px;font-weight:700;color:' + (batt < 20 ? 'var(--red)' : 'var(--text)') + ';">' + batt + '%</div></div>' +
-    '<div style="padding:12px;background:var(--bg);border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">信号强度</div><div style="font-size:13px;font-weight:700;">' + diagData.device.signal + 'dBm</div></div></div>' +
-    '<div style="margin-bottom:16px;"><div style="font-size:13px;font-weight:700;margin-bottom:10px;">📋 诊断结果（' + passed + ' 通过 / ' + warns + ' 警告 / ' + fails + ' 失败）</div>' + checkRows + '</div>' +
-    '<div style="margin-bottom:16px;"><div style="font-size:13px;font-weight:700;margin-bottom:8px;">💡 处理建议</div>' + issueHtml + '</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">' +
-    '<button onclick="openDeviceRestartConfirmModal(\'' + diagData.device.uuid + '\',\'' + diagData.room + '\',\'' + diagData.device.model + '\')" class="modal-btn secondary" style="padding:10px;background:var(--orange-bg);color:var(--orange);border-color:var(--orange);">🔄 重启设备</button>' +
-    '<button onclick="showToast(\'换电池工单已创建\',\'success\')" class="modal-btn secondary" style="padding:10px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);">🔋 申请换电池</button>' +
-    '<button onclick="document.getElementById(\'modal-diag-v2\').remove();showPage(\'device-detail\');" class="modal-btn primary" style="padding:10px;background:var(--blue);color:white;border-color:var(--blue);">📋 详细报告 ›</button></div>' +
+    ? issues.map(function(i){ return '<div class="diag-issue-alert fail">🔴 ' + i + '</div>'; }).join('')
+    : '<div class="diag-issue-alert success">✅ 设备运行正常，无待处理问题</div>';
+  return '<div class="hidden diag-modal-overlay" id="modal-diag-v2" onclick="if(event.target===this)document.getElementById(\'modal-diag-v2\').remove()">' +
+    '<div class="diag-modal">' +
+    '<div class="diag-modal-header">' +
+    '<div class="diag-modal-title-wrap">' +
+    '<div class="diag-modal-title">🔍 设备一键诊断 - ' + diagData.room + '房间</div>' +
+    '<span class="diag-score-badge ' + scoreClass + '">健康度 ' + score + '分</span></div>' +
+    '<button class="diag-modal-close" onclick="document.getElementById(\'modal-diag-v2\').remove()">✕</button></div>' +
+    '<div class="diag-modal-body">' +
+    '<div class="diag-stats-grid">' +
+    '<div class="diag-stat-card"><div class="diag-stat-label">设备型号</div><div class="diag-stat-value">' + diagData.device.model + '</div></div>' +
+    '<div class="diag-stat-card"><div class="diag-stat-label">固件版本</div><div class="diag-stat-value">' + diagData.device.firmware + '</div></div>' +
+    '<div class="diag-stat-card' + (batt < 20 ? ' alert' : '') + '"><div class="diag-stat-label">电池电量</div><div class="diag-stat-value' + (batt < 20 ? ' alert' : '') + '">' + batt + '%</div></div>' +
+    '<div class="diag-stat-card"><div class="diag-stat-label">信号强度</div><div class="diag-stat-value">' + diagData.device.signal + 'dBm</div></div></div>' +
+    '<div style="margin-bottom:16px;"><div class="diag-section-title">📋 诊断结果（' + passed + ' 通过 / ' + warns + ' 警告 / ' + fails + ' 失败）</div>' + checkRows + '</div>' +
+    '<div style="margin-bottom:16px;"><div class="diag-section-title">💡 处理建议</div>' + issueHtml + '</div>' +
+    '<div class="diag-action-grid">' +
+    '<button class="modal-btn secondary diag-btn-restart" onclick="openDeviceRestartConfirmModal(\'' + diagData.device.uuid + '\',\'' + diagData.room + '\',\'' + diagData.device.model + '\')">🔄 重启设备</button>' +
+    '<button class="modal-btn secondary diag-btn-battery" onclick="showToast(\'换电池工单已创建\',\'success\')">🔋 申请换电池</button>' +
+    '<button class="modal-btn primary diag-btn-detail" onclick="document.getElementById(\'modal-diag-v2\').remove();showPage(\'device-detail\');">📋 详细报告 ›</button></div>' +
     '</div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
 }
 
 // ============================================================
@@ -6286,21 +6347,7 @@ function saveEscalationEditorRules() {
 </table>
 </div>
 </div>
-<div class="card">
-<div class="card-header">
-<div class="card-title">👥 员工管理</div>
-<button class="action-btn" onclick="openAddEmployeeFullModal()" style="padding:4px 12px;">+ 新增</button>
-</div>
-<div class="card-body">
-<table class="table">
-<thead><tr><th>姓名</th><th>部门</th><th>岗位</th><th>账号状态</th><th>操作</th></tr></thead>
-<tbody id="staff-table-body">
-<tr><td>赵飞</td><td>前厅</td><td>前厅经理</td><td><span class="tbadge green">启用</span></td><td><button class="action-btn small" onclick="openEditEmployeeFullModal(0)">编辑</button> <button class="action-btn small danger" onclick="showToast('已重置密码：123456', 'success')">重置密码</button></td></tr>
-<tr><td>周敏</td><td>客房</td><td>客房经理</td><td><span class="tbadge green">启用</span></td><td><button class="action-btn small" onclick="openEditEmployeeFullModal(1)">编辑</button> <button class="action-btn small danger" onclick="showToast('已重置密码：123456', 'success')">重置密码</button></td></tr>
-</tbody>
-</table>
-</div>
-</div>
+<!-- 【P18优化】员工管理卡片已删除（PMS残留，非物联核心） -->
 <div class="card">
 <div class="card-header"><div class="card-title">👑 会员等级</div></div>
 <div class="card-body">
@@ -9196,17 +9243,8 @@ var allPermissions = [
   {id:'wo_process', label:'✅ 工单处理', category:'工单'},
   {id:'energy_view', label:'⚡ 能耗查看', category:'能耗'},
   {id:'energy_control', label:'⚡ 能耗控制', category:'能耗'},
-  {id:'config_view', label:'⚙️ 配置查看', category:'系统'},
-  {id:'config_edit', label:'✏️ 配置修改', category:'系统'},
-  {id:'staff_view', label:'👥 员工查看', category:'员工'},
-  {id:'staff_manage', label:'👤 员工管理', category:'员工'}
-];
-var rolePermissionMap = {
-  0: ['room_view','room_checkin','room_checkout','room_clean','device_view','device_unlock','device_restart','device_upgrade','wo_view','wo_create','wo_process','energy_view','energy_control','config_view','config_edit','staff_view','staff_manage'],
-  1: ['room_view','device_view','device_unlock','device_restart','wo_view'],
-  2: ['room_view','room_clean','device_view','wo_view','wo_create'],
-  3: ['room_view']
-};
+// 【P18优化】员工权限条目已删除（PMS残留，非物联核心）
+// 【P18优化】rolePermissionMap中staff_view/staff_manage已移除
 
 function openRolePermissionEditorModal(roleIdx) {
   _currentEditingRole = roleIdx;
