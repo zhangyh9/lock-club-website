@@ -11918,7 +11918,7 @@ function goDevicePage(dir) {
 function getFilteredDeviceList() {
   return deviceData.filter(function(d) {
     var groupMap = {'main':['301','302','303','304','305','306'],'east':['201','202','203','204','205','206'],'vip':['101','102','103','104']};
-    var groupMatch = _deviceGroupFilter === 'all' || (groupMap[_deviceGroupFilter] && groupMap[_deviceGroupFilter].indexOf(d.room) >= 0) || (_deviceGroupFilter === 'lowbat' && d.battery < BATTERY_CRITICAL);
+    var groupMatch = _deviceGroupFilter === 'all' || (groupMap[_deviceGroupFilter] && groupMap[_deviceGroupFilter].indexOf(d.room) >= 0) || (_deviceGroupFilter === 'lowbat' && d.battery < IOT_CONST.BATTERY_CRITICAL);
     var statusMap = {'online':d.status==='在线','offline':d.status==='离线','lowbattery':d.status.indexOf('低电量')>=0,'all':true};
     var statusMatch = statusMap[_deviceStatusFilter] !== undefined ? statusMap[_deviceStatusFilter] : true;
     var kwMatch = !_deviceSearchKw || d.room.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.uuid.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.model.toLowerCase().indexOf(_deviceSearchKw) >= 0;
@@ -11988,7 +11988,7 @@ function diagnoseDevice(uuid) {
     var DIAGNOSTIC_SCORE_RANGE = 30;
     var score = Math.floor(DIAGNOSTIC_SCORE_MIN + Math.random() * DIAGNOSTIC_SCORE_RANGE);
     var issues = [];
-    if (d.battery < BATTERY_CRITICAL) issues.push('电池电量低');
+    if (d.battery < IOT_CONST.BATTERY_CRITICAL) issues.push('电池电量低');
     if (d.signal === '弱') issues.push('信号强度弱');
     var status = issues.length === 0 ? '✅ 健康' : '⚠️ 需关注';
     showToast('🔍 ' + d.room + ' 诊断完成：' + status + '（评分 ' + score + '分）', score >= 80 ? 'success' : 'warning');
@@ -15993,7 +15993,7 @@ function renderRoomGrid(filter) {
   filtered.forEach(function(r) {
     // 【P16修复】房间卡片Badge改为设备状态优先显示（离线/低电量/入住/空房）
     var isOffline = r.lock.indexOf('⚠️') >= 0;
-    var isLowBattery = r.battery < BATTERY_CRITICAL;
+    var isLowBattery = r.battery < IOT_CONST.BATTERY_CRITICAL;
     var badgeClass, badgeText, statusColor;
     if (isOffline) {
       badgeClass = 'badge-alert'; badgeText = '离线'; statusColor = 'var(--red)';
@@ -16005,7 +16005,7 @@ function renderRoomGrid(filter) {
       badgeClass = 'badge-empty'; badgeText = '空房'; statusColor = 'var(--blue)';
     }
     var lockClass = isOffline ? 'red' : 'green';
-    var battClass = r.battery < BATTERY_CRITICAL ? 'red' : r.battery < BATTERY_LOW ? 'orange' : 'green';
+    var battClass = r.battery < BATTERY_CRITICAL ? 'red' : r.battery < IOT_CONST.BATTERY_LOW ? 'orange' : 'green';
     var elecClass = r.electricity > 30 ? 'red' : r.electricity > 20 ? 'orange' : 'green';
     // 【P62修复】设备离线或严重低电量时应用disabled样式（卡片灰显+房间号删除线）
     var cardClass = '';
