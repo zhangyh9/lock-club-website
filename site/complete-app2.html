@@ -628,6 +628,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 var IOT_CONST = {
   BATTERY_LOW: 50,           // 电量告警阈值(%)
   BATTERY_CRITICAL: 20,     // 电量严重告警阈值(%)
+  BATTERY_GOOD: 60,          // 电量良好阈值（绿色）
+  BATTERY_HIGH: 80,          // 高电量阈值（用于筛选）
   OFFLINE_HOURS_ALERT: 1,   // 离线超过N小时标红
   REFRESH_INTERVAL: 10000,  // 侧边栏统计刷新间隔(ms)
   DEBOUNCE_DELAY: 300,      // 防抖延迟(ms)
@@ -11920,7 +11922,7 @@ function getFilteredDeviceList() {
     var statusMap = {'online':d.status==='在线','offline':d.status==='离线','lowbattery':d.status.indexOf('低电量')>=0,'all':true};
     var statusMatch = statusMap[_deviceStatusFilter] !== undefined ? statusMap[_deviceStatusFilter] : true;
     var kwMatch = !_deviceSearchKw || d.room.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.uuid.toLowerCase().indexOf(_deviceSearchKw) >= 0 || d.model.toLowerCase().indexOf(_deviceSearchKw) >= 0;
-    var batMatch = !_deviceBatteryFilter || (_deviceBatteryFilter === 'high' && d.battery >= BATTERY_HIGH) || (_deviceBatteryFilter === 'mid' && d.battery >= BATTERY_LOW && d.battery < BATTERY_HIGH) || (_deviceBatteryFilter === 'low' && d.battery >= BATTERY_CRITICAL && d.battery < BATTERY_LOW) || (_deviceBatteryFilter === 'crit' && d.battery < BATTERY_CRITICAL);
+    var batMatch = !_deviceBatteryFilter || (_deviceBatteryFilter === 'high' && d.battery >= IOT_CONST.BATTERY_HIGH) || (_deviceBatteryFilter === 'mid' && d.battery >= IOT_CONST.BATTERY_LOW && d.battery < IOT_CONST.BATTERY_HIGH) || (_deviceBatteryFilter === 'low' && d.battery >= IOT_CONST.BATTERY_CRITICAL && d.battery < IOT_CONST.BATTERY_LOW) || (_deviceBatteryFilter === 'crit' && d.battery < IOT_CONST.BATTERY_CRITICAL);
     // T18: signal filter (假设 deviceData 有 signal 字段，默认强信号)
     var sig = d.signal || -50;
     var sigMatch = !_deviceSignalFilter || (_deviceSignalFilter === 'excellent' && sig > -50) || (_deviceSignalFilter === 'good' && sig >= -70 && sig <= -50) || (_deviceSignalFilter === 'weak' && sig >= -90 && sig < -70) || (_deviceSignalFilter === 'poor' && sig < -90);
@@ -11945,7 +11947,7 @@ function renderDeviceFilteredTable() {
     pageData.forEach(function(d) {
       var batteryColor = d.battery > 60 ? 'var(--green)' : d.battery > 20 ? 'var(--orange)' : 'var(--red)';
       // 【P99修复】使用常量BATTERY_GOOD=60/BATTERY_CRITICAL=20替换电池颜色魔法数字
-      var batteryBg = d.battery > BATTERY_GOOD ? 'var(--green-bg)' : d.battery > BATTERY_CRITICAL ? 'var(--orange-bg)' : 'var(--red-bg)';
+      var batteryBg = d.battery > IOT_CONST.BATTERY_GOOD ? 'var(--green-bg)' : d.battery > IOT_CONST.BATTERY_CRITICAL ? 'var(--orange-bg)' : 'var(--red-bg)';
       var statusColor = d.status === '在线' ? 'var(--green)' : d.status === '离线' ? 'var(--red)' : 'var(--text-muted)';
       var statusBg = d.status === '在线' ? 'var(--green-bg)' : d.status === '离线' ? 'var(--red-bg)' : 'var(--bg)';
       // 【改进2新增】UUID独立列（对照原系统截图）
@@ -13946,6 +13948,7 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
   };
+});
 // ============================================================
 // 【物联后台 v4 改进1】发票开具功能断裂修复
 // 理由：openInvoiceIssueModal() → openInvoiceCreateModal() 重定向，但 submitInvoiceCreate 成功后
@@ -15966,11 +15969,8 @@ var _homeRoomData = [
   {num:'102', type:'大床房', floor:'1层', status:'empty', lock:'已反锁', battery:85, signal:'满格', lastSync:'10:00:00', keys:0, guest:'-', phone:'-', checkin:'-', checkout:'-', electricity:4.1}
 ];
 
-// 【P97+P99修复】删除重复的BATTERY_*全局变量（第629-636行IOT_CONST已统一）
-// 保留BATTERY_GOOD/BATTERY_HIGH供直接引用（注意与IOT_CONST保持一致）
-// 注意：直接使用BATTERY_CRITICAL/BATTERY_LOW的代码应改用IOT_CONST.BATTERY_CRITICAL/IOT_CONST.BATTERY_LOW
-var BATTERY_GOOD = 60;      // 电量良好阈值（绿色）- 与IOT_CONST.BATTERY_GOOD保持一致
-var BATTERY_HIGH = 80;      // 高电量阈值（用于筛选）
+// 【P97+P99修复】BATTERY_*已迁移至IOT_CONST常量（第628行）
+// 直接使用 IOT_CONST.BATTERY_GOOD / IOT_CONST.BATTERY_HIGH / IOT_CONST.BATTERY_CRITICAL
 
 function renderRoomGrid(filter) {
   if (filter === undefined) filter = 'all';
