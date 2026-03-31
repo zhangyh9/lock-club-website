@@ -705,6 +705,12 @@ var IOT_CONST = {
   HOME_STATS_REFRESH: 30000 // 首页统计刷新间隔(ms)
 };
 
+// 【P28新增】统一空状态模板（减少15+处inline style）
+function emptyState(msg, colspan) {
+  var col = colspan ? ' colspan="' + colspan + '"' : '';
+  return '<tr><td' + col + ' style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">' + (msg || '暂无数据') + '</td></tr>';
+}
+
 // ======= 全局页面导航 =======
 function showPage(pageName) {
   document.querySelectorAll('.page').forEach(function(p) {
@@ -6767,6 +6773,72 @@ function saveEscalationEditorRules() {
       var changeEl = document.getElementById('ec-change');
       if (changeEl) { changeEl.textContent = (change > 0 ? '+' : '') + change + '%'; changeEl.style.color = change > 0 ? 'var(--orange)' : 'var(--green)'; }
     }
+    // 【P27拆解】renderEnergyChart 辅助函数：绘制网格线
+    function drawEnergyGrid(ctx, data, padLeft, padRight, padTop, padBottom, chartW, chartH, w, h) {
+      ctx.strokeStyle = '#e8e8e8';
+      ctx.lineWidth = 0.5;
+      var maxPower = Math.max.apply(null, data.power);
+      for (var i = 0; i <= 4; i++) {
+        var y = padTop + (chartH / 4) * i;
+        ctx.beginPath(); ctx.moveTo(padLeft, y); ctx.lineTo(padLeft + chartW, y); ctx.stroke();
+        ctx.fillStyle = '#999';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'right';
+        var yVal = Math.round(maxPower * (1 - i / 4));
+        ctx.fillText(yVal, padLeft - 4, y + 3);
+      }
+      // X labels
+      ctx.textAlign = 'center';
+      var step = Math.ceil(data.labels.length / 8);
+      for (var i = 0; i < data.labels.length; i += step) {
+        var x = padLeft + (i / (data.labels.length - 1)) * chartW;
+        ctx.fillText(data.labels[i], x, h - 6);
+      }
+    }
+    // 【P27拆解】renderEnergyChart 辅助函数：绘制数据线+填充+点
+    function drawEnergyLine(ctx, values, color, maxVal, padLeft, chartW, padTop, chartH) {
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.fillStyle = color + '22';
+      values.forEach(function(v, i) {
+        var x = padLeft + (i / (values.length - 1)) * chartW;
+        var y = padTop + chartH - (v / maxVal) * chartH;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      var lastX = padLeft + chartW;
+      var baseY = padTop + chartH;
+      ctx.lineTo(lastX, baseY);
+      ctx.lineTo(padLeft, baseY);
+      ctx.closePath();
+      ctx.fill();
+      values.forEach(function(v, i) {
+        var x = padLeft + (i / (values.length - 1)) * chartW;
+        var y = padTop + chartH - (v / maxVal) * chartH;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+    }
+    // 【P27拆解】renderEnergyChart 辅助函数：更新统计数字
+    function updateEnergyStats(data) {
+      var totalPower = data.power.reduce(function(a, b) { return a + b; }, 0);
+      var totalWater = data.water.reduce(function(a, b) { return a + b; }, 0);
+      var elPowerTotal = document.getElementById('echart-power-total');
+      var elWaterTotal = document.getElementById('echart-water-total');
+      var elPowerAvg = document.getElementById('echart-power-avg');
+      var elCostTotal = document.getElementById('echart-cost-total');
+      if (elPowerTotal) elPowerTotal.textContent = totalPower.toFixed(1);
+      if (elWaterTotal) elWaterTotal.textContent = Math.round(totalWater);
+      if (elPowerAvg) elPowerAvg.textContent = (totalPower / 8).toFixed(1);
+      if (elCostTotal) elCostTotal.textContent = '¥' + (totalPower * 0.52).toFixed(1);
+    }
+    // 【P27拆解】renderEnergyChart 主函数（从~95行拆解为4个小子函数）
     function renderEnergyChart() {
       var canvas = document.getElementById('energy-chart-canvas');
       if (!canvas) return;
@@ -6778,74 +6850,12 @@ function saveEscalationEditorRules() {
       var chartW = w - padLeft - padRight;
       var chartH = h - padTop - padBottom;
       ctx.clearRect(0, 0, w, h);
-      // Draw grid lines
-      ctx.strokeStyle = '#e8e8e8';
-      ctx.lineWidth = 0.5;
-      for (var i = 0; i <= 4; i++) {
-        var y = padTop + (chartH / 4) * i;
-        ctx.beginPath(); ctx.moveTo(padLeft, y); ctx.lineTo(padLeft + chartW, y); ctx.stroke();
-        // Y label for power
-        ctx.fillStyle = '#999';
-        ctx.font = '10px sans-serif';
-        ctx.textAlign = 'right';
-        var maxPower = Math.max.apply(null, data.power);
-        var yVal = Math.round(maxPower * (1 - i / 4));
-        ctx.fillText(yVal, padLeft - 4, y + 3);
-      }
-      // X labels
-      ctx.textAlign = 'center';
-      var step = Math.ceil(data.labels.length / 8);
-      for (var i = 0; i < data.labels.length; i += step) {
-        var x = padLeft + (i / (data.labels.length - 1)) * chartW;
-        ctx.fillText(data.labels[i], x, h - 6);
-      }
-      // Draw power line (blue)
+      drawEnergyGrid(ctx, data, padLeft, padRight, padTop, padBottom, chartW, chartH, w, h);
       var maxP = Math.max.apply(null, data.power);
       var maxW = Math.max.apply(null, data.water);
-      function drawLine(values, color, maxVal) {
-        ctx.beginPath();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.fillStyle = color + '22';
-        values.forEach(function(v, i) {
-          var x = padLeft + (i / (values.length - 1)) * chartW;
-          var y = padTop + chartH - (v / maxVal) * chartH;
-          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        });
-        ctx.stroke();
-        // Area fill
-        var lastX = padLeft + chartW;
-        var baseY = padTop + chartH;
-        ctx.lineTo(lastX, baseY);
-        ctx.lineTo(padLeft, baseY);
-        ctx.closePath();
-        ctx.fill();
-        // Dots
-        values.forEach(function(v, i) {
-          var x = padLeft + (i / (values.length - 1)) * chartW;
-          var y = padTop + chartH - (v / maxVal) * chartH;
-          ctx.beginPath();
-          ctx.arc(x, y, 3, 0, Math.PI * 2);
-          ctx.fillStyle = color;
-          ctx.fill();
-          ctx.strokeStyle = 'white';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-        });
-      }
-      drawLine(data.power.map(function(v) { return v; }), '#1890ff', maxP);
-      drawLine(data.water.map(function(v) { return v / (maxW / maxP); }), '#fa8c16', maxP);
-      // Update summary
-      var totalPower = data.power.reduce(function(a, b) { return a + b; }, 0);
-      var totalWater = data.water.reduce(function(a, b) { return a + b; }, 0);
-      var elPowerTotal = document.getElementById('echart-power-total');
-      var elWaterTotal = document.getElementById('echart-water-total');
-      var elPowerAvg = document.getElementById('echart-power-avg');
-      var elCostTotal = document.getElementById('echart-cost-total');
-      if (elPowerTotal) elPowerTotal.textContent = totalPower.toFixed(1);
-      if (elWaterTotal) elWaterTotal.textContent = Math.round(totalWater);
-      if (elPowerAvg) elPowerAvg.textContent = (totalPower / 8).toFixed(1);
-      if (elCostTotal) elCostTotal.textContent = '¥' + (totalPower * 0.52).toFixed(1);
+      drawEnergyLine(ctx, data.power, '#1890ff', maxP, padLeft, chartW, padTop, chartH);
+      drawEnergyLine(ctx, data.water.map(function(v) { return v / (maxW / maxP); }), '#fa8c16', maxP, padLeft, chartW, padTop, chartH);
+      updateEnergyStats(data);
     }
     // Auto-render energy chart when energy page is shown
     var _lastEnergyPage = '';
@@ -7701,7 +7711,7 @@ function renderWorkorderTable() {
     return wo.status === tab;
   });
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px;">暂无工单数据</td></tr>';
+    tbody.innerHTML = emptyState('暂无工单数据', 10);
     return;
   }
   var rows = '';
@@ -12619,6 +12629,43 @@ function demonstrateWorkorderLifecycle() {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
+// 【P26拆解】renderInvoiceFilteredList 辅助函数：构建发票状态Badge
+function _invStatusBadge(status) {
+  return status === '已完成' ? '<span class="tbadge green">✅ 已完成</span>'
+    : status === '待处理' ? '<span class="tbadge orange">⏳ 待处理</span>'
+    : status === '开具中' ? '<span class="tbadge blue">🔄 开具中</span>'
+    : '<span class="tbadge gray">❌ 已作废</span>';
+}
+// 【P26拆解】renderInvoiceFilteredList 辅助函数：构建发票类型Badge
+function _invTypeBadge(type) {
+  return type === '普通发票' ? '<span class="tbadge blue">📄 普通发票</span>'
+    : type === '增值税专用' ? '<span class="tbadge purple">🧾 增值税专用</span>'
+    : '<span class="tbadge green">📱 电子发票</span>';
+}
+// 【P26拆解】renderInvoiceFilteredList 辅助函数：构建操作按钮
+function _invActionBtns(inv) {
+  if (inv.status === '已完成')
+    return '<button class="action-btn small" onclick="openInvoiceDetailModal(\'' + inv.id + '\')">详情</button><button class="action-btn small" onclick="reissueInvoice(\'' + inv.id + '\')">重开</button>';
+  if (inv.status === '待处理' || inv.status === '开具中')
+    return '<button class="action-btn small" onclick="processInvoice(\'' + inv.id + '\')">处理</button><button class="action-btn small" onclick="openInvoiceDetailModal(\'' + inv.id + '\')">详情</button><button class="action-btn small red" onclick="openInvoiceDeleteModal(\'' + inv.id + '\')">删除</button><button class="action-btn small" onclick="openInvoiceVoidModal(\'' + inv.id + '\')">作废</button>';
+  return '<button class="action-btn small" onclick="openInvoiceDetailModal(\'' + inv.id + '\')">详情</button><button class="action-btn small red" onclick="openInvoiceDeleteModal(\'' + inv.id + '\')">删除</button>';
+}
+// 【P26拆解】renderInvoiceFilteredList 辅助函数：更新Tab统计数字
+function _updateInvoiceTabs(allCount, pendingCount, processingCount, doneCount, cancelledCount) {
+  var countEl = document.getElementById('inv-filter-count');
+  if (countEl) countEl.textContent = '共 ' + allCount + ' 条发票';
+  var el = document.getElementById('inv-tab-all');
+  if (el) el.innerHTML = '全部 <span>' + allCount + '</span>';
+  el = document.getElementById('inv-tab-pending');
+  if (el) el.innerHTML = '待处理 <span>' + pendingCount + '</span>';
+  el = document.getElementById('inv-tab-processing');
+  if (el) el.innerHTML = '开具中 <span>' + processingCount + '</span>';
+  el = document.getElementById('inv-tab-done');
+  if (el) el.innerHTML = '已完成 <span>' + doneCount + '</span>';
+  el = document.getElementById('inv-tab-cancelled');
+  if (el) el.innerHTML = '已作废 <span>' + cancelledCount + '</span>';
+}
+// 【P26拆解】renderInvoiceFilteredList 主函数（从~148行拆解为4个小子函数+主函数）
 function renderInvoiceFilteredList() {
   var tbody = document.getElementById('invoice-table-body');
   if (!tbody) return;
@@ -12637,30 +12684,18 @@ function renderInvoiceFilteredList() {
     return matchTab && matchSearch && matchStatus && matchType;
   });
   var html = rows.length === 0
-    ? '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">暂无发票记录</td></tr>'
+    ? emptyState('暂无发票记录', 9)
     : rows.map(function(inv) {
-      var statusBadge = inv.status === '已完成' ? '<span class="tbadge green">✅ 已完成</span>'
-        : inv.status === '待处理' ? '<span class="tbadge orange">⏳ 待处理</span>'
-        : inv.status === '开具中' ? '<span class="tbadge blue">🔄 开具中</span>'
-        : '<span class="tbadge gray">❌ 已作废</span>';
-      var typeBadge = inv.type === '普通发票' ? '<span class="tbadge blue">📄 普通发票</span>'
-        : inv.type === '增值税专用' ? '<span class="tbadge purple">🧾 增值税专用</span>'
-        : '<span class="tbadge green">📱 电子发票</span>';
-      var actionBtns = inv.status === '已完成'
-        ? '<button class="action-btn small" onclick="openInvoiceDetailModal(\'' + inv.id + '\')">详情</button><button class="action-btn small" onclick="reissueInvoice(\'' + inv.id + '\')">重开</button>'
-        : inv.status === '待处理' || inv.status === '开具中'
-        ? '<button class="action-btn small" onclick="processInvoice(\'' + inv.id + '\')">处理</button><button class="action-btn small" onclick="openInvoiceDetailModal(\'' + inv.id + '\')">详情</button><button class="action-btn small red" onclick="openInvoiceDeleteModal(\'' + inv.id + '\')">删除</button><button class="action-btn small" onclick="openInvoiceVoidModal(\'' + inv.id + '\')">作废</button>'
-        : '<button class="action-btn small" onclick="openInvoiceDetailModal(\'' + inv.id + '\')">详情</button><button class="action-btn small red" onclick="openInvoiceDeleteModal(\'' + inv.id + '\')">删除</button>';
       return '<tr>' +
         '<td><span style="font-size:11px;font-family:monospace;color:var(--blue);">' + inv.id + '</span></td>' +
         '<td><span style="font-weight:600;">' + inv.company + '</span></td>' +
         '<td>' + (inv.email || '--') + '</td>' +
         '<td>--</td>' +
-        '<td>' + typeBadge + '</td>' +
+        '<td>' + _invTypeBadge(inv.type) + '</td>' +
         '<td><span style="font-weight:600;color:var(--green);">¥' + inv.amount.toFixed(0) + '</span></td>' +
-        '<td>' + statusBadge + '</td>' +
+        '<td>' + _invStatusBadge(inv.status) + '</td>' +
         '<td style="font-size:11px;">' + inv.date + '</td>' +
-        '<td>' + actionBtns + '</td></tr>';
+        '<td>' + _invActionBtns(inv) + '</td></tr>';
     }).join('');
   tbody.innerHTML = html;
   var allCount = invoiceStore.length;
@@ -12668,18 +12703,7 @@ function renderInvoiceFilteredList() {
   var processingCount = invoiceStore.filter(function(i){ return i.status === '开具中'; }).length;
   var doneCount = invoiceStore.filter(function(i){ return i.status === '已完成'; }).length;
   var cancelledCount = invoiceStore.filter(function(i){ return i.status === '已作废'; }).length;
-  var countEl = document.getElementById('inv-filter-count');
-  if (countEl) countEl.textContent = '共 ' + rows.length + ' 条发票';
-  var el = document.getElementById('inv-tab-all');
-  if (el) el.innerHTML = '全部 <span>' + allCount + '</span>';
-  el = document.getElementById('inv-tab-pending');
-  if (el) el.innerHTML = '待处理 <span>' + pendingCount + '</span>';
-  el = document.getElementById('inv-tab-processing');
-  if (el) el.innerHTML = '开具中 <span>' + processingCount + '</span>';
-  el = document.getElementById('inv-tab-done');
-  if (el) el.innerHTML = '已完成 <span>' + doneCount + '</span>';
-  el = document.getElementById('inv-tab-cancelled');
-  if (el) el.innerHTML = '已作废 <span>' + cancelledCount + '</span>';
+  _updateInvoiceTabs(allCount, pendingCount, processingCount, doneCount, cancelledCount);
   var totalEl = document.getElementById('inv-stat-total');
   if (totalEl) totalEl.textContent = allCount;
   var pendingEl = document.getElementById('inv-stat-pending');
