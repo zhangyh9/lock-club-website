@@ -231,6 +231,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .card { background: var(--white); border-radius: 8px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
 .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
 .card-title { font-size: 14px; font-weight: 600; }
+.card-header-right { display: flex; align-items: center; gap: 8px; }
 .card-tabs { display: flex; gap: 6px; }
 .card-tab { padding: 4px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; color: var(--text-light); cursor: pointer; }
 .card-tab.active { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
@@ -356,6 +357,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .tbadge.orange { background: var(--orange-bg); color: var(--orange); }
 .tbadge.red { background: var(--red-bg); color: var(--red); }
 .tbadge.gray { background: var(--bg); color: var(--text-light); }
+.tbadge.purple { background: var(--purple-bg); color: var(--purple); }
+.tbadge.blue { background: var(--blue-bg); color: var(--blue); }
 .action-btn { padding: 5px 12px; background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue); border-radius: 4px; font-size: 12px; cursor: pointer; }
 .action-btn:hover { background: var(--blue); color: white; }
 .action-btn.orange { background: var(--orange-bg); color: var(--orange); border-color: var(--orange); }
@@ -706,9 +709,15 @@ var IOT_CONST = {
 };
 
 // 【P28新增】统一空状态模板（减少15+处inline style）
-function emptyState(msg, colspan) {
+// 【P44增强】统一空状态模板 - 支持icon和block级别空状态
+function emptyState(msg, colspan, isBlock) {
   var col = colspan ? ' colspan="' + colspan + '"' : '';
-  return '<tr><td' + col + ' style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">' + (msg || '暂无数据') + '</td></tr>';
+  var icon = '<div style="font-size:32px;margin-bottom:8px;opacity:0.4;">📭</div>';
+  var content = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">' + icon + '<div>' + (msg || '暂无数据') + '</div></div>';
+  if (isBlock) {
+    return '<div style="display:block;text-align:center;padding:40px;color:var(--text-muted);">' + icon + '<div style="font-size:13px;margin-top:8px;">' + (msg || '暂无数据') + '</div></div>';
+  }
+  return '<tr><td' + col + '>' + content + '</td></tr>';
 }
 
 // ======= 全局页面导航 =======
@@ -2369,7 +2378,7 @@ function clearLogUuidFilter() {
 <tbody id="audit-log-body">
 <tr data-operator="赵飞" data-type="config">
 <td style="font-size:11px;color:var(--text-muted);font-family:monospace;">2026-03-27 10:32:08</td>
-<td><span class="tbadge" style="background:var(--purple-bg);color:var(--purple);font-size:10px;padding:2px 6px;">⚙️ 配置</span></td>
+<td><span class="tbadge purple">⚙️ 配置</span></td>
 <td style="font-size:12px;">修改房间301门锁灵敏度从「高」调整为「中」</td>
 <td style="font-size:11px;font-weight:600;">赵飞</td>
 <td style="font-size:11px;color:var(--text-muted);font-family:monospace;">192.168.1.101</td>
@@ -2393,7 +2402,7 @@ function clearLogUuidFilter() {
 </tr>
 <tr data-operator="张三" data-type="unlock">
 <td style="font-size:11px;color:var(--text-muted);font-family:monospace;">2026-03-27 10:15:33</td>
-<td><span class="tbadge" style="background:var(--blue-bg);color:var(--blue);font-size:10px;padding:2px 6px;">🔓 开锁</span></td>
+<td><span class="tbadge blue">🔓 开锁</span></td>
 <td style="font-size:12px;">手机蓝牙开锁，响应时间 23ms，设备电量 88%</td>
 <td style="font-size:11px;font-weight:600;color:var(--blue);">张三</td>
 <td style="font-size:11px;color:var(--text-muted);font-family:monospace;">--</td>
@@ -2401,7 +2410,7 @@ function clearLogUuidFilter() {
 </tr>
 <tr data-operator="周敏" data-type="config">
 <td style="font-size:11px;color:var(--text-muted);font-family:monospace;">2026-03-26 16:20:05</td>
-<td><span class="tbadge" style="background:var(--purple-bg);color:var(--purple);font-size:10px;padding:2px 6px;">⚙️ 配置</span></td>
+<td><span class="tbadge purple">⚙️ 配置</span></td>
 <td style="font-size:12px;">修改房间301温控策略从「自动」切换为「节能模式」</td>
 <td style="font-size:11px;font-weight:600;">周敏</td>
 <td style="font-size:11px;color:var(--text-muted);font-family:monospace;">192.168.1.102</td>
@@ -2409,7 +2418,7 @@ function clearLogUuidFilter() {
 </tr>
 <tr data-operator="赵飞" data-type="auth">
 <td style="font-size:11px;color:var(--text-muted);font-family:monospace;">2026-03-26 14:25:18</td>
-<td><span class="tbadge" style="background:var(--red-bg);color:var(--red);font-size:10px;padding:2px 6px;">🔐 权限</span></td>
+<td><span class="tbadge red">🔐 权限</span></td>
 <td style="font-size:12px;">删除客人王五的临时密码权限（退房触发）</td>
 <td style="font-size:11px;font-weight:600;">赵飞</td>
 <td style="font-size:11px;color:var(--text-muted);font-family:monospace;">192.168.1.101</td>
@@ -2417,7 +2426,7 @@ function clearLogUuidFilter() {
 </tr>
 <tr data-operator="系统" data-type="device">
 <td style="font-size:11px;color:var(--text-muted);font-family:monospace;">2026-03-26 03:00:00</td>
-<td><span class="tbadge" style="background:var(--blue-bg);color:var(--blue);font-size:10px;padding:2px 6px;">📱 设备</span></td>
+<td><span class="tbadge blue">📱 设备</span></td>
 <td style="font-size:12px;">设备固件自动检查完成，当前版本 v2.3.1，已是最新</td>
 <td style="font-size:11px;font-weight:600;color:var(--text-muted);">系统</td>
 <td style="font-size:11px;color:var(--text-muted);font-family:monospace;">--</td>
