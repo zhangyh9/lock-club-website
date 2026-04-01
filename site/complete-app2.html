@@ -711,7 +711,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .border-b { border-bottom:1px solid var(--border); }
 .border-b-strong { border-bottom: 2px solid var(--border); }
 .border-t { border-top:1px solid var(--border); }
-.mt-4 { margin-top: 4px; }
 .bg-muted { background: var(--bg); }
 .icon-xl { font-size: 28px; }
 .icon-lg { font-size: 22px; }
@@ -748,6 +747,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 }
 
 /* ===== P94: 弹窗移动端全屏显示 ===== */
+/* 【P37新增】虚拟滚动样式 */
+.virtual-list { height: 400px; overflow-y: auto; position: relative; }
+.virtual-list-inner { position: relative; }
+.virtual-row { position: absolute; width: 100%; left: 0; box-sizing: border-box; }
+.virtual-spacer { width: 100%; }
+/* 【P77】搜索建议样式 */
+.search-suggestion-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.search-suggestion-item:last-child { border-bottom: none; }
+.search-suggestion-item:hover { background: var(--bg); }
+
+/* 【P52】告警过期样式 */
+.alert-expired { opacity: 0.5; text-decoration: line-through; }
+
 @media (max-width: 480px) {
   .modal-content { width: 100% !important; max-height: 100vh; border-radius: 0; }
 }
@@ -767,6 +785,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .sidebar .menu-item.active span { color: #fff !important; }
 </style>
 <script>
+// 【P37新增】虚拟滚动工具函数
+window.createVirtualList = function(containerId, rowHeight, renderRow) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const scrollTop = container.scrollTop;
+  const viewportHeight = container.clientHeight;
+  const totalHeight = container._vTotalHeight || 0;
+  const startIdx = Math.floor(scrollTop / rowHeight);
+  const endIdx = Math.min(startIdx + Math.ceil(viewportHeight / rowHeight) + 2, container._vTotalRows || 0);
+  const visibleRows = [];
+  for (let i = startIdx; i < endIdx; i++) {
+    visibleRows.push({ idx: i, top: i * rowHeight });
+  }
+  let html = `<div class="virtual-list-inner" style="height:${totalHeight}px">`;
+  for (const row of visibleRows) {
+    html += `<div class="virtual-row" style="top:${row.top}px">${renderRow(row.idx)}</div>`;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+  container.onscroll = function() { window.createVirtualList(containerId, rowHeight, renderRow); };
+};
+
 // 【安全修复】强制隐藏所有.hidden模态框，防止加载时显示
 (function(){
   var mods=document.querySelectorAll(".modal-overlay.hidden");
@@ -780,6 +820,269 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     mods[i].style.setProperty("overflow","hidden","important");
   }
 })();
+
+// ======= 图表工具函数（P86-P90） =======
+function drawPieChart(canvasId, data, colors, title) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var cx = canvas.width / 2, cy = canvas.height / 2, r = Math.min(cx, cy) - 10;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  var total = data.reduce(function(a, b){ return a + b.value; }, 0);
+  if (total === 0) return;
+  var startAngle = -Math.PI / 2;
+  data.forEach(function(item, i) {
+    var sliceAngle = (item.value / total) * 2 * Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, startAngle + sliceAngle);
+    ctx.closePath();
+    ctx.fillStyle = colors[i] || '#888';
+    ctx.fill();
+    var midAngle = startAngle + sliceAngle / 2;
+    var labelX = cx + (r + 18) * Math.cos(midAngle);
+    var labelY = cy + (r + 18) * Math.sin(midAngle);
+    ctx.fillStyle = '#333';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(item.label, labelX, labelY + 3);
+    startAngle += sliceAngle;
+  });
+  ctx.fillStyle = '#333';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(title, 6, 14);
+}
+
+function drawBarChart(canvasId, data, colors, title) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  var maxVal = Math.max.apply(null, data.map(function(d){ return d.value; })) || 100;
+  var barWidth = (canvas.width - 40) / data.length - 8;
+  var chartH = canvas.height - 40;
+  // Y轴
+  ctx.strokeStyle = '#e0e0e0';
+  ctx.lineWidth = 1;
+  [0, 0.5, 1].forEach(function(pct) {
+    var y = 20 + chartH * (1 - pct);
+    ctx.beginPath();
+    ctx.moveTo(30, y);
+    ctx.lineTo(canvas.width - 10, y);
+    ctx.stroke();
+    ctx.fillStyle = '#999';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxVal * pct) + '%', 28, y + 3);
+  });
+  // 柱子
+  data.forEach(function(item, i) {
+    var barH = (item.value / maxVal) * chartH;
+    var x = 36 + i * (barWidth + 8);
+    var y = 20 + chartH - barH;
+    ctx.fillStyle = colors[i] || '#888';
+    ctx.fillRect(x, y, barWidth, barH);
+    // 标签
+    ctx.fillStyle = '#333';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(item.label, x + barWidth / 2, canvas.height - 6);
+    // 数值
+    ctx.fillText(item.value + '%', x + barWidth / 2, y - 4);
+  });
+  // 标题
+  ctx.fillStyle = '#333';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(title, 6, 14);
+}
+
+function drawLineChart(canvasId, datasets, labels, title) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  var w = canvas.width, h = canvas.height;
+  var padL = 35, padR = 10, padT = 20, padB = 30;
+  var chartW = w - padL - padR, chartH = h - padT - padB;
+  var allVals = datasets.reduce(function(a, ds){ return a.concat(ds.data); }, []);
+  var maxVal = Math.max.apply(null, allVals) || 100;
+  var minVal = 0;
+  var range = maxVal - minVal || 1;
+  // 背景网格
+  ctx.strokeStyle = '#f0f0f0';
+  ctx.lineWidth = 1;
+  [0, 0.25, 0.5, 0.75, 1].forEach(function(pct) {
+    var y = padT + chartH * (1 - pct);
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(padL + chartW, y);
+    ctx.stroke();
+    ctx.fillStyle = '#999';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxVal * (1 - pct)), padL - 4, y + 3);
+  });
+  // Y轴
+  ctx.strokeStyle = '#e0e0e0';
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, padT + chartH);
+  ctx.stroke();
+  // 绘制每条线
+  datasets.forEach(function(ds, di) {
+    var stepX = chartW / (ds.data.length - 1 || 1);
+    // 面积
+    ctx.beginPath();
+    ds.data.forEach(function(v, i) {
+      var x = padL + i * stepX;
+      var y = padT + chartH * (1 - (v - minVal) / range);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.lineTo(padL + (ds.data.length - 1) * stepX, padT + chartH);
+    ctx.lineTo(padL, padT + chartH);
+    ctx.closePath();
+    ctx.fillStyle = ds.color + '22';
+    ctx.fill();
+    // 线
+    ctx.beginPath();
+    ds.data.forEach(function(v, i) {
+      var x = padL + i * stepX;
+      var y = padT + chartH * (1 - (v - minVal) / range);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = ds.color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 点
+    ds.data.forEach(function(v, i) {
+      var x = padL + i * stepX;
+      var y = padT + chartH * (1 - (v - minVal) / range);
+      ctx.beginPath();
+      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = ds.color;
+      ctx.fill();
+    });
+  });
+  // X轴标签
+  labels.forEach(function(l, i) {
+    var x = padL + i * (chartW / (labels.length - 1 || 1));
+    ctx.fillStyle = '#999';
+    ctx.font = '8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(l, x, h - 6);
+  });
+  // 标题
+  ctx.fillStyle = '#333';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(title, 6, 14);
+  // 图例
+  var legendX = w - 10;
+  datasets.forEach(function(ds, i) {
+    var lx = legendX - (datasets.length - i) * 55;
+    ctx.fillStyle = ds.color;
+    ctx.fillRect(lx, 4, 10, 8);
+    ctx.fillStyle = '#555';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(ds.label, lx + 13, 11);
+  });
+}
+
+function drawRadarChart(canvasId, data, colors, title) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  var cx = canvas.width / 2, cy = canvas.height / 2 + 10;
+  var r = Math.min(cx, cy) - 25;
+  var n = data.length;
+  var step = (Math.PI * 2) / n;
+  // 同心多边形（背景）
+  [0.25, 0.5, 0.75, 1].forEach(function(pct) {
+    ctx.beginPath();
+    data.forEach(function(item, i) {
+      var angle = -Math.PI / 2 + i * step;
+      var x = cx + r * pct * Math.cos(angle);
+      var y = cy + r * pct * Math.sin(angle);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+  // 轴线
+  data.forEach(function(item, i) {
+    var angle = -Math.PI / 2 + i * step;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // 标签
+    var lx = cx + (r + 18) * Math.cos(angle);
+    var ly = cy + (r + 18) * Math.sin(angle);
+    ctx.fillStyle = '#333';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(item.label, lx, ly + 3);
+  });
+  // 数据区域
+  ctx.beginPath();
+  data.forEach(function(item, i) {
+    var angle = -Math.PI / 2 + i * step;
+    var x = cx + r * (item.value / 100) * Math.cos(angle);
+    var y = cy + r * (item.value / 100) * Math.sin(angle);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.fillStyle = colors[0] + '44';
+  ctx.fill();
+  ctx.strokeStyle = colors[0];
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // 数据点
+  data.forEach(function(item, i) {
+    var angle = -Math.PI / 2 + i * step;
+    var x = cx + r * (item.value / 100) * Math.cos(angle);
+    var y = cy + r * (item.value / 100) * Math.sin(angle);
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = colors[0];
+    ctx.fill();
+  });
+  // 标题
+  ctx.fillStyle = '#333';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(title, 6, 14);
+}
+
+// P88: 告警类型分布饼图
+window.drawAlertPieChart = function() {
+  drawPieChart('chart-alert-pie', [
+    {label:'低电量告警', value:12},
+    {label:'离线告警', value:7},
+    {label:'门锁异常', value:4},
+    {label:'其他', value:3}
+  ], ['#fa8c16','#ff4d4f','#722ed1','#999'], '告警类型分布');
+};
+
+// P89: 开锁方式趋势折线图
+window.drawUnlockLineChart = function() {
+  var labels = ['03-20','03-21','03-22','03-23','03-24','03-25','03-26'];
+  var datasets = [
+    {label:'蓝牙', color:'#1890ff', data:[12,15,18,14,20,22,25]},
+    {label:'密码', color:'#52c41a', data:[5,6,4,7,5,8,6]},
+    {label:'指纹', color:'#722ed1', data:[8,9,10,8,11,12,10]},
+    {label:'远程', color:'#fa8c16', data:[3,2,4,3,5,4,6]}
+  ];
+  drawLineChart('chart-unlock-line', datasets, labels, '开锁方式趋势');
+};
 
 // ======= 全局防抖节流工具函数（P60） =======
 function debounce(fn, delay) {
@@ -980,7 +1283,7 @@ function showPage(pageName) {
     item.classList.remove('active');
   });
   var menuMap = {
-    'home':'home','dashboard':'dashboard','alert':'alert','notif':'notif',
+    'home':'home','monitor':'monitor','alert':'alert','notif':'notif',
     'log':'log','room-detail':'room-detail','floor':'floor','building':'building',
     'records':'records','housekeeping':'housekeeping','device':'device',
     'device-detail':'device-detail','energy':'energy','workorder':'workorder',
@@ -996,12 +1299,12 @@ function showPage(pageName) {
     sidebar.style.width = '200px';
   }
   // 页面切换后初始化对应页面特有功能if (pageName === 'records') { setTimeout(function(){ renderRecordTable && renderRecordTable(); }, 100); }
-  if (pageName === 'log') { setTimeout(function(){ renderUnlockLogStats && renderUnlockLogStats(); }, 100); }
+  if (pageName === 'log') { setTimeout(function(){ renderUnlockLogStats && renderUnlockLogStats(); drawUnlockLineChart && drawUnlockLineChart(); }, 100); }
   if (pageName === 'workorder') { setTimeout(function(){ renderWorkorderSLATable && renderWorkorderSLATable(); renderWorkorderSLAMiniList && renderWorkorderSLAMiniList(); injectWorkorderCompleteButton && injectWorkorderCompleteButton(); }, 100); }
   if (pageName === 'energy') { setTimeout(function(){ renderEnergyChart && renderEnergyChart(); }, 100); }
   if (pageName === 'device') { setTimeout(function(){ refreshDeviceTable && refreshDeviceTable(); }, 100); }
   if (pageName === 'roles') { setTimeout(function(){ renderRoleTable && renderRoleTable(); }, 100); }
-  if (pageName === 'alert') { setTimeout(function(){ injectAlertDetailButton && injectAlertDetailButton(); }, 300); }
+  if (pageName === 'alert') { setTimeout(function(){ injectAlertDetailButton && injectAlertDetailButton(); drawAlertPieChart && drawAlertPieChart(); }, 300); }
   if (pageName === 'oplog') { setTimeout(function(){ enhanceOplogSearchUI && enhanceOplogSearchUI(); }, 500); }
   if (pageName === 'config') { setTimeout(function(){ enhanceOplogSearchUI && enhanceOplogSearchUI(); }, 500); }
   window.scrollTo(0, 0);
@@ -1064,6 +1367,168 @@ document.addEventListener('keydown', window._escKeyHandler);
 function openStaffSchedulePage() { showToast('员工排班功能已转移至PMS系统', 'info'); }
 
 // ============================================================
+// 【P51+P52+P79+P79】告警聚合+自动过期+时间范围筛选
+// ============================================================
+var _alertViewMode = 'list'; // 'list' | 'aggregation'
+
+function getAlertAggregations(alerts) {
+  var agg = {};
+  (alerts || []).forEach(function(a) {
+    var key = a.type + '_' + (a.deviceId || a.room || '');
+    if (!agg[key]) agg[key] = { type: a.type, deviceId: a.deviceId || '', deviceName: a.room || a.device || '', count: 0, latest: a.time };
+    agg[key].count++;
+    if (new Date(a.time) > new Date(agg[key].latest)) agg[key].latest = a.time;
+  });
+  return Object.values(agg).sort(function(a, b) { return b.count - a.count; });
+}
+
+function renderAlertAggregations() {
+  var agg = getAlertAggregations(window.currentAlertList || []);
+  var container = document.getElementById('alert-list-container');
+  if (!container) return;
+  var html = '<div style="padding:16px;">';
+  html += '<div style="margin-bottom:12px;color:var(--text-muted);font-size:12px;">共 ' + (window.currentAlertList ? window.currentAlertList.length : 0) + ' 条告警，聚合为 ' + agg.length + ' 组</div>';
+  if (agg.length === 0) {
+    html += '<div style="text-align:center;padding:40px;color:var(--text-muted);">暂无告警数据</div>';
+  } else {
+    agg.forEach(function(item) {
+      var badge = item.count > 5 ? '🔴' : item.count > 2 ? '🟡' : '⚪';
+      html += '<div class="flex-between" style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">' +
+        '<span>' + badge + ' ' + (item.type || '') + ' - ' + (item.deviceName || '') + '</span>' +
+        '<span style="padding:2px 8px;background:var(--red-bg);color:var(--red);border-radius:10px;font-size:11px;font-weight:600;margin-left:8px;">' + item.count + '次</span>' +
+        '</div>';
+    });
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function renderAlertTable(alertList) {
+  // Reusable renderer for time-range filtered results
+  var tbody = document.getElementById('alert-table-body');
+  if (!tbody || !alertList || alertList.length === 0) {
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">暂无告警数据</td></tr>';
+    return;
+  }
+  var html = '';
+  alertList.forEach(function(d, i) {
+    var statusClass = d.status === '待处理' ? 'orange' : d.status === '已处理' || d.status === '已恢复' ? 'green' : 'gray';
+    var badgeClass = statusClass === 'orange' ? 'red' : statusClass;
+    html += '<tr data-status="' + (d._status || 'pending') + '">' +
+      '<td><span class="tbadge ' + badgeClass + '">' + (d.typeLabel || d.type || '⚠️ 告警') + '</span></td>' +
+      '<td>' + (d.room || '') + '</td>' +
+      '<td>' + (d.detail || '') + '</td>' +
+      '<td>' + (d.time || '') + '</td>' +
+      '<td><span class="tbadge ' + statusClass + '">' + (d.status || '待处理') + '</span></td>' +
+      '<td><button class="action-btn" onclick="openAlertModalV2(' + i + ')">' + (d.status === '待处理' ? '处理' : '查看') + '</button></td>' +
+      '</tr>';
+  });
+  tbody.innerHTML = html;
+  markExpiredAlerts();
+}
+
+function markExpiredAlerts() {
+  if (!window.currentAlertList) return;
+  var now = Date.now();
+  var EXPIRE_MS = 24 * 60 * 60 * 1000;
+  window.currentAlertList.forEach(function(alert) {
+    if (!alert.expired && alert.time && (now - new Date(alert.time).getTime()) > EXPIRE_MS) {
+      alert.expired = true;
+    }
+  });
+  // Apply expired style to table rows
+  var tbody = document.getElementById('alert-table-body');
+  if (!tbody) return;
+  var rows = tbody.querySelectorAll('tr');
+  rows.forEach(function(row) {
+    var cells = row.querySelectorAll('td');
+    var timeCell = cells[3]; // time column
+    if (timeCell && timeCell.textContent) {
+      var timeStr = timeCell.textContent.trim();
+      // Try parse time like "10小时前", "2小时前", "昨天 15:30"
+      var hourMatch = timeStr.match(/(\d+)小时前/);
+      if (hourMatch && parseInt(hourMatch[1]) > 24) {
+        row.style.opacity = '0.5';
+        row.style.textDecoration = 'line-through';
+      }
+    }
+  });
+}
+
+function filterAlertsByTimeRange(range) {
+  if (!window.currentAlertList) return;
+  var now = Date.now();
+  var ranges = { '1h': 3600000, '24h': 86400000, '7d': 604800000, '30d': 2592000000 };
+  if (range === 'all') {
+    renderAlertTable(window.currentAlertList);
+    showToast('显示全部 ' + window.currentAlertList.length + ' 条告警', 'info');
+    return;
+  }
+  var cutoff = now - (ranges[range] || 0);
+  var filtered = window.currentAlertList.filter(function(a) { return a.time && new Date(a.time).getTime() > cutoff; });
+  renderAlertTable(filtered);
+  showToast('筛选结果：' + filtered.length + ' 条告警', 'info');
+}
+
+function switchAlertView(mode) {
+  _alertViewMode = mode;
+  var listBtn = document.getElementById('alert-view-list-btn');
+  var aggBtn = document.getElementById('alert-view-agg-btn');
+  var tableSection = document.getElementById('alert-table-section');
+  var aggContainer = document.getElementById('alert-list-container');
+  if (mode === 'list') {
+    if (listBtn) { listBtn.style.background = 'var(--blue)'; listBtn.style.color = 'white'; }
+    if (aggBtn) { aggBtn.style.background = ''; aggBtn.style.color = ''; }
+    if (tableSection) tableSection.style.display = '';
+    if (aggContainer) aggContainer.style.display = 'none';
+    // Re-render current filter state
+    filterAlertTable(_alertCurrentTab, document.querySelector('#page-alert .card-tabs .active'));
+  } else {
+    if (aggBtn) { aggBtn.style.background = 'var(--blue)'; aggBtn.style.color = 'white'; }
+    if (listBtn) { listBtn.style.background = ''; listBtn.style.color = ''; }
+    if (tableSection) tableSection.style.display = 'none';
+    if (aggContainer) aggContainer.style.display = '';
+    // Sync currentAlertList from existing table data before aggregation
+    if (!window.currentAlertList || window.currentAlertList.length === 0) {
+      var rows = document.querySelectorAll('#alert-table-body tr');
+      window.currentAlertList = [];
+      rows.forEach(function(row) {
+        var cells = row.querySelectorAll('td');
+        if (cells.length >= 5) {
+          window.currentAlertList.push({
+            type: cells[0].textContent.trim(),
+            room: cells[1].textContent.trim(),
+            detail: cells[2].textContent.trim(),
+            time: cells[3].textContent.trim(),
+            status: cells[4].querySelector('.tbadge') ? cells[4].querySelector('.tbadge').textContent.trim() : '',
+            _status: row.getAttribute('data-status') || 'pending'
+          });
+        }
+      });
+    }
+    renderAlertAggregations();
+  }
+}
+
+// ============================================================
+// 【P71】设备列表筛选后导出
+// ============================================================
+function exportFilteredDevices() {
+  var filtered = getFilteredDeviceList ? getFilteredDeviceList() : (window.devicePool || deviceData);
+  if (filtered.length === 0) { showToast('没有可导出的设备', 'warning'); return; }
+  var csv = '\uFEFF设备UUID,房间号,设备型号,电量,信号强度,在线状态,最后同步时间\n';
+  filtered.forEach(function(d) {
+    csv += (d.uuid||'') + ',' + (d.room||'') + ',' + (d.model||'') + ',' + (d.battery||'') + '%,' + (d.signal||'') + ',' + (d.status||'') + ',' + (d.lastSync||'') + '\n';
+  });
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '设备列表_' + new Date().toLocaleDateString().replace(/\//g, '-') + '.csv';
+  a.click();
+  showToast('已导出 ' + filtered.length + ' 台设备', 'success');
+}
+
+// ============================================================
 // 【物联后台 v3.6 改进 3】设备列表导出功能（exportDeviceList）
 // 设备列表CSV导出功能
 // 功能：导出当前设备列表为CSV文件，包含设备UUID/房间/电量/信号/状态/最后同步时间。
@@ -1074,18 +1539,7 @@ function openStaffSchedulePage() { showToast('员工排班功能已转移至PMS�
  * @returns {void}
  */
 function exportDeviceCSV() {
-  // 【P75修复】导出当前筛选条件下的设备列表，而非全部数据
-  var filtered = getFilteredDeviceList ? getFilteredDeviceList() : deviceData;
-  var csv = '\uFEFF设备UUID,房间号,设备型号,电量,信号强度,在线状态,最后同步时间\n';
-  filtered.forEach(function(d) {
-    csv += d.uuid + ',' + d.room + ',' + d.model + ',' + d.battery + '%,' + d.signal + ',' + d.status + ',' + d.lastSync + '\n';
-  });
-  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = '设备列表_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv';
-  a.click();
-  showToast('📤 已导出筛选结果（' + filtered.length + ' 台设备）', 'success');
+  exportFilteredDevices();
 }
 
 // 【P73改进】导出开锁记录支持按时间段筛选
@@ -1383,7 +1837,7 @@ function showToast(msg, type) {
 <div class="menu-group">
 <div class="menu-item" onclick="showPage('device')" title="设备列表"><span class="icon">📱</span><span>设备列表</span></div>
 <div class="menu-item" onclick="showPage('device-detail')" title="设备详情"><span class="icon">🔍</span><span>设备详情</span></div>
-<div class="menu-item" onclick="showPage('dashboard')" title="看板"><span class="icon">📈</span><span>看板</span></div>
+<div class="menu-item" onclick="showPage('monitor')" title="设备监控"><span class="icon">📈</span><span>设备监控</span></div>
 </div>
 <!-- 【P20重整】事件记录分组 -->
 <div class="menu-group-title" onclick="toggleGroup(this)">📋 事件记录 <span class="group-arrow">▼</span></div>
@@ -1402,7 +1856,7 @@ function showToast(msg, type) {
 <div id="global-search-bar" style="position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--white);border-bottom:1px solid var(--border);padding:10px 20px;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
 <div style="max-width:640px;margin:0 auto;display:flex;gap:8px;align-items:center;">
 <div style="position:relative;flex:1;">
-<input id="global-search-overlay-input" oninput="debounceGlobalSearch(this.value)" onkeydown="if(event.key==='Enter'){performGlobalSearch(this.value);}else if(event.key==='Escape')closeGlobalSearch()" placeholder="🔍 全局搜索：房间号 / 设备UUID / 客户姓名 / 工单号 / 手机号 / 会员手机" style="width:100%;padding:8px 12px 8px 36px;border:2px solid var(--blue);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" type="text"/>
+<input id="global-search-overlay-input" onfocus="showSearchHistoryOnFocus()" oninput="debounceGlobalSearch(this.value)" onkeydown="if(event.key==='Enter'){performGlobalSearch(this.value);}else if(event.key==='Escape')closeGlobalSearch()" placeholder="🔍 全局搜索：房间号 / 设备UUID / 客户姓名 / 工单号 / 手机号 / 会员手机" style="width:100%;padding:8px 12px 8px 36px;border:2px solid var(--blue);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" type="text"/>
 <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;">🔍</span>
 </div>
 <button onclick="closeGlobalSearch()" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--text-muted);padding:4px 8px;">✕ 关闭</button>
@@ -1447,7 +1901,7 @@ function showToast(msg, type) {
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
 <input id="home-room-search" placeholder="🔍 搜索房间号/设备..." oninput="debounceFilterRooms(this.value)" class="room-search-input">
 <select id="home-room-filter" onchange="renderRoomGrid(this.value)" class="room-filter-select">
-<option value="all">全部房间</option><option value="occupied">在住</option><option value="empty">离线</option><option value="alert">告警/维修</option>
+<option value="all">全部房间</option><option value="occupied">在线</option><option value="empty">离线</option><option value="alert">告警/维修</option>
 </select>
 <button onclick="renderRoomGrid(document.getElementById('home-room-filter').value)" class="room-refresh-btn">🔄 刷新</button>
 </div>
@@ -1473,9 +1927,9 @@ function filterRoomsByKeyword(kw) {
 </div>
 </div>
 </div>
-<div class="page" id="page-dashboard">
+<div class="page" id="page-monitor">
 <div class="page-header">
-<div class="page-title">📊 看板统计</div>
+<div class="page-title">📊 设备监控</div>
 </div>
 <!-- 【改进3】首页顶部实时同步进度条（30秒倒计时+设备在线状态动态刷新） -->
 <div style="margin-bottom:16px;padding:10px 14px;background:var(--white);border:1px solid var(--border);border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
@@ -1498,7 +1952,7 @@ function filterRoomsByKeyword(kw) {
 <button class="action-btn small" onclick="manualSync()" style="padding:3px 10px;font-size:11px;" title="立即同步数据">🔄 立即同步</button>
 </div>
 </div>
-<div class="page-sub">运营数据总览 · <span id="dashboard-last-update" style="color:var(--blue);font-size:12px;">--</span> · <span id="dashboard-refresh-countdown" style="color:var(--orange);font-weight:600;font-size:12px;">30s</span> 后自动刷新</div>
+<div class="page-sub">运营数据总览 · <span id="monitor-last-update" style="color:var(--blue);font-size:12px;">--</span> · <span id="monitor-refresh-countdown" style="color:var(--orange);font-weight:600;font-size:12px;">30s</span> 后自动刷新</div>
 <div id="device-status">
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
@@ -1508,7 +1962,7 @@ function filterRoomsByKeyword(kw) {
 <div class="card-title">📡 设备实时状态</div>
 <div style="display:flex;align-items:center;gap:8px;">
 <div id="online-pulse" style="width:8px;height:8px;background:var(--green);border-radius:50%;animation:onlinePulse 2s ease-in-out infinite;"></div>
-<span id="dashboard-device-status" style="font-size:11px;color:var(--green);font-weight:600;">11/16 在线</span>
+<span id="monitor-device-status" style="font-size:11px;color:var(--green);font-weight:600;">11/16 在线</span>
 </div>
 </div>
 <div class="card-body" style="padding:12px;">
@@ -1578,18 +2032,18 @@ function filterRoomsByKeyword(kw) {
 </div>
 </div>
 </div>
-<!-- 【改进1】看板数据大屏Tab视图切换（4个视角：实时概览/入住分析/设备状态/收入统计） -->
+<!-- 【改进1】设备监控数据大屏Tab视图切换（4个视角：实时概览/设备状态/告警统计/能耗概览） -->
 <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;background:var(--white);border:1px solid var(--border);border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
-<div id="dashboard-view-tabs" style="display:flex;gap:4px;flex:1;">
-<button class="dv-tab active" id="dvtab-overview" onclick="switchDashboardView('overview')">📊 实时概览</button>
-<button class="dv-tab" id="dvtab-device" onclick="switchDashboardView('device')">📱 设备状态</button>
-<button class="dv-tab" id="dvtab-alert" onclick="switchDashboardView('alert')">🔔 告警统计</button>
-<button class="dv-tab" id="dvtab-energy" onclick="switchDashboardView('energy')">⚡ 能耗概览</button>
+<div id="monitor-view-tabs" style="display:flex;gap:4px;flex:1;">
+<button class="dv-tab active" id="mvtab-overview" onclick="switchMonitorView('overview')">📊 实时概览</button>
+<button class="dv-tab" id="mvtab-device" onclick="switchMonitorView('device')">📱 设备状态</button>
+<button class="dv-tab" id="mvtab-alert" onclick="switchMonitorView('alert')">🔔 告警统计</button>
+<button class="dv-tab" id="mvtab-energy" onclick="switchMonitorView('energy')">⚡ 能耗概览</button>
 </div>
 </div>
 </div>
 <!-- 实时概览视图 -->
-<div id="dv-panel-overview">
+<div id="mv-panel-overview">
 <div class="stats-row">
 <div class="stat-card">
 <div class="stat-icon stat-icon-blue">🔓</div>
@@ -1610,22 +2064,22 @@ function filterRoomsByKeyword(kw) {
 </div>
 </div>
 <!-- 告警统计视图 -->
-<div id="dv-panel-alert" style="display:none;">
+<div id="mv-panel-alert" style="display:none;">
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
 <div style="padding:16px;background:var(--red-bg);border-radius:10px;text-align:center;">
 <div style="font-size:11px;color:var(--red);margin-bottom:4px;">🔴 待处理告警</div>
 <div style="font-size:28px;font-weight:700;color:var(--red);" id="dv-alert-pending">3</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">需要立即处理</div>
+<div class="txt-muted mt-4">需要立即处理</div>
 </div>
 <div style="padding:16px;background:var(--orange-bg);border-radius:10px;text-align:center;">
 <div style="font-size:11px;color:var(--orange);margin-bottom:4px;">🟡 处理中</div>
 <div style="font-size:28px;font-weight:700;color:var(--orange);" id="dv-alert-processing">1</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">正在处理</div>
+<div class="txt-muted mt-4">正在处理</div>
 </div>
 <div style="padding:16px;background:var(--green-bg);border-radius:10px;text-align:center;">
 <div style="font-size:11px;color:var(--green);margin-bottom:4px;">✅ 今日已处理</div>
 <div style="font-size:28px;font-weight:700;color:var(--green);" id="dv-alert-done">12</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">今日处理完成</div>
+<div class="txt-muted mt-4">今日处理完成</div>
 </div>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
@@ -1710,7 +2164,7 @@ function filterRoomsByKeyword(kw) {
 </div>
 </div>
 <!-- 设备状态视图 -->
-<div id="dv-panel-device" style="display:none;">
+<div id="mv-panel-device" style="display:none;">
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
 <div style="padding:14px;background:var(--green-bg);border-radius:10px;text-align:center;">
 <div style="font-size:26px;font-weight:700;color:var(--green);">11</div>
@@ -1785,27 +2239,27 @@ function filterRoomsByKeyword(kw) {
 </div>
 <!-- 收入统计视图 -->
 <!-- 能耗概览视图 -->
-<div id="dv-panel-energy" style="display:none;">
+<div id="mv-panel-energy" style="display:none;">
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
 <div style="padding:16px;background:var(--blue-bg);border-radius:10px;text-align:center;">
 <div style="font-size:11px;color:var(--blue);margin-bottom:4px;">今日用电</div>
 <div style="font-size:22px;font-weight:700;color:var(--blue);">186<span style="font-size:14px;">kWh</span></div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">较昨日 -5%</div>
+<div class="txt-muted mt-4">较昨日 -5%</div>
 </div>
 <div style="padding:16px;background:var(--green-bg);border-radius:10px;text-align:center;">
 <div style="font-size:11px;color:var(--green);margin-bottom:4px;">本月用电</div>
 <div style="font-size:22px;font-weight:700;color:var(--green);">4,280<span style="font-size:14px;">kWh</span></div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">较上月 -8%</div>
+<div class="txt-muted mt-4">较上月 -8%</div>
 </div>
 <div style="padding:16px;background:var(--orange-bg);border-radius:10px;text-align:center;">
 <div style="font-size:11px;color:var(--orange);margin-bottom:4px;">预估电费</div>
 <div style="font-size:22px;font-weight:700;color:var(--orange);">¥2,140</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">本月预估</div>
+<div class="txt-muted mt-4">本月预估</div>
 </div>
 <div style="padding:16px;background:var(--purple-bg);border-radius:10px;text-align:center;">
 <div style="font-size:11px;color:var(--purple);margin-bottom:4px;">节能率</div>
 <div style="font-size:22px;font-weight:700;color:var(--purple);">12<span style="font-size:14px;">%</span></div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">较上月提升</div>
+<div class="txt-muted mt-4">较上月提升</div>
 </div>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -1937,10 +2391,21 @@ function filterRoomsByKeyword(kw) {
 <select id="alert-type-filter" onchange="applyAlertTypeFilter()" style="padding:4px 8px;font-size:11px;border:1px solid var(--border);border-radius:6px;">
 <option value="">全部类型</option><option value="offline">🔴 设备离线</option><option value="lowbat">🟡 低电量</option><option value="door">🚪 门锁异常</option><option value="temp">🌡️ 温度告警</option>
 </select>
+<!-- 【P79】告警时间范围筛选 -->
+<select id="alert-time-range" onchange="filterAlertsByTimeRange(this.value)" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:11px;">
+<option value="all">全部时间</option>
+<option value="1h">最近1小时</option>
+<option value="24h">最近24小时</option>
+<option value="7d">最近7天</option>
+<option value="30d">最近30天</option>
+</select>
+<!-- 【P51】告警聚合视图切换 -->
+<button id="alert-view-list-btn" class="action-btn small" onclick="switchAlertView('list')" style="padding:3px 8px;font-size:11px;background:var(--blue);color:white;" title="列表视图">📋 列表</button>
+<button id="alert-view-agg-btn" class="action-btn small" onclick="switchAlertView('aggregation')" style="padding:3px 8px;font-size:11px;" title="聚合视图">🔗 聚合</button>
 <button class="action-btn small" onclick="refreshAlertTable()" style="padding:3px 8px;font-size:11px;" title="刷新告警">🔄 刷新</button>
 </div>
 </div>
-<div class="card-body">
+<div class="card-body" id="alert-table-section">
 <table class="table">
 <thead><tr><th>告警类型</th><th>设备/房间</th><th>详情</th><th>时间</th><th>状态</th><th>操作</th></tr></thead>
 <tbody id="alert-table-body">
@@ -1978,6 +2443,16 @@ function filterRoomsByKeyword(kw) {
 </tr>
 </tbody>
 </table>
+</div>
+<!-- 【P51】聚合视图容器 -->
+<div id="alert-list-container" style="display:none;"></div>
+</div>
+</div>
+<!-- P88: 告警类型分布饼图 -->
+<div class="card" style="margin-top:12px;">
+<div class="card-header"><div class="card-title">📊 告警类型分布</div></div>
+<div class="card-body" style="display:flex;justify-content:center;padding:12px;">
+<canvas id="chart-alert-pie" width="300" height="220"></canvas>
 </div>
 </div>
 </div>
@@ -2101,6 +2576,13 @@ function clearLogUuidFilter() {
 </tbody>
 </table>
 </div>
+</div>
+</div>
+<!-- P89: 开锁方式趋势折线图 -->
+<div class="card" style="margin-top:12px;">
+<div class="card-header"><div class="card-title">📈 开锁方式趋势（近7天）</div></div>
+<div class="card-body" style="display:flex;justify-content:center;padding:12px;">
+<canvas id="chart-unlock-line" width="400" height="200"></canvas>
 </div>
 </div>
 </div>
@@ -2338,6 +2820,7 @@ function clearLogUuidFilter() {
 <option value="signal-desc">📡 信号降序</option>
 <option value="alert-first">⚠️ 告警优先</option>
 <option value="room-asc">🏠 房间号升序</option>
+<option value="recentAlert">🔔 最近告警</option>
 </select>
 </div>
 </div>
@@ -2368,6 +2851,8 @@ function clearLogUuidFilter() {
 <!-- JS动态渲染 -->
 </tbody>
 </table>
+<!-- 【P37新增】虚拟滚动容器（设备数量>100时替代表格渲染） -->
+<div id="device-list-virtual" class="virtual-list" style="display:none;"></div>
 <!-- 【改进1】设备分页控件 -->
 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
 <div id="device-pagination-info" class="txt-muted txt-muted-lg">第 1 / 2 页，共 12 条</div>
@@ -2527,7 +3012,7 @@ function clearLogUuidFilter() {
 </div>
 <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
 <button class="action-btn" onclick="generateRoomTempPassword()" style="background:var(--blue);color:white;border:none;padding:6px 14px;">⚡ 生成密码</button>
-<button class="action-btn" id="kf-copy-btn" onclick="copyRoomTempPassword()" style="padding:6px 14px;">📋 复制密码</button>
+<button class="action-btn" id="kf-copy-btn" onclick="copyRoomTempPassword()" class="p-btn-sm">📋 复制密码</button>
 <button class="action-btn" id="kf-send-btn" onclick="sendRoomTempPassword()" style="padding:6px 14px;background:var(--green-bg);color:var(--green);border-color:var(--green);display:none;">📱 发送至客人手机</button>
 <span id="kf-status" style="font-size:12px;color:var(--green);margin-left:8px;display:none;">✅ 已复制到剪贴板</span>
 </div>
@@ -2604,7 +3089,7 @@ function clearLogUuidFilter() {
 <!-- 【改进v3-新】房间审计日志Tab：操作日志+数据变更追踪+操作者IP -->
 <div id="room-content-audit" style="display:none;">
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-<div style="font-size:13px;font-weight:600;">📊 审计日志（全部数据变更操作）</div>
+<div class="txt-subtitle">📊 审计日志（全部数据变更操作）</div>
 <input class="form-input" id="audit-search-input" oninput="filterAuditLog(this.value)" placeholder="搜索操作/操作者…" style="width:180px;padding:5px 10px;font-size:12px;" type="text"/>
 <select class="form-select" id="audit-type-filter" onchange="filterAuditLog(document.getElementById('audit-search-input').value)" style="padding:5px 8px;font-size:12px;width:130px;">
 <option value="all">全部类型</option>
@@ -2822,6 +3307,22 @@ function switchRoomDetailTab(tab, el) {
 </div>
 </div>
 </div>
+<!-- P86-P87: 电量分布饼图 & 信号强度柱状图 -->
+<div class="detail-card" style="margin-top:12px;">
+<div class="detail-card-title">📊 设备数据分布</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;padding:8px 0;">
+<div style="text-align:center;"><canvas id="chart-battery-pie" width="180" height="180"></canvas></div>
+<div style="text-align:center;"><canvas id="chart-signal-bar" width="180" height="180"></canvas></div>
+</div>
+</div>
+<!-- P90: 设备健康度雷达图 -->
+<div class="detail-card" style="margin-top:12px;">
+<div class="detail-card-title">🏥 设备健康度雷达</div>
+<div style="display:flex;justify-content:center;padding:8px 0;">
+<canvas id="chart-health-radar" width="220" height="220"></canvas>
+</div>
+</div>
+</div>
 <div class="detail-right">
 <div class="detail-card">
 <div class="detail-card-title">⚡ 快捷操作</div>
@@ -2846,23 +3347,23 @@ function switchRoomDetailTab(tab, el) {
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
 <div class="detail-card" onclick="openDevActionPanel('unlock')" onmouseout="this.style.borderColor='';this.style.boxShadow=''" onmouseover="this.style.borderColor='var(--blue)';this.style.boxShadow='0 4px 16px rgba(24,144,255,0.2)'" style="text-align:center;cursor:pointer;transition:all 0.2s;">
 <div style="font-size:32px;margin-bottom:8px;">🔓</div>
-<div style="font-size:13px;font-weight:600;">远程开锁</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">远程下发开锁指令</div>
+<div class="txt-subtitle">远程开锁</div>
+<div class="txt-muted mt-4">远程下发开锁指令</div>
 </div>
 <div class="detail-card" onclick="openDevActionPanel('restart')" onmouseout="this.style.borderColor='';this.style.boxShadow=''" onmouseover="this.style.borderColor='var(--orange)';this.style.boxShadow='0 4px 16px rgba(250,140,22,0.2)'" style="text-align:center;cursor:pointer;transition:all 0.2s;">
 <div style="font-size:32px;margin-bottom:8px;">🔁</div>
-<div style="font-size:13px;font-weight:600;">远程重启</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">重启设备门锁离线</div>
+<div class="txt-subtitle">远程重启</div>
+<div class="txt-muted mt-4">重启设备门锁离线</div>
 </div>
 <div class="detail-card" onclick="openDevActionPanel('sync')" onmouseout="this.style.borderColor='';this.style.boxShadow=''" onmouseover="this.style.borderColor='var(--blue)';this.style.boxShadow='0 4px 16px rgba(24,144,255,0.2)'" style="text-align:center;cursor:pointer;transition:all 0.2s;">
 <div style="font-size:32px;margin-bottom:8px;">🔄</div>
-<div style="font-size:13px;font-weight:600;">立即同步</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">拉取最新设备状态</div>
+<div class="txt-subtitle">立即同步</div>
+<div class="txt-muted mt-4">拉取最新设备状态</div>
 </div>
 <div class="detail-card" onclick="openFirmwareUpgradeModal()" onmouseout="this.style.borderColor='';this.style.boxShadow=''" onmouseover="this.style.borderColor='var(--purple)';this.style.boxShadow='0 4px 16px rgba(114,46,209,0.2)'" style="text-align:center;cursor:pointer;transition:all 0.2s;">
 <div style="font-size:32px;margin-bottom:8px;">📦</div>
-<div style="font-size:13px;font-weight:600;">固件升级</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">v2.3.1已是最新</div>
+<div class="txt-subtitle">固件升级</div>
+<div class="txt-muted mt-4">v2.3.1已是最新</div>
 </div>
 </div>
 <!-- 设备操作说明 -->
@@ -2923,19 +3424,19 @@ function switchRoomDetailTab(tab, el) {
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
 <div style="background:white;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;">
 <div style="font-size:22px;font-weight:700;color:var(--blue);">28</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">总开锁次数</div>
+<div class="txt-muted mt-4">总开锁次数</div>
 </div>
 <div style="background:white;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;">
 <div style="font-size:22px;font-weight:700;color:var(--green);">25</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">成功次数</div>
+<div class="txt-muted mt-4">成功次数</div>
 </div>
 <div style="background:white;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;">
 <div style="font-size:22px;font-weight:700;color:var(--orange);">3</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">失败次数</div>
+<div class="txt-muted mt-4">失败次数</div>
 </div>
 <div style="background:white;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;">
 <div style="font-size:22px;font-weight:700;color:var(--purple);">19ms</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">平均响应</div>
+<div class="txt-muted mt-4">平均响应</div>
 </div>
 </div>
 <!-- 开锁记录筛选工具栏 -->
@@ -3107,7 +3608,7 @@ function switchRoomDetailTab(tab, el) {
 <div id="dev-content-binding" style="display:none;">
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
 <div style="display:flex;align-items:center;gap:8px;">
-<div style="font-size:13px;font-weight:600;">🔗 设备绑定历史</div>
+<div class="txt-subtitle">🔗 设备绑定历史</div>
 <div style="font-size:11px;color:var(--text-muted);padding:3px 8px;background:var(--bg);border-radius:4px;">共 <strong id="binding-count">3</strong> 条记录</div>
 </div>
 <button class="action-btn" onclick="openBindNewRoomModal()" style="padding:6px 14px;background:var(--blue);color:white;border:none;font-size:12px;font-weight:600;border-radius:6px;">+ 绑定新房间</button>
@@ -3151,7 +3652,7 @@ function switchRoomDetailTab(tab, el) {
 <div id="dev-content-keys" style="display:none;">
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
 <div style="display:flex;align-items:center;gap:8px;">
-<div style="font-size:13px;font-weight:600;">🔑 钥匙信息 - 301房间</div>
+<div class="txt-subtitle">🔑 钥匙信息 - 301房间</div>
 <div style="font-size:11px;color:var(--text-muted);padding:3px 8px;background:var(--blue-bg);border-radius:4px;">共 <strong id="key-count">4</strong> 张钥匙</div>
 </div>
 <button class="action-btn" onclick="openAddKeyModal()" style="padding:6px 14px;background:var(--green);color:white;border:none;font-size:12px;font-weight:600;border-radius:6px;">+ 添加钥匙</button>
@@ -3160,19 +3661,19 @@ function switchRoomDetailTab(tab, el) {
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
 <div style="padding:12px;background:var(--blue-bg);border-radius:8px;text-align:center;">
 <div id="key-total-count" style="font-size:22px;font-weight:700;color:var(--blue);">4</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">钥匙总数</div>
+<div class="txt-muted mt-4">钥匙总数</div>
 </div>
 <div style="padding:12px;background:var(--green-bg);border-radius:8px;text-align:center;">
 <div id="key-active-count" style="font-size:22px;font-weight:700;color:var(--green);">3</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">生效中</div>
+<div class="txt-muted mt-4">生效中</div>
 </div>
 <div style="padding:12px;background:var(--orange-bg);border-radius:8px;text-align:center;">
 <div id="key-expired-count" style="font-size:22px;font-weight:700;color:var(--orange);">1</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">已过期</div>
+<div class="txt-muted mt-4">已过期</div>
 </div>
 <div style="padding:12px;background:var(--red-bg);border-radius:8px;text-align:center;">
 <div id="key-disabled-count" style="font-size:22px;font-weight:700;color:var(--red);">0</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">已禁用</div>
+<div class="txt-muted mt-4">已禁用</div>
 </div>
 </div>
 <!-- 钥匙类型Tab筛选 -->
@@ -3295,7 +3796,7 @@ function switchRoomDetailTab(tab, el) {
         '<div style="padding:10px;background:var(--bg);border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">发行人</div><div style="font-size:14px;font-weight:700;">' + key.issuer + '</div></div></div>' +
         '</div>' +
         '<div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
-        '<button onclick="document.getElementById(\'modal-key-detail\').remove()" class="modal-btn secondary" style="padding:8px 20px;">关闭</button>' +
+        '<button onclick="document.getElementById(\'modal-key-detail\').remove()" class="modal-btn secondary" class="p-btn">关闭</button>' +
         '<button onclick="openDisableKeyModal(\'' + keyId + '\')" class="modal-btn" style="background:var(--red);color:white;border:none;padding:8px 20px;">⚠️ 禁用钥匙</button>' +
         '<button onclick="openRenewKeyModal(\'' + keyId + '\')" class="modal-btn primary" style="background:var(--blue);color:white;border:none;padding:8px 20px;">🔄 续期</button></div>' +
         '</div></div>';
@@ -3319,7 +3820,7 @@ function switchRoomDetailTab(tab, el) {
         '<textarea class="form-textarea" id="key-disable-notes" placeholder="可选" style="min-height:60px;"></textarea></div>' +
         '</div>' +
         '<div class="modal-footer">' +
-        '<button onclick="document.getElementById(\'modal-key-disable\').remove()" class="modal-btn secondary" style="padding:8px 20px;">取消</button>' +
+        '<button onclick="document.getElementById(\'modal-key-disable\').remove()" class="modal-btn secondary" class="p-btn">取消</button>' +
         '<button onclick="confirmDisableKey(\'' + keyId + '\')" class="modal-btn primary" style="background:var(--red);color:white;border:none;padding:8px 20px;">⚠️ 确认禁用</button></div>' +
         '</div></div>';
       document.body.insertAdjacentHTML('beforeend', html);
@@ -3349,7 +3850,7 @@ function switchRoomDetailTab(tab, el) {
         '<select class="form-select" id="key-renew-period"><option value="1">1天</option><option value="3">3天</option><option value="7" selected>7天</option><option value="30">30天</option><option value="90">90天</option></select></div>' +
         '</div>' +
         '<div class="modal-footer">' +
-        '<button onclick="document.getElementById(\'modal-key-renew\').remove()" class="modal-btn secondary" style="padding:8px 20px;">取消</button>' +
+        '<button onclick="document.getElementById(\'modal-key-renew\').remove()" class="modal-btn secondary" class="p-btn">取消</button>' +
         '<button onclick="confirmRenewKey(\'' + keyId + '\')" class="modal-btn primary" style="background:var(--blue);color:white;border:none;padding:8px 20px;">✅ 确认续期</button></div>' +
         '</div></div>';
       document.body.insertAdjacentHTML('beforeend', html);
@@ -3374,13 +3875,13 @@ function switchRoomDetailTab(tab, el) {
         '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px;">' +
         '<label id="ktype-phone" onclick="selectKeyType(\'phone\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;border:2px solid var(--blue);border-radius:8px;cursor:pointer;background:var(--blue-bg);">' +
         '<input type="radio" name="ktype" value="phone" checked style="display:none;">' +
-        '<div style="font-size:28px;">📱</div><div style="font-size:12px;font-weight:600;color:var(--blue);">手机开锁</div><div class="txt-muted txt-muted-sm">APP/小程序</div></label>' +
+        '<div class="icon-xl">📱</div><div style="font-size:12px;font-weight:600;color:var(--blue);">手机开锁</div><div class="txt-muted txt-muted-sm">APP/小程序</div></label>' +
         '<label id="ktype-card" onclick="selectKeyType(\'card\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:white;">' +
         '<input type="radio" name="ktype" value="card" style="display:none;">' +
-        '<div style="font-size:28px;">💳</div><div style="font-size:12px;font-weight:600;">门卡</div><div class="txt-muted txt-muted-sm">IC/磁条卡</div></label>' +
+        '<div class="icon-xl">💳</div><div style="font-size:12px;font-weight:600;">门卡</div><div class="txt-muted txt-muted-sm">IC/磁条卡</div></label>' +
         '<label id="ktype-password" onclick="selectKeyType(\'password\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:white;">' +
         '<input type="radio" name="ktype" value="password" style="display:none;">' +
-        '<div style="font-size:28px;">🔢</div><div style="font-size:12px;font-weight:600;">临时密码</div><div class="txt-muted txt-muted-sm">限时一次性</div></label></div></div>' +
+        '<div class="icon-xl">🔢</div><div style="font-size:12px;font-weight:600;">临时密码</div><div class="txt-muted txt-muted-sm">限时一次性</div></label></div></div>' +
         '<div class="form-row"><div class="form-group"><label class="form-label">持有人姓名 <span class="required">*</span></label>' +
         '<input type="text" class="form-input" id="key-holder" placeholder="请输入姓名"></div>' +
         '<div class="form-group"><label class="form-label">手机号</label>' +
@@ -3398,7 +3899,7 @@ function switchRoomDetailTab(tab, el) {
         '<div style="padding:10px 12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;font-size:12px;color:var(--green);">✅ 发行后将立即生成钥匙并可使用，钥匙信息将同步到对应的设备</div>' +
         '</div>' +
         '<div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">' +
-        '<button onclick="document.getElementById(\'modal-add-key\').remove()" class="modal-btn secondary" style="padding:8px 20px;">取消</button>' +
+        '<button onclick="document.getElementById(\'modal-add-key\').remove()" class="modal-btn secondary" class="p-btn">取消</button>' +
         '<button onclick="submitAddKey()" class="modal-btn primary" style="background:var(--blue);color:white;border:none;padding:8px 24px;font-size:15px;">✅ 确认发行</button></div>' +
         '</div></div>';
       document.body.insertAdjacentHTML('beforeend', html);
@@ -3954,7 +4455,7 @@ function switchRoomDetailTab(tab, el) {
       var html='';
       escalationRules.forEach(function(rule,i){
         html+='<div style="display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--border);">'+
-          '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+rule.typeLabel+'</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">超时<span style="color:var(--orange);font-weight:700;">'+rule.timeLabel+'</span> → 升级给<span style="color:var(--blue);font-weight:700;">'+rule.toLabel+'</span> · '+rule.notify+'</div></div>'+
+          '<div style="flex:1;"><div class="txt-subtitle">'+rule.typeLabel+'</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">超时<span style="color:var(--orange);font-weight:700;">'+rule.timeLabel+'</span> → 升级给<span style="color:var(--blue);font-weight:700;">'+rule.toLabel+'</span> · '+rule.notify+'</div></div>'+
           '<button class="action-btn small red" onclick="removeEscalationRule('+i+')" style="padding:3px 8px;font-size:11px;">删除</button></div>';
       });
       el.innerHTML=html||'<div style="padding:30px;text-align:center;color:var(--text-muted);">暂无配置规则，请添加</div>';
@@ -4036,11 +4537,11 @@ function openEscalationVisualEditor() {
   html += '<option value="短信+系统通知">短信+系统通知</option><option value="短信">仅短信</option>';
   html += '<option value="系统通知">仅系统通知</option><option value="电话">电话通知</option></select></div></div>';
   html += '<div style="display:flex;gap:8px;">';
-  html += '<button class="action-btn small primary" onclick="confirmAddEscalationEditorRule()" style="padding:6px 14px;">✅ 确认添加</button>';
-  html += '<button class="action-btn small" onclick="cancelAddEscalationEditorRule()" style="padding:6px 14px;">取消</button></div></div>';
+  html += '<button class="action-btn small primary" onclick="confirmAddEscalationEditorRule()" class="p-btn-sm">✅ 确认添加</button>';
+  html += '<button class="action-btn small" onclick="cancelAddEscalationEditorRule()" class="p-btn-sm">取消</button></div></div>';
   html += '</div>';
   html += '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;">';
-  html += '<button class="action-btn" onclick="document.getElementById(\'modal-escalation-editor\').remove()" style="padding:8px 20px;">关闭</button>';
+  html += '<button class="action-btn" onclick="document.getElementById(\'modal-escalation-editor\').remove()" class="p-btn">关闭</button>';
   html += '<button class="action-btn primary" onclick="saveEscalationEditorRules()" style="padding:8px 20px;background:var(--blue);color:white;border-color:var(--blue);">💾 保存配置</button></div></div></div>';
   var existing = document.getElementById('modal-escalation-editor');
   if (existing) existing.remove();
@@ -4133,7 +4634,7 @@ function saveEscalationEditorRules() {
 <label class="form-label">房间状态 <span class="required">*</span></label>
 <select class="form-select" id="rsc-status" onchange="onRoomStatusChange()">
 <option value="empty">🏠 离线（可入住）</option>
-<option value="in">🏨 入住中</option>
+<option value="in">🏨 在线</option>
 <option value="maintain">🔧 维修中（不可入住）</option>
 <option value="disabled">⛔ 停用（不可入住）</option>
 </select>
@@ -4211,7 +4712,7 @@ function saveEscalationEditorRules() {
 <label class="form-label">初始状态</label>
 <select class="form-select" id="qr-status">
 <option value="empty">🟢 离线（待入住）</option>
-<option value="in">🔵 入住中（模拟在线）</option>
+<option value="in">🔵 在线</option>
 <option value="maintain">🟡 维护中（不可入住）</option>
 </select>
 </div>
@@ -4517,7 +5018,7 @@ function saveEscalationEditorRules() {
 <div id="wo-auto-rule-list">
 <div style="margin-bottom:16px;">
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-<div style="font-size:13px;font-weight:600;">📋 当前规则</div>
+<div class="txt-subtitle">📋 当前规则</div>
 <button class="action-btn small" onclick="addWorkorderAutoRule()" style="padding:3px 8px;">+ 添加规则</button>
 </div>
 <div id="wo-rule-items">
@@ -5085,29 +5586,29 @@ function saveEscalationEditorRules() {
 <div class="detail-card batch-op-card" data-op="sync" onclick="selectBatchOp('sync',this)" style="cursor:pointer;border:2px solid var(--border);transition:all 0.2s;">
 <div style="text-align:center;padding:12px;">
 <div style="font-size:28px;margin-bottom:6px;">🔄</div>
-<div style="font-size:13px;font-weight:600;">批量同步状态</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">强制拉取所有选中设备的实时状态</div>
+<div class="txt-subtitle">批量同步状态</div>
+<div class="txt-muted mt-4">强制拉取所有选中设备的实时状态</div>
 </div>
 </div>
 <div class="detail-card batch-op-card" data-op="unlock" onclick="selectBatchOp('unlock',this)" style="cursor:pointer;border:2px solid var(--border);transition:all 0.2s;">
 <div style="text-align:center;padding:12px;">
 <div style="font-size:28px;margin-bottom:6px;">🔓</div>
-<div style="font-size:13px;font-weight:600;">批量远程开锁</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">同时向所有选中设备下发开锁指令</div>
+<div class="txt-subtitle">批量远程开锁</div>
+<div class="txt-muted mt-4">同时向所有选中设备下发开锁指令</div>
 </div>
 </div>
 <div class="detail-card batch-op-card" data-op="restart" onclick="selectBatchOp('restart',this)" style="cursor:pointer;border:2px solid var(--border);transition:all 0.2s;">
 <div style="text-align:center;padding:12px;">
 <div style="font-size:28px;margin-bottom:6px;">🔁</div>
-<div style="font-size:13px;font-weight:600;">批量重启设备</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">重启后设备将离线约10秒</div>
+<div class="txt-subtitle">批量重启设备</div>
+<div class="txt-muted mt-4">重启后设备将离线约10秒</div>
 </div>
 </div>
 <div class="detail-card batch-op-card" data-op="clear-alarm" onclick="selectBatchOp('clear-alarm',this)" style="cursor:pointer;border:2px solid var(--border);transition:all 0.2s;">
 <div style="text-align:center;padding:12px;">
 <div style="font-size:28px;margin-bottom:6px;">✅</div>
-<div style="font-size:13px;font-weight:600;">批量清除告警</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">清除所有选中设备的告警状态</div>
+<div class="txt-subtitle">批量清除告警</div>
+<div class="txt-muted mt-4">清除所有选中设备的告警状态</div>
 </div>
 </div>
 </div>
@@ -5118,6 +5619,7 @@ function saveEscalationEditorRules() {
 </div>
 <div class="modal-footer">
 <button class="modal-btn secondary" onclick="closeModal('device-batch')">取消</button>
+<button class="modal-btn" onclick="batchUnbindDevices()" style="background:var(--red);color:white;border:none;margin-right:6px;">🔓 批量解绑</button>
 <button class="modal-btn primary" disabled="" id="batch-execute-btn" onclick="executeBatchDeviceOp()" style="opacity:0.5;">▶️ 执行批量操作</button>
 </div>
 </div>
@@ -5520,7 +6022,7 @@ function saveEscalationEditorRules() {
 <input id="cfg-battery-threshold" max="50" min="5" oninput="document.getElementById('cfg-battery-val').textContent = this.value + '%'" style="flex:1;accent-color:var(--blue);" type="range" value="30"/>
 <span id="cfg-battery-val" style="font-weight:700;color:var(--blue);min-width:40px;">30%</span>
 </div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">设备电量低于此值时发送告警通知</div>
+<div class="txt-muted mt-4">设备电量低于此值时发送告警通知</div>
 </div>
 <div class="form-group" style="margin-bottom:0;">
 <label class="form-label">📡 设备离线告警时间</label>
@@ -5528,7 +6030,7 @@ function saveEscalationEditorRules() {
 <input id="cfg-offline-threshold" max="24" min="1" oninput="document.getElementById('cfg-offline-val').textContent = this.value + '小时'" style="flex:1;accent-color:var(--red);" type="range" value="1"/>
 <span id="cfg-offline-val" style="font-weight:700;color:var(--red);min-width:50px;">1小时</span>
 </div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">设备离线超过此时间后发送告警</div>
+<div class="txt-muted mt-4">设备离线超过此时间后发送告警</div>
 </div>
 <div class="form-group" style="margin-bottom:0;">
 <label class="form-label">📊 设备在线率告警</label>
@@ -5536,7 +6038,7 @@ function saveEscalationEditorRules() {
 <input id="cfg-online-threshold" max="100" min="50" oninput="document.getElementById('cfg-online-val').textContent = this.value + '%'" style="flex:1;accent-color:var(--orange);" type="range" value="90"/>
 <span id="cfg-online-val" style="font-weight:700;color:var(--orange);min-width:45px;">90%</span>
 </div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">低于此在线率时发送告警通知</div>
+<div class="txt-muted mt-4">低于此在线率时发送告警通知</div>
 </div>
 <div class="form-group" style="margin-bottom:0;">
 <label class="form-label">⚡ 能耗异常告警阈值(kWh/日)</label>
@@ -5544,7 +6046,7 @@ function saveEscalationEditorRules() {
 <input class="form-input" id="cfg-energy-threshold" style="padding:6px 10px;font-size:13px;width:80px;" type="number" value="5"/>
 <span style="font-size:13px;color:var(--text-muted);">kWh/日/房间</span>
 </div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">单房间日用电超过此值时报异常</div>
+<div class="txt-muted mt-4">单房间日用电超过此值时报异常</div>
 </div>
 </div>
 </div>
@@ -5868,14 +6370,14 @@ function saveEscalationEditorRules() {
 <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">
 <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:8px;">
 <div>
-<div style="font-size:13px;font-weight:600;">🕐 自动备份</div>
+<div class="txt-subtitle">🕐 自动备份</div>
 <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">每日凌晨3:00自动备份</div>
 </div>
 <label style="cursor:pointer;"><input checked="" id="cfg-auto-backup" style="accent-color:var(--blue);width:18px;height:18px;" type="checkbox"/></label>
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:8px;">
 <div>
-<div style="font-size:13px;font-weight:600;">📁 备份保留份数</div>
+<div class="txt-subtitle">📁 备份保留份数</div>
 <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">超出份数将自动删除最早的备份</div>
 </div>
 <select id="cfg-backup-keep" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
@@ -5922,7 +6424,7 @@ function saveEscalationEditorRules() {
 <div onclick="document.getElementById('cfg-external-backup').click()" style="border:2px dashed var(--border);border-radius:8px;padding:24px;text-align:center;cursor:pointer;">
 <div style="font-size:28px;margin-bottom:8px;">📁</div>
 <div class="txt-muted txt-muted-lg">点击选择 .json 或 .zip 备份文件</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">或拖拽文件到此处</div>
+<div class="txt-muted mt-4">或拖拽文件到此处</div>
 </div>
 <input accept=".json,.zip" id="cfg-external-backup" onchange="handleExternalBackupFile(this)" style="display:none;" type="file"/>
 </div>
@@ -6116,7 +6618,7 @@ function saveEscalationEditorRules() {
 <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
 <div style="width:32px;height:32px;background:var(--blue-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">🏨</div>
 <div style="flex:1;">
-<div style="font-size:13px;font-weight:600;">张三 <span style="font-size:10px;color:var(--blue);background:var(--blue-bg);padding:1px 5px;border-radius:3px;margin-left:4px;">301</span></div>
+<div class="txt-subtitle">张三 <span style="font-size:10px;color:var(--blue);background:var(--blue-bg);padding:1px 5px;border-radius:3px;margin-left:4px;">301</span></div>
 <div class="txt-muted">押金 ¥100 · 入住 03-26 解绑 03-27</div>
 </div>
 <button class="action-btn small green" onclick="processDepositRefund('张三','301','100')">退押金</button>
@@ -6124,7 +6626,7 @@ function saveEscalationEditorRules() {
 <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
 <div style="width:32px;height:32px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">🏨</div>
 <div style="flex:1;">
-<div style="font-size:13px;font-weight:600;">李四 <span style="font-size:10px;color:var(--blue);background:var(--blue-bg);padding:1px 5px;border-radius:3px;margin-left:4px;">203</span></div>
+<div class="txt-subtitle">李四 <span style="font-size:10px;color:var(--blue);background:var(--blue-bg);padding:1px 5px;border-radius:3px;margin-left:4px;">203</span></div>
 <div class="txt-muted">押金 ¥200 · 入住 03-25 解绑 03-27</div>
 </div>
 <button class="action-btn small green" onclick="processDepositRefund('李四','203','200')">退押金</button>
@@ -6132,7 +6634,7 @@ function saveEscalationEditorRules() {
 <div style="display:flex;align-items:center;gap:12px;padding:10px 0;">
 <div style="width:32px;height:32px;background:var(--purple-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">🏨</div>
 <div style="flex:1;">
-<div style="font-size:13px;font-weight:600;">王五 <span style="font-size:10px;color:var(--blue);background:var(--blue-bg);padding:1px 5px;border-radius:3px;margin-left:4px;">201</span></div>
+<div class="txt-subtitle">王五 <span style="font-size:10px;color:var(--blue);background:var(--blue-bg);padding:1px 5px;border-radius:3px;margin-left:4px;">201</span></div>
 <div class="txt-muted">押金 ¥100 · 入住 03-26 解绑 03-27</div>
 </div>
 <button class="action-btn small green" onclick="processDepositRefund('王五','201','100')">退押金</button>
@@ -6505,33 +7007,33 @@ function saveEscalationEditorRules() {
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
 <div class="bdc-op-card" data-op="unlock" onclick="selectBatchOp(this,'unlock')" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
 <div style="font-size:24px;margin-bottom:6px;">🔓</div>
-<div style="font-size:13px;font-weight:600;">批量开锁</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">同时开多个房间</div>
+<div class="txt-subtitle">批量开锁</div>
+<div class="txt-muted mt-4">同时开多个房间</div>
 </div>
 <div class="bdc-op-card" data-op="sync" onclick="selectBatchOp(this,'sync')" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
 <div style="font-size:24px;margin-bottom:6px;">🔄</div>
-<div style="font-size:13px;font-weight:600;">批量同步</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">拉取最新状态</div>
+<div class="txt-subtitle">批量同步</div>
+<div class="txt-muted mt-4">拉取最新状态</div>
 </div>
 <div class="bdc-op-card" data-op="power" onclick="selectBatchOp(this,'power')" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
 <div style="font-size:24px;margin-bottom:6px;">⚡</div>
-<div style="font-size:13px;font-weight:600;">通断电控制</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">远程控制通断电</div>
+<div class="txt-subtitle">通断电控制</div>
+<div class="txt-muted mt-4">远程控制通断电</div>
 </div>
 <div class="bdc-op-card" data-op="restart" onclick="selectBatchOp(this,'restart')" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
 <div style="font-size:24px;margin-bottom:6px;">🔁</div>
-<div style="font-size:13px;font-weight:600;">批量重启</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">重启设备使失效</div>
+<div class="txt-subtitle">批量重启</div>
+<div class="txt-muted mt-4">重启设备使失效</div>
 </div>
 <div class="bdc-op-card" data-op="battery" onclick="selectBatchOp(this,'battery')" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
 <div style="font-size:24px;margin-bottom:6px;">🔋</div>
-<div style="font-size:13px;font-weight:600;">换电池提醒</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">发送换电池通知</div>
+<div class="txt-subtitle">换电池提醒</div>
+<div class="txt-muted mt-4">发送换电池通知</div>
 </div>
 <div class="bdc-op-card" data-op="freeze" onclick="selectBatchOp(this,'freeze')" style="padding:16px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
 <div style="font-size:24px;margin-bottom:6px;">🚫</div>
-<div style="font-size:13px;font-weight:600;">冻结权限</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">禁用所有门卡权限</div>
+<div class="txt-subtitle">冻结权限</div>
+<div class="txt-muted mt-4">禁用所有门卡权限</div>
 </div>
 </div>
 </div>
@@ -6576,7 +7078,61 @@ function _renderGlobalSearchHistory() {
     '<div onclick="_globalSearchHistory=[];try{localStorage.removeItem(\'iot_search_history\');}catch(e){}var r=document.getElementById(\'global-search-results\');if(r)r.style.display=\'none\';" style="padding:8px 16px;cursor:pointer;font-size:12px;color:var(--text-muted);text-align:center;">清除历史</div>';
 }
 // 【P76优化】全局搜索防抖（使用全局debounce工具函数 P60）
+// 【P76+P77】搜索框聚焦时显示历史；隐藏建议
+function showSearchHistoryOnFocus() {
+  var q = document.getElementById('global-search-overlay-input');
+  if (q && (!q.value || q.value.length < 1)) {
+    var results = document.getElementById('global-search-results');
+    if (results) {
+      results.innerHTML = _renderGlobalSearchHistory();
+      results.style.display = 'block';
+    }
+  }
+  hideSearchSuggestions();
+}
+
+// 【P77】搜索建议下拉
+function showSearchSuggestions(keyword) {
+  if (!keyword || keyword.length < 2) { hideSearchSuggestions(); return; }
+  var suggestions = [];
+  if (typeof deviceData !== 'undefined') {
+    deviceData.forEach(function(d) {
+      if (d.uuid && d.uuid.toUpperCase().includes(keyword.toUpperCase())) {
+        suggestions.push({ type: 'UUID', text: d.uuid, label: d.uuid.slice(0, 8) + '...', uuid: d.uuid });
+      }
+    });
+  }
+  if (typeof roomData !== 'undefined') {
+    roomData.forEach(function(r) {
+      if (r.num && r.num.toLowerCase().includes(keyword.toLowerCase())) {
+        suggestions.push({ type: '房间', text: r.num, label: r.num, num: r.num });
+      }
+    });
+  }
+  if (suggestions.length === 0) { hideSearchSuggestions(); return; }
+  var html = suggestions.slice(0, 5).map(function(s) {
+    var click = s.type === 'UUID' ? "showPage('device-detail');setDeviceDetail('" + s.uuid + "')" : "showPage('room-detail');setRoomDetail('" + s.num + "')";
+    return '<div class="search-suggestion-item" onclick="' + click + ';hideSearchSuggestions();closeGlobalSearch();">' + s.type + ': ' + s.label + '</div>';
+  }).join('');
+  var dropdown = document.getElementById('search-suggestions-dropdown');
+  if (!dropdown) {
+    dropdown = document.createElement('div');
+    dropdown.id = 'search-suggestions-dropdown';
+    dropdown.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:8px;z-index:1001;box-shadow:0 4px 12px rgba(0,0,0,0.1);overflow:hidden;';
+    var bar = document.getElementById('global-search-bar');
+    if (bar) bar.appendChild(dropdown);
+  }
+  dropdown.innerHTML = html;
+  dropdown.style.display = 'block';
+}
+function hideSearchSuggestions() {
+  var dropdown = document.getElementById('search-suggestions-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
+}
+
 function debounceGlobalSearch(q) {
+  // 【P77】显示搜索建议
+  showSearchSuggestions(q);
   var fn = debounce(function(val) { performGlobalSearch(val); }, 300);
   fn(q);
 }
@@ -6588,9 +7144,30 @@ window.performGlobalSearch = function(q) {
   if (!q || q.length < 1) {
     results.innerHTML = _renderGlobalSearchHistory();
     results.style.display = 'block';
+    hideSearchSuggestions();
     return;
   }
   q = q.toLowerCase().trim();
+  // 【P78】UUID精确搜索（6-12位十六进制，直接跳转设备详情）
+  var uuidPattern = /^[A-F0-9]{6,12}$/i;
+  if (uuidPattern.test(q)) {
+    var kwUpper = q.toUpperCase();
+    var exact = [];
+    if (typeof deviceData !== 'undefined') {
+      deviceData.forEach(function(d) {
+        if (d.uuid && d.uuid.toUpperCase().includes(kwUpper)) exact.push(d);
+      });
+    }
+    if (exact.length > 0) {
+      results.style.display = 'none';
+      hideSearchSuggestions();
+      closeGlobalSearch();
+      showPage('device-detail');
+      setDeviceDetail(exact[0].uuid);
+      _saveGlobalSearchHistory(q);
+      return;
+    }
+  }
   var data = [];
   // Search deviceData
   if (typeof deviceData !== 'undefined') {
@@ -6622,7 +7199,7 @@ window.performGlobalSearch = function(q) {
     data.forEach(function(item) {
       var click = item.type === 'device' ? "showPage('device-detail');setDeviceDetail('" + item.uuid + "')" :
                   item.type === 'room' ? "showPage('room-detail');setRoomDetail('" + item.num + "')" : '';
-      html += '<div onclick="' + click + ';closeGlobalSearch()" style="padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:13px;font-weight:600;">' + item.label + '</div><div class="txt-muted">' + item.sub + '</div></div><span style="font-size:11px;color:var(--blue);">' + (item.type==='device'?'📱':'🏠') + '</span></div>';
+      html += '<div onclick="' + click + ';closeGlobalSearch()" style="padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;"><div><div class="txt-subtitle">' + item.label + '</div><div class="txt-muted">' + item.sub + '</div></div><span style="font-size:11px;color:var(--blue);">' + (item.type==='device'?'📱':'🏠') + '</span></div>';
     });
     results.innerHTML = html;
   }
@@ -7551,7 +8128,7 @@ function deleteRoomTypeV2(idx) {
   var html = '<div class="modal-overlay hidden" id="modal-roomtype-confirm" class="fixed-overlay">' +
     '<div class="modal" style="width:400px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">⚠️</div><div class="txt-primary">确认删除房型</div></div>' +
+    '<div class="icon-xl">⚠️</div><div class="txt-primary">确认删除房型</div></div>' +
     '<div class="p-xl">' +
     '<p style="font-size:13px;">确定要删除房型 <strong style="color:var(--red);">' + r.name + '</strong> 吗？</p></div>' +
     '<div class="modal-footer">' +
@@ -8304,7 +8881,7 @@ function openDepositAutoConfigModal() {
     '<div class="form-group"><label class="form-label">触发阈值（押金余额低于此值时触发）</label>' +
     '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:20px;color:var(--red);font-weight:700;">¥</span>' +
     '<input type="number" class="form-input" id="da-trigger" value="' + c.triggerBalance + '" min="0" style="width:120px;"></div>' +
-    '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">余额低于此值时触发续期提醒/自动扣款</div></div>' +
+    '<div class="txt-muted mt-4">余额低于此值时触发续期提醒/自动扣款</div></div>' +
     '<div class="form-group"><label class="form-label">续期金额（每次自动续期增加）</label>' +
     '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:20px;color:var(--green);font-weight:700;">¥</span>' +
     '<input type="number" class="form-input" id="da-amount" value="' + c.autoRenewalAmount + '" min="100" style="width:120px;"></div></div>' +
@@ -8655,7 +9232,7 @@ function openEditRoleModal(idx) {
   var html = '<div class="modal-overlay hidden" id="modal-role-edit" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-role-edit\').remove()">' +
     '<div class="modal" style="width:480px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">✏️</div><div class="txt-primary">编辑角色</div>' +
+    '<div class="icon-xl">✏️</div><div class="txt-primary">编辑角色</div>' +
     '<button onclick="document.getElementById(\'modal-role-edit\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
     '<div class="p-xl">' +
     '<div class="form-group"><label class="form-label">角色名称 <span class="required">*</span></label>' +
@@ -8698,7 +9275,7 @@ function deleteRole(idx) {
   var html = '<div class="modal-overlay hidden" id="modal-role-del" class="fixed-overlay">' +
     '<div class="modal" style="width:380px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">⚠️</div><div class="txt-primary">确认删除角色</div></div>' +
+    '<div class="icon-xl">⚠️</div><div class="txt-primary">确认删除角色</div></div>' +
     '<div class="p-xl"><p style="font-size:13px;">确定删除角色 <strong>' + r.name + '</strong> 吗？</p><p style="font-size:12px;color:var(--text-muted);margin-top:6px;">该操作不可恢复，关联员工将失去此角色权限。</p></div>' +
     '<div class="modal-footer">' +
     '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-role-del\').remove()">取消</button>' +
@@ -9148,7 +9725,7 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
 </div>
 <div style="padding:10px;background:var(--orange-bg);border-radius:8px;text-align:center;">
 <div style="font-size:10px;color:var(--orange);">状态</div>
-<div id="rqp-status" style="font-size:14px;font-weight:600;color:var(--orange);">在住</div>
+<div id="rqp-status" style="font-size:14px;font-weight:600;color:var(--orange);">在线</div>
 </div>
 </div>
 <!-- 入住客人信息（在住时显示） -->
@@ -9166,11 +9743,11 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
 <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
 <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">🚪 门锁</div>
-<div id="rqp-lock" style="font-size:13px;font-weight:600;">已反锁</div>
+<div id="rqp-lock" class="txt-subtitle">已反锁</div>
 </div>
 <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
 <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">⚡ 通电</div>
-<div id="rqp-power" style="font-size:13px;font-weight:600;">空调开启</div>
+<div id="rqp-power" class="txt-subtitle">空调开启</div>
 </div>
 <div style="padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
 <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">🔋 电量</div>
@@ -9325,23 +9902,23 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
 <div class="db-op-item selected" data-op="restart" onclick="selectDbOp(this)" style="padding:14px;border:2px solid var(--blue);border-radius:10px;cursor:pointer;text-align:center;background:var(--blue-bg);transition:all 0.2s;">
 <div style="font-size:28px;margin-bottom:6px;">🔁</div>
-<div style="font-size:13px;font-weight:600;">远程重启</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">设备将离线约10秒</div>
+<div class="txt-subtitle">远程重启</div>
+<div class="txt-muted mt-4">设备将离线约10秒</div>
 </div>
 <div class="db-op-item" data-op="sync" onclick="selectDbOp(this)" style="padding:14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
 <div style="font-size:28px;margin-bottom:6px;">🔄</div>
-<div style="font-size:13px;font-weight:600;">强制同步</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">拉取最新状态</div>
+<div class="txt-subtitle">强制同步</div>
+<div class="txt-muted mt-4">拉取最新状态</div>
 </div>
 <div class="db-op-item" data-op="upgrade" onclick="selectDbOp(this)" style="padding:14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all 0.2s;">
 <div style="font-size:28px;margin-bottom:6px;">📦</div>
-<div style="font-size:13px;font-weight:600;">固件升级</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">批量推送升级</div>
+<div class="txt-subtitle">固件升级</div>
+<div class="txt-muted mt-4">批量推送升级</div>
 </div>
 <div class="db-op-item" data-op="delete" onclick="selectDbOp(this)" style="padding:14px;border:2px solid var(--red);border-radius:10px;cursor:pointer;text-align:center;background:var(--red-bg);transition:all 0.2s;">
 <div style="font-size:28px;margin-bottom:6px;">🗑️</div>
 <div style="font-size:13px;font-weight:600;color:var(--red);">批量删除</div>
-<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">不可恢复操作</div>
+<div class="txt-muted mt-4">不可恢复操作</div>
 </div>
 </div>
 </div>
@@ -9366,6 +9943,7 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
 </div>
 <div class="modal-footer">
 <button class="modal-btn secondary" onclick="closeModal('device-batch')">取消</button>
+<button class="modal-btn" onclick="batchUnbindDevices()" style="background:var(--red);color:white;border:none;margin-right:6px;">🔓 批量解绑</button>
 <button class="modal-btn primary" id="db-submit-btn" onclick="submitDeviceBatch()">确认执行</button>
 </div>
 </div>
@@ -9850,7 +10428,7 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
 <div class="modal-body">
 <div class="form-group">
 <label class="form-label">工单编号</label>
-<input class="form-input" id="woe-id" readonly="" style="background:var(--bg);color:var(--text-muted);" type="text"/>
+<input class="form-input" id="woe-id" readonly="" class="bg-muted txt-muted" type="text"/>
 </div>
 <div class="form-row">
 <div class="form-group">
@@ -10190,7 +10768,7 @@ function openAlertDetailFullModal(idx) {
   var html = '<div class="hidden modal-overlay" id="modal-alert-detail-full" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-alert-detail-full\').remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">' + typeIcon + '</div><div><div class="txt-primary">告警详情</div><div class="txt-muted">' + d.type + ' · ' + d.room + '</div></div></div>' +
+    '<div class="flex-center"><div class="icon-xl">' + typeIcon + '</div><div><div class="txt-primary">告警详情</div><div class="txt-muted">' + d.type + ' · ' + d.room + '</div></div></div>' +
     statusBadge + '<button onclick="document.getElementById(\'modal-alert-detail-full\').remove();" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     // 告警信息卡片
@@ -10271,7 +10849,7 @@ function openEnergyAISuggestModal() {
   var html = '<div class="hidden modal-overlay" id="modal-energy-ai" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target===this)document.getElementById(\'modal-energy-ai\').remove()">' +
     '<div class="modal" style="width:560px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">🤖</div><div><div class="txt-primary">AI 节能建议</div><div class="txt-muted">基于历史数据智能分析</div></div></div>' +
+    '<div class="flex-center"><div class="icon-xl">🤖</div><div><div class="txt-primary">AI 节能建议</div><div class="txt-muted">基于历史数据智能分析</div></div></div>' +
     '<button onclick="document.getElementById(\'modal-energy-ai\').remove();" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     '<div style="padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--green);display:flex;align-items:center;gap:10px;">' +
@@ -10465,7 +11043,7 @@ function openDeviceRegisterModal() {
   var html = '<div class="modal-overlay hidden" id="modal-device-register" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-device-register\').remove()">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">📱</div><div><div class="txt-primary">设备登记注册</div><div class="txt-muted">新增硬件设备并绑定到房间</div></div></div>' +
+    '<div class="flex-center"><div class="icon-xl">📱</div><div><div class="txt-primary">设备登记注册</div><div class="txt-muted">新增硬件设备并绑定到房间</div></div></div>' +
     '<button onclick="document.getElementById(\'modal-device-register\').remove();" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
@@ -10560,7 +11138,7 @@ function openFullShiftHandoverModal() {
   var html = '<div class="modal-overlay hidden" id="modal-full-shift-handover" class="fixed-overlay">' +
     '<div class="modal" style="width:600px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">📨</div><div><div class="txt-primary">交接班完整流程</div><div class="txt-muted">' + now + '</div></div></div>' +
+    '<div class="flex-center"><div class="icon-xl">📨</div><div><div class="txt-primary">交接班完整流程</div><div class="txt-muted">' + now + '</div></div></div>' +
     '<button onclick="document.getElementById(\'modal-full-shift-handover\').remove();" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     // 步骤指示器
@@ -10803,14 +11381,14 @@ function openInvoiceDetailModal(invId) {
   var html = '<div class="modal-overlay hidden" id="modal-invoice-detail" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-invoice-detail\').remove()">' +
     '<div class="modal" style="width:500px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">🧾</div><div><div class="txt-primary">发票详情</div><div class="txt-muted">' + inv.id + '</div></div></div>' +
+    '<div class="flex-center"><div class="icon-xl">🧾</div><div><div class="txt-primary">发票详情</div><div class="txt-muted">' + inv.id + '</div></div></div>' +
     '<span style="padding:3px 10px;background:var(--bg);color:' + statusColor + ';border:1px solid ' + statusColor + ';border-radius:12px;font-size:11px;font-weight:600;">' + inv.status + '</span>' +
     '<button onclick="document.getElementById(\'modal-invoice-detail\').remove();" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
     '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">发票号码</div><div style="font-size:13px;font-weight:700;font-family:monospace;color:var(--blue);">' + inv.id + '</div></div>' +
     '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">发票金额</div><div style="font-size:15px;font-weight:700;color:var(--green);">¥' + inv.amount.toFixed(2) + '</div></div>' +
-    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">发票类型</div><div style="font-size:13px;font-weight:600;">' + inv.type + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">发票类型</div><div class="txt-subtitle">' + inv.type + '</div></div>' +
     '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">申请时间</div><div style="font-size:12px;font-weight:600;">' + inv.date + '</div></div></div>' +
     '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">购方名称</div><div style="font-size:13px;font-weight:700;">' + inv.company + '</div></div>' +
     '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:16px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">纳税人识别号</div><div style="font-size:12px;font-family:monospace;">' + (inv.tax || '--') + '</div></div>' +
@@ -10834,7 +11412,7 @@ function openInvoiceEditModal(invId) {
     '<div class="txt-primary">✏️ 编辑发票</div>' +
     '<button onclick="document.getElementById(\'modal-invoice-edit\').remove();" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
-    '<div class="form-group"><label class="form-label">发票号码</label><input type="text" class="form-input" id="ie-id" value="' + inv.id + '" readonly style="background:var(--bg);color:var(--text-muted);"></div>' +
+    '<div class="form-group"><label class="form-label">发票号码</label><input type="text" class="form-input" id="ie-id" value="' + inv.id + '" readonly class="bg-muted txt-muted"></div>' +
     '<div class="form-group"><label class="form-label">购方名称 <span class="required">*</span></label><input type="text" class="form-input" id="ie-company" value="' + inv.company + '" placeholder="请输入购方名称"></div>' +
     '<div class="form-group"><label class="form-label">纳税人识别号</label><input type="text" class="form-input" id="ie-tax" value="' + (inv.tax || '') + '" placeholder="请输入纳税人识别号"></div>' +
     '<div class="form-group"><label class="form-label">发票金额 <span class="required">*</span></label><input type="number" class="form-input" id="ie-amount" value="' + inv.amount + '" placeholder="请输入金额"></div>' +
@@ -11025,7 +11603,7 @@ function clearAllNotif() {
   var html = '<div class="modal-overlay hidden" id="modal-notif-clear" class="fixed-overlay">' +
     '<div class="modal" style="width:380px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">⚠️</div><div class="txt-primary">确认清空通知</div></div>' +
+    '<div class="icon-xl">⚠️</div><div class="txt-primary">确认清空通知</div></div>' +
     '<div class="p-xl"><p style="font-size:13px;color:var(--text);margin-bottom:12px;">确定要清空全部 ' + _notifList.length + ' 条通知吗？</p>' +
     '<p style="font-size:12px;color:var(--orange);padding:10px;background:var(--orange-bg);border-radius:6px;">⚠️ 此操作不可恢复</p></div>' +
     '<div class="modal-footer">' +
@@ -11165,6 +11743,160 @@ function applyRecordFilter() {
   renderRecordTable();
 }
 
+// 【P37新增】renderDeviceFilteredTable末尾的虚拟滚动支持（设备数量>100时启用）
+function renderDeviceFilteredTable() {
+  var filtered = getFilteredDeviceList();
+  var tbody = document.getElementById('device-table-body');
+  var infoEl = document.getElementById('device-pagination-info');
+  var prevBtn = document.getElementById('device-page-prev');
+  var nextBtn = document.getElementById('device-page-next');
+  if (!tbody) return;
+
+  // 虚拟滚动支持（设备数量>100时启用）
+  if (filtered.length > 100) {
+    window.deviceListData = filtered;
+    var listEl = document.getElementById('device-list-virtual');
+    var tableEl = document.querySelector('#page-device .table');
+    if (listEl) {
+      listEl._vTotalRows = filtered.length;
+      listEl._vTotalHeight = filtered.length * 60;
+      if (tableEl) tableEl.style.display = 'none';
+      listEl.style.display = 'block';
+      window.createVirtualList('device-list-virtual', 60, function(idx) {
+        return renderDeviceRowVirtual(filtered[idx]);
+      });
+      if (infoEl) infoEl.textContent = '共 ' + filtered.length + ' 条（虚拟滚动模式）';
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
+      return;
+    }
+  } else {
+    // 普通模式：显示表格，隐藏虚拟容器
+    var listEl = document.getElementById('device-list-virtual');
+    var tableEl = document.querySelector('#page-device .table');
+    if (listEl) listEl.style.display = 'none';
+    if (tableEl) tableEl.style.display = '';
+  }
+
+  var totalPages = Math.ceil(filtered.length / _devicePageSize) || 1;
+  var start = (_devicePage - 1) * _devicePageSize;
+  var pageData = filtered.slice(start, start + _devicePageSize);
+  var rows = '';
+  if (pageData.length === 0) {
+    rows = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">暂无设备数据</td></tr>';
+  } else {
+    pageData.forEach(function(d) {
+      var batteryColor = d.battery > 60 ? 'var(--green)' : d.battery > 20 ? 'var(--orange)' : 'var(--red)';
+      var batteryBg = d.battery > IOT_CONST.BATTERY_GOOD ? 'var(--green-bg)' : d.battery > IOT_CONST.BATTERY_CRITICAL ? 'var(--orange-bg)' : 'var(--red-bg)';
+      var statusColor = d.status === '在线' ? 'var(--green)' : d.status === '离线' ? 'var(--red)' : 'var(--text-muted)';
+      var statusBg = d.status === '在线' ? 'var(--green-bg)' : d.status === '离线' ? 'var(--red-bg)' : 'var(--bg)';
+      rows += '<tr>' +
+        '<td><div style="font-size:12px;font-weight:600;">' + d.room + '</div></td>' +
+        '<td><div style="font-size:11px;font-weight:600;">' + d.model + '</div></td>' +
+        '<td><div style="font-size:10px;color:var(--text-muted);font-family:monospace;">' + d.uuid + '</div></td>' +
+        '<td><span style="padding:2px 8px;background:' + statusBg + ';color:' + statusColor + ';border-radius:10px;font-size:11px;font-weight:600;">' + d.status + '</span></td>' +
+        '<td><span style="padding:2px 8px;background:' + batteryBg + ';color:' + batteryColor + ';border-radius:10px;font-size:11px;font-weight:600;">🔋 ' + d.battery + '%</span></td>' +
+        '<td style="font-size:12px;">' + d.signal + '</td>' +
+        '<td class="txt-muted">' + d.lastSync + '</td>' +
+        '<td><div style="display:flex;gap:4px;flex-wrap:nowrap;">' +
+          '<button class="action-btn small" onclick="navigateToDeviceDetail(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">👁️ 详情</button>' +
+          '<button class="action-btn small" onclick="openDeviceEditModal(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">✏️ 编辑</button>' +
+          '<button class="action-btn small" onclick="openDeviceDiagnosticV2Enhanced(\'' + d.room + '\')" style="padding:3px 8px;font-size:11px;">🔍 诊断</button>' +
+          '<button class="action-btn small red" onclick="deleteDeviceConfirm(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">🗑️</button></div></td>' +
+      '</tr>';
+    });
+  }
+  tbody.innerHTML = rows;
+  if (infoEl) infoEl.textContent = '第 ' + _devicePage + ' / ' + totalPages + ' 页，共 ' + filtered.length + ' 条';
+  if (prevBtn) prevBtn.disabled = _devicePage <= 1;
+  if (nextBtn) nextBtn.disabled = _devicePage >= totalPages;
+}
+
+// 【P37新增】虚拟滚动单行渲染函数
+function renderDeviceRowVirtual(d) {
+  var batteryColor = d.battery > 60 ? 'var(--green)' : d.battery > 20 ? 'var(--orange)' : 'var(--red)';
+  var batteryBg = d.battery > IOT_CONST.BATTERY_GOOD ? 'var(--green-bg)' : d.battery > IOT_CONST.BATTERY_CRITICAL ? 'var(--orange-bg)' : 'var(--red-bg)';
+  var statusColor = d.status === '在线' ? 'var(--green)' : d.status === '离线' ? 'var(--red)' : 'var(--text-muted)';
+  var statusBg = d.status === '在线' ? 'var(--green-bg)' : d.status === '离线' ? 'var(--red-bg)' : 'var(--bg)';
+  return '<table style="width:100%;table-layout:fixed;"><tr>' +
+    '<td style="width:30px;"><input type="checkbox" style="accent-color:var(--blue);"/></td>' +
+    '<td style="font-size:12px;font-weight:600;">' + d.room + '</td>' +
+    '<td style="font-size:11px;font-weight:600;">' + d.model + '</td>' +
+    '<td style="font-size:10px;color:var(--text-muted);font-family:monospace;">' + d.uuid + '</td>' +
+    '<td><span style="padding:2px 8px;background:' + statusBg + ';color:' + statusColor + ';border-radius:10px;font-size:11px;font-weight:600;">' + d.status + '</span></td>' +
+    '<td><span style="padding:2px 8px;background:' + batteryBg + ';color:' + batteryColor + ';border-radius:10px;font-size:11px;font-weight:600;">🔋 ' + d.battery + '%</span></td>' +
+    '<td style="font-size:12px;">' + d.signal + '</td>' +
+    '<td class="txt-muted">' + d.lastSync + '</td>' +
+    '<td><div style="display:flex;gap:4px;flex-wrap:nowrap;">' +
+      '<button class="action-btn small" onclick="navigateToDeviceDetail(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">👁️ 详情</button>' +
+      '<button class="action-btn small" onclick="openDeviceEditModal(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">✏️ 编辑</button>' +
+      '<button class="action-btn small" onclick="openDeviceDiagnosticV2Enhanced(\'' + d.room + '\')" style="padding:3px 8px;font-size:11px;">🔍 诊断</button>' +
+      '<button class="action-btn small red" onclick="deleteDeviceConfirm(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">🗑️</button></div></td>' +
+  '</tr></table>';
+}
+
+// ============================================================
+// 【P46新增】设备列表排序函数 - 支持最近告警排序
+// ============================================================
+window.applyDeviceSort = function(order) {
+  _deviceSortOrder = order;
+  _devicePage = 1;
+  renderDeviceFilteredTable();
+  var labels = {'default':'默认顺序','battery-asc':'电量升序','battery-desc':'电量降序','signal-asc':'信号升序','signal-desc':'信号降序','alert-first':'告警优先','room-asc':'房间号升序','recentAlert':'最近告警'};
+  showToast('已按' + (labels[order] || order) + '排序', 'info');
+};
+
+// 扩展 getFilteredDeviceList 支持排序
+var _deviceSortOrder = 'default';
+var _origGetFilteredDeviceList = getFilteredDeviceList;
+function getFilteredDeviceList() {
+  var filtered = _origGetFilteredDeviceList.call(this);
+  var order = _deviceSortOrder || 'default';
+  if (order === 'default') return filtered;
+  return filtered.slice().sort(function(a, b) {
+    switch(order) {
+      case 'battery-asc': return a.battery - b.battery;
+      case 'battery-desc': return b.battery - a.battery;
+      case 'signal-asc': return (a.signal_db||99) - (b.signal_db||99);
+      case 'signal-desc': return (b.signal_db||99) - (a.signal_db||99);
+      case 'alert-first': {
+        var aAlert = a.status.indexOf('告警')>=0 || a.status.indexOf('低电量')>=0 ? 0 : 1;
+        var bAlert = b.status.indexOf('告警')>=0 || b.status.indexOf('低电量')>=0 ? 0 : 1;
+        return aAlert - bAlert;
+      }
+      case 'room-asc': return parseInt(a.room) - parseInt(b.room);
+      case 'recentAlert': {
+        var aTime = a.lastAlertTime ? new Date(a.lastAlertTime).getTime() : 0;
+        var bTime = b.lastAlertTime ? new Date(b.lastAlertTime).getTime() : 0;
+        return bTime - aTime;
+      }
+      default: return 0;
+    }
+  });
+}
+
+// ============================================================
+// 【P50新增】设备批量解绑函数
+// ============================================================
+function batchUnbindDevices() {
+  var checked = document.querySelectorAll('.device-checkbox:checked');
+  if (checked.length === 0) { showToast('请先选择要解绑的设备', 'warning'); return; }
+  var count = checked.length;
+  if (!confirm('确定要解绑选中的 ' + count + ' 台设备吗？解绑后设备将与系统断开连接。')) return;
+  var pool = window.devicePool || (window.deviceData || []);
+  var success = 0, failed = 0;
+  checked.forEach(function(cb) {
+    var uuid = cb.dataset.uuid || cb.value;
+    var idx = pool.findIndex(function(d) { return d.uuid === uuid; });
+    if (idx >= 0) { pool[idx].status = '已解绑'; success++; }
+    else failed++;
+  });
+  showToast('批量解绑完成：成功 ' + success + ' 台' + (failed > 0 ? '，失败 ' + failed + ' 台' : ''), success > 0 ? 'success' : 'error');
+  closeModal('device-batch');
+  if (typeof refreshDeviceTable === 'function') refreshDeviceTable();
+  if (typeof renderDeviceFilteredTable === 'function') renderDeviceFilteredTable();
+}
+
 function resetRecordFilter() {
   var si = document.getElementById('record-search-input');
   if (si) si.value = '';
@@ -11246,7 +11978,7 @@ function openInvoiceHeaderManageModal() {
   ];
   var rows = headers.map(function(h) {
     return '<div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--border);">' +
-      '<div style="flex:1;"><div style="font-size:13px;font-weight:600;">' + h.name + '</div><div class="txt-muted">' + (h.tax !== '--' ? h.tax : '无税号') + '</div></div>' +
+      '<div style="flex:1;"><div class="txt-subtitle">' + h.name + '</div><div class="txt-muted">' + (h.tax !== '--' ? h.tax : '无税号') + '</div></div>' +
       '<span style="font-size:11px;padding:2px 8px;background:' + (h.default ? 'var(--green-bg)' : 'var(--bg)') + ';color:' + (h.default ? 'var(--green)' : 'var(--text-muted)') + ';border-radius:10px;">' + (h.default ? '✅ 默认' : '普通') + '</span>' +
       '<button class="action-btn small" onclick="editInvoiceHeader(\'' + h.id + '\')" style="padding:3px 8px;font-size:11px;">✏️</button>' +
       '<button class="action-btn small" onclick="deleteInvoiceHeader(\'' + h.id + '\')" style="padding:3px 8px;font-size:11px;background:var(--red-bg);color:var(--red);border-color:var(--red);">🗑️</button></div>';
@@ -11337,7 +12069,7 @@ function openBlacklistAddModal() {
   var html = '<div class="modal-overlay hidden" id="modal-blacklist-add" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-blacklist-add\').remove()">' +
     '<div class="modal" style="width:480px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">🚫</div><div class="txt-primary">添加黑名单</div></div>' +
+    '<div class="flex-center"><div class="icon-xl">🚫</div><div class="txt-primary">添加黑名单</div></div>' +
     '<button onclick="document.getElementById(\'modal-blacklist-add\').remove();" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     '<div class="form-group"><label class="form-label">姓名 <span class="required">*</span></label><input type="text" class="form-input" id="ba-name" placeholder="请输入姓名"></div>' +
@@ -11401,15 +12133,15 @@ function openBlacklistDetail(id) {
   var html = '<div class="modal-overlay hidden" id="modal-blacklist-detail" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-blacklist-detail\').remove()">' +
     '<div class="modal" style="width:460px;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">🚫</div><div class="txt-primary">' + b.name + '</div></div>' +
+    '<div class="flex-center"><div class="icon-xl">🚫</div><div class="txt-primary">' + b.name + '</div></div>' +
     '<button onclick="document.getElementById(\'modal-blacklist-detail\').remove();" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
-    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div class="txt-muted">手机号</div><div style="font-size:13px;font-weight:600;">' + b.phone + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div class="txt-muted">手机号</div><div class="txt-subtitle">' + b.phone + '</div></div>' +
     '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div class="txt-muted">证件号</div><div style="font-size:12px;font-family:monospace;">' + b.idCard + '</div></div>' +
-    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div class="txt-muted">封禁类型</div><div style="font-size:13px;font-weight:600;">' + (b.type === 'permanent' ? '🔒 永久封禁' : '⏳ 临时封禁') + '</div></div>' +
-    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div class="txt-muted">到期时间</div><div style="font-size:13px;font-weight:600;">' + b.expire + '</div></div></div>' +
-    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:12px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">违规原因</div><div style="font-size:13px;font-weight:600;">' + (reasonLabels[b.reason] || b.reasonText) + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div class="txt-muted">封禁类型</div><div class="txt-subtitle">' + (b.type === 'permanent' ? '🔒 永久封禁' : '⏳ 临时封禁') + '</div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div class="txt-muted">到期时间</div><div class="txt-subtitle">' + b.expire + '</div></div></div>' +
+    '<div style="padding:12px;background:var(--bg);border-radius:8px;margin-bottom:12px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">违规原因</div><div class="txt-subtitle">' + (reasonLabels[b.reason] || b.reasonText) + '</div></div>' +
     '<div style="padding:12px;background:var(--bg);border-radius:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">添加日期</div><div style="font-size:12px;">' + b.date + '</div></div></div>' +
     '<div class="modal-footer">' +
     '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-blacklist-detail\').remove()">关闭</button>' +
@@ -11513,7 +12245,7 @@ function renderUnlockLogStats() {
         '<div style="flex:1;min-width:60px;padding:6px;background:var(--purple-bg);border-radius:6px;text-align:center;"><div style="font-size:11px;font-weight:700;color:var(--purple);">其他</div><div class="txt-muted txt-muted-sm">10%</div></div></div></div>' +
     '<div ' + cardStyle + '><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">🔋 设备电量预警</div>' +
       '<div style="font-size:12px;color:var(--red);font-weight:600;">⚠️ 3台设备电量低于20%</div>' +
-      '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">房间：201/305/402</div></div></div></div>';
+      '<div class="txt-muted mt-4">房间：201/305/402</div></div></div></div>';
 }
 
 // ============================================================
@@ -11761,6 +12493,30 @@ function navigateToDeviceDetail(uuid) {
     // 激活信息Tab
     switchDevTab('info');
     showPage('device-detail');
+    // 绘制P86-P87图表：电量分布饼图 & 信号强度柱状图
+    setTimeout(function() {
+      // 电量分布饼图（演示数据）
+      drawPieChart('chart-battery-pie', [
+        {label:'告急0-20%', value:2},
+        {label:'偏低20-50%', value:5},
+        {label:'正常50-80%', value:8},
+        {label:'充足80-100%', value:10}
+      ], ['#ff4d4f','#fa8c16','#52c41a','#1890ff'], '电量分布');
+      // 信号强度柱状图（演示数据）
+      drawBarChart('chart-signal-bar', [
+        {label:'弱0-30%',value:20},
+        {label:'中30-70%',value:45},
+        {label:'强70-100%',value:60}
+      ], ['#ff4d4f','#fa8c16','#52c41a'], '信号强度');
+      // P90: 设备健康度雷达图
+      drawRadarChart('chart-health-radar', [
+        {label:'电量',value:88},
+        {label:'信号',value:95},
+        {label:'在线时长',value:78},
+        {label:'固件版本',value:100},
+        {label:'历史告警',value:65}
+      ], ['#1890ff'], '设备健康度');
+    }, 50);
     showToast('📱 已跳转至设备 ' + d.room + ' 详情', 'success');
   }
 }
@@ -11844,11 +12600,11 @@ function openDeviceEditModal(uuid) {
   var html = '<div class="modal-overlay hidden" id="modal-device-edit" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-device-edit\').remove()">' +
     '<div class="modal" style="width:500px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">✏️</div><div class="txt-primary">编辑设备</div></div>' +
+    '<div class="flex-center"><div class="icon-xl">✏️</div><div class="txt-primary">编辑设备</div></div>' +
     '<button onclick="document.getElementById(\'modal-device-edit\').remove();" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
-    '<div class="form-group"><label class="form-label">设备UUID</label><input type="text" class="form-input" id="de-uuid" value="' + d.uuid + '" disabled style="background:var(--bg);color:var(--text-muted);"></div>' +
+    '<div class="form-group"><label class="form-label">设备UUID</label><input type="text" class="form-input" id="de-uuid" value="' + d.uuid + '" disabled class="bg-muted txt-muted"></div>' +
     '<div class="form-group"><label class="form-label">设备型号</label><input type="text" class="form-input" id="de-model" value="' + d.model + '"></div></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">' +
     '<div class="form-group"><label class="form-label">所属房间</label><input type="text" class="form-input" id="de-room" value="' + d.room + '"></div>' +
@@ -11924,7 +12680,7 @@ function openBuildingAddModal() {
   var html = '<div class="modal-overlay hidden" id="modal-building-add" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-building-add\').remove()">' +
     '<div class="modal" style="width:460px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">🏢</div><div class="txt-primary">新增楼栋</div></div>' +
+    '<div class="flex-center"><div class="icon-xl">🏢</div><div class="txt-primary">新增楼栋</div></div>' +
     '<button onclick="document.getElementById(\'modal-building-add\').remove();" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     '<div class="form-group"><label class="form-label">楼栋名称 <span class="required">*</span></label><input type="text" class="form-input" id="bld-add-name" placeholder="请输入楼栋名称，如：主楼/东配楼"></div>' +
@@ -11962,7 +12718,7 @@ function openFloorAddModal(buildingId) {
   var html = '<div class="modal-overlay hidden" id="modal-floor-add" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-floor-add\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">🏗️</div><div class="txt-primary">新增楼层</div></div>' +
+    '<div class="flex-center"><div class="icon-xl">🏗️</div><div class="txt-primary">新增楼层</div></div>' +
     '<button onclick="document.getElementById(\'modal-floor-add\').remove();" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     '<div class="form-group"><label class="form-label">所属楼栋</label><select class="form-select" id="fl-add-building" class="w-full"><option value="main">主楼</option><option value="east">东配楼</option></select></div>' +
@@ -12001,7 +12757,7 @@ function openFloorEditModal(floorNum, buildingId) {
   var html = '<div class="modal-overlay hidden" id="modal-floor-edit" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-floor-edit\').remove()">' +
     '<div class="modal" style="width:420px;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">✏️</div><div class="txt-primary">编辑楼层</div></div>' +
+    '<div class="flex-center"><div class="icon-xl">✏️</div><div class="txt-primary">编辑楼层</div></div>' +
     '<button onclick="document.getElementById(\'modal-floor-edit\').remove();" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     '<div class="form-group"><label class="form-label">所属楼栋</label><select class="form-select" id="fl-edit-building" class="w-full"><option value="main">主楼</option><option value="east">东配楼</option></select></div>' +
@@ -12488,7 +13244,7 @@ function openInvoiceBatchModal() {
   var html = '<div class="modal-overlay hidden" id="modal-invoice-batch" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-invoice-batch\').remove()">' +
     '<div class="modal" style="width:520px;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">🧾</div><div class="txt-primary">批量开具发票</div></div>' +
+    '<div class="flex-center"><div class="icon-xl">🧾</div><div class="txt-primary">批量开具发票</div></div>' +
     '<button onclick="document.getElementById(\'modal-invoice-batch\').remove();" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     '<div style="padding:12px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--orange);">⚠️ 批量开具前请确保已收集所有购方的完整开票信息</div>' +
@@ -12945,7 +13701,7 @@ function openNightAuditFullModal() {
   var html = '<div class="modal-overlay hidden" id="modal-night-audit" class="fixed-overlay" onclick="if(event.target===this)this.remove()">' +
     '<div class="modal" style="width:820px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
-    '<div class="flex-center"><div style="font-size:28px;">🌙</div><div><div class="txt-primary">夜审报表</div><div class="txt-muted">每日运营数据核对与结算</div></div></div>' +
+    '<div class="flex-center"><div class="icon-xl">🌙</div><div><div class="txt-primary">夜审报表</div><div class="txt-muted">每日运营数据核对与结算</div></div></div>' +
     '<div style="display:flex;gap:8px;align-items:center;">' +
     '<span class="txt-muted txt-muted-lg">总收入</span><span style="font-size:14px;font-weight:700;color:var(--green);">¥' + totalIncome.toLocaleString() + '</span>' +
     '<span style="font-size:12px;color:var(--text-muted);margin-left:8px;">总支出</span><span style="font-size:14px;font-weight:700;color:var(--red);">¥' + totalExpense.toLocaleString() + '</span>' +
@@ -13117,11 +13873,11 @@ function openDepositManagementModal() {
   var html = '<div class="modal-overlay hidden" id="modal-deposit-mgmt" class="fixed-overlay" onclick="if(event.target===this)this.remove()">' +
     '<div class="modal" style="width:800px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
-    '<div class="flex-center"><div style="font-size:28px;">💰</div><div><div class="txt-primary">押金管理</div><div class="txt-muted">押金收取与退还记录</div></div></div>' +
+    '<div class="flex-center"><div class="icon-xl">💰</div><div><div class="txt-primary">押金管理</div><div class="txt-muted">押金收取与退还记录</div></div></div>' +
     '<div style="display:flex;gap:16px;align-items:center;">' +
     '<div style="text-align:center;"><div class="txt-muted">待退押金</div><div style="font-size:16px;font-weight:700;color:var(--orange);">¥' + totalCollected.toLocaleString() + '</div></div>' +
     '<div style="text-align:center;"><div class="txt-muted">已退押金</div><div style="font-size:16px;font-weight:700;color:var(--blue);">¥' + totalRefunded.toLocaleString() + '</div></div>' +
-    '<div style="text-align:center;"><div class="txt-muted">在住押金</div><div style="font-size:16px;font-weight:700;color:var(--green);">' + pending + '笔</div></div>' +
+    '<div style="text-align:center;"><div class="txt-muted">在线押金</div><div style="font-size:16px;font-weight:700;color:var(--green);">' + pending + '笔</div></div>' +
     '</div>' +
     '<button onclick="document.getElementById(\'modal-deposit-mgmt\').remove()" class="btn-close">✕</button></div>' +
     '<div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-shrink:0;background:var(--bg);">' +
@@ -13267,7 +14023,7 @@ function openStaffScheduleModal() {
   var html = '<div class="modal-overlay hidden" id="modal-staff-schedule" class="fixed-overlay" onclick="if(event.target===this)this.remove()">' +
     '<div class="modal" style="width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
-    '<div class="flex-center"><div style="font-size:28px;">📅</div><div><div class="txt-primary">排班管理</div><div class="txt-muted">员工排班与考勤记录</div></div></div>' +
+    '<div class="flex-center"><div class="icon-xl">📅</div><div><div class="txt-primary">排班管理</div><div class="txt-muted">员工排班与考勤记录</div></div></div>' +
     '<div style="display:flex;gap:8px;">' +
     '<select id="sch-date-filter" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="applyScheduleFilter()">' +
     '<option value="">全部日期</option><option value="2026-03-29">今天(03-29)</option><option value="2026-03-28">昨天(03-28)</option><option value="2026-03-27">03-27</option></select>' +
@@ -13432,7 +14188,7 @@ function openSatisfactionCenterModal() {
   var html = '<div class="modal-overlay hidden" id="modal-satisfaction" class="fixed-overlay" onclick="if(event.target===this)this.remove()">' +
     '<div class="modal" style="width:900px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
-    '<div class="flex-center"><div style="font-size:28px;">⭐</div><div><div class="txt-primary">服务评价中心</div><div class="txt-muted">客户满意度追踪与处理</div></div></div>' +
+    '<div class="flex-center"><div class="icon-xl">⭐</div><div><div class="txt-primary">服务评价中心</div><div class="txt-muted">客户满意度追踪与处理</div></div></div>' +
     '<div style="display:flex;gap:20px;align-items:center;">' +
     '<div style="text-align:center;"><div class="txt-muted">平均评分</div><div style="font-size:20px;font-weight:800;color:var(--orange);">' + avgScore + '</div></div>' +
     '<div style="text-align:center;"><div class="txt-muted">收到表扬</div><div style="font-size:16px;font-weight:700;color:var(--green);">' + praiseCount + '</div></div>' +
@@ -13496,7 +14252,7 @@ function openSatisfactionDetail(idx) {
   var html = '<div class="modal-overlay hidden" id="modal-sat-detail" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)this.remove()">' +
     '<div class="modal" style="width:500px;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">' + typeIcon + '</div><div><div class="txt-primary">评价详情</div><div class="txt-muted">' + typeLabel + ' · ' + s.id + '</div></div></div>' +
+    '<div class="flex-center"><div class="icon-xl">' + typeIcon + '</div><div><div class="txt-primary">评价详情</div><div class="txt-muted">' + typeLabel + ' · ' + s.id + '</div></div></div>' +
     '<button onclick="document.getElementById(\'modal-sat-detail\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
     '<div class="p-xl">' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
@@ -13561,13 +14317,13 @@ function openPointsMallPage() {
   }).join('');
   var claimedHistory = _pointsMallItems.filter(function(i){ return i.claimed > 0; }).map(function(item) {
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">' +
-      '<div><div style="font-size:13px;font-weight:600;">' + item.name + '</div><div class="txt-muted">已兑换 ' + item.claimed + ' / ' + item.stock + ' 次</div></div>' +
+      '<div><div class="txt-subtitle">' + item.name + '</div><div class="txt-muted">已兑换 ' + item.claimed + ' / ' + item.stock + ' 次</div></div>' +
       '<div style="font-size:12px;color:var(--green);">' + item.claimed * item.points + ' 积分消耗</div></div>';
   }).join('') || '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">暂无兑换记录</div>';
   var html = '<div class="modal-overlay hidden" id="modal-points-mall" class="fixed-overlay" onclick="if(event.target===this)this.remove()">' +
     '<div class="modal" style="width:680px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
-    '<div class="flex-center"><div style="font-size:28px;">🎁</div><div><div class="txt-primary">积分商城</div><div class="txt-muted">积分兑换礼品与特权</div></div></div>' +
+    '<div class="flex-center"><div class="icon-xl">🎁</div><div><div class="txt-primary">积分商城</div><div class="txt-muted">积分兑换礼品与特权</div></div></div>' +
     '<div class="points-balance" style="margin:0;padding:10px 16px;min-width:160px;text-align:center;background:linear-gradient(135deg,var(--orange),#ffc053);border-radius:10px;color:white;">' +
     '<div style="font-size:11px;opacity:0.85;">可用积分</div>' +
     '<div style="font-size:24px;font-weight:800;">' + _pointsBalance + '</div></div>' +
@@ -14978,7 +15734,7 @@ function openSLATableModal() {
   var html = '<div class="modal-overlay hidden" id="modal-sla-table" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-sla-table\').remove()">' +
     '<div style="background:white;border-radius:12px;width:820px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
       '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
-        '<div class="flex-center"><div style="font-size:22px;">⏱️</div><div><div class="txt-primary">SLA工单监控表</div><div class="txt-muted">实时剩余时限</div></div></div>' +
+        '<div class="flex-center"><div class="icon-lg">⏱️</div><div><div class="txt-primary">SLA工单监控表</div><div class="txt-muted">实时剩余时限</div></div></div>' +
         '<div style="display:flex;gap:10px;align-items:center;">' +
           '<div style="padding:4px 12px;background:var(--red-bg);color:var(--red);border-radius:8px;font-size:12px;font-weight:700;">⚠️ 超时 ' + overdueCount + ' 条</div>' +
           '<button onclick="document.getElementById(\'modal-sla-table\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;">✕</button></div></div>' +
@@ -14993,7 +15749,7 @@ function openSLATableModal() {
           '<div class="txt-muted txt-muted-sm">正常进行中</div><div style="font-size:20px;font-weight:800;color:var(--green);">' + normalCount + '</div></div></div>' +
       '<div style="overflow-y:auto;flex:1;padding:0 16px;">' +
         '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;">' +
-          '<thead><tr style="background:var(--bg);border-bottom:2px solid var(--border);">' +
+          '<thead><tr class="bg-muted border-b-strong">' +
             '<th style="padding:8px 6px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">工单号</th>' +
             '<th style="padding:8px 6px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">类型</th>' +
             '<th style="padding:8px 6px;text-align:left;font-weight:700;color:var(--text-muted);font-size:11px;">房间</th>' +
@@ -15043,7 +15799,7 @@ function openMemberDetail(idx) {
   var html = '<div class="modal-overlay hidden" id="modal-member-detail" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-member-detail\').remove()">' +
     '<div class="modal" style="width:480px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">👑</div><div><div class="txt-primary">会员详情</div><div class="txt-muted">' + m.level + '会员 · ' + m.phone + '</div></div></div>' +
+    '<div class="flex-center"><div class="icon-xl">👑</div><div><div class="txt-primary">会员详情</div><div class="txt-muted">' + m.level + '会员 · ' + m.phone + '</div></div></div>' +
     '<button onclick="document.getElementById(\'modal-member-detail\').remove()" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
@@ -15105,7 +15861,7 @@ function openEditMemberModal(idx) {
   var html = '<div class="modal-overlay hidden" id="modal-edit-member" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-edit-member\').remove()">' +
     '<div class="modal" style="width:480px;max-height:88vh;overflow-y:auto;">' +
     '<div class="modal-header">' +
-    '<div class="flex-center"><div style="font-size:28px;">✏️</div><div class="txt-primary">编辑会员信息</div></div>' +
+    '<div class="flex-center"><div class="icon-xl">✏️</div><div class="txt-primary">编辑会员信息</div></div>' +
     '<button onclick="document.getElementById(\'modal-edit-member\').remove()" class="btn-close">✕</button></div>' +
     '<div class="p-xl">' +
     '<div class="form-row"><div class="form-group"><label class="form-label">姓名</label>' +
@@ -15516,7 +16272,7 @@ function openReportSubscribeModal() {
   var html = '<div class="modal-overlay hidden" id="modal-report-subscribe" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-report-subscribe\').remove()">' +
     '<div class="modal" style="width:460px;max-height:88vh;overflow-y:auto;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">📬</div><div class="txt-primary">报表订阅</div>' +
+    '<div class="icon-xl">📬</div><div class="txt-primary">报表订阅</div>' +
     '<button onclick="document.getElementById(\'modal-report-subscribe\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
     '<div class="p-xl">' +
     '<div style="margin-bottom:16px;padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;font-size:12px;color:var(--blue);">💡 订阅后，系统将在指定时间自动推送报表到您的邮箱或手机</div>' +
@@ -15630,7 +16386,7 @@ function openHandoverReportModal() {
   var html = '<div class="modal-overlay hidden" id="modal-ho-report" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-ho-report\').remove()">' +
     '<div class="modal" style="width:680px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">📋</div><div><div class="txt-primary">交接班完整报表</div><div class="txt-muted">2026-03-29 早班 07:00-15:00</div></div>' +
+    '<div class="icon-xl">📋</div><div><div class="txt-primary">交接班完整报表</div><div class="txt-muted">2026-03-29 早班 07:00-15:00</div></div>' +
     '<button onclick="document.getElementById(\'modal-ho-report\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
     '<div style="flex:1;overflow-y:auto;padding:20px 24px;">' +
     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">' +
@@ -15663,7 +16419,7 @@ function openHandoverConfirmModal() {
   var html = '<div class="modal-overlay hidden" id="modal-ho-confirm" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-ho-confirm\').remove()">' +
     '<div class="modal" style="width:420px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">🔐</div><div><div class="txt-primary">电子交接确认</div><div class="txt-muted">交接班双向电子签名</div></div>' +
+    '<div class="icon-xl">🔐</div><div><div class="txt-primary">电子交接确认</div><div class="txt-muted">交接班双向电子签名</div></div>' +
     '<button onclick="document.getElementById(\'modal-ho-confirm\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
     '<div class="p-xl">' +
     '<div style="padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);">💡 交接双方确认后，系统将记录交接时间戳和签名信息，不可篡改。</div>' +
@@ -15807,7 +16563,7 @@ function navigateToRoom(roomNum) {
   var titleEl = document.getElementById('rd-page-title');
   if (titleEl) titleEl.textContent = '🚪 房间详情 - ' + room.num;
   var subEl = document.getElementById('rd-page-sub');
-  if (subEl) subEl.textContent = room.type + ' · ' + room.floor + ' · ' + (room.status === 'in' ? '入住中' : room.status === 'empty' ? '离线' : room.status === 'alert' ? '告警' : '维修');
+  if (subEl) subEl.textContent = room.type + ' · ' + room.floor + ' · ' + (room.status === 'in' ? '在线' : room.status === 'empty' ? '离线' : room.status === 'alert' ? '告警' : '维修');
   // Update room detail page content if elements exist
   var statusVal = document.querySelector('#room-content-info .detail-card .value[style*="color:var(--blue)"]');
   if (statusVal) {
@@ -15904,7 +16660,7 @@ function rdOpenDeviceBind() {
       'onmouseout="this.style.borderColor=\'var(--blue)\'">' +
       '<div style="font-size:24px;">📱</div>' +
       '<div style="flex:1;">' +
-        '<div style="font-size:13px;font-weight:600;">' + d.model + '</div>' +
+        '<div class="txt-subtitle">' + d.model + '</div>' +
         '<div class="txt-muted">UUID: ' + d.uuid + '</div>' +
         '<div style="font-size:11px;margin-top:2px;">🔋 <span class="' + battClass + '">' + d.battery + '%</span> · 📡 ' + d.signal + '</div></div>' +
       '<div style="font-size:11px;font-weight:600;color:' + (isDisabled ? 'var(--text-muted)' : 'var(--blue)') + ';">' + (isDisabled ? d.status : '选择') + '</div></div>';
@@ -16581,17 +17337,17 @@ window.batchDelete = function() {
 };
 
 // ============================================================
-// 【改进4】看板视图切换（switchDashboardView）
-// 理由：首页看板统计的4个Tab按钮（实时概览/入住分析/设备状态/收入统计）onclick="switchDashboardView(...)" 从未定义
-// 业务逻辑：切换看板Tab视图，切换对应内容面板，更新按钮激活状态
+// 【改进4】设备监控视图切换（switchMonitorView）
+// 理由：首页设备监控统计的4个Tab按钮（实时概览/设备状态/告警统计/能耗概览）onclick="switchMonitorView(...)" 从未定义
+// 业务逻辑：切换监控Tab视图，切换对应内容面板，更新按钮激活状态
 // ============================================================
-window.switchDashboardView = function(view) {
+window.switchMonitorView = function(view) {
   // Tab button states
   var tabs = [
-    {id: 'dvtab-overview', view: 'overview', label: '实时概览'},
-    {id: 'dvtab-device', view: 'device', label: '设备状态'},
-    {id: 'dvtab-alert', view: 'alert', label: '告警统计'},
-    {id: 'dvtab-energy', view: 'energy', label: '能耗概览'}
+    {id: 'mvtab-overview', view: 'overview', label: '实时概览'},
+    {id: 'mvtab-device', view: 'device', label: '设备状态'},
+    {id: 'mvtab-alert', view: 'alert', label: '告警统计'},
+    {id: 'mvtab-energy', view: 'energy', label: '能耗概览'}
   ];
   
   // Update tab button styles via CSS class
@@ -16607,12 +17363,12 @@ window.switchDashboardView = function(view) {
   });
   
   // Show/hide content panels
-  var panels = ['dv-panel-overview', 'dv-panel-device', 'dv-panel-alert', 'dv-panel-energy'];
+  var panels = ['mv-panel-overview', 'mv-panel-device', 'mv-panel-alert', 'mv-panel-energy'];
   var panelMap = {
-    'overview': 'dv-panel-overview',
-    'device': 'dv-panel-device',
-    'alert': 'dv-panel-alert',
-    'energy': 'dv-panel-energy'
+    'overview': 'mv-panel-overview',
+    'device': 'mv-panel-device',
+    'alert': 'mv-panel-alert',
+    'energy': 'mv-panel-energy'
   };
   
   var targetPanel = panelMap[view];
@@ -16671,7 +17427,7 @@ window.openChangeRoomModal = function() {
     '<div id="change-room-list">' + roomOptions + '</div>' +
     '</div>' +
     '<div id="change-room-selected" style="display:none;padding:12px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:12px;">' +
-    '<div style="font-size:13px;font-weight:600;">已选：<span id="crs-room-num" style="color:var(--blue);"></span> <span id="crs-room-type" class="txt-muted txt-muted-lg"></span></div>' +
+    '<div class="txt-subtitle">已选：<span id="crs-room-num" style="color:var(--blue);"></span> <span id="crs-room-type" class="txt-muted txt-muted-lg"></span></div>' +
     '</div>' +
     '<div class="txt-muted txt-muted-lg">换房将自动完成：原房间解绑 → 新房间入住，费用多退少补</div>' +
     '</div>' +
@@ -16755,7 +17511,7 @@ window.openDeviceImportModal = function() {
   var html = '<div class="modal-overlay hidden" id="modal-device-import" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-device-import\').remove()">' +
     '<div class="modal" style="width:560px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">📥</div><div><div class="txt-primary">批量导入设备</div><div class="txt-muted">支持 CSV 格式批量注册设备</div></div>' +
+    '<div class="icon-xl">📥</div><div><div class="txt-primary">批量导入设备</div><div class="txt-muted">支持 CSV 格式批量注册设备</div></div>' +
     '<button onclick="document.getElementById(\'modal-device-import\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
     '<div class="p-xl">' +
     '<div style="padding:14px;background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--blue);line-height:1.8;">' +
@@ -16832,7 +17588,7 @@ window.openDeviceGroupManageModal = function() {
   var html = '<div class="modal-overlay hidden" id="modal-device-group-manage" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-device-group-manage\').remove()">' +
     '<div class="modal" style="width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">⚙️</div><div><div class="txt-primary">设备分组管理</div><div class="txt-muted">创建和管理设备分组，便于批量操作</div></div>' +
+    '<div class="icon-xl">⚙️</div><div><div class="txt-primary">设备分组管理</div><div class="txt-muted">创建和管理设备分组，便于批量操作</div></div>' +
     '<button onclick="document.getElementById(\'modal-device-group-manage\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
     '<div style="padding:16px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;">' +
     '<input class="form-input" id="dg-search" placeholder="🔍 搜索分组名称" style="width:200px;padding:7px 12px;font-size:12px;"/>' +
@@ -16851,7 +17607,7 @@ window.openAddDeviceGroupModal = function() {
   var html = '<div class="modal-overlay hidden" id="modal-add-device-group" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;" onclick="if(event.target===this)document.getElementById(\'modal-add-device-group\').remove()">' +
     '<div class="modal" style="width:440px;background:white;border-radius:12px;">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">➕</div><div class="txt-primary">新建设备分组</div>' +
+    '<div class="icon-xl">➕</div><div class="txt-primary">新建设备分组</div>' +
     '<button onclick="document.getElementById(\'modal-add-device-group\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
     '<div class="p-xl">' +
     '<div class="form-group"><label class="form-label">分组名称 <span class="required">*</span></label>' +
@@ -16889,7 +17645,7 @@ window.openInvoiceResendModal = function(invId) {
   var html = '<div class="modal-overlay hidden" id="modal-invoice-resend" class="fixed-overlay">' +
     '<div class="modal" style="width:460px;background:white;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.2);">' +
     '<div style="padding:24px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">📧</div>' +
+    '<div class="icon-xl">📧</div>' +
     '<div><div class="txt-primary">重发发票</div>' +
     (inv ? '<div class="txt-muted">发票号：' + inv.id + ' · ' + inv.company + '</div>' : '') + '</div>' +
     '<button onclick="document.getElementById(\'modal-invoice-resend\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
@@ -16945,7 +17701,7 @@ window.openInvoiceReissueModal = function(originalInvId) {
   var html = '<div class="modal-overlay hidden" id="modal-invoice-reissue" class="fixed-overlay">' +
     '<div class="modal" style="width:520px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.2);">' +
     '<div style="padding:24px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">🔄</div>' +
+    '<div class="icon-xl">🔄</div>' +
     '<div><div class="txt-primary">发票重开</div>' +
     (inv ? '<div class="txt-muted">原发票：' + inv.id + '（¥' + (inv.amount || 0).toFixed(2) + '）</div>' : '') + '</div>' +
     '<button onclick="document.getElementById(\'modal-invoice-reissue\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
@@ -17081,7 +17837,7 @@ window.openInvoiceVoidModal = function(invId) {
   var html = '<div class="modal-overlay hidden" id="modal-invoice-void" class="fixed-overlay">' +
     '<div class="modal" style="width:440px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:24px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">❌</div>' +
+    '<div class="icon-xl">❌</div>' +
     '<div><div class="txt-primary">发票作废确认</div>' +
     '<div class="txt-muted">发票号：' + invId + '（¥' + (inv.amount || 0).toFixed(2) + '）</div></div>' +
     '<button onclick="document.getElementById(\'modal-invoice-void\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
@@ -17201,7 +17957,7 @@ window.openSettlementModal = function(roomNum) {
   var html = '<div class="modal-overlay hidden" id="modal-settlement" class="fixed-overlay">' +
     '<div class="modal" style="width:480px;background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
     '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">' +
-    '<div style="font-size:28px;">💰</div>' +
+    '<div class="icon-xl">💰</div>' +
     '<div><div class="txt-primary">解绑结算 - ' + (roomNum || '--') + '房间</div>' +
     '<div class="txt-muted">请确认结算金额并完成收款</div></div>' +
     '<button onclick="document.getElementById(\'modal-settlement\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button></div>' +
