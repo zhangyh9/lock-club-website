@@ -3,7 +3,7 @@
 import json
 from datetime import datetime
 
-POOL_FILE = "/Users/hugo/.openclaw/workspace/lock-club-website/scripts/iot-optimizer/tasks-pool.json"
+POOL_FILE = "/Users/hugo/.openclaw/workspace/lock-club-website/scripts/iot-optimizer/tasks-pool-v2.json"
 
 def load():
     with open(POOL_FILE, 'r') as f:
@@ -14,14 +14,12 @@ def save(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 def get_next_tasks(count=3):
-    """获取下N个待执行任务"""
     data = load()
     pending = [(tid, t) for tid, t in data['tasks'].items() if t.get('status', 'pending') == 'pending']
-    pending.sort(key=lambda x: x[1]['priority'])
+    pending.sort(key=lambda x: (x[1].get('priority', 'P2'), x[0]))
     return pending[:count]
 
 def mark_done(task_ids):
-    """标记任务完成"""
     data = load()
     for tid in task_ids:
         if tid in data['tasks']:
@@ -32,7 +30,7 @@ def mark_done(task_ids):
 
 def get_stats():
     data = load()
-    original_total = data.get('originalTotal', 102)
+    original_total = data.get('originalTotal', 120)
     done = data.get('doneCount', 0)
     remaining = len(data['tasks'])
     return {

@@ -698,7 +698,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .badge-blue { background:var(--blue-bg);color:var(--blue);padding:4px 12px;border-radius:12px;font-weight:700; }
 .badge-orange { background:var(--orange-bg);color:var(--orange);padding:4px 12px;border-radius:12px;font-weight:700; }
 .badge-red { background:var(--red-bg);color:var(--red);padding:4px 12px;border-radius:12px;font-weight:700; }
+.badge-purple { background:var(--purple-bg);color:var(--purple);padding:4px 12px;border-radius:12px;font-weight:700; }
 .badge-sm { font-size:10px;padding:2px 6px; }
+.badge-sm-green { background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600; }
+.badge-sm-orange { background:var(--orange-bg);color:var(--orange);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600; }
 .btn-close { background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light); }
 .btn-icon { background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center; }
 .card-white { background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px; }
@@ -706,7 +709,48 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
 .card-white-lg { background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08); }
 .shadow-lg { box-shadow:0 20px 60px rgba(0,0,0,0.3); }
 .border-b { border-bottom:1px solid var(--border); }
+.border-b-strong { border-bottom: 2px solid var(--border); }
 .border-t { border-top:1px solid var(--border); }
+.mt-4 { margin-top: 4px; }
+.bg-muted { background: var(--bg); }
+.icon-xl { font-size: 28px; }
+.icon-lg { font-size: 22px; }
+.icon-md { font-size: 18px; }
+.p-btn { padding: 8px 20px; }
+.p-btn-sm { padding: 6px 14px; }
+.txt-subtitle { font-size: 13px; font-weight: 600; }
+
+/* ===== P81-P85: 表格样式统一 ===== */
+.table-wrapper { overflow-x: auto; }
+.table-row:hover { background: var(--bg); cursor: pointer; }
+.table-sortable { cursor: pointer; user-select: none; }
+.table-checkbox { width: 20px; }
+.table-pager { display:flex;gap:8px;align-items:center;justify-content:center;padding:12px; }
+.table-pager button { padding:4px 12px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);border-radius:6px;cursor:pointer; }
+.table-pager button:disabled { opacity:0.5;cursor:not-allowed; }
+
+/* ===== P91: 侧边栏≤1024px自动折叠 ===== */
+@media (max-width: 1024px) {
+  .sidebar { width: 60px !important; }
+  .sidebar .menu-text { display: none; }
+}
+
+/* ===== P92: 表格≤768px横向滚动 ===== */
+@media (max-width: 768px) {
+  .table-container, .table-wrapper { overflow-x: auto; }
+  table { min-width: 600px; }
+}
+
+/* ===== P93: 卡片≤640px单列布局 ===== */
+@media (max-width: 640px) {
+  .card { flex-direction: column; }
+  .card-body { width: 100%; }
+}
+
+/* ===== P94: 弹窗移动端全屏显示 ===== */
+@media (max-width: 480px) {
+  .modal-content { width: 100% !important; max-height: 100vh; border-radius: 0; }
+}
 </style>
 <style>
 .sidebar .menu-group-title {
@@ -736,6 +780,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: v
     mods[i].style.setProperty("overflow","hidden","important");
   }
 })();
+
+// ======= 全局防抖节流工具函数（P60） =======
+function debounce(fn, delay) {
+  let timer = null;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+function throttle(fn, limit) {
+  let inThrottle = false;
+  return function(...args) {
+    if (!inThrottle) { fn.apply(this, args); inThrottle = true; setTimeout(() => inThrottle = false, limit); }
+  };
+}
 
 // ======= 全局常量（P99修复：魔法数字提取为命名常量） =======
 var IOT_CONST = {
@@ -1394,13 +1453,9 @@ function showToast(msg, type) {
 </div>
 </div>
 <script>
-// 【物联后台v4-第X轮-改进】首页搜索防抖优化P60
-// 理由：搜索输入无防抖，每次按键立即执行过滤，性能差用户体验也不好
+// 【物联后台v4-第X轮-改进】首页搜索防抖优化P60（使用全局debounce工具函数）
 function debounceFilterRooms(kw) {
-  if (window._filterRoomsTimer) clearTimeout(window._filterRoomsTimer);
-  window._filterRoomsTimer = setTimeout(function() {
-    filterRoomsByKeyword(kw);
-  }, 300);
+  debounce(function() { filterRoomsByKeyword(kw); }, 300)();
 }
 function filterRoomsByKeyword(kw) {
   var cards = document.querySelectorAll('#room-grid .room-card');
@@ -6520,11 +6575,10 @@ function _renderGlobalSearchHistory() {
     }).join('') +
     '<div onclick="_globalSearchHistory=[];try{localStorage.removeItem(\'iot_search_history\');}catch(e){}var r=document.getElementById(\'global-search-results\');if(r)r.style.display=\'none\';" style="padding:8px 16px;cursor:pointer;font-size:12px;color:var(--text-muted);text-align:center;">清除历史</div>';
 }
-// 【P76优化】全局搜索防抖（避免每次按键触发搜索）
-var _globalSearchTimer = null;
+// 【P76优化】全局搜索防抖（使用全局debounce工具函数 P60）
 function debounceGlobalSearch(q) {
-  if (_globalSearchTimer) clearTimeout(_globalSearchTimer);
-  _globalSearchTimer = setTimeout(function() { performGlobalSearch(q); }, 300);
+  var fn = debounce(function(val) { performGlobalSearch(val); }, 300);
+  fn(q);
 }
 
 window.performGlobalSearch = function(q) {
@@ -6783,19 +6837,19 @@ function executeBatchControl() {
 <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">
 <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:12px;">
 <span style="width:70px;color:var(--text-muted);">2026-03-25</span>
-<span style="background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:10px;font-size:11px;">成功</span>
+<span class="badge-sm-green">成功</span>
 <span>v2.3.1 → v2.4.0</span>
 <span style="color:var(--text-muted);">11台设备</span>
 </div>
 <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:12px;">
 <span style="width:70px;color:var(--text-muted);">2026-02-15</span>
-<span style="background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:10px;font-size:11px;">成功</span>
+<span class="badge-sm-green">成功</span>
 <span>v2.2.8 → v2.3.1</span>
 <span style="color:var(--text-muted);">16台设备</span>
 </div>
 <div style="padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:12px;">
 <span style="width:70px;color:var(--text-muted);">2026-01-10</span>
-<span style="background:var(--orange-bg);color:var(--orange);padding:2px 8px;border-radius:10px;font-size:11px;">部分成功</span>
+<span class="badge-sm-orange">部分成功</span>
 <span>v2.2.5 → v2.2.8</span>
 <span style="color:var(--text-muted);">14台成功，2台失败</span>
 </div>
@@ -11542,26 +11596,22 @@ function applyDeviceSignalFilter() {
   renderDeviceFilteredTable();
 }
 
-// 【P60优化】设备状态下拉筛选防抖（避免每次切换触发重新渲染）
-var _deviceFilterTimer = null;
+// 【P60优化】设备状态下拉筛选防抖（使用全局debounce工具函数）
 function debounceDeviceFilter(status) {
-  if (_deviceFilterTimer) clearTimeout(_deviceFilterTimer);
-  _deviceFilterTimer = setTimeout(function() {
+  debounce(function() {
     _deviceStatusFilter = status;
     _devicePage = 1;
     renderDeviceFilteredTable();
-  }, 300);
+  }, 300)();
 }
 
-// 【P76优化】设备搜索防抖（替代applyDeviceSearch直接绑定oninput）
-var _deviceSearchTimer = null;
+// 【P76优化】设备搜索防抖（使用全局debounce工具函数）
 function debounceDeviceSearch(kw) {
-  if (_deviceSearchTimer) clearTimeout(_deviceSearchTimer);
-  _deviceSearchTimer = setTimeout(function() {
+  debounce(function() {
     _deviceSearchKw = kw.trim().toLowerCase();
     _devicePage = 1;
     renderDeviceFilteredTable();
-  }, 300);
+  }, 300)();
 }
 
 function applyDeviceSearch() {
@@ -12198,11 +12248,11 @@ function demonstrateWorkorderLifecycle() {
     '<div style="font-size:20px;">📋</div><div class="txt-primary">工单完整生命周期演示</div>' +
     '<button onclick="document.getElementById(\'modal-wo-demo\').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;">✕</button></div>' +
     '<div style="padding:20px 24px;font-size:13px;line-height:2;">' +
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:var(--blue-bg);color:var(--blue);padding:4px 12px;border-radius:12px;font-weight:700;">1️⃣ 创建</span><span>客户发起工单，系统自动分配SLA时限</span></div>' +
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:var(--orange-bg);color:var(--orange);padding:4px 12px;border-radius:12px;font-weight:700;">2️⃣ 受理</span><span>员工接单，工单状态变为"处理中"</span></div>' +
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:var(--green-bg);color:var(--green);padding:4px 12px;border-radius:12px;font-weight:700;">3️⃣ 处理</span><span>员工执行服务，更新处理进度</span></div>' +
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:var(--purple-bg);color:var(--purple);padding:4px 12px;border-radius:12px;font-weight:700;">4️⃣ 完成</span><span>服务完成，客户确认评价</span></div>' +
-    '<div class="flex-center"><span style="background:var(--red-bg);color:var(--red);padding:4px 12px;border-radius:12px;font-weight:700;">⚠️ 超时</span><span>SLA超时自动升级给上级处理</span></div></div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span class="badge badge-blue">1️⃣ 创建</span><span>客户发起工单，系统自动分配SLA时限</span></div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span class="badge badge-orange">2️⃣ 受理</span><span>员工接单，工单状态变为"处理中"</span></div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span class="badge badge-green">3️⃣ 处理</span><span>员工执行服务，更新处理进度</span></div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span class="badge badge-purple">4️⃣ 完成</span><span>服务完成，客户确认评价</span></div>' +
+    '<div class="flex-center"><span class="badge badge-red">⚠️ 超时</span><span>SLA超时自动升级给上级处理</span></div></div>' +
     '<div class="modal-footer">' +
     '<button class="modal-btn primary" onclick="document.getElementById(\'modal-wo-demo\').remove()" class="btn-primary-blue" style=">我知道了</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
@@ -16102,7 +16152,7 @@ function showUnlockDetail(method, time, person, result) {
     '<div style="display:grid;grid-template-columns:80px 1fr;gap:12px;font-size:13px;margin-bottom:16px;">' +
     '<div style="color:var(--text-muted);">开锁方式</div><div style="font-weight:600;color:' + m.color + ';">' + m.label + '</div>' +
     '<div style="color:var(--text-muted);">操作时间</div><div class="txt-bold">' + time + '</div>' +
-    '<div style="color:var(--text-muted);">操作人员</div><div class="txt-bold">' + person + '</div>' +
+    '<div style="color:var(--text-muted);">操作人</div><div class="txt-bold">' + person + '</div>' +
     '<div style="color:var(--text-muted);">设备房间</div><div class="txt-bold">301 室</div>' +
     '<div style="color:var(--text-muted);">当时电量</div><div class="txt-bold">' + (Math.floor(Math.random() * 30) + 60) + '%</div>' +
     '<div style="color:var(--text-muted);">响应耗时</div><div class="txt-bold">' + (Math.floor(Math.random() * 200) + 10) + 'ms</div>' +
