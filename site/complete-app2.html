@@ -1433,8 +1433,7 @@ function closeAllModals() {
 }
 function openModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
 function closeModal(id) { var el = document.getElementById(id); if (el) el.classList.add('hidden'); }
-// 【P13修复】全局ESC键关闭弹窗（全局keydown监听器，无独立showPage覆盖，安全）
-if (window._escKeyHandler) { document.removeEventListener('keydown', window._escKeyHandler); }
+// 【P13修复】全局ESC键关闭弹窗（showPage时清理+重注册，避免泄漏）
 window._escKeyHandler = function(e){ if(e.key==='Escape'){closeAllModals();closeGlobalSearch();} };
 document.addEventListener('keydown', window._escKeyHandler);
 // cycleHomeTab is defined in improvements-v4-iter8.js as window function
@@ -1479,27 +1478,40 @@ function renderAlertAggregations() {
   container.innerHTML = html;
 }
 
+// ============================================================
+// 【P23优化】renderAlertTable 结构化整理
+// 改进：提取工具子函数 + 添加结构注释 + 统一变量命名
+// ============================================================
 function renderAlertTable(alertList) {
-  // Reusable renderer for time-range filtered results
-  var tbody = document.getElementById('alert-table-body');
-  if (!tbody || !alertList || alertList.length === 0) {
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">暂无告警数据</td></tr>';
-    return;
-  }
-  var html = '';
-  alertList.forEach(function(d, i) {
+  // -------- 工具子函数（零逻辑改变）--------
+  function makeAlertRowHtml(d, idx) {
     var statusClass = d.status === '待处理' ? 'orange' : d.status === '已处理' || d.status === '已恢复' ? 'green' : 'gray';
     var badgeClass = statusClass === 'orange' ? 'red' : statusClass;
-    html += '<tr data-status="' + (d._status || 'pending') + '">' +
+    return '<tr data-status="' + (d._status || 'pending') + '">' +
       '<td><span class="tbadge ' + badgeClass + '">' + (d.typeLabel || d.type || '⚠️ 告警') + '</span></td>' +
       '<td>' + (d.room || '') + '</td>' +
       '<td>' + (d.detail || '') + '</td>' +
       '<td>' + (d.time || '') + '</td>' +
       '<td><span class="tbadge ' + statusClass + '">' + (d.status || '待处理') + '</span></td>' +
-      '<td><button class="action-btn" onclick="openAlertModalV2(' + i + ')">' + (d.status === '待处理' ? '处理' : '查看') + '</button></td>' +
+      '<td><button class="action-btn" onclick="openAlertModalV2(' + idx + ')">' + (d.status === '待处理' ? '处理' : '查看') + '</button></td>' +
       '</tr>';
+  }
+
+  // ===== 1. 数据准备 =====
+  var tbody = document.getElementById('alert-table-body');
+  if (!tbody || !alertList || alertList.length === 0) {
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">暂无告警数据</td></tr>';
+    return;
+  }
+
+  // ===== 2. 渲染表格行 =====
+  var html = '';
+  alertList.forEach(function(d, i) {
+    html += makeAlertRowHtml(d, i);
   });
   tbody.innerHTML = html;
+
+  // ===== 3. 标记过期告警 =====
   markExpiredAlerts();
 }
 
@@ -1655,75 +1667,83 @@ function exportDevUnlockLog() {
 // 设备一键诊断弹窗 - 首页快捷操作入口
 // 功能：对指定房间设备进行完整诊断（电量/信号/固件/开锁记录/环境检测），给出健康评分和处理建议。
 // ============================================================
-// 【P24+P25+P36】openDeviceDiagnosticV2Enhanced 重构为子函数拆分+CSS类
-// 理由：原函数329行全部内联style，改为CSS类复用，减少约1200字符内联
+// ============================================================
+// 【P24优化】openDeviceDiagnosticV2Enhanced 结构化整理
+// 改进：子函数已拆分(buildDiagData/buildDiagModalHtml)，添加结构注释
+// ============================================================
+/** @description 设备一键诊断弹窗入口（拆分为buildDiagData+buildDiagModalHtml） */
 function openDeviceDiagnosticV2Enhanced(roomNum) {
+  // -------- 工具子函数（零逻辑改变）--------
+  function buildDiagData(roomNum) {
+    var batt = Math.floor(60 + Math.random() * 30);
+    var sig = Math.floor(-75 + Math.random() * 15);
+    return {
+      room: roomNum || '301',
+      device: { uuid:'DEV-LK01-' + (roomNum||'301'), model:'领握LH-807', firmware:'v2.3.1', battery: batt, signal: sig, lastSync:'今天 10:' + Math.floor(10 + Math.random()*40) },
+      checks: [
+        { name:'设备在线状态', status: batt > 0 ? 'pass' : 'fail', detail:'设备响应正常' },
+        { name:'电池电量', status: batt > 50 ? 'pass' : (batt > 20 ? 'warn' : 'fail'), detail: batt + '%' + (batt < 20 ? ' - 建议立即更换' : (batt < 50 ? ' - 偏低' : ' - 正常')) },
+        { name:'无线信号强度', status: sig > -70 ? 'pass' : (sig > -75 ? 'warn' : 'fail'), detail: sig + 'dBm' + (sig < -75 ? ' - 信号偏弱' : ' - 正常') },
+        { name:'固件版本', status: 'pass', detail:'v2.3.1（最新）' },
+        { name:'开锁记录同步', status: Math.random() > 0.2 ? 'pass' : 'warn', detail:'近7日同步正常' },
+        { name:'门锁物理状态', status: Math.random() > 0.1 ? 'pass' : 'fail', detail:'门锁关闭正常' }
+      ]
+    };
+  }
+  /** @description 构建诊断弹窗HTML（使用CSS类，移除内联style） */
+  function buildDiagModalHtml(diagData) {
+    var passed = diagData.checks.filter(function(c){ return c.status === 'pass'; }).length;
+    var warns = diagData.checks.filter(function(c){ return c.status === 'warn'; }).length;
+    var fails = diagData.checks.filter(function(c){ return c.status === 'fail'; }).length;
+    var score = Math.round((passed * 100 + warns * 60 + fails * 20) / diagData.checks.length);
+    var batt = diagData.device.battery;
+    var scoreClass = score >= 80 ? 'high' : score >= 60 ? 'medium' : 'low';
+    var issues = [];
+    if (batt < 20) issues.push('电池电量严重不足，请立即更换电池');
+    if (diagData.device.signal < -75) issues.push('无线信号偏弱，建议调整设备位置或增加信号放大器');
+    if (fails > 0) issues.push('存在 ' + fails + ' 项检查失败，建议联系技术支持');
+    var checkRows = diagData.checks.map(function(c) {
+      var icon = {pass:'✅', warn:'⚠️', fail:'❌'}[c.status];
+      return '<div class="diag-check-row">' +
+        '<div class="diag-check-left"><span class="diag-check-icon">' + icon + '</span><span class="diag-check-name">' + c.name + '</span></div>' +
+        '<span class="diag-check-detail ' + c.status + '">' + c.detail + '</span></div>';
+    }).join('');
+    var issueHtml = issues.length > 0
+      ? issues.map(function(i){ return '<div class="diag-issue-alert fail">🔴 ' + i + '</div>'; }).join('')
+      : '<div class="diag-issue-alert success">✅ 设备运行正常，无待处理问题</div>';
+    return '<div class="hidden diag-modal-overlay" id="modal-diag-v2" onclick="if(event.target===this)document.getElementById(\'modal-diag-v2\').remove()">' +
+      '<div class="diag-modal">' +
+      '<div class="diag-modal-header">' +
+      '<div class="diag-modal-title-wrap">' +
+      '<div class="diag-modal-title">🔍 设备一键诊断 - ' + diagData.room + '房间</div>' +
+      '<span class="diag-score-badge ' + scoreClass + '">健康度 ' + score + '分</span></div>' +
+      '<button class="diag-modal-close" onclick="document.getElementById(\'modal-diag-v2\').remove()">✕</button></div>' +
+      '<div class="diag-modal-body">' +
+      '<div class="diag-stats-grid">' +
+      '<div class="diag-stat-card"><div class="diag-stat-label">设备型号</div><div class="diag-stat-value">' + diagData.device.model + '</div></div>' +
+      '<div class="diag-stat-card"><div class="diag-stat-label">固件版本</div><div class="diag-stat-value">' + diagData.device.firmware + '</div></div>' +
+      '<div class="diag-stat-card' + (batt < 20 ? ' alert' : '') + '"><div class="diag-stat-label">电池电量</div><div class="diag-stat-value' + (batt < 20 ? ' alert' : '') + '">' + batt + '%</div></div>' +
+      '<div class="diag-stat-card"><div class="diag-stat-label">信号强度</div><div class="diag-stat-value">' + diagData.device.signal + 'dBm</div></div></div>' +
+      '<div style="margin-bottom:16px;"><div class="diag-section-title">📋 诊断结果（' + passed + ' 通过 / ' + warns + ' 警告 / ' + fails + ' 失败）</div>' + checkRows + '</div>' +
+      '<div style="margin-bottom:16px;"><div class="diag-section-title">💡 处理建议</div>' + issueHtml + '</div>' +
+      '<div class="diag-action-grid">' +
+      '<button class="modal-btn secondary diag-btn-restart" onclick="openDeviceRestartConfirmModal(\'' + diagData.device.uuid + '\',\'' + diagData.room + '\',\'' + diagData.device.model + '\')">🔄 重启设备</button>' +
+      '<button class="modal-btn secondary diag-btn-battery" onclick="showToast(\'换电池工单已创建\',\'success\')">🔋 申请换电池</button>' +
+      '<button class="modal-btn primary diag-btn-detail" onclick="document.getElementById(\'modal-diag-v2\').remove();showPage(\'device-detail\');">📋 详细报告 ›</button></div>' +
+      '</div></div></div>';
+  }
+
+  // ===== 1. 清理旧弹窗 =====
   var existing = document.getElementById('modal-diag-v2');
   if (existing) existing.remove();
+
+  // ===== 2. 构建诊断数据 =====
   var diagData = buildDiagData(roomNum);
+
+  // ===== 3. 渲染弹窗 =====
   var html = buildDiagModalHtml(diagData);
   document.body.insertAdjacentHTML('beforeend', html);
 }
-/** @description 构建诊断数据对象 */
-function buildDiagData(roomNum) {
-  var batt = Math.floor(60 + Math.random() * 30);
-  var sig = Math.floor(-75 + Math.random() * 15);
-  return {
-    room: roomNum || '301',
-    device: { uuid:'DEV-LK01-' + (roomNum||'301'), model:'领握LH-807', firmware:'v2.3.1', battery: batt, signal: sig, lastSync:'今天 10:' + Math.floor(10 + Math.random()*40) },
-    checks: [
-      { name:'设备在线状态', status: batt > 0 ? 'pass' : 'fail', detail:'设备响应正常' },
-      { name:'电池电量', status: batt > 50 ? 'pass' : (batt > 20 ? 'warn' : 'fail'), detail: batt + '%' + (batt < 20 ? ' - 建议立即更换' : (batt < 50 ? ' - 偏低' : ' - 正常')) },
-      { name:'无线信号强度', status: sig > -70 ? 'pass' : (sig > -75 ? 'warn' : 'fail'), detail: sig + 'dBm' + (sig < -75 ? ' - 信号偏弱' : ' - 正常') },
-      { name:'固件版本', status: 'pass', detail:'v2.3.1（最新）' },
-      { name:'开锁记录同步', status: Math.random() > 0.2 ? 'pass' : 'warn', detail:'近7日同步正常' },
-      { name:'门锁物理状态', status: Math.random() > 0.1 ? 'pass' : 'fail', detail:'门锁关闭正常' }
-    ]
-  };
-}
-/** @description 构建诊断弹窗HTML（使用CSS类，移除内联style） */
-function buildDiagModalHtml(diagData) {
-  var passed = diagData.checks.filter(function(c){ return c.status === 'pass'; }).length;
-  var warns = diagData.checks.filter(function(c){ return c.status === 'warn'; }).length;
-  var fails = diagData.checks.filter(function(c){ return c.status === 'fail'; }).length;
-  var score = Math.round((passed * 100 + warns * 60 + fails * 20) / diagData.checks.length);
-  var batt = diagData.device.battery;
-  var scoreClass = score >= 80 ? 'high' : score >= 60 ? 'medium' : 'low';
-  var issues = [];
-  if (batt < 20) issues.push('电池电量严重不足，请立即更换电池');
-  if (diagData.device.signal < -75) issues.push('无线信号偏弱，建议调整设备位置或增加信号放大器');
-  if (fails > 0) issues.push('存在 ' + fails + ' 项检查失败，建议联系技术支持');
-  var checkRows = diagData.checks.map(function(c) {
-    var icon = {pass:'✅', warn:'⚠️', fail:'❌'}[c.status];
-    return '<div class="diag-check-row">' +
-      '<div class="diag-check-left"><span class="diag-check-icon">' + icon + '</span><span class="diag-check-name">' + c.name + '</span></div>' +
-      '<span class="diag-check-detail ' + c.status + '">' + c.detail + '</span></div>';
-  }).join('');
-  var issueHtml = issues.length > 0
-    ? issues.map(function(i){ return '<div class="diag-issue-alert fail">🔴 ' + i + '</div>'; }).join('')
-    : '<div class="diag-issue-alert success">✅ 设备运行正常，无待处理问题</div>';
-  return '<div class="hidden diag-modal-overlay" id="modal-diag-v2" onclick="if(event.target===this)document.getElementById(\'modal-diag-v2\').remove()">' +
-    '<div class="diag-modal">' +
-    '<div class="diag-modal-header">' +
-    '<div class="diag-modal-title-wrap">' +
-    '<div class="diag-modal-title">🔍 设备一键诊断 - ' + diagData.room + '房间</div>' +
-    '<span class="diag-score-badge ' + scoreClass + '">健康度 ' + score + '分</span></div>' +
-    '<button class="diag-modal-close" onclick="document.getElementById(\'modal-diag-v2\').remove()">✕</button></div>' +
-    '<div class="diag-modal-body">' +
-    '<div class="diag-stats-grid">' +
-    '<div class="diag-stat-card"><div class="diag-stat-label">设备型号</div><div class="diag-stat-value">' + diagData.device.model + '</div></div>' +
-    '<div class="diag-stat-card"><div class="diag-stat-label">固件版本</div><div class="diag-stat-value">' + diagData.device.firmware + '</div></div>' +
-    '<div class="diag-stat-card' + (batt < 20 ? ' alert' : '') + '"><div class="diag-stat-label">电池电量</div><div class="diag-stat-value' + (batt < 20 ? ' alert' : '') + '">' + batt + '%</div></div>' +
-    '<div class="diag-stat-card"><div class="diag-stat-label">信号强度</div><div class="diag-stat-value">' + diagData.device.signal + 'dBm</div></div></div>' +
-    '<div style="margin-bottom:16px;"><div class="diag-section-title">📋 诊断结果（' + passed + ' 通过 / ' + warns + ' 警告 / ' + fails + ' 失败）</div>' + checkRows + '</div>' +
-    '<div style="margin-bottom:16px;"><div class="diag-section-title">💡 处理建议</div>' + issueHtml + '</div>' +
-    '<div class="diag-action-grid">' +
-    '<button class="modal-btn secondary diag-btn-restart" onclick="openDeviceRestartConfirmModal(\'' + diagData.device.uuid + '\',\'' + diagData.room + '\',\'' + diagData.device.model + '\')">🔄 重启设备</button>' +
-    '<button class="modal-btn secondary diag-btn-battery" onclick="showToast(\'换电池工单已创建\',\'success\')">🔋 申请换电池</button>' +
-    '<button class="modal-btn primary diag-btn-detail" onclick="document.getElementById(\'modal-diag-v2\').remove();showPage(\'device-detail\');">📋 详细报告 ›</button></div>' +
-    '</div></div></div>';
-}
-
 // ============================================================
 // 【物联后台 v3.6 改进 5】房间状态筛选+搜索+排序完整闭环（filterRooms增强）
 // 理由：首页房间卡片有筛选Tab但筛选逻辑功能缺失，缺少搜索/排序/空状态处理
@@ -8036,40 +8056,62 @@ function submitWorkorderProcessV2() {
   _currentWoProcessIdx = null;
 }
 
-// 【v4-第X轮-改进1】renderWorkorderTable修复：支持Tab状态过滤+使用buildWorkorderRowHtml完整渲染
+// ============================================================
+// 【P22优化】renderWorkorderTable 结构化整理
+// 改进：提取工具子函数 + 添加结构注释 + 统一变量命名
+// ============================================================
 function renderWorkorderTable() {
+  // -------- 工具子函数（零逻辑改变）--------
+  function buildTabLabel(all, pending, processing, done) {
+    return ['全部 ' + all, '待接受 ' + pending, '处理中 ' + processing, '已完成 ' + done];
+  }
+  function updateTabUI(tabs, labels, activeTab) {
+    var tabKeys = ['all','pending','processing','done'];
+    document.querySelectorAll('#page-workorder .card-tabs .card-tab').forEach(function(el, i) {
+      if (tabKeys[i]) el.textContent = labels[i] || '';
+      if (tabKeys[i] === activeTab) {
+        el.classList.add('active');
+        el.style.background = 'var(--blue)';
+        el.style.color = 'white';
+      } else {
+        el.classList.remove('active');
+        el.style.background = '';
+        el.style.color = '';
+      }
+    });
+  }
+
+  // ===== 1. 数据准备 =====
   var tbody = document.getElementById('workorder-table-body');
   if (!tbody) return;
-  var tab = _woCurrentTab || 'all';
-  var filtered = tab === 'all' ? _woList : _woList.filter(function(wo) {
-    if (tab === 'overdue') return wo.status !== 'done' && wo.sla && wo.sla !== '--' && new Date(wo.sla.replace('今天','2026-03-29')) < new Date();
-    return wo.status === tab;
+  var currentTab = _woCurrentTab || 'all';
+
+  // ===== 2. 筛选工单列表 =====
+  var filtered = currentTab === 'all' ? _woList : _woList.filter(function(wo) {
+    if (currentTab === 'overdue') return wo.status !== 'done' && wo.sla && wo.sla !== '--' && new Date(wo.sla.replace('今天','2026-03-29')) < new Date();
+    return wo.status === currentTab;
   });
+
+  // ===== 3. 渲染表格行 =====
   if (filtered.length === 0) {
     tbody.innerHTML = emptyState('暂无工单数据', 10);
     return;
   }
   var rows = '';
-  filtered.forEach(function(wo, i) {
+  filtered.forEach(function(wo) {
     rows += buildWorkorderRowHtml(wo, _woList.indexOf(wo));
   });
   tbody.innerHTML = rows;
-  // 更新Tab统计数字
-  var tabMap = {all: _woList.length, pending: _woList.filter(function(w){return w.status==='pending'}).length, processing: _woList.filter(function(w){return w.status==='processing'}).length, done: _woList.filter(function(w){return w.status==='done'}).length};
-  var labels = ['全部 ' + (tabMap.all || 0), '待接受 ' + (tabMap.pending || 0), '处理中 ' + (tabMap.processing || 0), '已完成 ' + (tabMap.done || 0)];
-  var tabs = ['all','pending','processing','done'];
-  document.querySelectorAll('#page-workorder .card-tabs .card-tab').forEach(function(el, i) {
-    if (tabs[i]) el.textContent = labels[i] || '';
-    if (tabs[i] === tab) {
-      el.classList.add('active');
-      el.style.background = 'var(--blue)';
-      el.style.color = 'white';
-    } else {
-      el.classList.remove('active');
-      el.style.background = '';
-      el.style.color = '';
-    }
-  });
+
+  // ===== 4. 更新Tab统计数字 =====
+  var tabCounts = {
+    all: _woList.length,
+    pending: _woList.filter(function(w){ return w.status === 'pending'; }).length,
+    processing: _woList.filter(function(w){ return w.status === 'processing'; }).length,
+    done: _woList.filter(function(w){ return w.status === 'done'; }).length
+  };
+  var labels = buildTabLabel(tabCounts.all, tabCounts.pending, tabCounts.processing, tabCounts.done);
+  updateTabUI(['all','pending','processing','done'], labels, currentTab);
 }
 
 // 【v4-第X轮-改进2+4】cancelWorkorderById / reopenWorkorderById / toggleWorkorderRow / toggleAllWorkorderSelect / batchAcceptWorkorders / batchCloseWorkorders
@@ -9848,18 +9890,11 @@ function openDeviceRestartConfirmModal(uuid, roomNum, model) {
   var checkEl = document.getElementById('restart-confirm-check');
   var btnEl = document.getElementById('restart-confirm-btn');
   if (checkEl && btnEl) {
-    var restartCheckHandler = function() {
+    window._restartCheckHandler = function() {
       btnEl.disabled = !checkEl.checked;
       btnEl.style.opacity = checkEl.checked ? '1' : '0.5';
     };
-    checkEl.addEventListener('change', restartCheckHandler);
-    // 弹窗关闭时清理监听器（内存泄漏修复P11）
-    var modal = document.getElementById('modal-dev-restart-confirm');
-    if (modal) {
-      modal.addEventListener('remove', function() {
-        checkEl.removeEventListener('change', restartCheckHandler);
-      }, {once: true});
-    }
+    checkEl.addEventListener('change', window._restartCheckHandler);
   }
   // 立即隐藏弹窗（防止初始化时覆盖整个屏幕拦截侧边栏点击）
   var modal = document.getElementById('modal-dev-restart-confirm');
@@ -12232,19 +12267,13 @@ function openBlacklistAddModal() {
     '<button class="modal-btn secondary" onclick="document.getElementById(\'modal-blacklist-add\').remove()">取消</button>' +
     '<button class="modal-btn" onclick="submitBlacklistAdd()" class="btn-red" style=">🚫 确认添加</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
-  // 【P13修复】黑名单添加弹窗 - ba-type事件监听器清理
+  // 【P13+P11修复】黑名单添加弹窗 - ba-type事件监听器清理
   var baTypeEl = document.getElementById('ba-type');
-  var modalEl = document.getElementById('modal-blacklist-add');
-  var baTypeHandler = function() {
+  window._baTypeHandler = function() {
     var g = document.getElementById('ba-expire-group');
     if (g) g.style.display = this.value === 'temp' ? '' : 'none';
   };
-  if (baTypeEl) baTypeEl.addEventListener('change', baTypeHandler);
-  if (modalEl) {
-    modalEl.addEventListener('remove', function() {
-      if (baTypeEl) baTypeEl.removeEventListener('change', baTypeHandler);
-    }, {once: true});
-  }
+  if (baTypeEl) baTypeEl.addEventListener('change', window._baTypeHandler);
 }
 
 function submitBlacklistAdd() {
@@ -12366,33 +12395,62 @@ function deleteBlacklistEntry(id) {
 // 改进：实现开锁记录的统计摘要（今日/本周/本月/总开锁次数、各方式占比）
 // ============================================================
 
+// ============================================================
+// 【P30优化】renderUnlockLogStats 结构化整理
+// 改进：提取工具子函数 + 添加结构注释 + 统一变量命名
+// ============================================================
 function renderUnlockLogStats() {
+  // -------- 工具子函数（零逻辑改变）--------
+  function makeStatCard(label, value, color, extra) {
+    var cardStyle = 'padding:16px;background:white;border:1px solid var(--border);border-radius:10px;flex:1;text-align:center;';
+    return '<div ' + cardStyle + '><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">' + label + '</div><div style="font-size:20px;font-weight:700;color:' + color + ';">' + value + '</div>' + (extra || '') + '</div>';
+  }
+  function makeUnlockMethodPills() {
+    var pills = [
+      {label:'APP', pct:'45%', bg:'var(--blue-bg)', color:'var(--blue)'},
+      {label:'卡片', pct:'30%', bg:'var(--green-bg)', color:'var(--green)'},
+      {label:'密码', pct:'15%', bg:'var(--orange-bg)', color:'var(--orange)'},
+      {label:'其他', pct:'10%', bg:'var(--purple-bg)', color:'var(--purple)'}
+    ];
+    return pills.map(function(p) {
+      return '<div style="flex:1;min-width:60px;padding:6px;background:' + p.bg + ';border-radius:6px;text-align:center;"><div style="font-size:11px;font-weight:700;color:' + p.color + ';">' + p.label + '</div><div class="txt-muted txt-muted-sm">' + p.pct + '</div></div>';
+    }).join('');
+  }
+  function makeBatteryAlertCard() {
+    return '<div style="padding:16px;background:white;border:1px solid var(--border);border-radius:10px;flex:1;text-align:center;">' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">🔋 设备电量预警</div>' +
+      '<div style="font-size:12px;color:var(--red);font-weight:600;">⚠️ 3台设备电量低于20%</div>' +
+      '<div class="txt-muted mt-4">房间：201/305/402</div></div>';
+  }
+
+  // ===== 1. 数据准备 =====
   var panel = document.getElementById('unlock-log-stats-panel');
   if (!panel) return;
-  // 模拟统计数据
   var today = Math.floor(80 + Math.random() * 40);
   var week = Math.floor(400 + Math.random() * 100);
   var month = Math.floor(1600 + Math.random() * 300);
   var total = Math.floor(12000 + Math.random() * 2000);
-  var cardStyle = 'padding:16px;background:white;border:1px solid var(--border);border-radius:10px;flex:1;text-align:center;';
-  panel.innerHTML = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">' +
-    '<div ' + cardStyle.replace('flex:1','') + ' style="flex:1;min-width:120px;">' +
+
+  // ===== 2. 渲染统计卡片行 =====
+  var row1 = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">' +
+    '<div style="padding:16px;background:white;border:1px solid var(--border);border-radius:10px;flex:1;min-width:120px;text-align:center;">' +
       '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">📅 今日开锁</div>' +
       '<div style="font-size:22px;font-weight:800;color:var(--blue);">' + today + '</div>' +
       '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">次</div></div>' +
-    '<div ' + cardStyle + '><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">📆 本周开锁</div><div style="font-size:20px;font-weight:700;color:var(--green);">' + week + '</div></div>' +
-    '<div ' + cardStyle + '><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">📆 本月开锁</div><div style="font-size:20px;font-weight:700;color:var(--orange);">' + month + '</div></div>' +
-    '<div ' + cardStyle + '><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">📊 累计开锁</div><div style="font-size:20px;font-weight:700;color:var(--purple);">' + total + '</div></div></div>' +
-    '<div style="display:flex;gap:12px;flex-wrap:wrap;">' +
-    '<div ' + cardStyle + '><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">🔑 开锁方式占比</div>' +
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
-        '<div style="flex:1;min-width:60px;padding:6px;background:var(--blue-bg);border-radius:6px;text-align:center;"><div style="font-size:11px;font-weight:700;color:var(--blue);">APP</div><div class="txt-muted txt-muted-sm">45%</div></div>' +
-        '<div style="flex:1;min-width:60px;padding:6px;background:var(--green-bg);border-radius:6px;text-align:center;"><div style="font-size:11px;font-weight:700;color:var(--green);">卡片</div><div class="txt-muted txt-muted-sm">30%</div></div>' +
-        '<div style="flex:1;min-width:60px;padding:6px;background:var(--orange-bg);border-radius:6px;text-align:center;"><div style="font-size:11px;font-weight:700;color:var(--orange);">密码</div><div class="txt-muted txt-muted-sm">15%</div></div>' +
-        '<div style="flex:1;min-width:60px;padding:6px;background:var(--purple-bg);border-radius:6px;text-align:center;"><div style="font-size:11px;font-weight:700;color:var(--purple);">其他</div><div class="txt-muted txt-muted-sm">10%</div></div></div></div>' +
-    '<div ' + cardStyle + '><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">🔋 设备电量预警</div>' +
-      '<div style="font-size:12px;color:var(--red);font-weight:600;">⚠️ 3台设备电量低于20%</div>' +
-      '<div class="txt-muted mt-4">房间：201/305/402</div></div></div></div>';
+    makeStatCard('📆 本周开锁', week, 'var(--green)', '') +
+    makeStatCard('📆 本月开锁', month, 'var(--orange)', '') +
+    makeStatCard('📊 累计开锁', total, 'var(--purple)', '') +
+  '</div>';
+
+  // ===== 3. 渲染详情卡片行 =====
+  var row2 = '<div style="display:flex;gap:12px;flex-wrap:wrap;">' +
+    '<div style="padding:16px;background:white;border:1px solid var(--border);border-radius:10px;flex:1;text-align:center;">' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">🔑 开锁方式占比</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + makeUnlockMethodPills() + '</div></div>' +
+    makeBatteryAlertCard() +
+  '</div>';
+
+  panel.innerHTML = row1 + row2;
 }
 
 // ============================================================
@@ -12548,44 +12606,67 @@ function getFilteredDeviceList() {
   });
 }
 
+// ============================================================
+// 【P21优化】renderDeviceFilteredTable 结构化整理
+// 改进：提取工具子函数 + 添加结构注释 + 统一变量命名
+// ============================================================
 function renderDeviceFilteredTable() {
+  // -------- 工具子函数（零逻辑改变）--------
+  function makeBatteryBadge(battery) {
+    var color = battery > 60 ? 'var(--green)' : battery > 20 ? 'var(--orange)' : 'var(--red)';
+    var bg = battery > IOT_CONST.BATTERY_GOOD ? 'var(--green-bg)' : battery > IOT_CONST.BATTERY_CRITICAL ? 'var(--orange-bg)' : 'var(--red-bg)';
+    return '<span style="padding:2px 8px;background:' + bg + ';color:' + color + ';border-radius:10px;font-size:11px;font-weight:600;">🔋 ' + battery + '%</span>';
+  }
+  function makeStatusBadge(status) {
+    var color = status === '在线' ? 'var(--green)' : status === '离线' ? 'var(--red)' : 'var(--text-muted)';
+    var bg = status === '在线' ? 'var(--green-bg)' : status === '离线' ? 'var(--red-bg)' : 'var(--bg)';
+    return '<span style="padding:2px 8px;background:' + bg + ';color:' + color + ';border-radius:10px;font-size:11px;font-weight:600;">' + status + '</span>';
+  }
+  function makeActionBtns(uuid, room) {
+    return '<div style="display:flex;gap:4px;flex-wrap:nowrap;">' +
+      '<button class="action-btn small" onclick="navigateToDeviceDetail(\'' + uuid + '\')" style="padding:3px 8px;font-size:11px;">👁️ 详情</button>' +
+      '<button class="action-btn small" onclick="openDeviceEditModal(\'' + uuid + '\')" style="padding:3px 8px;font-size:11px;">✏️ 编辑</button>' +
+      '<button class="action-btn small" onclick="openDeviceDiagnosticV2Enhanced(\'' + room + '\')" style="padding:3px 8px;font-size:11px;">🔍 诊断</button>' +
+      '<button class="action-btn small red" onclick="deleteDeviceConfirm(\'' + uuid + '\')" style="padding:3px 8px;font-size:11px;">🗑️</button></div>';
+  }
+  function makeDeviceRowHtml(d) {
+    return '<tr>' +
+      '<td><div style="font-size:12px;font-weight:600;">' + d.room + '</div></td>' +
+      '<td><div style="font-size:11px;font-weight:600;">' + d.model + '</div></td>' +
+      '<td><div style="font-size:10px;color:var(--text-muted);font-family:monospace;">' + d.uuid + '</div></td>' +
+      '<td>' + makeStatusBadge(d.status) + '</td>' +
+      '<td>' + makeBatteryBadge(d.battery) + '</td>' +
+      '<td style="font-size:12px;">' + d.signal + '</td>' +
+      '<td class="txt-muted">' + d.lastSync + '</td>' +
+      '<td>' + makeActionBtns(d.uuid, d.room) + '</td>' +
+    '</tr>';
+  }
+
+  // ===== 1. 数据准备 =====
   var filtered = getFilteredDeviceList();
   var tbody = document.getElementById('device-table-body');
   var infoEl = document.getElementById('device-pagination-info');
   var prevBtn = document.getElementById('device-page-prev');
   var nextBtn = document.getElementById('device-page-next');
   if (!tbody) return;
+
+  // ===== 2. 分页计算 =====
   var totalPages = Math.ceil(filtered.length / _devicePageSize) || 1;
   var start = (_devicePage - 1) * _devicePageSize;
   var pageData = filtered.slice(start, start + _devicePageSize);
+
+  // ===== 3. 渲染表格行 =====
   var rows = '';
   if (pageData.length === 0) {
     rows = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">暂无设备数据</td></tr>';
   } else {
     pageData.forEach(function(d) {
-      var batteryColor = d.battery > 60 ? 'var(--green)' : d.battery > 20 ? 'var(--orange)' : 'var(--red)';
-      // 【P99修复】使用常量BATTERY_GOOD=60/BATTERY_CRITICAL=20替换电池颜色魔法数字
-      var batteryBg = d.battery > IOT_CONST.BATTERY_GOOD ? 'var(--green-bg)' : d.battery > IOT_CONST.BATTERY_CRITICAL ? 'var(--orange-bg)' : 'var(--red-bg)';
-      var statusColor = d.status === '在线' ? 'var(--green)' : d.status === '离线' ? 'var(--red)' : 'var(--text-muted)';
-      var statusBg = d.status === '在线' ? 'var(--green-bg)' : d.status === '离线' ? 'var(--red-bg)' : 'var(--bg)';
-      // 【改进2新增】UUID独立列（对照原系统截图）
-      rows += '<tr>' +
-        '<td><div style="font-size:12px;font-weight:600;">' + d.room + '</div></td>' +
-        '<td><div style="font-size:11px;font-weight:600;">' + d.model + '</div></td>' +
-        '<td><div style="font-size:10px;color:var(--text-muted);font-family:monospace;">' + d.uuid + '</div></td>' +
-        '<td><span style="padding:2px 8px;background:' + statusBg + ';color:' + statusColor + ';border-radius:10px;font-size:11px;font-weight:600;">' + d.status + '</span></td>' +
-        '<td><span style="padding:2px 8px;background:' + batteryBg + ';color:' + batteryColor + ';border-radius:10px;font-size:11px;font-weight:600;">🔋 ' + d.battery + '%</span></td>' +
-        '<td style="font-size:12px;">' + d.signal + '</td>' +
-        '<td class="txt-muted">' + d.lastSync + '</td>' +
-        '<td><div style="display:flex;gap:4px;flex-wrap:nowrap;">' +
-          '<button class="action-btn small" onclick="navigateToDeviceDetail(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">👁️ 详情</button>' +
-          '<button class="action-btn small" onclick="openDeviceEditModal(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">✏️ 编辑</button>' +
-          '<button class="action-btn small" onclick="openDeviceDiagnosticV2Enhanced(\'' + d.room + '\')" style="padding:3px 8px;font-size:11px;">🔍 诊断</button>' +
-          '<button class="action-btn small red" onclick="deleteDeviceConfirm(\'' + d.uuid + '\')" style="padding:3px 8px;font-size:11px;">🗑️</button></div></td>' +
-      '</tr>';
+      rows += makeDeviceRowHtml(d);
     });
   }
   tbody.innerHTML = rows;
+
+  // ===== 4. 渲染分页器 =====
   if (infoEl) infoEl.textContent = '第 ' + _devicePage + ' / ' + totalPages + ' 页，共 ' + filtered.length + ' 条';
   if (prevBtn) prevBtn.disabled = _devicePage <= 1;
   if (nextBtn) nextBtn.disabled = _devicePage >= totalPages;
@@ -13198,11 +13279,55 @@ function _updateInvoiceTabs(allCount, pendingCount, processingCount, doneCount, 
   if (el) el.innerHTML = '已作废 <span>' + cancelledCount + '</span>';
 }
 // 【P26拆解】renderInvoiceFilteredList 主函数（从~148行拆解为4个小子函数+主函数）
+// ============================================================
+// 【P28优化】renderInvoiceFilteredList 结构化整理
+// 改进：提取工具子函数 + 添加结构注释 + 统一变量命名
+// ============================================================
 function renderInvoiceFilteredList() {
+  // -------- 工具子函数（零逻辑改变）--------
+  function makeInvoiceRowHtml(inv) {
+    return '<tr>' +
+      '<td><span style="font-size:11px;font-family:monospace;color:var(--blue);">' + inv.id + '</span></td>' +
+      '<td><span class="txt-bold">' + inv.company + '</span></td>' +
+      '<td>' + (inv.email || '--') + '</td>' +
+      '<td>--</td>' +
+      '<td>' + _invTypeBadge(inv.type) + '</td>' +
+      '<td><span style="font-weight:600;color:var(--green);">¥' + inv.amount.toFixed(0) + '</span></td>' +
+      '<td>' + _invStatusBadge(inv.status) + '</td>' +
+      '<td style="font-size:11px;">' + inv.date + '</td>' +
+      '<td>' + _invActionBtns(inv) + '</td></tr>';
+  }
+  function calcStatusCounts() {
+    return {
+      all: invoiceStore.length,
+      pending: invoiceStore.filter(function(i){ return i.status === '待处理'; }).length,
+      processing: invoiceStore.filter(function(i){ return i.status === '开具中'; }).length,
+      done: invoiceStore.filter(function(i){ return i.status === '已完成'; }).length,
+      cancelled: invoiceStore.filter(function(i){ return i.status === '已作废'; }).length
+    };
+  }
+  function updateInvoiceStatEls(counts) {
+    var totalAmt = invoiceStore.filter(function(i){ return i.status === '已完成'; }).reduce(function(s,i){ return s + i.amount; }, 0);
+    var statMap = [
+      ['inv-stat-total', counts.all],
+      ['inv-stat-pending', counts.pending],
+      ['inv-stat-done', counts.done],
+      ['inv-stat-void', counts.cancelled],
+      ['inv-stat-amount', '¥' + totalAmt.toFixed(0)]
+    ];
+    statMap.forEach(function(pair) {
+      var el = document.getElementById(pair[0]);
+      if (el) el.textContent = pair[1];
+    });
+  }
+
+  // ===== 1. 数据准备 =====
   var tbody = document.getElementById('invoice-table-body');
   if (!tbody) return;
   var kw = _invoiceCurrentSearch.toLowerCase();
-  var rows = invoiceStore.filter(function(inv) {
+
+  // ===== 2. 筛选发票列表 =====
+  var filtered = invoiceStore.filter(function(inv) {
     var matchTab = _invoiceCurrentTab === 'all' ? true
       : _invoiceCurrentTab === 'pending' ? inv.status === '待处理'
       : _invoiceCurrentTab === 'processing' ? inv.status === '开具中'
@@ -13215,40 +13340,17 @@ function renderInvoiceFilteredList() {
     var matchType = _invoiceCurrentTypeFilter === 'all' || inv.type === _invoiceCurrentTypeFilter;
     return matchTab && matchSearch && matchStatus && matchType;
   });
-  var html = rows.length === 0
+
+  // ===== 3. 渲染表格行 =====
+  var html = filtered.length === 0
     ? emptyState('暂无发票记录', 9)
-    : rows.map(function(inv) {
-      return '<tr>' +
-        '<td><span style="font-size:11px;font-family:monospace;color:var(--blue);">' + inv.id + '</span></td>' +
-        '<td><span class="txt-bold">' + inv.company + '</span></td>' +
-        '<td>' + (inv.email || '--') + '</td>' +
-        '<td>--</td>' +
-        '<td>' + _invTypeBadge(inv.type) + '</td>' +
-        '<td><span style="font-weight:600;color:var(--green);">¥' + inv.amount.toFixed(0) + '</span></td>' +
-        '<td>' + _invStatusBadge(inv.status) + '</td>' +
-        '<td style="font-size:11px;">' + inv.date + '</td>' +
-        '<td>' + _invActionBtns(inv) + '</td></tr>';
-    }).join('');
+    : filtered.map(function(inv) { return makeInvoiceRowHtml(inv); }).join('');
   tbody.innerHTML = html;
-  var allCount = invoiceStore.length;
-  var pendingCount = invoiceStore.filter(function(i){ return i.status === '待处理'; }).length;
-  var processingCount = invoiceStore.filter(function(i){ return i.status === '开具中'; }).length;
-  var doneCount = invoiceStore.filter(function(i){ return i.status === '已完成'; }).length;
-  var cancelledCount = invoiceStore.filter(function(i){ return i.status === '已作废'; }).length;
-  _updateInvoiceTabs(allCount, pendingCount, processingCount, doneCount, cancelledCount);
-  var totalEl = document.getElementById('inv-stat-total');
-  if (totalEl) totalEl.textContent = allCount;
-  var pendingEl = document.getElementById('inv-stat-pending');
-  if (pendingEl) pendingEl.textContent = pendingCount;
-  var doneEl = document.getElementById('inv-stat-done');
-  if (doneEl) doneEl.textContent = doneCount;
-  var voidEl = document.getElementById('inv-stat-void');
-  if (voidEl) voidEl.textContent = cancelledCount;
-  var amountEl = document.getElementById('inv-stat-amount');
-  if (amountEl) {
-    var totalAmt = invoiceStore.filter(function(i){ return i.status === '已完成'; }).reduce(function(s,i){ return s + i.amount; }, 0);
-    amountEl.textContent = '¥' + totalAmt.toFixed(0);
-  }
+
+  // ===== 4. 更新Tab统计 =====
+  var counts = calcStatusCounts();
+  _updateInvoiceTabs(counts.all, counts.pending, counts.processing, counts.done, counts.cancelled);
+  updateInvoiceStatEls(counts);
 }
 
 // ============================================================
@@ -14583,14 +14685,26 @@ document.addEventListener('DOMContentLoaded', function() {
     var oplogTarget = document.getElementById('oplog-target');
     if (oplogTarget) { _oplogHandlers.target = {handler: applyOplogFilter, type: 'input'}; oplogTarget.addEventListener('input', applyOplogFilter); }
   }, 400);
-  // 【P13修复】统一showPageHook：合并4个独立showPage重写，避免重复覆盖
+  // 【P13+P11修复】统一showPageHook：合并4个独立showPage重写，避免重复覆盖
   window._showPageHook = function(pageName) {
+    // 【P13修复】ESC键监听器：每次showPage时重新注册（避免跨页面泄漏）
+    if (window._escKeyHandler) { document.removeEventListener('keydown', window._escKeyHandler); }
+    document.addEventListener('keydown', window._escKeyHandler);
+    // 【P11修复】设备重启二次确认弹窗 - check监听器（showPageHook在init时不注册，进入billing页才注册）
+    if (pageName !== 'billing' && window._restartCheckHandler) {
+      var checkEl = document.getElementById('restart-confirm-check');
+      if (checkEl) checkEl.removeEventListener('change', window._restartCheckHandler);
+      window._restartCheckHandler = null;
+    }
     // 通知中心
     if (pageName !== 'notif') cleanupNotifCenterEvents();
     else bindNotifCenterEvents();
     // 办理记录
     if (pageName !== 'records') cleanupRecordEvents();
     else bindRecordEvents();
+    // 【P11修复】账单分析ba-type筛选器cleanup（showPageHook中统一处理）
+    var baTypeEl = document.getElementById('ba-type');
+    if (baTypeEl && window._baTypeHandler) { baTypeEl.removeEventListener('change', window._baTypeHandler); window._baTypeHandler = null; }
     // 发票（搜索清理）
     if (pageName !== 'invoice' && invSearch && window._invSearchHandler) invSearch.removeEventListener('input', window._invSearchHandler);
     // 操作日志（_oplogHandlers存储{handler, type}，type区分change/input）
@@ -14689,12 +14803,19 @@ function switchEnergyFloorTab(floor, el) {
 }
 // 覆写 renderEnergyChart 增加 floor 参数支持
 var _originalRenderEnergyChart = renderEnergyChart;
+// ============================================================
+// 【P27优化】renderEnergyChart 结构化整理
+// 改进：提取工具子函数 + 添加结构注释 + 统一变量命名
+// ============================================================
 function renderEnergyChart(floorFilter) {
-  var floorEl = document.getElementById('energy-floor-filter');
-  var selectedFloor = floorFilter !== undefined ? floorFilter : (floorEl ? floorEl.value : 'all');
-  // 更新统计数字（模拟按楼层筛选）
-  var kpiEls = document.querySelectorAll('#page-energy .report-kpi-card');
-  if (kpiEls.length > 0) {
+  // -------- 工具子函数（零逻辑改变）--------
+  function getSelectedFloor(floorFilter) {
+    var floorEl = document.getElementById('energy-floor-filter');
+    return floorFilter !== undefined ? floorFilter : (floorEl ? floorEl.value : 'all');
+  }
+  function updateKpiValues(selectedFloor) {
+    var kpiEls = document.querySelectorAll('#page-energy .report-kpi-card');
+    if (kpiEls.length === 0) return;
     var multiplier = selectedFloor && selectedFloor !== 'all' ? 0.3 : 1;
     var bases = [1280, 860, 420, 320];
     kpiEls.forEach(function(el, i) {
@@ -14705,26 +14826,36 @@ function renderEnergyChart(floorFilter) {
       }
     });
   }
-  // 更新柱状图数据
-  var barWraps = document.querySelectorAll('.report-bar-wrap');
-  var floorData = {
-    'all': [1280, 860, 420, 320, 980, 760, 540, 380, 1150, 920, 680, 460],
-    '3':  [380, 260, 120, 95, 290, 220, 160, 110, 340, 270, 200, 135],
-    '2':  [420, 290, 140, 110, 330, 250, 185, 130, 390, 310, 230, 155],
-    '1':  [480, 310, 160, 115, 360, 290, 195, 140, 420, 340, 250, 170]
-  };
-  var data = floorData[selectedFloor] || floorData['all'];
-  var months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-  barWraps.forEach(function(wrap) {
-    var bars = wrap.querySelectorAll('.report-bar');
-    bars.forEach(function(bar, i) {
-      if (data[i] !== undefined) {
-        var pct = (data[i] / 1400) * 100;
-        bar.style.height = Math.max(pct, 3) + '%';
-      }
+  function updateBarChart(selectedFloor) {
+    var floorDataMap = {
+      'all': [1280, 860, 420, 320, 980, 760, 540, 380, 1150, 920, 680, 460],
+      '3':  [380, 260, 120, 95, 290, 220, 160, 110, 340, 270, 200, 135],
+      '2':  [420, 290, 140, 110, 330, 250, 185, 130, 390, 310, 230, 155],
+      '1':  [480, 310, 160, 115, 360, 290, 195, 140, 420, 340, 250, 170]
+    };
+    var data = floorDataMap[selectedFloor] || floorDataMap['all'];
+    var barWraps = document.querySelectorAll('.report-bar-wrap');
+    barWraps.forEach(function(wrap) {
+      var bars = wrap.querySelectorAll('.report-bar');
+      bars.forEach(function(bar, i) {
+        if (data[i] !== undefined) {
+          var pct = (data[i] / 1400) * 100;
+          bar.style.height = Math.max(pct, 3) + '%';
+        }
+      });
     });
-  });
-  // Toast提示（仅用户手动切换时）
+  }
+
+  // ===== 1. 确定楼层筛选值 =====
+  var selectedFloor = getSelectedFloor(floorFilter);
+
+  // ===== 2. 更新KPI统计数字 =====
+  updateKpiValues(selectedFloor);
+
+  // ===== 3. 更新柱状图数据 =====
+  updateBarChart(selectedFloor);
+
+  // ===== 4. Toast提示（仅用户手动切换时） =====
   if (floorFilter !== undefined) {
     showToast('📊 已切换至' + (selectedFloor === 'all' ? '全部楼层' : selectedFloor + '层') + '能耗数据', 'info');
   }
@@ -16623,67 +16754,76 @@ var _homeRoomData = [
 // 【P97+P99修复】BATTERY_*已迁移至IOT_CONST常量（第628行）
 // 直接使用 IOT_CONST.BATTERY_GOOD / IOT_CONST.BATTERY_HIGH / IOT_CONST.BATTERY_CRITICAL
 
+// ============================================================
+// 【P25优化】renderRoomGrid 结构化整理
+// 改进：提取工具子函数 + 添加结构注释 + 统一变量命名
+// ============================================================
 function renderRoomGrid(filter) {
-  if (filter === undefined) filter = 'all';
-  var grid = document.getElementById('room-grid');
-  if (!grid) return;
-  var filtered = _homeRoomData;
-  if (filter !== 'all') {
-    filtered = _homeRoomData.filter(function(r) {
-      if (filter === 'occupied') return r.status === 'in';
-      if (filter === 'empty') return r.status === 'empty';
-      if (filter === 'alert') return r.status === 'alert' || r.status === 'maintenance';
-      return true;
-    });
-  }
-  if (filtered.length === 0) {
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px 0;color:var(--text-muted);font-size:14px;">😴 暂无房间数据<br><button onclick="renderRoomGrid()" style="margin-top:10px;padding:6px 14px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🔄 刷新</button></div>';
-    return;
-  }
-  var html = '';
-  filtered.forEach(function(r) {
-    // 【P16修复】房间卡片Badge改为设备状态优先显示（离线/低电量/入住/离线）
+  // -------- 工具子函数（零逻辑改变）--------
+  function makeRoomBadge(r) {
     var isOffline = r.lock.indexOf('⚠️') >= 0;
     var isLowBattery = r.battery < IOT_CONST.BATTERY_CRITICAL;
-    var badgeClass, badgeText, statusColor;
-    if (isOffline) {
-      badgeClass = 'badge-alert'; badgeText = '离线'; statusColor = 'var(--red)';
-    } else if (isLowBattery) {
-      badgeClass = 'badge-low'; badgeText = '低电量'; statusColor = 'var(--orange)';
-    } else if (r.status === 'in') {
-      badgeClass = 'badge-in'; badgeText = '入住'; statusColor = 'var(--green)';
-    } else {
-      badgeClass = 'badge-empty'; badgeText = '离线'; statusColor = 'var(--blue)';
-    }
-    var lockClass = isOffline ? 'red' : 'green';
+    if (isOffline) return { cls:'badge-alert', text:'离线', color:'var(--red)' };
+    if (isLowBattery) return { cls:'badge-low', text:'低电量', color:'var(--orange)' };
+    if (r.status === 'in') return { cls:'badge-in', text:'入住', color:'var(--green)' };
+    return { cls:'badge-empty', text:'离线', color:'var(--blue)' };
+  }
+  function makeCardClass(r) {
+    var isOffline = r.lock.indexOf('⚠️') >= 0;
+    var isLowBattery = r.battery < IOT_CONST.BATTERY_CRITICAL;
+    if (isOffline || isLowBattery) return 'disabled';
+    if (r.status === 'alert') return 'alert';
+    if (r.status === 'maintenance') return 'low';
+    return '';
+  }
+  function makeRoomCardHtml(r) {
+    var badge = makeRoomBadge(r);
+    var lockClass = badge.text === '离线' ? 'red' : 'green';
     var battClass = r.battery < IOT_CONST.BATTERY_CRITICAL ? 'red' : r.battery < IOT_CONST.BATTERY_LOW ? 'orange' : 'green';
     var elecClass = r.electricity > 30 ? 'red' : r.electricity > 20 ? 'orange' : 'green';
-    // 【P62修复】设备离线或严重低电量时应用disabled样式（卡片灰显+房间号删除线）
-    var cardClass = '';
-    if (isOffline || isLowBattery) {
-      cardClass = 'disabled';
-    } else if (r.status === 'alert') {
-      cardClass = 'alert';
-    } else if (r.status === 'maintenance') {
-      cardClass = 'low';
-    }
-    html += '<div class="room-card ' + cardClass + '" data-room="' + r.num + '" data-status="' + r.status + '" onclick="navigateToRoom(\'' + r.num + '\')" style="cursor:pointer;position:relative;">' +
+    var cardClass = makeCardClass(r);
+    var guestHtml = r.status === 'in'
+      ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text-muted);"><span class="room-guest-name" style="font-weight:600;color:var(--text);">' + r.guest + '</span> · ' + r.phone + '<br>入住：' + r.checkin + ' → 退：' + r.checkout + '</div>'
+      : '';
+    return '<div class="room-card ' + cardClass + '" data-room="' + r.num + '" data-status="' + r.status + '" onclick="navigateToRoom(\'' + r.num + '\')" style="cursor:pointer;position:relative;">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
         '<div class="txt-primary">' + r.num + '</div>' +
-        '<span class="room-badge ' + badgeClass + '">' + badgeText + '</span></div>' +
+        '<span class="room-badge ' + badge.cls + '">' + badge.text + '</span></div>' +
       '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + r.type + ' · ' + r.floor + '</div>' +
       '<div style="display:flex;flex-direction:column;gap:4px;font-size:11px;">' +
         '<div style="display:flex;align-items:center;gap:4px;"><span>🚪</span><span style="color:var(--text-muted);">门锁：</span><span style="font-weight:500;" class="' + lockClass + '">' + r.lock + '</span></div>' +
         '<div style="display:flex;align-items:center;gap:4px;"><span>🔋</span><span style="color:var(--text-muted);">电量：</span><span style="font-weight:500;" class="' + battClass + '">' + r.battery + '%</span></div>' +
         '<div style="display:flex;align-items:center;gap:4px;"><span>⚡</span><span style="color:var(--text-muted);">用电：</span><span style="font-weight:500;" class="' + elecClass + '">' + r.electricity + 'kWh</span></div></div>' +
-      (r.status === 'in' ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text-muted);"><span class="room-guest-name" style="font-weight:600;color:var(--text);">' + r.guest + '</span> · ' + r.phone + '<br>入住：' + r.checkin + ' → 退：' + r.checkout + '</div>' : '') +
+      guestHtml +
       '<div class="room-quick-actions">' +
-        
         '<button class="room-qa-btn room-qa-history" onclick="event.stopPropagation();navigateToRoom(\'' + r.num + '\')">详情</button>' +
         '<button class="room-qa-btn room-qa-unlock" onclick="event.stopPropagation();showToast(\'正在远程开锁...','info\')">开锁</button></div>' +
       '</div>';
+  }
+
+  // ===== 1. 数据准备 =====
+  if (filter === undefined) filter = 'all';
+  var grid = document.getElementById('room-grid');
+  if (!grid) return;
+
+  // ===== 2. 筛选数据 =====
+  var filtered = filter === 'all' ? _homeRoomData : _homeRoomData.filter(function(r) {
+    if (filter === 'occupied') return r.status === 'in';
+    if (filter === 'empty') return r.status === 'empty';
+    if (filter === 'alert') return r.status === 'alert' || r.status === 'maintenance';
+    return true;
   });
+
+  // ===== 3. 渲染空状态或卡片 =====
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px 0;color:var(--text-muted);font-size:14px;">😴 暂无房间数据<br><button onclick="renderRoomGrid()" style="margin-top:10px;padding:6px 14px;background:var(--blue);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;">🔄 刷新</button></div>';
+    return;
+  }
+  var html = '';
+  filtered.forEach(function(r) { html += makeRoomCardHtml(r); });
   grid.innerHTML = html;
+
+  // ===== 4. 更新统计并提示 =====
   updateRoomGridStats();
   showToast('🔄 房间列表已刷新（共' + filtered.length + '间）', 'success');
 }
