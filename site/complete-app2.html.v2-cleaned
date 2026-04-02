@@ -1375,7 +1375,8 @@ function loadingState(type, msg) {
 // 【P29改进】renderSettlement子函数拆分 + 物联化数据替换
 // 理由：原renderSettlement 234行含PMS硬编码数据，拆分+物联化为独立子函数
 // 1. 结算卡片统计（从设备池实时计算）
-;
+function buildSettlementStats() {
+  if (!Array.isArray(deviceData)) return { pending: 0, amount: 0, done: 0 };
   var offlineCount = deviceData.filter(function(d) { return d.status === '离线'; }).length;
   var lowBattCount = deviceData.filter(function(d) { return d.battery < IOT_CONST.BATTERY_LOW; }).length;
   var pendingCount = offlineCount + lowBattCount;
@@ -1389,7 +1390,10 @@ function loadingState(type, msg) {
   };
 }
 // 2. 结算卡片HTML渲染（物联视角：设备告警处理统计）
-,
+function renderSettlementStatsCards() {
+  var stats = buildSettlementStats();
+  var cards = [
+    { label: '待处理告警', value: stats.pending, color: 'var(--orange)', bg: 'var(--orange-bg)', icon: '⚠️' },
     { label: '预估处理成本', value: '¥' + stats.amount, color: 'var(--blue)', bg: 'var(--blue-bg)', icon: '💰' },
     { label: '已完成处理', value: stats.done, color: 'var(--green)', bg: 'var(--green-bg)', icon: '✅' }
   ];
@@ -1400,7 +1404,11 @@ function loadingState(type, msg) {
   }).join('');
 }
 // 3. 物联化结算列表（基于设备告警数据，而非PMS账单）
-);
+function buildSettlementAlertRows() {
+  if (typeof deviceData === 'undefined') return '';
+  var alerts = deviceData.filter(function(d) {
+    return d.status === '离线' || d.battery < IOT_CONST.BATTERY_LOW;
+  });
   if (alerts.length === 0) {
     return '<tr><td colspan="7" class="txt-center-lg">' +
       '<div style="font-size:28px;margin-bottom:8px;">✅</div><div>所有设备运行正常</div></td></tr>';
@@ -1425,7 +1433,7 @@ window.renderSettlement = function() {
   if (tbody) {
     tbody.innerHTML = buildSettlementAlertRows();
   }
-  var stats = );
+  var stats = buildSettlementStats();
   var countEl = document.getElementById('stl-pending-count');
   if (countEl) countEl.textContent = stats.pending;
   var amountEl = document.getElementById('stl-pending-amount');
@@ -2701,6 +2709,9 @@ function filterRoomsByKeyword(kw) {
 // 区域3 (line ~3100-3600): 设备详情页面 → 可抽离为 device-detail.html
 // 区域4 (line ~3600-4100): 告警记录页面 → 可抽离为 alerts.html
 // 区域5 (line ~4100-4600): 开锁记录页面 → 可抽离为 logs.html
+
+
+
 
 // T20: 渲染设备UUID快捷筛选chips
 // 【Bug5修复】deviceData初始化时序问题 - 用load事件包装确保deviceData已定义
@@ -6122,7 +6133,7 @@ function saveEscalationEditorRules() {
 <button class="action-btn small" onclick="openConfigEditModal()" style="padding:4px 10px;background:var(--blue);color:white;border:none;">⚙️ 系统设置</button>
 
 <!-- 【v3.4改进5】系统公告发布入口 -->
-<button class="action-btn small" onclick=")" style="padding:4px 10px;background:var(--orange);color:white;border:none;font-size:11px;">📢 发布公告</button>
+<button class="action-btn small" onclick="openAnnouncementPublishModal()" style="padding:4px 10px;background:var(--orange);color:white;border:none;font-size:11px;">📢 发布公告</button>
 </div>
 </div>
 <!-- 【改进5：系统设置独立Tab页面（非Modal），支持多模块配置切换】 -->
@@ -9256,8 +9267,17 @@ function startBatchFirmwareUpgrade() {
 }
 
 // 改进5：系统公告发布管理弹窗
+var _announcements = [
+  {id:'ANN-001',title:'🎉 酒店WIFI升级通知',content:'尊敬的宾客，酒店公共区域WIFI已完成升级，网速提升至500M，感谢您的理解。',type:'notice',scope:'all',push:'device',time:'2026-03-28 09:00',status:'已发布',views:156},
+  {id:'ANN-002',title:'🔧 3层设备维护通知',content:'3层走廊照明设备维护，届时灯光可能闪烁，不便之处敬请谅解。',type:'repair',scope:'floor3',push:'device',time:'2026-03-27 15:30',status:'已发布',views:42}
+];
 
-[a.type] || 'gray';
+function openAnnouncementPublishModal() {
+  var existing = document.getElementById('modal-announcement');
+  if (existing) existing.remove();
+  var historyRows = '';
+  _announcements.forEach(function(a) {
+    var typeBadge = {notice:'blue',repair:'orange',event:'green',urgent:'red'}[a.type] || 'gray';
     var typeLabel = {notice:'📢 通知',repair:'🔧 维护',event:'🎉 活动',urgent:'🚨 紧急'}[a.type] || '📋 其他'};;
     historyRows += '<tr>' +
       '<td><span class="txt-muted">' + a.id + '</span></td>' +
@@ -9289,7 +9309,7 @@ function startBatchFirmwareUpgrade() {
     '<select class="form-select" id="ann-scope" class="text-base"><option value="all">📡 全部设备/住户</option><option value="floor3">🏠 3层全部房间</option><option value="floor2">🏠 2层全部房间</option><option value="devices">📱 仅设备推送</option><option value="staff">👨‍💼 仅员工</option></select></div>' +
     '<div class="form-group" class="mb-0"><label class="form-label">推送方式</label>' +
     '<select class="form-select" id="ann-push" class="text-base"><option value="both">📱+🔔 全部</option><option value="device">📱 App推送</option><option value="sms">💬 短信</option></select></div>' +
-    '<button class="action-btn primary" onclick=")" style="padding:9px 16px;font-size:13px;">📢 立即发布</button></div></div>' +
+    '<button class="action-btn primary" onclick="submitAnnouncement()" style="padding:9px 16px;font-size:13px;">📢 立即发布</button></div></div>' +
     '<div style="flex:1;overflow-y:auto;padding:14px 24px;">' +
     '<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);">📋 发布历史</div>' +
     '<table class="table"><thead><tr><th>ID</th><th>公告内容</th><th>类型</th><th>范围</th><th>发布时间</th><th>状态</th><th>浏览</th><th>操作</th></tr></thead><tbody id="ann-history-body">' + historyRows + '</tbody></table></div>' +
@@ -9298,6 +9318,13 @@ function startBatchFirmwareUpgrade() {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
+function submitAnnouncement() {
+  var title = document.getElementById('ann-title').value.trim();
+  var content = document.getElementById('ann-content').value.trim();
+  var type = document.getElementById('ann-type').value;
+  var scope = document.getElementById('ann-scope').value;
+  var push = document.getElementById('ann-push').value;
+  if (!title || !content) { showToast('请填写标题和内容', 'error'); return; }
   var newAnn = {
     id: 'ANN-' + Date.now().toString().slice(-3),
     title: title,
@@ -9311,7 +9338,7 @@ function startBatchFirmwareUpgrade() {
   };
   _announcements.unshift(newAnn);
   showToast('📢 公告已发布至 ' + (scope==='all'?'全部设备':'指定范围'), 'success');
-  );
+  openAnnouncementPublishModal();
 }
 
 function revokeAnnouncement(id) {
@@ -9319,13 +9346,17 @@ function revokeAnnouncement(id) {
   var ann = _announcements.find(function(a){ return a.id === id; });
   if (ann) ann.status = '已撤回';
   showToast('公告 ' + id + ' 已撤回', 'info');
-  );
+  openAnnouncementPublishModal();
 }
 
 // ======= 【物联后台v3.5 改进】5项功能性改进 =======
 
 // ======= 改进1：员工KPI绩效完整模态框 =======
-,
+function openStaffKPIPerformanceModal() {
+  var old = document.getElementById('modal-staff-performance');
+  if (old) old.remove();
+  var kpiData = [
+    {name:'赵飞', dept:'前厅部', month:'2026-03', checkinRate:96, woResolveRate:94, attendRate:100, score:95, rank:1},
     {name:'周敏', dept:'前厅部', month:'2026-03', checkinRate:92, woResolveRate:88, attendRate:97, score:89, rank:2},
     {name:'吴倩', dept:'客房部', month:'2026-03', checkinRate:0, woResolveRate:97, attendRate:100, score:93, rank:1},
     {name:'郑强', dept:'客房部', month:'2026-03', checkinRate:0, woResolveRate:91, attendRate:95, score:88, rank:2},
@@ -9336,7 +9367,7 @@ function revokeAnnouncement(id) {
     '<div class="modal" style="width:820px;max-height:90vh;overflow-y:auto;">' +
     '<div class="modal-header"><div class="modal-title">📊 员工KPI绩效考核</div>' +
     '<div class="flex-center gap-8">' +
-    '<select id="kpi-month-select" onchange=")" style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;">' +
+    '<select id="kpi-month-select" onchange="renderKPITable()" style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;">' +
     '<option value="2026-03">2026年3月</option><option value="2026-02">2026年2月</option><option value="2026-01">2026年1月</option></select>' +
     '<button class="modal-close" onclick="document.getElementById(\'modal-staff-performance\').remove()">✕</button></div></div>' +
     '<div class="modal-body" class="p-20">' +
@@ -9346,8 +9377,8 @@ function revokeAnnouncement(id) {
     '<div style="padding:14px;background:var(--purple-bg);border-radius:10px;text-align:center;"><div style="font-size:24px;font-weight:800;color:var(--purple);">97.2%</div><div class="txt-muted">出勤率均值</div></div>' +
     '<div style="padding:14px;background:var(--orange-bg);border-radius:10px;text-align:center;"><div style="font-size:24px;font-weight:800;color:var(--orange);">93.8%</div><div class="txt-muted">工单解决率均值</div></div></div>' +
     '<div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;">' +
-    '<input type="text" id="kpi-search" placeholder="搜索员工姓名..." style="padding:7px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:180px;" oninput=")">' +
-    '<select id="kpi-dept-filter" onchange=")" style="padding:7px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;"><option value="all">全部部门</option><option>前厅部</option><option>客房部</option><option>工程部</option></select>' +
+    '<input type="text" id="kpi-search" placeholder="搜索员工姓名..." style="padding:7px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:180px;" oninput="renderKPITable()">' +
+    '<select id="kpi-dept-filter" onchange="renderKPITable()" style="padding:7px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;"><option value="all">全部部门</option><option>前厅部</option><option>客房部</option><option>工程部</option></select>' +
     '<span class="ml-auto text-sm text-muted" id="kpi-count"></span></div>' +
     '<table class="table" class="text-sm">' +
     '<thead><tr><th>排名</th><th>姓名</th><th>部门</th><th>入住办理率%</th><th>工单解决率%</th><th>出勤率%</th><th>综合得分</th><th>评级</th><th>操作</th></tr></thead>' +
@@ -9358,10 +9389,14 @@ function revokeAnnouncement(id) {
     '<div class="modal-footer"><button class="action-btn secondary" onclick="document.getElementById(\'modal-staff-performance\').remove()">关闭</button>' +
     '<button class="action-btn primary" onclick="exportKPIData()" >📤 导出考核表</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html2);
-  );
+  renderKPITable();
 }
 
-,
+function renderKPITable() {
+  var tbody = document.getElementById('kpi-tbody');
+  if (!tbody) return;
+  var kpiData = [
+    {name:'赵飞', dept:'前厅部', month:'2026-03', checkinRate:96, woResolveRate:94, attendRate:100, score:95, rank:1},
     {name:'周敏', dept:'前厅部', month:'2026-03', checkinRate:92, woResolveRate:88, attendRate:97, score:89, rank:2},
     {name:'吴倩', dept:'客房部', month:'2026-03', checkinRate:0, woResolveRate:97, attendRate:100, score:93, rank:1},
     {name:'郑强', dept:'客房部', month:'2026-03', checkinRate:0, woResolveRate:91, attendRate:95, score:88, rank:2},
@@ -11153,7 +11188,10 @@ function submitWorkorderComplete() {
 // 改进：实现printInvoice函数，打开打印预览窗口含完整发票信息
 // ============================================================
 
-);
+function printInvoice(invId) {
+  var inv = null;
+  if (invId) {
+    inv = invoiceStore.find(function(i){ return i.id === invId; });
   } else {
     // Find from detail modal
     var el = document.getElementById('invd-id');
@@ -11332,11 +11370,14 @@ function submitDeviceRegister() {
 
 // ============================================================
 // 【物联后台 v4 改进-缺失函数2】交接班完整流程弹窗
-// 理由：按钮 onclick=")" 存在但函数缺失
+// 理由：按钮 onclick="openFullShiftHandoverModal()" 存在但函数缺失
 // 改进：三步骤向导（交接人确认→数据核对→签字确认），含营收统计、房态、待办、签字、打印
 // ============================================================
-).replace(/\//g,'-');
-  
+function openFullShiftHandoverModal() {
+  var existing = document.getElementById('modal-full-shift-handover');
+  if (existing) existing.remove();
+  var now = new Date().toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\//g,'-');
+  var shiftOptions = ['早班 (06:00-14:00)', '中班 (14:00-22:00)', '晚班 (22:00-06:00)'];
   var html = '<div class="modal-overlay hidden fixed-overlay" id="modal-full-shift-handover">' +
     '<div class="modal" style="width:600px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
     '<div class="modal-header">' +
@@ -11360,7 +11401,7 @@ function submitDeviceRegister() {
     '<div class="grid-3 gap-8">' +
     shiftOptions.map(function(s,i){ return '<label id="shift-time-'+i+'" onclick="this.style.background=\'var(--blue-bg)\';this.style.borderColor=\'var(--blue)\';for(var j=0;j<3;j++)if(j!=='+i+'){var l=document.getElementById(\'shift-time-\'+j);if(l){l.style.background=\'\';l.style.borderColor=\'var(--border)\';}}this.querySelector(\'input\').checked=true;" style="padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;font-size:12px;">' +
       '<input type="radio" name="shift-time" value="'+s+'" class="hidden">'+s.split(' ')[0]+'<br><span class="txt-muted txt-muted-sm">'+s.split(' ')[1]+'</span></label>'; }).join('') + '</div></div>' +
-    '<div style="padding:16px 0 4px;"><button class="action-btn primary" onclick="2)" style="width:100%;background:var(--blue);color:white;border:none;padding:12px;">下一步：数据核对 →</button></div></div>' +
+    '<div style="padding:16px 0 4px;"><button class="action-btn primary" onclick="goShiftStep(2)" style="width:100%;background:var(--blue);color:white;border:none;padding:12px;">下一步：数据核对 →</button></div></div>' +
     // Step 2: 数据核对
     '<div id="shift-panel-2" class="hidden">' +
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">' +
@@ -11386,8 +11427,8 @@ function submitDeviceRegister() {
     '<span>🟡 低电量：<strong>3台</strong></span>' +
     '<span>🔴 离线：<strong>2台</strong></span></div></div>' +
     '<div style="padding:16px 0 4px;display:flex;gap:10px;">' +
-    '<button class="action-btn secondary" onclick="1)" class="flex-1">← 上一步</button>' +
-    '<button class="action-btn primary" onclick="3)" style="flex:2;background:var(--blue);color:white;border:none;padding:12px;">下一步：签字确认 →</button></div></div>' +
+    '<button class="action-btn secondary" onclick="goShiftStep(1)" class="flex-1">← 上一步</button>' +
+    '<button class="action-btn primary" onclick="goShiftStep(3)" style="flex:2;background:var(--blue);color:white;border:none;padding:12px;">下一步：签字确认 →</button></div></div>' +
     // Step 3: 签字确认
     '<div id="shift-panel-3" class="hidden">' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;">' +
@@ -11402,7 +11443,7 @@ function submitDeviceRegister() {
     '<div style="padding:12px;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--green);">' +
     '✅ 数据核对无误，双方确认后交接班即生效。打印后可作为正式记录存档。</div>' +
     '<div style="padding:16px 0 4px;display:flex;gap:10px;">' +
-    '<button class="action-btn secondary" onclick="2)" class="flex-1">← 上一步</button>' +
+    '<button class="action-btn secondary" onclick="goShiftStep(2)" class="flex-1">← 上一步</button>' +
     '<button class="action-btn primary" onclick="submitFullShiftHandover()" style="flex:2;background:var(--green);color:white;border:none;padding:12px;">✅ 确认交接班完成</button></div></div></div>' +
     '<div class="py-14 px-24 border-top flex gap-10" class="flex" style="justify-content:flex-end;">' +
     '<button class="action-btn secondary" onclick="printShiftHandoverReport()">🖨️ 打印交接单</button>' +
@@ -11410,7 +11451,16 @@ function submitDeviceRegister() {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
- else {
+function goShiftStep(step) {
+  for (var i = 1; i <= 3; i++) {
+    var panel = document.getElementById('shift-panel-' + i);
+    var stepEl = document.getElementById('shift-step-' + i);
+    if (panel) panel.style.display = i === step ? '' : 'none';
+    if (stepEl) {
+      if (i <= step) {
+        stepEl.style.background = 'var(--blue)';
+        stepEl.style.color = 'white';
+      } else {
         stepEl.style.background = 'var(--bg)';
         stepEl.style.color = 'var(--text-muted)';
       }
@@ -11418,11 +11468,19 @@ function submitDeviceRegister() {
   }
 }
 
+function submitFullShiftHandover() {
+  var outName = document.getElementById('shift-out-name') ? document.getElementById('shift-out-name').value : '';
+  var inName = document.getElementById('shift-in-name') ? document.getElementById('shift-in-name').value : '';
+  if (!outName || !inName) { showToast('请选择交班人和接班人', 'error'); return; }
   if (outName === inName) { showToast('交班人和接班人不能相同', 'error'); return; }
   var note = document.getElementById('shift-note') ? document.getElementById('shift-note').value.trim() : '';
   var now = new Date().toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\//g,'-');
   document.getElementById('modal-full-shift-handover') && document.getElementById('modal-full-shift-handover').remove();
   showToast('✅ 交接班完成！' + outName + ' → ' + inName + '，数据已同步', 'success');
+}
+
+function printShiftHandoverReport() {
+  showToast('🖨️ 交接班打印窗口已打开', 'success');
 }
 
 function searchOplogByKeyword(keyword) {
@@ -11557,7 +11615,8 @@ function injectEnergyAISuggestBtn() {
 // 改进：完整实现详情/编辑/处理/重开/新增发票功能，含增删改查闭环和 Toast 反馈
 // ============================================================
 
-);
+function openInvoiceDetailModal(invId) {
+  var inv = invoiceStore.find(function(i){ return i.id === invId; });
   if (!inv) { showToast('未找到发票记录', 'error'); return; }
   var existing = document.getElementById('modal-invoice-detail');
   if (existing) existing.remove();
@@ -11579,13 +11638,14 @@ function injectEnergyAISuggestBtn() {
     '<div class="p-12 rounded" class="bg-base"><div class="text-xs text-muted mb-4">电子邮箱</div><div class="text-sm">' + (inv.email || '--') + '</div></div></div>' +
     '<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">' +
     '<button class="action-btn secondary" onclick="document.getElementById(\'modal-invoice-detail\').remove()">关闭</button>' +
-    '<button class="action-btn primary" onclick="\'' + inv.id + '\')"🖨️ 打印</button>' +
-    '<button class="action-btn primary" onclick="document.getElementById(\'modal-invoice-detail\').remove();setTimeout(function(){\'' + inv.id + '\')},100)" style="">&nbsp;✏️&nbsp;编辑</button>' +
-    '<button class="action-btn primary" onclick="\'' + inv.id + '\')" style="background:var(--purple);color:white;border:none;">🔄 重开</button></div></div></div>';
+    '<button class="action-btn primary" onclick="printInvoice(\'' + inv.id + '\')"🖨️ 打印</button>' +
+    '<button class="action-btn primary" onclick="document.getElementById(\'modal-invoice-detail\').remove();setTimeout(function(){openInvoiceEditModal(\'' + inv.id + '\')},100)" style="">&nbsp;✏️&nbsp;编辑</button>' +
+    '<button class="action-btn primary" onclick="reissueInvoice(\'' + inv.id + '\')" style="background:var(--purple);color:white;border:none;">🔄 重开</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
-);
+function openInvoiceEditModal(invId) {
+  var inv = invoiceStore.find(function(i){ return i.id === invId; });
   if (!inv) { showToast('未找到发票记录', 'error'); return; }
   var existing = document.getElementById('modal-invoice-edit');
   if (existing) existing.remove();
@@ -11615,6 +11675,15 @@ function injectEnergyAISuggestBtn() {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
+function submitInvoiceEdit() {
+  var invId = document.getElementById('ie-id') ? document.getElementById('ie-id').value.trim() : '';
+  var company = document.getElementById('ie-company') ? document.getElementById('ie-company').value.trim() : '';
+  var tax = document.getElementById('ie-tax') ? document.getElementById('ie-tax').value.trim() : '';
+  var amount = parseFloat(document.getElementById('ie-amount') ? document.getElementById('ie-amount').value : '0');
+  var type = document.getElementById('ie-type') ? document.getElementById('ie-type').value : '普通发票';
+  var status = document.getElementById('ie-status') ? document.getElementById('ie-status').value : '待处理';
+  var email = document.getElementById('ie-email') ? document.getElementById('ie-email').value.trim() : '';
+  if (!company || !invId) { showToast('请填写必填项', 'error'); return; }
   if (isNaN(amount) || amount <= 0) { showToast('请输入有效金额', 'error'); return; }
   var inv = invoiceStore.find(function(i){ return i.id === invId; });
   if (inv) {
@@ -11622,11 +11691,12 @@ function injectEnergyAISuggestBtn() {
   }
   document.getElementById('modal-invoice-edit') && document.getElementById('modal-invoice-edit').remove();
   showToast('✅ 发票 ' + invId + ' 已更新', 'success');
-  if (typeof applyInvoiceSearch === 'function') );
-  if (typeof updateInvoiceStats === 'function') );
+  if (typeof applyInvoiceSearch === 'function') applyInvoiceSearch();
+  if (typeof updateInvoiceStats === 'function') updateInvoiceStats();
 }
 
-);
+function processInvoice(invId) {
+  var inv = invoiceStore.find(function(i){ return i.id === invId; });
   if (!inv) { showToast('未找到发票记录', 'error'); return; }
   var existing = document.getElementById('modal-invoice-process');
   if (existing) existing.remove();
@@ -11650,17 +11720,21 @@ function injectEnergyAISuggestBtn() {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
-);
+function submitInvoiceProcess(invId) {
+  var action = document.getElementById('ip-action') ? document.getElementById('ip-action').value : '';
+  var note = document.getElementById('ip-note') ? document.getElementById('ip-note').value.trim() : '';
+  var inv = invoiceStore.find(function(i){ return i.id === invId; });
   if (!inv) { showToast('未找到发票记录', 'error'); return; }
   var statusMap = {processing:'开具中', done:'已完成', cancelled:'已作废'};
   inv.status = statusMap[action] || inv.status;
   document.getElementById('modal-invoice-process') && document.getElementById('modal-invoice-process').remove();
   showToast('✅ 发票 ' + invId + ' 已处理为「' + inv.status + '」', 'success');
-  if (typeof applyInvoiceSearch === 'function') );
-  if (typeof updateInvoiceStats === 'function') );
+  if (typeof applyInvoiceSearch === 'function') applyInvoiceSearch();
+  if (typeof updateInvoiceStats === 'function') updateInvoiceStats();
 }
 
-);
+function reissueInvoice(invId) {
+  var inv = invoiceStore.find(function(i){ return i.id === invId; });
   if (!inv) { showToast('未找到发票记录', 'error'); return; }
   var newId = 'INV-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + String(invoiceStore.length + 1).padStart(2,'0');
   var newInv = {
@@ -11675,8 +11749,8 @@ function injectEnergyAISuggestBtn() {
   };
   invoiceStore.unshift(newInv);
   showToast('🔄 发票 ' + invId + ' 已重开，新号码：' + newId, 'success');
-  if (typeof applyInvoiceSearch === 'function') );
-  if (typeof updateInvoiceStats === 'function') );
+  if (typeof applyInvoiceSearch === 'function') applyInvoiceSearch();
+  if (typeof updateInvoiceStats === 'function') updateInvoiceStats();
 }
 
 // 【v4改进1】通知中心完整功能实现
@@ -12113,6 +12187,19 @@ function cleanupRecordEvents() {
 
 // ============================================================
 // 【v4改进5】发票搜索重置功能（修复第二个applyInvoiceSearch被覆盖问题）
+function resetInvoiceSearchV2() {
+  var si = document.getElementById('inv-search-input');
+  if (si) si.value = '';
+  var sf = document.getElementById('inv-status-filter');
+  if (sf) sf.value = 'all';
+  var tf = document.getElementById('inv-type-filter');
+  if (tf) tf.value = 'all';
+  _invoiceCurrentSearch = '';
+  _invoiceCurrentStatusFilter = 'all';
+  _invoiceCurrentTypeFilter = 'all';
+  if (typeof renderInvoiceFilteredList === 'function') renderInvoiceFilteredList();
+  showToast('🔄 已重置发票筛选条件', 'info');
+}
 
 // 绑定发票搜索重置按钮
 document.addEventListener('DOMContentLoaded', function() {
@@ -12124,7 +12211,11 @@ document.addEventListener('DOMContentLoaded', function() {
   }, 500);
 });
 
-,
+function openInvoiceHeaderManageModal() {
+  var existing = document.getElementById('modal-invoice-header');
+  if (existing) existing.remove();
+  var headers = [
+    {id:'H001',name:'张三',tax:'--',default:true},
     {id:'H002',name:'李四',tax:'91330000MA1234567X',default:false},
     {id:'H003',name:'王五',tax:'--',default:false}
   ];
@@ -12148,6 +12239,14 @@ document.addEventListener('DOMContentLoaded', function() {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
+function addNewInvoiceHeader() {
+  var name = prompt('请输入购方名称：');
+  if (!name || !name.trim()) return;
+  var tax = prompt('请输入纳税人识别号（无则直接确定）：');
+  showToast('✅ 发票抬头「' + name.trim() + '」新增成功', 'success');
+  openInvoiceHeaderManageModal();
+}
+
 // editInvoiceHeader and deleteInvoiceHeader are defined in improvements-v4-iter7.js as window functions
 
 // ============================================================
@@ -12156,15 +12255,35 @@ document.addEventListener('DOMContentLoaded', function() {
 // 改进：完整实现黑名单列表渲染、新增/编辑/解除/删除功能，含搜索筛选
 // ============================================================
 
-);
+var blacklistStore = [
+  {id:'BL001',name:'陈某',phone:'138****1234',idCard:'330101*******1234',type:'permanent',reason:'damage',reasonText:'恶意损坏公物',date:'2026-01-15',expire:'永久',status:'active'},
+  {id:'BL002',name:'刘某',phone:'139****5678',idCard:'330102*******5678',type:'temp',reason:'no-pay',reasonText:'赖账不还',date:'2026-02-20',expire:'2026-05-20',status:'active'},
+  {id:'BL003',name:'王某',phone:'137****9012',idCard:'330103*******9012',type:'permanent',reason:'fraud',reasonText:'欺诈入住',date:'2025-12-01',expire:'永久',status:'active'},
+  {id:'BL004',name:'赵某',phone:'136****3456',idCard:'330104*******3456',type:'temp',reason:'noise',reasonText:'噪音扰民',date:'2026-03-01',expire:'2026-04-01',status:'released'},
+  {id:'BL005',name:'孙某',phone:'135****7890',idCard:'330105*******7890',type:'permanent',reason:'other',reasonText:'多次违规',date:'2025-11-10',expire:'永久',status:'active'},
+  {id:'BL006',name:'周某',phone:'134****2345',idCard:'330106*******2345',type:'temp',reason:'no-pay',reasonText:'赖账不还',date:'2026-03-15',expire:'2026-06-15',status:'active'}
+];
+
+function renderBlacklist() {
+  var tbody = document.getElementById('bl-table-body');
+  if (!tbody) return;
+  var kw = document.getElementById('bl-search') ? document.getElementById('bl-search').value.toLowerCase().trim() : '';
+  var typeFilter = document.getElementById('bl-type-filter') ? document.getElementById('bl-type-filter').value : 'all';
+  var reasonFilter = document.getElementById('bl-reason-filter') ? document.getElementById('bl-reason-filter').value : 'all';
+  var filtered = blacklistStore.filter(function(b) {
+    var matchKw = !kw || b.name.toLowerCase().indexOf(kw) >= 0 || b.phone.indexOf(kw) >= 0 || b.idCard.indexOf(kw) >= 0;
+    var matchType = typeFilter === 'all' || (typeFilter === 'released' ? b.status === 'released' : b.type === typeFilter && b.status === 'active');
+    var matchReason = reasonFilter === 'all' || b.reason === reasonFilter;
+    return matchKw && matchType && matchReason;
+  });
   var rows = filtered.map(function(b) {
     var typeLabel = b.type === 'permanent' ? '<span class="tbadge red">🔒 永久封禁</span>' : '<span class="tbadge orange">⏳ 临时封禁</span>';
     var statusBadge = b.status === 'released' ? '<span class="tbadge green">✅ 已解除</span>' : '<span class="tbadge red">🚫 生效中</span>';
     var reasonLabels = {damage:'💔 恶意损坏',fraud:'💳 欺诈入住',noise:'🔊 噪音扰民','no-pay':'💸 赖账不还',other:'📋 其他违规'};
     var actionBtn = b.status === 'released'
-      ? '<button class="action-btn small" onclick="\'' + b.id + '\')" class="btn-pad-sm">👁️ 查看</button>'
-      : '<button class="action-btn small" onclick="\'' + b.id + '\')" class="btn-pad-sm">👁️ 查看</button>' +
-        '<button class="action-btn small" onclick="\'' + b.id + '\')" style="padding:3px 8px;font-size:11px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🔓 解除</button>';
+      ? '<button class="action-btn small" onclick="openBlacklistDetail(\'' + b.id + '\')" class="btn-pad-sm">👁️ 查看</button>'
+      : '<button class="action-btn small" onclick="openBlacklistDetail(\'' + b.id + '\')" class="btn-pad-sm">👁️ 查看</button>' +
+        '<button class="action-btn small" onclick="releaseBlacklist(\'' + b.id + '\')" style="padding:3px 8px;font-size:11px;background:var(--green-bg);color:var(--green);border-color:var(--green);">🔓 解除</button>';
     return '<tr>' +
       '<td class="txt-bold">' + b.name + '</td>' +
       '<td class="txt-muted txt-muted-lg">' + b.phone + '</td>' +
@@ -12185,10 +12304,48 @@ document.addEventListener('DOMContentLoaded', function() {
   if (releasedEl) releasedEl.textContent = blacklistStore.filter(function(b){ return b.status === 'released'; }).length;
 }
 
-;
+function filterBlacklist() { renderBlacklist(); }
+
+function openBlacklistAddModal() {
+  var existing = document.getElementById('modal-blacklist-add');
+  if (existing) existing.remove();
+  var html = '<div class="modal-overlay hidden" id="modal-blacklist-add" class="fixed-overlay" onclick="if(event.target===this)document.getElementById(\'modal-blacklist-add\').remove()">' +
+    '<div class="modal" style="width:480px;max-height:88vh;overflow-y:auto;background:white;border-radius:12px;">' +
+    '<div class="modal-header">' +
+    '<div class="flex-center"><div class="icon-xl">🚫</div><div class="txt-primary">添加黑名单</div></div>' +
+    '<button onclick="document.getElementById(\'modal-blacklist-add\').remove();" class="btn-close">✕</button></div>' +
+    '<div class="p-xl">' +
+    '<div class="form-group"><label class="form-label">姓名 <span class="required">*</span></label><input type="text" class="form-input" id="ba-name" placeholder="请输入姓名"></div>' +
+    '<div class="form-group"><label class="form-label">手机号 <span class="required">*</span></label><input type="text" class="form-input" id="ba-phone" placeholder="请输入手机号"></div>' +
+    '<div class="form-group"><label class="form-label">证件号</label><input type="text" class="form-input" id="ba-idcard" placeholder="请输入证件号"></div>' +
+    '<div class="form-group"><label class="form-label">封禁类型 <span class="required">*</span></label>' +
+    '<select class="form-select" id="ba-type" class="w-full"><option value="permanent">🔒 永久封禁</option><option value="temp">⏳ 临时封禁</option></select></div>' +
+    '<div class="form-group" id="ba-expire-group" class="hidden"><label class="form-label">到期日期</label><input type="date" class="form-input" id="ba-expire" class="w-full"></div>' +
+    '<div class="form-group"><label class="form-label">违规原因 <span class="required">*</span></label>' +
+    '<select class="form-select" id="ba-reason" class="w-full"><option value="damage">💔 恶意损坏</option><option value="fraud">💳 欺诈入住</option><option value="noise">🔊 噪音扰民</option><option value="no-pay">💸 赖账不还</option><option value="other">📋 其他违规</option></select></div>' +
+    '<div class="form-group"><label class="form-label">详细说明</label><textarea class="form-textarea" id="ba-desc" placeholder="可选，填写详细违规说明..." class="min-h-60"></textarea></div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="action-btn secondary" onclick="document.getElementById(\'modal-blacklist-add\').remove()">取消</button>' +
+    '<button class="action-btn primary" onclick="submitBlacklistAdd()" >🚫 确认添加</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  // 【P13+P11修复】黑名单添加弹窗 - ba-type事件监听器清理
+  var baTypeEl = document.getElementById('ba-type');
+  window._baTypeHandler = function() {
+    var g = document.getElementById('ba-expire-group');
+    if (g) g.style.display = this.value === 'temp' ? '' : 'none';
+  };
   if (baTypeEl) baTypeEl.addEventListener('change', window._baTypeHandler);
 }
 
+function submitBlacklistAdd() {
+  var name = document.getElementById('ba-name') ? document.getElementById('ba-name').value.trim() : '';
+  var phone = document.getElementById('ba-phone') ? document.getElementById('ba-phone').value.trim() : '';
+  var idCard = document.getElementById('ba-idcard') ? document.getElementById('ba-idcard').value.trim() : '';
+  var type = document.getElementById('ba-type') ? document.getElementById('ba-type').value : '';
+  var expire = document.getElementById('ba-expire') ? document.getElementById('ba-expire').value : '';
+  var reason = document.getElementById('ba-reason') ? document.getElementById('ba-reason').value : '';
+  var desc = document.getElementById('ba-desc') ? document.getElementById('ba-desc').value.trim() : '';
+  if (!name || !phone || !type || !reason) { showToast('请填写必填项', 'error'); return; }
   var reasonText = {damage:'恶意损坏',fraud:'欺诈入住',noise:'噪音扰民','no-pay':'赖账不还',other:'其他违规'}[reason] || reason;
   var newEntry = {
     id: 'BL' + String(Date.now()).slice(-6),
@@ -12201,10 +12358,11 @@ document.addEventListener('DOMContentLoaded', function() {
   blacklistStore.unshift(newEntry);
   document.getElementById('modal-blacklist-add') && document.getElementById('modal-blacklist-add').remove();
   showToast('🚫 ' + name + ' 已加入黑名单', 'success');
-  );
+  renderBlacklist();
 }
 
-);
+function openBlacklistDetail(id) {
+  var b = blacklistStore.find(function(x){ return x.id === id; });
   if (!b) { showToast('未找到记录', 'error'); return; }
   var existing = document.getElementById('modal-blacklist-detail');
   if (existing) existing.remove();
@@ -12224,22 +12382,24 @@ document.addEventListener('DOMContentLoaded', function() {
     '<div class="p-12 rounded" class="bg-base"><div class="text-xs text-muted mb-4">添加日期</div><div class="text-sm">' + b.date + '</div></div></div>' +
     '<div class="modal-footer">' +
     '<button class="action-btn secondary" onclick="document.getElementById(\'modal-blacklist-detail\').remove()">关闭</button>' +
-    (b.status !== 'released' ? '<button class="action-btn primary" onclick="\'' + b.id + '\')" >🔓 解除封禁</button>' : '') +
-    '<button class="action-btn primary" onclick="document.getElementById(\'modal-blacklist-detail\').remove();setTimeout(function(){\'' + b.id + '\')},100)" style="">&nbsp;✏️&nbsp;编辑</button>' +
+    (b.status !== 'released' ? '<button class="action-btn primary" onclick="releaseBlacklist(\'' + b.id + '\')" >🔓 解除封禁</button>' : '') +
+    '<button class="action-btn primary" onclick="document.getElementById(\'modal-blacklist-detail\').remove();setTimeout(function(){openBlacklistEditModal(\'' + b.id + '\')},100)" style="">&nbsp;✏️&nbsp;编辑</button>' +
     '<button class="action-btn primary" onclick="deleteBlacklistEntry(\'' + b.id + '\')" >🗑️ 删除</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
-);
+function releaseBlacklist(id) {
+  var b = blacklistStore.find(function(x){ return x.id === id; });
   if (!b) return;
   if (b.status === 'released') { showToast('该记录已是解除状态', 'info'); return; }
   b.status = 'released';
   showToast('🔓 ' + b.name + ' 已解除黑名单', 'success');
   document.getElementById('modal-blacklist-detail') && document.getElementById('modal-blacklist-detail').remove();
-  );
+  renderBlacklist();
 }
 
-);
+function openBlacklistEditModal(id) {
+  var b = blacklistStore.find(function(x){ return x.id === id; });
   if (!b) return;
   var existing = document.getElementById('modal-blacklist-edit');
   if (existing) existing.remove();
@@ -12260,11 +12420,12 @@ document.addEventListener('DOMContentLoaded', function() {
     '<option value="other"' + (b.reason==='other'?' selected':'') + '>📋 其他违规</option></select></div></div>' +
     '<div class="modal-footer">' +
     '<button class="action-btn secondary" onclick="document.getElementById(\'modal-blacklist-edit\').remove()">取消</button>' +
-    '<button class="action-btn primary" onclick="\'' + b.id + '\')"💾 保存</button></div></div></div>';
+    '<button class="action-btn primary" onclick="submitBlacklistEdit(\'' + b.id + '\')"💾 保存</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
-);
+function submitBlacklistEdit(id) {
+  var b = blacklistStore.find(function(x){ return x.id === id; });
   if (!b) return;
   var name = document.getElementById('be-name') ? document.getElementById('be-name').value.trim() : '';
   var phone = document.getElementById('be-phone') ? document.getElementById('be-phone').value.trim() : '';
@@ -12275,17 +12436,18 @@ document.addEventListener('DOMContentLoaded', function() {
   b.reasonText = {damage:'恶意损坏',fraud:'欺诈入住',noise:'噪音扰民','no-pay':'赖账不还',other:'其他违规'}[reason] || reason;
   document.getElementById('modal-blacklist-edit') && document.getElementById('modal-blacklist-edit').remove();
   showToast('✅ 黑名单信息已更新', 'success');
-  );
-  if (document.getElementById('modal-blacklist-detail')) id);
+  renderBlacklist();
+  if (document.getElementById('modal-blacklist-detail')) openBlacklistDetail(id);
 }
 
-);
+function deleteBlacklistEntry(id) {
+  var b = blacklistStore.find(function(x){ return x.id === id; });
   if (!b) return;
   if (!confirm('确认删除黑名单记录「' + b.name + '」？此操作不可撤销。')) return;
   blacklistStore = blacklistStore.filter(function(x){ return x.id !== id; });
   document.getElementById('modal-blacklist-detail') && document.getElementById('modal-blacklist-detail').remove();
   showToast('🗑️ 黑名单记录已删除', 'success');
-  );
+  renderBlacklist();
 }
 
 // ============================================================
@@ -13158,10 +13320,10 @@ function _invTypeBadge(type) {
 // 【P26拆解】renderInvoiceFilteredList 辅助函数：构建操作按钮
 function _invActionBtns(inv) {
   if (inv.status === '已完成')
-    return '<button class="action-btn small" onclick="\'' + inv.id + '\')">详情</button><button class="action-btn small" onclick="\'' + inv.id + '\')">重开</button>';
+    return '<button class="action-btn small" onclick="openInvoiceDetailModal(\'' + inv.id + '\')">详情</button><button class="action-btn small" onclick="reissueInvoice(\'' + inv.id + '\')">重开</button>';
   if (inv.status === '待处理' || inv.status === '开具中')
-    return '<button class="action-btn small" onclick="\'' + inv.id + '\')">处理</button><button class="action-btn small" onclick="\'' + inv.id + '\')">详情</button><button class="action-btn small red" onclick="openInvoiceDeleteModal(\'' + inv.id + '\')">删除</button><button class="action-btn small" onclick="openInvoiceVoidModal(\'' + inv.id + '\')">作废</button>';
-  return '<button class="action-btn small" onclick="\'' + inv.id + '\')">详情</button><button class="action-btn small red" onclick="openInvoiceDeleteModal(\'' + inv.id + '\')">删除</button>';
+    return '<button class="action-btn small" onclick="processInvoice(\'' + inv.id + '\')">处理</button><button class="action-btn small" onclick="openInvoiceDetailModal(\'' + inv.id + '\')">详情</button><button class="action-btn small red" onclick="openInvoiceDeleteModal(\'' + inv.id + '\')">删除</button><button class="action-btn small" onclick="openInvoiceVoidModal(\'' + inv.id + '\')">作废</button>';
+  return '<button class="action-btn small" onclick="openInvoiceDetailModal(\'' + inv.id + '\')">详情</button><button class="action-btn small red" onclick="openInvoiceDeleteModal(\'' + inv.id + '\')">删除</button>';
 }
 // 【P26拆解】renderInvoiceFilteredList 辅助函数：更新Tab统计数字
 function _updateInvoiceTabs(allCount, pendingCount, processingCount, doneCount, cancelledCount) {
@@ -13256,7 +13418,14 @@ function renderInvoiceFilteredList() {
 // ============================================================
 // 【改进2】发票管理 - applyInvoiceSearch（关键词+状态+类型综合搜索）
 // ============================================================
-;
+function applyInvoiceSearch() {
+  var searchInput = document.getElementById('inv-search-input');
+  _invoiceCurrentSearch = searchInput ? searchInput.value.trim() : '';
+  var statusFilter = document.getElementById('inv-status-filter');
+  _invoiceCurrentStatusFilter = statusFilter ? statusFilter.value : 'all';
+  var typeFilter = document.getElementById('inv-type-filter');
+  _invoiceCurrentTypeFilter = typeFilter ? typeFilter.value : 'all';
+  var statusMap = {pending:'待处理', processing:'开具中', done:'已完成', cancelled:'已作废'};
   if (_invoiceCurrentStatusFilter !== 'all') {
     _invoiceCurrentStatusFilter = statusMap[_invoiceCurrentStatusFilter] || _invoiceCurrentStatusFilter;
   }
@@ -14543,7 +14712,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function() { renderInvoiceFilteredList(); }, 100);
       }
       if (pageName === 'blacklist') {
-        setTimeout(function() { if (typeof renderBlacklist === 'function') ); }, 100);
+        setTimeout(function() { if (typeof renderBlacklist === 'function') renderBlacklist(); }, 100);
       }
       if (pageName === 'alert') {
         setTimeout(injectAlertDetailButton, 200);
@@ -14557,7 +14726,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // 页面元素初始化
   setTimeout(function() {
     renderInvoiceFilteredList();
-    if (typeof renderBlacklist === 'function') );
+    if (typeof renderBlacklist === 'function') renderBlacklist();
     injectAlertDetailButton();
     switchConfigTab('basic', document.getElementById('cfg-tab-basic'));
     // 【P13修复】发票搜索和操作日志筛选事件绑定（统一管理）
@@ -17904,7 +18073,7 @@ window.submitInvoiceReissue = function(originalInvId) {
     invoiceStore.unshift({id: newId, type: type, company: company, amount: amount, status: '待开票', remark: remark || '重开发票', createTime: new Date().toLocaleString('zh-CN'), resendCount: 0});
   }
   document.getElementById('modal-invoice-reissue') && document.getElementById('modal-invoice-reissue').remove();
-  try { if (typeof renderInvoiceFilteredList === 'function') renderInvoiceFilteredList(); else if (typeof renderInvoiceTable === 'function') renderInvoiceTable(); if (typeof updateInvoiceStats === 'function') ); } catch(e) {}
+  try { if (typeof renderInvoiceFilteredList === 'function') renderInvoiceFilteredList(); else if (typeof renderInvoiceTable === 'function') renderInvoiceTable(); if (typeof updateInvoiceStats === 'function') updateInvoiceStats(); } catch(e) {}
   showToast('🔄 原发票 ' + originalInvId + ' 已作废，新发票 ' + newId + ' 已创建（待开票）', 'success');
 };
 
@@ -17987,7 +18156,7 @@ window.resetInvoiceSearch = function() {
   _invoiceCurrentStatusFilter = 'all';
   _invoiceCurrentTypeFilter = 'all';
   if (typeof renderInvoiceFilteredList === 'function') renderInvoiceFilteredList();
-  if (typeof updateInvoiceStats === 'function') );
+  if (typeof updateInvoiceStats === 'function') updateInvoiceStats();
   showToast('🔄 已重置发票筛选条件', 'info');
 };
 
@@ -18042,7 +18211,7 @@ window.submitInvoiceVoid = function(invId) {
   inv.voidTime = new Date().toLocaleString('zh-CN');
   document.getElementById('modal-invoice-void') && document.getElementById('modal-invoice-void').remove();
   if (typeof renderInvoiceFilteredList === 'function') renderInvoiceFilteredList();
-  if (typeof updateInvoiceStats === 'function') );
+  if (typeof updateInvoiceStats === 'function') updateInvoiceStats();
   showToast('❌ 发票 ' + invId + ' 已作废（原因：' + reason + '）', 'success');
 };
 
@@ -18166,7 +18335,7 @@ var _orig_renderInvoiceFilteredList = window.renderInvoiceFilteredList;
 window.renderInvoiceFilteredList = function() {
   if (_orig_renderInvoiceFilteredList) _orig_renderInvoiceFilteredList.call(window);
   // 补充：更新主统计卡片
-  if (typeof updateInvoiceStats === 'function') );
+  if (typeof updateInvoiceStats === 'function') updateInvoiceStats();
 };
 
 // 增强applyInvoiceSearch支持日期范围
