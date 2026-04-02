@@ -1298,7 +1298,13 @@ window.addEventListener('error', function(e) {
 });
 
 // ======= 全局常量（P99修复：魔法数字提取为命名常量） =======
-var IOT_CONST = window.IOT_CONST || {
+
+// 安全DOM查询
+function $id(id) { return document.getElementById(id); }
+function $qs(sel) { return document.querySelector(sel); }
+function $qsa(sel) { return document.querySelectorAll(sel); }
+
+$1 = window.IOT_CONST || {
   BATTERY_LOW: 50,           // 电量告警阈值(%)
   BATTERY_CRITICAL: 20,     // 电量严重告警阈值(%)
   BATTERY_GOOD: 60,          // 电量良好阈值（绿色）
@@ -2002,7 +2008,23 @@ function sortRooms(order) {
   showToast('已按' + (order === 'roomnum' ? '房间号' : '状态') + '排序', 'info');
 }
 
-function showToast(msg, type) {
+
+// HTML转义函数
+function htmlEscape(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+// 安全innerHTML赋值
+function safeInnerHTML(el, html) {
+  if (el) el.innerHTML = html || '';
+}
+
+$1msg, type) {
   if (type === undefined) type = 'info';
   var container = document.getElementById('toast-container') || (function() {
     var c = document.createElement('div');
