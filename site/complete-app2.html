@@ -11265,92 +11265,7 @@ function submitWorkorderComplete() {
   if (typeof renderWorkorderSLATable === 'function') renderWorkorderSLATable();
 }
 
-// ============================================================
-// 【物联后台 v4 改进4】发票打印预览闭环
-// 理由：发票详情有打印按钮但printInvoice函数缺失
-// 改进：实现printInvoice函数，打开打印预览窗口含完整发票信息
-// ============================================================
-
-);
-  } else {
-    // Find from detail modal
-    var el = document.getElementById('invd-id');
-    if (el) {
-      var id = el.textContent.trim();
-      inv = invoiceStore.find(function(i){ return i.id === id; });
-    }
-  }
-  if (!inv) { showToast('未找到发票信息', 'error'); return; }
-  var printContent = '<!DOCTYPE html><html><head>
-    <meta name="description" content="领锁智能锁，酒店智能门锁专家，提供安全、节能、省心的智能锁解决方案。"><meta charset="UTF-8"><title>发票打印 - ' + inv.id + '</title>' +
-    '<style>body{font-family:"Microsoft YaHei",Arial,sans-serif;padding:40px;max-width:700px;margin:0 auto;color:#333;}' +
-    '.inv-header{border-bottom:2px solid #333;padding-bottom:20px;margin-bottom:20px;}' +
-    '.inv-title{font-size:28px;font-weight:800;text-align:center;margin:0 0 10px;}' +
-    '.inv-id{text-align:right;font-size:12px;color:#666;}' +
-    '.inv-section{margin-bottom:20px;}' +
-    '.inv-section h3{font-size:14px;border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px;}' +
-    '.inv-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;}' +
-    '.inv-item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted #eee;}' +
-    '.inv-total{font-size:24px;font-weight:800;color:#c00;text-align:right;padding:15px 0;}' +
-    '.inv-footer{text-align:center;font-size:11px;color:#999;margin-top:40px;padding-top:20px;border-top:1px solid #ddd;}' +
-    '.inv-qr{text-align:center;margin:15px 0;}' +
-    '.inv-print-btn{position:fixed;top:20px;right:20px;padding:10px 20px;background:#0066cc;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:14px;}' +
-    '@media print{.inv-print-btn{display:none;}}
-/* 自定义滚动条 */
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-
-/* 通用工具类 */
-.flex-end { display: flex; justify-content: flex-end; }
-.flex-center { display: flex; align-items: center; justify-content: center; }
-.flex-between { display: flex; justify-content: space-between; }
-.flex-1 { flex: 1; }
-.gap-2 { gap: 2px; }
-.gap-4 { gap: 4px; }
-.gap-8 { gap: 8px; }
-.gap-12 { gap: 12px; }
-.w-full { width: 100%; }
-.h-full { height: 100%; }
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.hidden { display: none !important; }
-.cursor-pointer { cursor: pointer; }
-
-
-/* === 工具类：图标尺寸 === */
-.icon-sm{width:16px;height:16px;display:inline-block;}
-.icon-md{width:26px;height:26px;display:inline-block;}
-/* === 工具类：文字颜色 === */
-.text-purple{color:var(--purple);}
-.text-white{color:white;}
-/* === 工具类：display none === */
-.d-none{display:none;}
-
-</style></head><body>' +
-    '<button class="inv-print-btn" onclick="window.print()">🖨️ 打印发票</button>' +
-    '<div class="inv-header"><div class="inv-title">增 值 税 发 票</div>' +
-    '<div class="inv-id">发票号码：' + inv.id + ' &nbsp; 开票日期：' + inv.date + '</div></div>' +
-    '<div class="inv-section"><h3>购买方信息</h3><div class="inv-grid">' +
-    '<div class="inv-item"><span>名 称：</span><span class="txt-bold">' + inv.company + '</span></div>' +
-    '<div class="inv-item"><span>纳税人识别号：</span><span>' + inv.tax + '</span></div></div></div>' +
-    '<div class="inv-section"><h3>销售方信息</h3><div class="inv-grid">' +
-    '<div class="inv-item"><span>名 称：</span><span>锁帮智慧酒店管理有限公司</span></div>' +
-    '<div class="inv-item"><span>纳税人识别号：</span><span>91310000MA1FL8XY12</span></div></div></div>' +
-    '<div class="inv-section"><h3>发票明细</h3>' +
-    '<div class="inv-item"><span>住宿服务</span><span>¥' + inv.amount.toFixed(2) + '</span></div></div>' +
-    '<div class="inv-total">价税合计（大写）：<span class="text-lg">人民币 </span>' + inv.amount.toFixed(2) + ' 元</div>' +
-    '<div class="inv-section"><h3>其他信息</h3><div class="inv-grid">' +
-    '<div class="inv-item"><span>发票类型：</span><span>' + (inv.type || '增值税普通发票') + '</span></div>' +
-    '<div class="inv-item"><span>电子邮箱：</span><span>' + (inv.email || '--') + '</span></div>' +
-    '<div class="inv-item"><span>收 款 人：</span><span>锁帮物联后台系统</span></div>' +
-    '<div class="inv-item"><span>开 票 人：</span><span>系统自动开票</span></div></div></div>' +
-    '<div class="inv-footer">本发票由锁帮智慧酒店管理系统自动开具 · 如有疑问请联系客服<br>发票查询官网：https://inv.lockclub.cn · 客服电话：400-888-8888</div></div></body></html>';
-  var printWindow = window.open('', '_blank');
-  printWindow.document.write(printContent);
-  printWindow.document.close();
-  showToast('🖨️ 打印窗口已打开，请执行打印', 'success');
-}
-</script>
+// ============================================================</script>
 <!-- 【v4全面检查修复】缺失的模态框HTML -->
 <!-- 楼栋管理新增/编辑表单 -->
 <div class="modal-overlay hidden" id="modal-bldmgr-form">
@@ -17045,120 +16960,59 @@ function showUnlockDetail(method, time, person, result) {
   document.body.appendChild(div.firstChild);
 }
 </script>
-<script src="improvements-v4-func.js?v=20260330225136"></script>
-<script src="v4-func-iter2.js?v=20260330225136"></script>
-<script src="improvements-v4-iter5.js?v=20260330225136"></script>
-<script src="improvements-v4-iter6.js?v=20260330225136"></script>
-<!-- Layout fix removed: using flexbox from CSS -->
-<script src="improvements-v4-iter13.js?v=20260330225136"></script>
-<script src="improvements-v4-iter14.js?v=20260330225136"></script>
-<script src="improvements-v4-iter15.js?v=20260330225136"></script>
-<script src="improvements-v4-iter16.js?v=20260330225136"></script>
-<script src="improvements-v4-iter17.js?v=20260330225136"></script>
-<script src="improvements-v4-iter18.js?v=20260330225136"></script>
-<script src="improvements-v4-iter19.js?v=20260330225136"></script>
-<script src="improvements-v4-iter20.js?v=20260330225136"></script>
-<script src="improvements-v4-iter7.js?v=20260330225136"></script>
-<script src="improvements-v4-iter8.js?v=20260330225136"></script>
-<script src="improvements-v4-iter9.js?v=20260330225136"></script>
-<script src="improvements-v4-iter10.js?v=20260330225136"></script>
-<script src="improvements-v4-iter11.js?v=20260330225136"></script>
-<script src="improvements-v4-iter12.js?v=20260330225136"></script>
-<script src="improvements-v4-iter22.js?v=20260330225136"></script>
-<script src="improvements-v4-iter21.js?v=20260330225136"></script>
-<script src="improvements-v4-iter23.js?v=20260330225136"></script>
-<script src="improvements-v4-iter25.js?v=20260330225136"></script>
-<script src="improvements-v4-iter24.js?v=20260330225136"></script>
-<script src="improvements-v4-iter26.js?v=20260330225136"></script>
-<script src="improvements-v4-iter27.js?v=20260330225136"></script>
-<script src="improvements-v4-iter28.js?v=20260330225136"></script>
-<script src="improvements-v4-iter29.js?v=20260330225136"></script>
-<script src="improvements-v4-iter30.js?v=20260330225136"></script>
-<script src="improvements-v4-iter31.js?v=20260330225136"></script>
-<script src="improvements-v4-iter32.js?v=20260330225136"></script>
-<script src="improvements-v4-iter33.js?v=20260330225136"></script>
-<script src="improvements-v4-iter34.js?v=20260330225136"></script>
-<script src="improvements-v4-iter35.js?v=20260330225136"></script>
-<script src="improvements-v4-iter36.js?v=20260330225136"></script>
-<script src="improvements-v4-iter37.js?v=20260330225136"></script>
-<script src="improvements-v4-iter38.js?v=20260330225136"></script>
-<script src="improvements-v4-iter39.js?v=20260330225136"></script>
-<script src="improvements-v4-iter40.js?v=20260330225136"></script>
-<script src="improvements-v4-iter41.js?v=20260330225136"></script>
-<script src="improvements-v4-iter42.js?v=20260330225136"></script>
-<script src="improvements-v4-iter43.js?v=20260330225136"></script>
-<script src="improvements-v4-iter44.js?v=20260330225136"></script>
-<script src="improvements-v4-iter45.js?v=20260330225136"></script>
-<script src="improvements-v4-iter46.js?v=20260330225136"></script>
-<script src="improvements-v4-iter47.js?v=20260330225136"></script>
-<script src="improvements-v4-iter48.js?v=20260330225136"></script>
-<script src="improvements-v4-iter49.js?v=20260330225136"></script>
-<script src="improvements-v4-iter50.js?v=20260330225136"></script>
-<script src="improvements-v4-iter51.js?v=20260330225136"></script>
-<script src="improvements-v4-iter52.js?v=20260330225136"></script>
-<script src="improvements-v4-iter53.js?v=20260330225136"></script>
-<script src="improvements-v4-iter54.js?v=20260330225136"></script>
-<script src="improvements-v4-iter55.js?v=20260330225136"></script>
-<script src="improvements-v4-iter56.js?v=20260330225136"></script>
-<script src="improvements-v4-iter57.js?v=20260330225136"></script>
-<script src="improvements-v4-iter58.js?v=20260330225136"></script>
-<script src="improvements-v4-iter59.js?v=20260330225136"></script>
-<script src="improvements-v4-iter60.js?v=20260330225136"></script>
-<script src="improvements-v4-iter61.js?v=20260330225136"></script>
-<script src="improvements-v4-iter62.js?v=20260330225136"></script>
-<script src="improvements-v4-iter63.js?v=20260330225136"></script>
-<script src="improvements-v4-iter64.js?v=20260330225136"></script>
-<script src="improvements-v4-iter65.js?v=20260330225136"></script>
-<script src="improvements-v4-iter66.js?v=20260330225136"></script>
-<script src="improvements-v4-iter67.js?v=20260330225136"></script>
-<script src="improvements-v4-iter69.js?v=20260330225136"></script>
-<script src="improvements-v4-iter70.js?v=20260330225136"></script>
-<script src="improvements-v4-iter71.js?v=20260330225136"></script>
-<script src="improvements-v4-iter74.js?v=20260331214500"></script>
-</body></html>
-
-// ============================================================
+<script></script>
+<script src="v4-func-iter2.js?v=20260330225136"<script></script>30225136"></script>
+<script src="improvem<script></script>ved: using flexbox from CSS -->
+<script src="impr<script></script>provements-v4-iter14.js?v=20260330225136"></script>
+<script src="improvements-v4-iter15.js?v=20260330<script></script>0225136"></script>
+<script src="improvements-v4-it<script></script>ter18.js?v=20260330225136"></script>
+<script src="<script></script>"improvements-v4-iter20.js?v=20260330225136"></scr<script></script>ipt>
+<script src="improvements-v4-iter8.js?v=20260<script></script>330225136"></script>
+<script src="improvements-v4-<script></script>-iter11.js?v=20260330225136"></script>
+<script src<script></script>c="improvements-v4-iter22.js?v=20260330225136"></s<script></script>script>
+<script src="improvements-v4-iter23.js?v=2<script></script>=20260330225136"></script>
+<script src="improveme<script></script>ments-v4-iter26.js?v=20260330225136"></script>
+<s<script></script><script src="improvements-v4-iter28.js?v=20260330<script></script>0225136"></script>
+<script src="improvements-v4-it<script></script>ter31.js?v=20260330225136"></script>
+<script src="<script></script>"improvements-v4-iter33.js?v=20260330225136"></scr<script></script>ript>
+<script src="improvements-v4-iter35.js?v=202<script></script>260330225136"></script>
+<script src="improvements-<script></script>-v4-iter38.js?v=20260330225136"></script>
+<script <script></script> src="improvements-v4-iter40.js?v=20260330225136"><script></script>></script>
+<script src="improvements-v4-iter42.js?<script></script>?v=20260330225136"></script>
+<script src="improvem<script></script>ments-v4-iter45.js?v=20260330225136"></script>
+<sc<script></script>cript src="improvements-v4-iter47.js?v=20260330225<script></script>5136"></script>
+<script src="improvements-v4-iter4<script></script>50.js?v=20260330225136"></script>
+<script src="imp<script></script>provements-v4-iter52.js?v=20260330225136"></script<script></script>t>
+<script src="improvements-v4-iter54.js?v=202603<script></script>330225136"></script>
+<script src="improvements-v4-<script></script>-iter57.js?v=20260330225136"></script>
+<script src<script></script>c="improvements-v4-iter59.js?v=20260330225136"></s<script></script>script>
+<script src="improvements-v4-iter61.js?v=2<script></script>20260330225136"></script>
+<script src="improvement<script></script>ts-v4-iter64.js?v=20260330225136"></script>
+<scrip<script></script>pt src="improvements-v4-iter66.js?v=20260330225136<script></script>6"></script>
+<script src="improvements-v4-iter69.j<script></script>js?v=20260330225136"></script>
+<script src="improv<script></script>vements-v4-iter74.js?v=20260331214500"></script>
+<<script></script>============
 // 【物联后台 v4 第67轮】5个功能性断裂修复
-// 修复：config保存/楼栋编辑删除/楼层新增/房间新增/房型新增
-// ============================================================
+// 修复：conf<script></script>========================
 
-// 【修复1】confirmConfigSave - config保存按钮（修复saveSystemConfig调用断裂）
-function confirmConfigSave() {
-  var hotelName = document.getElementById('cfg-hotel-name') ? document.getElementById('cfg-hotel-name').value.trim() : '';
-  var hotelPhone = document.getElementById('cfg-hotel-phone') ? document.getElementById('cfg-hotel-phone').value.trim() : '';
-  var hotelAddr = document.getElementById('cfg-hotel-addr') ? document.getElementById('cfg-hotel-addr').value.trim() : '';
-  var checkinTime = document.getElementById('cfg-checkin-time') ? document.getElementById('cfg-checkin-time').value.trim() : '';
-  var checkoutTime = document.getElementById('cfg-checkout-time') ? document.getElementById('cfg-checkout-time').value.trim() : '';
-  var deposit = document.getElementById('cfg-deposit') ? document.getElementById('cfg-deposit').value.trim() : '';
-  if (!hotelName) { showToast('请填写酒店名称', 'error'); return; }
+// 【修复1】confirmConfigSav<script></script>) {
+  var hotelName = document.getElementById('cfg<script></script>im() : '';
+  var hotelPhone = document.getElementB<script></script>).value.trim() : '';
+  var hotelAddr = document.ge<script></script>l-addr').value.trim() : '';
+  var checkinTime = do<script></script>d('cfg-checkin-time').value.trim() : '';
+  var che<script></script>t.getElementById('cfg-checkout-time').value.trim()<script></script>cument.getElementById('cfg-deposit').value.trim() <script></script>
   // Apply to sidebar brand
-  var sidebarBrand = document.getElementById('sidebar-brand-text');
-  if (sidebarBrand) sidebarBrand.textContent = hotelName;
-  var summary = ['酒店名称:' + hotelName];
-  if (hotelPhone) summary.push('电话:' + hotelPhone);
-  if (checkinTime) summary.push('入住:' + checkinTime);
-  if (checkoutTime) summary.push('解绑:' + checkoutTime);
-  showToast('✅ 系统配置已保存：' + summary.slice(0,3).join('、'), 'success');
-  closeModal('config-edit');
-}
-
-function openAddBuildingForm() {
-  var existing = document.getElementById('modal-bldg-config-add');
-  if (existing) existing.remove();
-  var html = '<div class="modal-overlay hidden" id="modal-bldg-config-add" class="modal-overlay p-20" onclick="if(event.target===this)document.getElementById(\'modal-bldg-config-add\').remove()">' +
-    '<div style="background:white;border-radius:12px;width:480px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
-      '<div class="py-16 px-20 border-bottom flex-between">' +
-        '<div><div class="txt-primary">🏢 新增楼栋</div></div>' +
-        '<button onclick="document.getElementById(\'modal-bldg-config-add\').remove()" style="background:var(--bg);border:none;font-size:15px;cursor:pointer;color:var(--text-light);width:26px;height:26px;border-radius:6px;">✕</button></div>' +
-      '<div class="py-16 px-20 flex-1 overflow-y-auto">' +
-        '<div class="form-group"><label class="form-label">楼栋名称 <span class="required">*</span></label><input type="text" id="bca-name" class="form-input" placeholder="如：1号楼 / A座"></div>' +
-        '<div class="grid-2 gap-12">' +
-          '<div class="form-group"><label class="form-label">楼层数 <span class="required">*</span></label><input type="number" id="bca-floors" class="form-input" placeholder="如：3"></div>' +
-          '<div class="form-group"><label class="form-label">房间数</label><input type="number" id="bca-rooms" class="form-input" placeholder="如：16"></div>' +
-        '</div>' +
-        '<div class="form-group"><label class="form-label">位置</label><input type="text" id="bca-addr" class="form-input" placeholder="如：主楼东侧"></div>' +
-        '<div class="grid-2 gap-12">' +
-          '<div class="form-group"><label class="form-label">负责人</label><input type="text" id="bca-mgr" class="form-input" placeholder="负责人姓名"></div>' +
+  var sidebarBrand = <script></script> sidebarBrand.textContent = hotelName;
+  var summa<script></script> hotelPhone);
+  if (checkinTime) summary.push('入住:<script></script>tTime);
+  showToast('✅ 系统配置已保存：' + summary.slice(0<script></script>n openAddBuildingForm() {
+  var existing = documen<script></script>g.remove();
+  var html = '<div class="modal-overla<script></script>click="if(event.target===this)document.getElementB<script></script>ground:white;border-radius:12px;width:480px;max-he<script></script>hadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<di<script></script>><div class="txt-primary">🏢 新增楼栋</div></div>' +
+ <script></script>ig-add\').remove()" style="background:var(--bg);bo<script></script>dth:26px;height:26px;border-radius:6px;">✕</button<script></script>' +
+        '<div class="form-group"><label class=<script></script>pe="text" id="bca-name" class="form-input" placeho<script></script>+
+          '<div class="form-group"><label class=<script></script>e="number" id="bca-floors" class="form-input" plac<script></script>class="form-label">房间数</label><input type="number"<script></script>      '</div>' +
+        '<div class="form-group"><script></script>r" class="form-input" placeholder="如：主楼东侧"></div>'<script></script>form-group"><label class="form-label">负责人</label><input type="text" id="bca-mgr" class="form-input" placeholder="负责人姓名"></div>' +
           '<div class="form-group"><label class="form-label">电话</label><input type="text" id="bca-phone" class="form-input" placeholder="手机号"></div>' +
         '</div>' +
       '</div>' +
