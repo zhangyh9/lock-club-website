@@ -1287,6 +1287,72 @@ window.renderDeviceHeatmap=function(){
   }).join('');
 };
 
+// ======= 【物联后台v3.6 修复】首页房间卡片渲染函数（renderRoomGrid缺失修复） =======
+// 业务逻辑依据：首页房间卡片在showPage('home')时被调用，但renderRoomGrid函数从未定义，
+// 导致刷新按钮和筛选器onchange调用时房间列表无法重新渲染，仅靠applyRoomFilters过滤已存在的DOM卡片
+// 修复：实现完整的renderRoomGrid函数，从roomData渲染房间卡片HTML到#room-grid容器
+var _homeRoomData = [
+  {num:'301',type:'领握LH-807',status:'in',battery:88,online:true,dirty:false,maintain:false,disabled:false,locked:false,guest:'张先生'},
+  {num:'302',type:'领握LH-807',status:'empty',battery:92,online:true,dirty:false,maintain:false,disabled:false,locked:false,guest:''},
+  {num:'303',type:'领握LH-807',status:'alert',battery:0,online:false,dirty:false,maintain:false,disabled:false,locked:true,guest:'李女士'},
+  {num:'304',type:'领握LH-807',status:'in',battery:76,online:true,dirty:false,maintain:false,disabled:false,locked:false,guest:'王先生'},
+  {num:'305',type:'领握LH-807',status:'low',battery:28,online:true,dirty:false,maintain:false,disabled:false,locked:false,guest:'赵先生'},
+  {num:'306',type:'领握LH-807',status:'empty',battery:100,online:true,dirty:true,maintain:false,disabled:false,locked:false,guest:''},
+  {num:'307',type:'领握LH-807',status:'in',battery:65,online:true,dirty:false,maintain:false,disabled:false,locked:false,guest:'孙先生'},
+  {num:'308',type:'领握LH-807',status:'empty',battery:55,online:true,dirty:false,maintain:false,disabled:false,locked:false,guest:''},
+  {num:'201',type:'领握LH-807',status:'in',battery:82,online:true,dirty:false,maintain:false,disabled:false,locked:false,guest:'周先生'},
+  {num:'202',type:'领握LH-807',status:'low',battery:18,online:true,dirty:false,maintain:false,disabled:false,locked:false,guest:'吴女士'},
+  {num:'203',type:'领握LH-807',status:'in',battery:91,online:true,dirty:false,maintain:false,disabled:false,locked:false,guest:'郑先生'},
+  {num:'204',type:'领握LH-807',status:'empty',battery:78,online:true,dirty:false,maintain:false,disabled:false,locked:false,guest:''},
+  {num:'101',type:'领握LH-807',status:'in',battery:87,online:true,dirty:false,maintain:false,disabled:false,locked:false,guest:'钱先生'},
+  {num:'102',type:'领握LH-807',status:'empty',battery:73,online:true,dirty:true,maintain:false,disabled:false,locked:false,guest:''}
+];
+window.renderRoomGrid = function(filter) {
+  var grid = document.getElementById('room-grid');
+  if (!grid) return;
+  var filterVal = filter || 'all';
+  var html = '';
+  _homeRoomData.forEach(function(room) {
+    var isAlert = room.status === 'alert' || room.status === 'low' || room.disabled;
+    var showAll = filterVal === 'all';
+    var showOccupied = filterVal === 'occupied' && room.status === 'in';
+    var showEmpty = filterVal === 'empty' && room.status === 'empty';
+    var showAlert = filterVal === 'alert' && isAlert;
+    if (!showAll && !showOccupied && !showEmpty && !showAlert) return;
+    var cardClass = 'room-card';
+    var badgeClass = 'badge-in';
+    var badgeText = '入住';
+    var statusIcon = '🟢';
+    var batteryColor = 'green';
+    if (room.status === 'alert') { cardClass += ' alert'; badgeClass = 'badge-alert'; badgeText = '告警'; statusIcon = '🔴'; batteryColor = 'red'; }
+    else if (room.status === 'low') { cardClass += ' low'; badgeClass = 'badge-low'; badgeText = '低电量'; statusIcon = '🟠'; batteryColor = 'orange'; }
+    else if (room.status === 'empty') { badgeClass = 'badge-empty'; badgeText = '空闲'; statusIcon = '🟢'; }
+    if (room.disabled) { cardClass += ' disabled'; badgeClass = 'badge-disabled'; badgeText = '停用'; statusIcon = '⚫'; }
+    var batteryPct = room.battery + '%';
+    if (room.battery <= 20) batteryColor = 'red';
+    else if (room.battery <= 50) batteryColor = 'orange';
+    else batteryColor = 'green';
+    html += '<div class="' + cardClass + '" data-room="' + room.num + '" data-status="' + room.status + '" data-dirty="' + room.dirty + '" data-maintain="' + room.maintain + '" data-disabled="' + room.disabled + '" onclick="showPage(\'room-detail\');setRoomDetail(\'' + room.num + '\');">';
+    html += '<div class="room-card-header"><div><div class="room-num">' + room.num + '</div><div class="room-type">' + room.type + '</div></div><span class="room-badge ' + badgeClass + '">' + badgeText + '</span></div>';
+    html += '<div class="room-card-meta">';
+    html += '<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;"><span>' + statusIcon + '</span><span style="font-size:10px;">' + (room.online ? '在线' : '离线') + '</span></div>';
+    html += '<div style="display:flex;align-items:center;gap:4px;"><span>🔋</span><span style="font-size:10px;" class="room-device-val ' + batteryColor + '">' + batteryPct + '</span></div>';
+    html += '</div>';
+    if (room.guest) {
+      html += '<div class="room-guest-info"><span class="room-guest-name">' + room.guest + '</span></div>';
+    }
+    html += '<div class="room-quick-actions">';
+    if (room.status === 'in') html += '<button class="room-qa-btn room-qa-unlock" onclick="event.stopPropagation();showToast(\'远程开锁请求已发送...\'，\'info\')">开锁</button>';
+    html += '<button class="room-qa-btn room-qa-history" onclick="event.stopPropagation();showPage(\'log\')">记录</button>';
+    html += '</div></div>';
+  });
+  if (!html) {
+    html = '<div class="room-card-empty" style="grid-column:1/-1;text-align:center;padding:40px 20px;color:var(--text-muted);"><div style="font-size:32px;margin-bottom:8px;">🏠</div><div style="font-size:14px;font-weight:600;margin-bottom:4px;">未找到匹配的房间</div><div style="font-size:12px;">请尝试调整筛选条件</div></div>';
+  }
+  grid.innerHTML = html;
+  applyRoomFilters && applyRoomFilters();
+};
+
 // ======= 全局工具函数（P57代码分割 + P63数字统计 + P100重复代码提取） =======
 // P63: 数字统计单位格式化
 window.formatStatNumber = function(num, unit) {
@@ -1548,7 +1614,26 @@ function closeAllModals() {
 }
 function openModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
 function closeModal(id) { var el = document.getElementById(id); if (el) el.classList.add('hidden'); }
-window._escKeyHandler = function(e){ if(e.key==='Escape'){closeAllModals();closeGlobalSearch();} };
+window._escKeyHandler = function(e){
+  // 【物联后台v3.6修复】ESC关闭Modal和全局搜索栏
+  if(e.key==='Escape'){ closeAllModals(); closeGlobalSearch(); }
+};
+window.openGlobalSearch = function() {
+  var bar = document.getElementById('global-search-bar');
+  var inp = document.getElementById('global-search-overlay-input');
+  if (bar) { bar.style.display = 'block'; }
+  if (inp) { inp.focus(); }
+};
+// 【物联后台v3.6改进】全局搜索快捷键F唤起
+if(!window._searchKeyBound){ document.addEventListener('keydown', function(e){
+  // 忽略输入框/文本域内的F键
+  var tag = document.activeElement ? document.activeElement.tagName : '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if (e.key === 'f' || e.key === 'F') {
+    e.preventDefault();
+    openGlobalSearch();
+  }
+}); window._searchKeyBound = true; }
 if(!window._escKeyHandlerBound){ document.addEventListener('keydown', window._escKeyHandler); window._escKeyHandlerBound = true; }
 // cycleHomeTab is defined in improvements-v4-iter8.js as window function
 window.cycleHomeTab = window.cycleHomeTab || function() {};
@@ -3779,7 +3864,7 @@ function switchRoomDetailTab(tab, el) {
 </div>
 <!-- 【改进2】房型管理新增/编辑弹窗 -->
 <div class="modal-overlay hidden" id="modal-rt-form">
-<div class="modal" class="modal-w-md">
+<div class="modal modal-w-md">
 <div class="modal-header">
 <div class="modal-title" id="rt-form-title">🏠 新增房型</div>
 <button class="modal-close" onclick="closeModal('rt-form')">✕</button>
@@ -4000,7 +4085,7 @@ function switchRoomDetailTab(tab, el) {
       var existing = document.getElementById('modal-key-detail');
       if (existing) existing.remove();
       var html = '<div class="hidden modal-overlay" id="modal-key-detail" class="modal-overlay" onclick="if(event.target===this)document.getElementById(\'modal-key-detail\').remove()">' +
-        '<div class="modal" class="modal-w-md bg-white rounded-lg">' +
+        '<div class="modal modal-w-md bg-white rounded-lg">' +
         '<div class="py-16 px-20 border-bottom flex-between">' +
         '<div class="txt-primary">' + typeIcon + ' 钥匙详情 - ' + keyId + '</div>' +
         '<button onclick="document.getElementById(\'modal-key-detail\').remove()" class="btn-close">✕</button></div>' +
@@ -4026,7 +4111,7 @@ function switchRoomDetailTab(tab, el) {
       var existing = document.getElementById('modal-key-disable');
       if (existing) existing.remove();
       var html = '<div class="hidden modal-overlay" id="modal-key-disable" class="modal-overlay" onclick="if(event.target===this)document.getElementById(\'modal-key-disable\').remove()">' +
-        '<div class="modal" class="modal-w-md bg-white rounded-lg">' +
+        '<div class="modal modal-w-md bg-white rounded-lg">' +
         '<div class="modal-header">' +
         '<div style="font-size:15px;font-weight:700;color:var(--red);">⚠️ 确认禁用钥匙</div>' +
         '<button onclick="document.getElementById(\'modal-key-disable\').remove()" class="btn-icon">✕</button></div>' +
@@ -4057,7 +4142,7 @@ function switchRoomDetailTab(tab, el) {
       var existing = document.getElementById('modal-key-renew');
       if (existing) existing.remove();
       var html = '<div class="hidden modal-overlay" id="modal-key-renew" class="modal-overlay" onclick="if(event.target===this)document.getElementById(\'modal-key-renew\').remove()">' +
-        '<div class="modal" class="modal-w-md bg-white rounded-lg">' +
+        '<div class="modal modal-w-md bg-white rounded-lg">' +
         '<div class="modal-header">' +
         '<div class="txt-primary">🔄 续期钥匙 - ' + keyId + '</div>' +
         '<button onclick="document.getElementById(\'modal-key-renew\').remove()" class="btn-icon">✕</button></div>' +
@@ -4261,7 +4346,7 @@ function switchRoomDetailTab(tab, el) {
 <!-- 【改进3】服务工单创建完整表单弹窗 -->
 <!-- 【改进2】服务工单完整创建表单：新增SLA时限自动计算、关联房间入住信息、工单来源渠道 -->
 <div class="modal-overlay hidden" id="modal-wo-create">
-<div class="modal" class="modal-w-xl">
+<div class="modal modal-w-xl">
 <div class="modal-header">
 <div class="modal-title">📋 创建服务工单</div>
 <button class="modal-close" onclick="closeModal('wo-create')">✕</button>
@@ -4372,7 +4457,7 @@ function switchRoomDetailTab(tab, el) {
 </div>
 <!-- 【改进3】服务工单处理弹窗 -->
 <div class="modal-overlay hidden" id="modal-wo-process">
-<div class="modal" class="modal-w-md">
+<div class="modal modal-w-md">
 <div class="modal-header">
 <div class="modal-title">🛠️ 处理服务工单</div>
 <button class="modal-close" onclick="closeModal('wo-process')">✕</button>
@@ -4452,7 +4537,7 @@ function switchRoomDetailTab(tab, el) {
 </div>
 <!-- 【改进1】楼栋管理新增/编辑弹窗（原系统有楼栋管理但Demo无此弹窗） -->
 <div class="modal-overlay hidden" id="modal-building-form">
-<div class="modal" class="modal-w-md">
+<div class="modal modal-w-md">
 <div class="modal-header">
 <div class="modal-title" id="bld-form-title">🏢 新增楼栋</div>
 <button class="modal-close" onclick="closeModal('building-form')">✕</button>
@@ -4487,7 +4572,7 @@ function switchRoomDetailTab(tab, el) {
 </div>
 <!-- 【改进3】房型价格管理弹窗：支持设置不同入住时长的单价，支持钟点房/半天/全天计费 -->
 <div class="modal-overlay hidden" id="modal-roomtype-price-v2">
-<div class="modal" class="modal-w-xxl">
+<div class="modal modal-w-xxl">
 <div class="modal-header">
 <div class="modal-title">💰 房型价格管理 - <span id="rtp-type-name" class="text-primary"></span></div>
 <button class="modal-close" onclick="closeModal('roomtype-price-v2')">✕</button>
@@ -4586,7 +4671,7 @@ function switchRoomDetailTab(tab, el) {
 </div>
 <!-- 【改进4新增】服务工单超时自动升级规则配置弹窗 -->
 <div class="modal-overlay hidden" id="modal-wo-escalation-rules">
-<div class="modal" class="modal-w-xxl">
+<div class="modal modal-w-xxl">
 <div class="modal-header">
 <div class="modal-title">⚙️ 工单超时自动升级规则配置</div>
 <button class="modal-close" onclick="closeModal('wo-escalation-rules')">✕</button>
@@ -4839,7 +4924,7 @@ function saveEscalationEditorRules() {
     </script>
 <!-- 【改进v3-1】房间状态修改弹窗（停用/启用/维护，原系统有完整房间状态管理） -->
 <div class="modal-overlay hidden" id="modal-room-status-change">
-<div class="modal" class="modal-w-sm">
+<div class="modal modal-w-sm">
 <div class="modal-header">
 <div class="modal-title" id="rsc-title">🔄 修改房间状态</div>
 <button class="modal-close" onclick="closeModal('room-status-change')">✕</button>
@@ -4888,7 +4973,7 @@ function saveEscalationEditorRules() {
 </div>
 <!-- 【改进3】楼层管理快速添房间弹窗 -->
 <div class="modal-overlay hidden" id="modal-quick-add-room">
-<div class="modal" class="modal-w-sm">
+<div class="modal modal-w-sm">
 <div class="modal-header">
 <div class="modal-title">🚪 快速添加房间</div>
 <button class="modal-close" onclick="closeModal('quick-add-room')">✕</button>
@@ -4945,7 +5030,7 @@ function saveEscalationEditorRules() {
 <!-- 【P20优化】批量导入房间弹窗已删除（楼栋管理page-bldmgr已移除，该功能无用武之地） -->
 <!-- 【改进4】设备详情页开锁记录Tab弹窗（按门查：某房间所有开锁记录） -->
 <div class="modal-overlay hidden" id="modal-door-unlock-history">
-<div class="modal" class="modal-w-xl">
+<div class="modal modal-w-xl">
 <div class="modal-header">
 <div class="modal-title" id="duh-title">📋 301房间 开锁记录</div>
 <button class="modal-close" onclick="closeModal('door-unlock-history')">✕</button>
@@ -5211,7 +5296,7 @@ function saveEscalationEditorRules() {
 <button class="action-btn" onclick="openEscalationVisualEditor()" style="padding:4px 10px;background:var(--red-bg);color:var(--red);border-color:var(--red);">🔺 升级规则编辑器</button>
 <!-- 【新增改进】工单自动派发规则配置弹窗 -->
 <div class="modal-overlay hidden" id="modal-wo-auto-rule">
-<div class="modal" class="modal-w-xl">
+<div class="modal modal-w-xl">
 <div class="modal-header">
 <div class="modal-title">⚙️ 工单自动派发规则</div>
 <button class="modal-close" onclick="closeModal('wo-auto-rule')">✕</button>
@@ -5791,7 +5876,7 @@ function saveEscalationEditorRules() {
 </div>
 <!-- 【改进B】设备批量操作确认弹窗（支持批量选择设备+批量开锁/同步/重启/清除告警） -->
 <div class="modal-overlay hidden" id="modal-device-batch">
-<div class="modal" class="modal-w-xl">
+<div class="modal modal-w-xl">
 <div class="modal-header">
 <div class="modal-title">📱 设备批量操作 - 已选 <span id="batch-dev-count" class="text-primary">0</span> 台设备</div>
 <button class="modal-close" onclick="closeModal('device-batch')">✕</button>
@@ -6456,7 +6541,7 @@ function saveEscalationEditorRules() {
 </div>
 <!-- 【改进3-2】新增/编辑房型表单（内嵌在房型管理弹窗内） -->
 <div class="modal-overlay hidden" id="modal-rt-add-form">
-<div class="modal" class="modal-w-md">
+<div class="modal modal-w-md">
 <div class="modal-header">
 <div class="modal-title" id="rt-add-title">🏠 新增房型</div>
 <button class="modal-close" onclick="closeModal('rt-add-form')">✕</button>
@@ -6758,7 +6843,7 @@ function saveEscalationEditorRules() {
 </div>
 <!-- 【改进3-附】系统配置保存确认弹窗 -->
 <div class="modal-overlay hidden" id="modal-cfg-save-confirm">
-<div class="modal" class="modal-w-sm">
+<div class="modal modal-w-sm">
 <div class="modal-header">
 <div class="modal-title">⚙️ 确认保存配置</div>
 <button class="modal-close" onclick="closeModal('cfg-save-confirm')">✕</button>
@@ -7201,7 +7286,7 @@ function saveEscalationEditorRules() {
 
 <!-- 【物联后台v3.5 改进3】设备批量远程控制面板：支持勾选多个设备后执行批量开锁/同步/重启等操作 -->
 <div class="modal-overlay hidden" id="modal-batch-device-control">
-<div class="modal" class="modal-w-xxl">
+<div class="modal modal-w-xxl">
 <div class="modal-header">
 <div class="modal-title">⚡ 设备批量远程控制</div>
 <button class="modal-close" onclick="closeModal('batch-device-control')">✕</button>
@@ -7730,7 +7815,7 @@ function openFirmwareUpgradeModal() {
 </script>
 <!-- 改进2: 工单创建完整表单弹窗（支持类型/房间/客户/紧急程度/处理人全字段） -->
 <div class="modal-overlay hidden" id="modal-create-wo">
-<div class="modal" class="modal-w-lg">
+<div class="modal modal-w-lg">
 <div class="modal-header">
 <!-- 【改进1】优先级色块指示器：随紧急程度动态变化 -->
 <div style="display:flex;align-items:center;gap:10px;flex:1;">
@@ -7850,7 +7935,7 @@ function openFirmwareUpgradeModal() {
 <!-- 【v4全面检查修复】缺失的模态框HTML -->
 <!-- 楼栋管理新增/编辑表单 -->
 <div class="modal-overlay hidden" id="modal-bldmgr-form">
-<div class="modal" class="modal-w-sm">
+<div class="modal modal-w-sm">
 <div class="modal-header">
 <div class="modal-title" id="bldmgr-form-title">🏢 新增楼栋</div>
 <button class="modal-close" onclick="closeModal('bldmgr-form')">✕</button>
